@@ -1,0 +1,182 @@
+name: ${COMPOSE_PROJECT_NAME:-flash-sale}
+
+x-platform-health-defaults: &platform-health-defaults
+  interval: 10s
+  timeout: 5s
+  retries: 10
+  start_period: 20s
+
+x-app-common: &app-common
+  profiles:
+    - apps
+  networks:
+    - flash-sale-net
+  restart: unless-stopped
+  expose:
+    - "8080"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+
+x-backend-environment: &backend-environment
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+  SERVER_PORT: "8080"
+  JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0}
+  SPRING_THREADS_VIRTUAL_ENABLED: "true"
+  SPRING_MAIN_KEEP_ALIVE: "true"
+  SPRING_LIQUIBASE_ENABLED: "false"
+
+x-backend-common: &backend-common
+  <<: *app-common
+  environment:
+    <<: *backend-environment
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flashsale}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flashsale_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-flashsale_admin}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      <<: *platform-health-defaults
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+    networks:
+      - flash-sale-net
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7.4-alpine}
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      <<: *platform-health-defaults
+      test: ["CMD", "redis-cli", "ping"]
+    networks:
+      - flash-sale-net
+
+  kafka:
+    image: ${KAFKA_IMAGE:-apache/kafka:4.0.0}
+    ports:
+      - "${KAFKA_HOST_PORT:-29092}:29092"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:${KAFKA_HOST_PORT:-29092}
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+    volumes:
+      - kafka-data:/tmp/kraft-combined-logs
+    healthcheck:
+      <<: *platform-health-defaults
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+    networks:
+      - flash-sale-net
+
+  api-gateway:
+    <<: *app-common
+    image: ${API_GATEWAY_IMAGE:-flash-sale/api-gateway:local}
+    build:
+      context: ../..
+      dockerfile: services/api-gateway/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SERVER_PORT: "8080"
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0}
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+
+  authentication-service:
+    <<: *backend-common
+    image: ${AUTHENTICATION_SERVICE_IMAGE:-flash-sale/authentication-service:local}
+    build:
+      context: ../..
+      dockerfile: services/authentication-service/Dockerfile
+
+  product-service:
+    <<: *backend-common
+    image: ${PRODUCT_SERVICE_IMAGE:-flash-sale/product-service:local}
+    build:
+      context: ../..
+      dockerfile: services/product-service/Dockerfile
+    environment:
+      <<: *backend-environment
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/product_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-flashsale_dev_password}
+
+  campaign-service:
+    <<: *backend-common
+    image: ${CAMPAIGN_SERVICE_IMAGE:-flash-sale/campaign-service:local}
+    build:
+      context: ../..
+      dockerfile: services/campaign-service/Dockerfile
+
+  flashsale-service:
+    <<: *backend-common
+    image: ${FLASHSALE_SERVICE_IMAGE:-flash-sale/flashsale-service:local}
+    build:
+      context: ../..
+      dockerfile: services/flashsale-service/Dockerfile
+
+  order-service:
+    <<: *backend-common
+    image: ${ORDER_SERVICE_IMAGE:-flash-sale/order-service:local}
+    build:
+      context: ../..
+      dockerfile: services/order-service/Dockerfile
+
+  payment-service:
+    <<: *backend-common
+    image: ${PAYMENT_SERVICE_IMAGE:-flash-sale/payment-service:local}
+    build:
+      context: ../..
+      dockerfile: services/payment-service/Dockerfile
+
+  notification-service:
+    <<: *backend-common
+    image: ${NOTIFICATION_SERVICE_IMAGE:-flash-sale/notification-service:local}
+    build:
+      context: ../..
+      dockerfile: services/notification-service/Dockerfile
+
+  chatting-service:
+    <<: *backend-common
+    image: ${CHATTING_SERVICE_IMAGE:-flash-sale/chatting-service:local}
+    build:
+      context: ../..
+      dockerfile: services/chatting-service/Dockerfile
+
+  cart-service:
+    <<: *backend-common
+    image: ${CART_SERVICE_IMAGE:-flash-sale/cart-service:local}
+    build:
+      context: ../..
+      dockerfile: services/cart-service/Dockerfile
+
+networks:
+  flash-sale-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  kafka-data:

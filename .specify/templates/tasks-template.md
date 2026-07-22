@@ -25,6 +25,8 @@ constitution. Required validation is never optional.
 - **Single project**: `src/`, `tests/` at repository root
 - **Web app**: `backend/src/`, `frontend/src/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
+- **Flash Sale monorepo**: service-owned artifacts under `services/<service>/`; shared Docker
+  orchestration, Kubernetes, Helm, and monitoring assets under root `infra/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
 <!--
@@ -46,7 +48,7 @@ constitution. Required validation is never optional.
   ============================================================================
 -->
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup (Project Structure)
 
 **Purpose**: Project initialization and basic structure
 
@@ -72,7 +74,10 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T009 Setup environment configuration management
 - [ ] TXXX [P] Update versioned API or Kafka contract files identified by the plan
 - [ ] TXXX [P] Add or update an ADR when service boundaries change
-- [ ] TXXX [P] Configure liveness, readiness, and Prometheus endpoints
+- [ ] TXXX [P] Configure the runtime Prometheus registry dependency and declarative liveness,
+  readiness, and Prometheus endpoint exposure; audit that no registry bean is constructed manually
+- [ ] TXXX [P] Place shared platform assets under root `infra/` and keep service runtime
+  configuration and migrations under `services/<service>/`
 - [ ] TXXX [P] Implement trace-ID propagation for important HTTP requests and Kafka events
 - [ ] TXXX Implement idempotency for each affected Kafka consumer
 - [ ] TXXX Implement the planned transactional outbox for state-change event publication
@@ -89,7 +94,10 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 1 *(include applicable unit, integration, contract, and load tests)*
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> **TEST ORDERING**: When the approved specification or plan requires test-first development, write
+> the mapped tests first and observe the expected failure before implementation. Otherwise, order
+> test and verification tasks according to the approved risk-based test strategy. Required tests
+> and validations are never optional.
 
 - [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
 - [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
@@ -161,13 +169,15 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX [P] Additional unit tests identified by the approved risk strategy in tests/unit/
 - [ ] TXXX [P] Applicable integration, contract, and load tests identified by the plan
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 - [ ] TXXX Run affected module verification with `./mvnw -pl services/<service> -am verify`
 - [ ] TXXX Run `./mvnw clean verify` when the plan requires full or cross-cutting validation
 - [ ] TXXX Run Kubernetes client dry-run for each affected overlay
+- [ ] TXXX Audit root infrastructure ownership and reject service-local copies of shared platform
+  assets unless the plan and ADR approve the exception
 
 ---
 
@@ -190,7 +200,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Within Each User Story
 
-- Tests (if included) MUST be written and FAIL before implementation
+- When the approved plan requires test-first development, mapped tests MUST be written and observed
+  failing before implementation; otherwise follow the plan's risk-based test ordering
 - Models before services
 - Services before endpoints
 - Core implementation before integration
@@ -210,7 +221,7 @@ Examples of foundational tasks (adjust based on your project):
 ## Parallel Example: User Story 1
 
 ```bash
-# Launch all tests for User Story 1 together (if tests requested):
+# Launch all independently runnable tests planned for User Story 1 together:
 Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
 Task: "Integration test for [user journey] in tests/integration/test_[name].py"
 
@@ -257,7 +268,7 @@ With multiple developers:
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
-- Verify tests fail before implementing
+- Follow the approved test ordering; when test-first is selected, record the expected failure before implementation
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

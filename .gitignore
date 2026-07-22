@@ -1,0 +1,21 @@
+# Maven and Java
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# Logs and local environment
+*.log
+.env*
+!.env.example
+!**/.env.example
+
+# IDEs and editors
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# Operating systems
+.DS_Store
+Thumbs.db

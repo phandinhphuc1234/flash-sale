@@ -137,6 +137,9 @@
 - **API/event contracts**: [Contracts added or changed, versioning impact, or N/A]
 - **Durable and hot-path data**: [PostgreSQL ownership and any Redis Lua atomic operation, or N/A]
 - **Messaging reliability**: [Kafka idempotency, outbox, retry, ordering, and recovery impact, or N/A]
-- **Observability**: [Liveness/readiness, Prometheus metrics, and trace-ID propagation impact]
+- **Root infrastructure ownership**: [Shared root `infra/` impact, service-owned configuration and
+  migration impact, or N/A; identify any required ADR exception]
+- **Observability**: [Liveness/readiness, Prometheus auto-configuration and endpoint exposure, manual
+  registry prohibition, and trace-ID propagation impact]
 - **Verification**: [Applicable unit, integration, contract, and load tests; justify omissions]
 - **Architecture decisions**: [Required ADR references, or N/A with rationale]

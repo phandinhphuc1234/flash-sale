@@ -49,7 +49,12 @@
   contracts documented before implementation.
 - **Data and messaging**: PostgreSQL remains durable truth; stock deduction uses Redis Lua; Kafka
   consumers are idempotent; required outbox, retry, ordering, and reconciliation behavior is defined.
+- **Root infrastructure ownership**: Shared Docker orchestration, Kubernetes, Helm, and monitoring
+  assets are placed under root `infra/`; service runtime configuration and migrations remain with
+  the owning service; exceptions are justified by plan and ADR.
 - **Observability**: Liveness, readiness, Prometheus metrics, and trace-ID propagation are designed.
+  Spring Boot 3.x services use a runtime registry dependency plus declarative endpoint exposure and
+  do not construct a Prometheus registry in service code without an approved exception.
 - **Contracts and dependencies**: Contract files and compatibility impacts are identified; every new
   production dependency is justified in this plan.
 - **Validation**: Applicable unit, integration, contract, load, Maven, and Kubernetes checks are

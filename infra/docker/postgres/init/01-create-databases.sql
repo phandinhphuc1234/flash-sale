@@ -1,0 +1,9 @@
+CREATE DATABASE auth_db;
+CREATE DATABASE product_db;
+CREATE DATABASE campaign_db;
+CREATE DATABASE flashsale_db;
+CREATE DATABASE order_db;
+CREATE DATABASE payment_db;
+CREATE DATABASE notification_db;
+CREATE DATABASE chatting_db;
+CREATE DATABASE cart_db;

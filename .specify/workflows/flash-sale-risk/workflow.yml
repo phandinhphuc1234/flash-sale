@@ -1,0 +1,193 @@
+schema_version: "1.0"
+
+workflow:
+  id: "flash-sale-risk"
+  name: "Flash Sale Risk-Gated SDD Cycle"
+  version: "0.1.0"
+  author: "Flash Sale Team"
+  description: "Runs a risk-aware Spec-Driven Development cycle with explicit human approval and evidence gates."
+
+requires:
+  speckit_version: ">=0.12.11.dev0"
+  integrations:
+    any:
+      - "codex"
+      - "copilot"
+      - "claude"
+      - "gemini"
+
+inputs:
+  spec:
+    type: string
+    required: true
+    prompt: "Describe the business outcome, users, scope, and known constraints"
+  integration:
+    type: string
+    default: "auto"
+    prompt: "Integration to use; 'auto' uses the integration initialized for this project"
+  risk_focus:
+    type: string
+    default: "stock, money, security, concurrency, consistency, contracts, recovery, and operability"
+    prompt: "Risk areas that require explicit decisions and evidence"
+  plan_context:
+    type: string
+    default: "Java 21, Spring Boot 3.x, Maven microservices, Kubernetes DNS, PostgreSQL, Redis Lua hot path, Kafka, root infra ownership"
+    prompt: "Approved technical and repository context"
+  implementation_scope:
+    type: string
+    default: "one approved task or coherent task group at a time"
+    prompt: "Maximum implementation scope per execution gate"
+
+steps:
+  - id: specify
+    command: speckit.specify
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        {{ inputs.spec }}
+        Apply the flash-sale risk profile. Explicitly assess {{ inputs.risk_focus }}.
+        Do not decide missing high-impact business policy.
+
+  - id: clarify
+    command: speckit.clarify
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Resolve the highest-impact ambiguities first, focusing on {{ inputs.risk_focus }}.
+        Preserve unresolved human decisions as blocking markers with owners.
+
+  - id: requirements-checklist
+    command: speckit.checklist
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Generate a requirements-quality checklist for scope, acceptance scenarios, invariants,
+        human decisions, distributed failure outcomes, measurable success, and baseline delta.
+
+  - id: review-spec
+    type: gate
+    message: >-
+      Review spec.md and the requirements checklist. Approve only when the business owner accepts
+      the scope and no blocking clarification remains. Reject to stop and revise the specification.
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: plan
+    command: speckit.plan
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Plan only the approved specification delta using this context: {{ inputs.plan_context }}.
+        Map ownership, hexagonal boundaries for the affected slice, contracts, transactions,
+        concurrency, failure/recovery, rollout/rollback, observability, and verification evidence.
+
+  - id: plan-checklist
+    command: speckit.checklist
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Generate a plan-quality checklist covering Constitution gates, service/data ownership,
+        dependency direction, compatibility, migration, failure recovery, test strategy, exact
+        validation commands, and rollback safety.
+
+  - id: review-plan
+    type: gate
+    message: >-
+      Review plan.md, design artifacts, and the plan checklist. Approve only if the design adds no
+      business behavior, both Constitution checks pass, and risk mitigations are executable.
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: tasks
+    command: speckit.tasks
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Generate dependency-ordered, traceable tasks with exact paths, risk-based test ordering,
+        validation commands, checkpoints, and evidence records. Implementation scope is
+        {{ inputs.implementation_scope }}.
+
+  - id: analyze-before-implementation
+    command: speckit.analyze
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Analyze spec.md, plan.md, and tasks.md read-only. Treat unresolved high-impact behavior,
+        constitutional violations, orphan requirements, and missing risk evidence as blocking.
+
+  - id: review-tasks
+    type: gate
+    message: >-
+      Review tasks.md and the consistency analysis. Approve implementation only when task ordering,
+      traceability, ownership, and validation evidence are complete and all blocking findings are
+      resolved in the governing artifact.
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: implement-approved-scope
+    command: speckit.implement
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Implement {{ inputs.implementation_scope }}. Stop on unresolved behavior, scope expansion,
+        a missing ADR/contract decision, or failed required validation. Record evidence per task.
+
+  - id: converge
+    command: speckit.converge
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Compare the implementation with approved spec.md, plan.md, and tasks.md. Append only genuine
+        remaining work to tasks.md; do not weaken requirements or silently expand scope.
+
+  - id: review-convergence
+    type: gate
+    message: >-
+      Review the convergence findings and any appended tasks. Approve only the remaining task group
+      that is still within the approved specification; reject if artifacts or human decisions need
+      revision.
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: implement-remaining-approved-scope
+    command: speckit.implement
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Execute only approved incomplete tasks, using {{ inputs.implementation_scope }} and the
+        selected test ordering. If no task remains, perform no production change.
+
+  - id: final-converge
+    command: speckit.converge
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Recheck code, tests, contracts, and validation evidence against the approved artifacts after
+        the remaining implementation scope. Append genuine missing work; never mark it complete.
+
+  - id: final-convergence-gate
+    type: gate
+    message: >-
+      Approve convergence only when no required work was newly appended and every selected scope is
+      represented by passing evidence. If work remains, reject, review the new tasks, and run another
+      approved implementation/convergence iteration instead of declaring completion.
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: final-analysis
+    command: speckit.analyze
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Perform the final read-only artifact consistency analysis and report unresolved or uncovered
+        requirements. Do not report completion while a required check is failing.
+
+  - id: final-evidence-gate
+    type: gate
+    message: >-
+      Verify that all selected tasks are complete; module/full Maven, contract, integration, load,
+      migration, and Kubernetes checks required by the plan have passing evidence; observability and
+      rollback evidence is recorded; and final analysis has no blocking finding. Approval is a human
+      release-readiness decision, not an automatic test result.
+    options: [approve, reject]
+    on_reject: abort
