@@ -5,8 +5,8 @@
 **Prerequisites**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [contracts/product-catalog-admin-http.md](contracts/product-catalog-admin-http.md), [quickstart.md](quickstart.md)
 
 **Status**: Approved by product owner on 2026-07-19 - implementation started; US1 convergence tasks
-T057-T066 completed through 2026-07-21; T068-T069 gateway/shared contract cleanup completed on 2026-07-21;
-T067 and US2/US3 remain pending
+T057-T067 completed through 2026-07-24; T068-T069 gateway/shared contract cleanup completed on
+2026-07-21; US2/US3 remain pending
 
 **Tests**: Tests are required by the plan because this feature changes privileged writes, lifecycle visibility, Money validation, optimistic locking, idempotency replay, and audit evidence.
 
@@ -211,7 +211,7 @@ stabilization group before production-code implementation resumes.
 - [X] T064 Enforce and preserve the documented actor and `X-Trace-Id` boundary for every US1 administration request through gateway and product-service, adding read/write header and failure-path assertions without trusting caller-supplied actor headers per NFR-003 and Constitution VIII (partial)
 - [X] T065 Complete US1 admin-read coverage for status/search filters, bounded paging, deterministic ordering, empty results, and missing detail across `services/product-service/src/test/java/com/philia/flashsale/product/adapter/in/web/admin/ProductAdminDraftHttpTests.java` and `services/product-service/src/test/java/com/philia/flashsale/product/adapter/out/persistence/admin/ProductAdminDraftPersistenceIT.java` per US1/AC3-AC4 and NFR-004 (partial)
 - [X] T066 Link an approved `authentication-service` JWT/JWKS prerequisite that defines the canonical `CATALOG_ADMIN` claim and runtime trust contract, or explicitly record external admin E2E as blocked; do not implement token issuance inside product-service or api-gateway per FR-001 and the plan's authentication dependency (blocked prerequisite recorded)
-- [ ] T067 Add a positive api-gateway-to-Product US1 forwarding test that verifies method, path, query, request body, response, `Authorization`, `X-Trace-Id`, and `Idempotency-Key` preservation using an isolated test upstream, while keeping real JWT/JWKS verification governed by T066, per FR-001 and plan: Admin Request Flow (partial)
+- [X] T067 Add a positive api-gateway-to-Product US1 forwarding test that verifies method, path, query, request body, response, `Authorization`, `X-Trace-Id`, and `Idempotency-Key` preservation using an isolated test upstream, while keeping real JWT/JWKS verification governed by T066, per FR-001 and plan: Admin Request Flow (partial)
 
 ### 2026-07-20 - T058 idempotency expiry clarification completed
 
@@ -349,6 +349,26 @@ pending T067 forwarding work and does not start US2 or US3.
   `specs/010-catalog-administration` and the requirement checklist remains PASS with 21 total,
   21 complete, and 0 incomplete. Maven verification was not required because no production or test
   code changed.
+
+### 2026-07-24 - T067 Gateway-to-Product forwarding completed
+
+- Added `GatewayAdminProxyForwardingTests` with an isolated HTTP upstream. The test verifies the
+  admin request method, path, query, JSON body, `Authorization`, normalized `X-Trace-Id`,
+  `Idempotency-Key`, removal of caller-controlled `X-Actor-Id`, downstream status/body, and a
+  downstream response header.
+- The test uses a test-only reactive JWT decoder for `Bearer test-admin-token`; it does not claim
+  real authentication-service JWKS verification. That remains governed by the separate
+  Authentication feature prerequisite recorded by T066.
+- Repaired the stale `GatewaySecurityErrorHandler` constructor/behavior mismatch exposed during
+  test compilation by restoring the approved Feature 011 authentication and access-denial
+  classification through `GatewayFailureClassifier`.
+- Validation: `./mvnw.cmd -pl services/api-gateway -am -Dtest=GatewayAdminProxyForwardingTests
+  -Dsurefire.failIfNoSpecifiedTests=false test` -> PASS; 1 test, 0 failures, 0 errors, 0 skipped;
+  finished 2026-07-24.
+- Clean follow-up validation: `./mvnw.cmd -pl services/api-gateway -am clean verify` -> PASS;
+  all current Gateway test classes passed with 0 failures, 0 errors, and 0 skipped; stale compiled
+  test artifacts were removed before verification.
+- CI/PR reference: N/A for this local implementation run; no remote PR operation was in scope.
 
 ---
 

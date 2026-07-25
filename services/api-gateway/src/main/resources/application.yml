@@ -22,6 +22,29 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  forward-headers-strategy: none
+
+flashsale:
+  gateway:
+    rate-limit:
+      enabled: ${GATEWAY_RATE_LIMIT_ENABLED:false}
+      environment: ${RATE_LIMIT_ENVIRONMENT:local}
+      key-prefix: rl
+      command-timeout: 50ms
+      hmac-secret: ${RATE_LIMIT_KEY_HMAC_SECRET:}
+      policies:
+        public-catalog-read:
+          state-version: p1
+          route-id: product-catalog
+          methods:
+            - GET
+          identity-strategy: CLIENT_IP
+          capacity: 60
+          refill-tokens: 30
+          refill-period: 1s
+          request-cost: 1
+          failure-mode: ALLOW_WITH_METRIC
+          enabled: true
 
 management:
   endpoints:
@@ -43,6 +66,12 @@ management:
       enabled: true
     readinessstate:
       enabled: true
+    redis:
+      enabled: false
+  metrics:
+    distribution:
+      percentiles:
+        gateway.rate.limit.acquire: 0.5,0.95,0.99
 
 info:
   app:

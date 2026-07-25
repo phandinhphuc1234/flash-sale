@@ -7,6 +7,7 @@ Start here:
 - [Technology problem map](technology-problem-map.md)
 - [Service communication protocols](../architecture/service-communication-protocols.md)
 - [Liquibase migration rules](liquibase-migration-rules.md)
+- [Gateway rate-limiting design guide](../ratelimit/README.md)
 - [Architecture diagrams](../architecture/diagrams/README.md)
 
 ## Status Labels

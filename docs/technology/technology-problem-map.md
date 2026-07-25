@@ -22,6 +22,7 @@ This document maps each technology to the problem it solves in the Flash Sale En
 | Reliable state change plus event | Transactional outbox | Planned | future service-owned persistence adapter | State change and event publication must not drift |
 | Synchronous internal calls | HTTP/REST contracts | Planned | `specs/<feature>/contracts/`, then accepted `contracts/openapi/` catalog when promoted | Contracts before clients; see [Service communication protocols](../architecture/service-communication-protocols.md) |
 | Low-latency internal RPC | gRPC | Deferred | none yet | Requires measured need, plan, ADR, contracts, tests, and a Constitution amendment or clarification |
+| Distributed trace instrumentation | Micrometer Tracing + OpenTelemetry bridge and OTLP exporter | Planned | future service POMs and `application.yml` | Application code uses Micrometer abstractions; W3C propagation; no direct OpenTelemetry SDK coupling in business or edge-policy code |
 | Trace collection | OpenTelemetry Collector | Planned | future `infra/monitoring/otel-collector/` | Services emit OTLP; collector handles batching/retry/filtering |
 | Metrics visualization | Prometheus + Grafana | Planned infrastructure, current scrape endpoints | future `infra/monitoring/` | Low-cardinality labels only |
 | Distributed tracing backend | Tempo | Planned | future `infra/monitoring/tempo/` | Trace IDs must propagate through HTTP, Kafka, logs |
@@ -230,6 +231,41 @@ Avoid:
 The selection rules for HTTP, Kafka, JWT validation, gRPC, WebSocket, Redis, and RabbitMQ are
 defined in [Service communication protocols](../architecture/service-communication-protocols.md).
 
+### Micrometer Tracing with OpenTelemetry
+
+Distributed tracing is planned but is not installed in the current service runtime. The application
+instrumentation standard is Micrometer Tracing, backed by the OpenTelemetry bridge and an OTLP
+exporter. The OpenTelemetry Collector is a separate root-owned runtime component, not a Java library
+embedded in each service.
+
+```text
+Spring observations and Micrometer Tracing
+    -> micrometer-tracing-bridge-otel
+    -> opentelemetry-exporter-otlp
+    -> OpenTelemetry Collector
+    -> Tempo or another approved backend
+```
+
+Use it later for:
+
+- W3C `traceparent` and `tracestate` propagation across Gateway and service HTTP calls
+- active trace/span correlation in structured logs and safe error responses
+- OTLP export to one Collector endpoint rather than direct fan-out to several backends
+- propagating trace context through Kafka with an approved versioned header contract
+
+Avoid:
+
+- calling the OpenTelemetry SDK directly from business or Gateway policy code when Micrometer's
+  tracing abstraction provides the required capability
+- treating the custom `X-Trace-Id` header as a replacement for W3C distributed trace context
+- claiming tracing is active before the bridge, exporter, runtime properties, Collector, and trace
+  propagation tests are implemented
+- manually constructing tracer providers when Spring Boot auto-configuration covers the approved baseline
+
+The current Gateway `X-Trace-Id`/UUID value is a compatibility correlation identifier. A later
+tracing feature must prefer the active Micrometer trace context for canonical distributed trace IDs
+and retain an explicit safe fallback for early failure paths where no span exists.
+
 ### OpenTelemetry Collector
 
 OpenTelemetry Collector is planned as the central telemetry ingestion point. The official Collector docs describe it as vendor-agnostic infrastructure for receiving, processing, and exporting telemetry, and call out batching, retry, encryption, and filtering as reasons to use a collector beside services.
@@ -292,5 +328,8 @@ Before adopting gRPC, add:
 - [Liquibase with Spring Boot](https://contribute.liquibase.com/extensions-integrations/directory/integration-docs/springboot/)
 - [Kubernetes DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 - [Redis Lua scripting](https://redis.io/docs/latest/develop/programmability/eval-intro/)
+- [Spring Boot 3.5 tracing](https://docs.spring.io/spring-boot/3.5/reference/actuator/tracing.html)
+- [Micrometer Tracing configuration](https://docs.micrometer.io/tracing/reference/configuring.html)
+- [OpenTelemetry context propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
 - [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)
 - [Grafana Loki Promtail EOL notice](https://grafana.com/docs/loki/latest/send-data/promtail/)

@@ -29,7 +29,14 @@ public class GatewaySecurityConfiguration {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(authorize -> authorize
                         // Shopper catalog is intentionally public, but catalog administration is privileged.
-                        .pathMatchers("/actuator/**").permitAll()
+                        .pathMatchers(
+                                "/actuator",
+                                "/actuator/health",
+                                "/actuator/health/liveness",
+                                "/actuator/health/readiness",
+                                "/actuator/info",
+                                "/actuator/prometheus")
+                        .permitAll()
                         .pathMatchers("/api/v1/catalog/**").permitAll()
                         .pathMatchers("/api/v1/admin/catalog/**").hasAuthority("CATALOG_ADMIN")
                         .anyExchange().denyAll())

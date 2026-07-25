@@ -2,6 +2,7 @@ package com.philia.flashsale.gateway.filter.global;
 
 import com.philia.flashsale.gateway.error.GatewayErrorCode;
 import com.philia.flashsale.gateway.error.GatewayHttpErrorWriter;
+import com.philia.flashsale.gateway.observability.GatewayTraceIdResolver;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -18,9 +19,13 @@ public final class AdminCatalogRequestBoundaryFilter implements GlobalFilter, Or
     private static final String ADMIN_CATALOG_PATH = "/api/v1/admin/catalog";
 
     private final GatewayHttpErrorWriter errorWriter;
+    private final GatewayTraceIdResolver traceIdResolver;
 
-    public AdminCatalogRequestBoundaryFilter(GatewayHttpErrorWriter errorWriter) {
+    public AdminCatalogRequestBoundaryFilter(
+            GatewayHttpErrorWriter errorWriter,
+            GatewayTraceIdResolver traceIdResolver) {
         this.errorWriter = errorWriter;
+        this.traceIdResolver = traceIdResolver;
     }
 
     @Override
@@ -29,7 +34,8 @@ public final class AdminCatalogRequestBoundaryFilter implements GlobalFilter, Or
             return chain.filter(exchange);
         }
 
-        String traceId = errorWriter.normalizedTraceId(exchange.getRequest().getHeaders());
+        String traceId = traceIdResolver.normalizedCallerTraceId(
+                exchange.getRequest().getHeaders());
         if (traceId == null) {
             return errorWriter.write(
                     exchange,

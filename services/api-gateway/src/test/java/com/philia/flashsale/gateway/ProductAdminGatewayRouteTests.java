@@ -54,6 +54,7 @@ class ProductAdminGatewayRouteTests {
                 .exchange()
                 .expectStatus().isUnauthorized()
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("UNAUTHENTICATED")
                 .jsonPath("$.message").isEqualTo("Authentication is required")
@@ -70,6 +71,7 @@ class ProductAdminGatewayRouteTests {
                 .exchange()
                 .expectStatus().isForbidden()
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectHeader().doesNotExist(HttpHeaders.WWW_AUTHENTICATE)
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("CATALOG_ADMIN_REQUIRED")
                 .jsonPath("$.message").isEqualTo("CATALOG_ADMIN authority is required")
@@ -88,7 +90,8 @@ class ProductAdminGatewayRouteTests {
                 .expectBody()
                 .jsonPath("$.code").isEqualTo("INVALID_ADMIN_REQUEST")
                 .jsonPath("$.message")
-                .isEqualTo("X-Trace-Id must be non-blank and no longer than 128 characters");
+                .isEqualTo("X-Trace-Id must be non-blank and no longer than 128 characters")
+                .jsonPath("$.traceId").isNotEmpty();
     }
 
     @Test
@@ -134,7 +137,9 @@ class ProductAdminGatewayRouteTests {
         assertThat(chainInvoked).isFalse();
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)))
-                .contains("\"code\":\"INVALID_ADMIN_REQUEST\"");
+                .contains("\"code\":\"INVALID_ADMIN_REQUEST\"")
+                .doesNotContain("\"traceId\":null")
+                .containsPattern("\\\"traceId\\\":\\\"[^\\\"]+\\\"");
     }
 
     @Test
@@ -154,7 +159,8 @@ class ProductAdminGatewayRouteTests {
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)))
                 .contains("\"code\":\"INVALID_ADMIN_REQUEST\"")
-                .contains("\"traceId\":null");
+                .doesNotContain("\"traceId\":null")
+                .containsPattern("\\\"traceId\\\":\\\"[^\\\"]+\\\"");
     }
 
     @Test

@@ -40,10 +40,10 @@ services:
     image: ${POSTGRES_IMAGE:-postgres:17-alpine}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-flashsale}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flashsale_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-flashsale_admin}
     ports:
-      - "${POSTGRES_HOST_PORT:-5432}:5432"
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
@@ -55,21 +55,23 @@ services:
 
   redis:
     image: ${REDIS_IMAGE:-redis:7.4-alpine}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
     ports:
-      - "${REDIS_HOST_PORT:-6379}:6379"
-    command: ["redis-server", "--appendonly", "yes"]
+      - "${REDIS_BIND_ADDRESS:-127.0.0.1}:${REDIS_HOST_PORT:-6379}:6379"
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
     volumes:
       - redis-data:/data
     healthcheck:
       <<: *platform-health-defaults
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
     networks:
       - flash-sale-net
 
   kafka:
     image: ${KAFKA_IMAGE:-apache/kafka:4.0.0}
     ports:
-      - "${KAFKA_HOST_PORT:-29092}:29092"
+      - "${KAFKA_BIND_ADDRESS:-127.0.0.1}:${KAFKA_HOST_PORT:-29092}:29092"
     environment:
       KAFKA_NODE_ID: "1"
       KAFKA_PROCESS_ROLES: broker,controller
@@ -93,6 +95,7 @@ services:
 
   api-gateway:
     <<: *app-common
+    depends_on: {}
     image: ${API_GATEWAY_IMAGE:-flash-sale/api-gateway:local}
     build:
       context: ../..
@@ -101,6 +104,13 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
       SERVER_PORT: "8080"
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      GATEWAY_RATE_LIMIT_ENABLED: ${GATEWAY_RATE_LIMIT_ENABLED:-false}
+      RATE_LIMIT_ENVIRONMENT: ${RATE_LIMIT_ENVIRONMENT:-docker}
+      RATE_LIMIT_KEY_HMAC_SECRET: ${RATE_LIMIT_KEY_HMAC_SECRET:-}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
 
@@ -121,7 +131,8 @@ services:
       <<: *backend-environment
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/product_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-flashsale_dev_password}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      SPRING_LIQUIBASE_ENABLED: ${PRODUCT_LIQUIBASE_ENABLED:-false}
 
   campaign-service:
     <<: *backend-common

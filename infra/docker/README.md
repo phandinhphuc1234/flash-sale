@@ -41,6 +41,27 @@ cp infra/docker/.env.example infra/docker/.env
 
 Real `.env` files are ignored by git. Keep only placeholder examples committed.
 
+The Compose file intentionally requires `POSTGRES_PASSWORD` and `REDIS_PASSWORD`; it no longer
+falls back to the old development password. Before starting the stack, replace every
+`REPLACE_WITH_...` value in `infra/docker/.env` with a unique secret. Keep the file private on a
+VPS and never commit it.
+
+Redis is protected with `requirepass`, and the Gateway receives the same password through
+`SPRING_DATA_REDIS_PASSWORD`. PostgreSQL, Redis, and Kafka host bindings default to `127.0.0.1`, so
+the backing services are not published on public interfaces. Containers still communicate through
+the private `flash-sale-net` network.
+
+Generate suitable values with a password manager or a cryptographically secure generator, for
+example:
+
+```powershell
+openssl rand -base64 48
+```
+
+The Gateway's `JWT_JWK_SET_URI` is currently only a configuration contract. Feature 013 does not
+implement JWT signing or the authentication-service JWKS endpoint; that work belongs to the
+separate authentication feature.
+
 ## Validate configuration
 
 Baseline:

@@ -1,7 +1,12 @@
 package com.philia.flashsale.gateway.error;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.philia.flashsale.gateway.observability.GatewayErrorObservation;
+import com.philia.flashsale.gateway.observability.GatewayTraceIdResolver;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -12,43 +17,126 @@ import reactor.core.publisher.Mono;
 @Component
 public final class GatewayHttpErrorWriter {
 
-    private static final String TRACE_ID_HEADER = "X-Trace-Id";
-    private static final int TRACE_ID_MAX_LENGTH = 128;
-
     private final ObjectMapper objectMapper;
+    private final GatewayTraceIdResolver traceIdResolver;
+    private final GatewayErrorObservation errorObservation;
 
-    public GatewayHttpErrorWriter(ObjectMapper objectMapper) {
+    public GatewayHttpErrorWriter(
+            ObjectMapper objectMapper,
+            GatewayTraceIdResolver traceIdResolver,
+            GatewayErrorObservation errorObservation) {
         this.objectMapper = objectMapper;
+        this.traceIdResolver = traceIdResolver;
+        this.errorObservation = errorObservation;
     }
 
     public Mono<Void> write(
             ServerWebExchange exchange,
             GatewayErrorCode errorCode) {
+        return write(exchange, errorCode, null);
+    }
+
+    public Mono<Void> writeRateLimitExceeded(
+            ServerWebExchange exchange,
+            Duration retryAfter) {
+        if (exchange.getResponse().isCommitted()) {
+            return Mono.empty();
+        }
+
+        String traceId = traceIdResolver.resolve(exchange);
+        byte[] body;
+        try {
+            body = objectMapper.writeValueAsBytes(new GatewayErrorResponse(
+                    GatewayErrorCode.RATE_LIMIT_EXCEEDED.name(),
+                    GatewayErrorCode.RATE_LIMIT_EXCEEDED.message(),
+                    traceId));
+        } catch (JsonProcessingException exception) {
+            removeRateLimitHeaders(exchange.getResponse().getHeaders());
+            body = fallbackInternalErrorBody(traceId);
+            exchange.getResponse().setStatusCode(GatewayErrorCode.GATEWAY_INTERNAL_ERROR.status());
+            exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+            errorObservation.record(
+                    GatewayErrorCode.GATEWAY_INTERNAL_ERROR,
+                    traceId,
+                    exchange.getRequest().getMethod().name(),
+                    exchange.getRequest().getPath().value(),
+                    exception.getClass().getName());
+            return exchange.getResponse().writeWith(Mono.just(
+                    exchange.getResponse().bufferFactory().wrap(body)));
+        }
+
+        HttpHeaders headers = exchange.getResponse().getHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(HttpHeaders.RETRY_AFTER, retryAfterSeconds(retryAfter));
+        headers.setCacheControl("no-store");
+        exchange.getResponse().setStatusCode(GatewayErrorCode.RATE_LIMIT_EXCEEDED.status());
+        return exchange.getResponse().writeWith(Mono.just(
+                exchange.getResponse().bufferFactory().wrap(body)));
+    }
+
+    public Mono<Void> write(
+            ServerWebExchange exchange,
+            GatewayErrorCode errorCode,
+            Throwable failure) {
+        // A committed downstream response belongs to its original owner and must not be replaced.
+        if (exchange.getResponse().isCommitted()) {
+            return failure == null ? Mono.empty() : Mono.error(failure);
+        }
+
+        String traceId = traceIdResolver.resolve(exchange);
+        GatewayErrorCode renderedErrorCode = errorCode;
+        Throwable observedFailure = failure;
         byte[] body;
         try {
             body = objectMapper.writeValueAsBytes(new GatewayErrorResponse(
                     errorCode.name(),
                     errorCode.message(),
-                    normalizedTraceId(exchange.getRequest().getHeaders())));
+                    traceId));
         } catch (JsonProcessingException exception) {
-            return Mono.error(exception);
+            // A minimal encoder keeps the public contract safe even if normal JSON mapping fails.
+            renderedErrorCode = GatewayErrorCode.GATEWAY_INTERNAL_ERROR;
+            observedFailure = exception;
+            body = fallbackInternalErrorBody(traceId);
         }
 
-        exchange.getResponse().setStatusCode(errorCode.status());
+        exchange.getResponse().setStatusCode(renderedErrorCode.status());
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        errorObservation.record(
+                renderedErrorCode,
+                traceId,
+                exchange.getRequest().getMethod().name(),
+                exchange.getRequest().getPath().value(),
+                observedFailure == null ? null : observedFailure.getClass().getName());
         return exchange.getResponse().writeWith(Mono.just(
                 exchange.getResponse().bufferFactory().wrap(body)));
     }
 
-    /** Returns the bounded trace value forwarded to downstream services and error responses. */
-    public String normalizedTraceId(HttpHeaders headers) {
-        String value = headers.getFirst(TRACE_ID_HEADER);
-        if (value == null) {
-            return null;
+    private byte[] fallbackInternalErrorBody(String traceId) {
+        String escapedTraceId = new String(
+                JsonStringEncoder.getInstance().quoteAsString(traceId));
+        String body = "{\"code\":\"GATEWAY_INTERNAL_ERROR\","
+                + "\"message\":\"The gateway could not process the request\","
+                + "\"traceId\":\"" + escapedTraceId + "\"}";
+        return body.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static String retryAfterSeconds(Duration retryAfter) {
+        if (retryAfter == null || retryAfter.isZero() || retryAfter.isNegative()) {
+            throw new IllegalArgumentException("retry-after duration must be positive");
         }
-        String normalized = value.trim();
-        return normalized.isBlank() || normalized.length() > TRACE_ID_MAX_LENGTH
-                ? null
-                : normalized;
+        long millis = retryAfter.toMillis();
+        long seconds = Math.max(1L, Math.ceilDiv(millis, 1_000L));
+        return Long.toString(seconds);
+    }
+
+    private static void removeRateLimitHeaders(HttpHeaders headers) {
+        headers.remove(HttpHeaders.RETRY_AFTER);
+        headers.remove(HttpHeaders.CACHE_CONTROL);
+        headers.remove("RateLimit");
+        headers.remove("RateLimit-Policy");
+        headers.remove("RateLimit-Limit");
+        headers.remove("RateLimit-Remaining");
+        headers.remove("RateLimit-Reset");
+        headers.keySet().removeIf(name -> name.regionMatches(true, 0, "X-RateLimit-", 0, "X-RateLimit-".length()));
     }
 }
