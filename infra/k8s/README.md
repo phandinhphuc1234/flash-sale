@@ -19,7 +19,7 @@ infra/k8s/
 │   ├── order-service/
 │   ├── payment-service/
 │   ├── notification-service/
-│   └── chatting-service/
+│   └── inventory-service/
 └── overlays/
     ├── dev/
     ├── staging/

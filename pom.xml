@@ -37,7 +37,7 @@
         <module>services/order-service</module>
         <module>services/payment-service</module>
         <module>services/notification-service</module>
-        <module>services/chatting-service</module>
+        <module>services/inventory-service</module>
     </modules>
 
     <dependencyManagement>

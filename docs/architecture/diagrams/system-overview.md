@@ -19,7 +19,7 @@ flowchart LR
     order[order-service\nCurrent shell]
     payment[payment-service\nCurrent shell]
     notification[notification-service\nCurrent shell]
-    chatting[chatting-service\nCurrent shell]
+    inventory[inventory-service\nCurrent shell]
 
     subgraph data[Data and Messaging Layer - Planned]
       redis[(Redis\nLua atomic reserve/cache/rate limit\nPlanned)]
@@ -32,7 +32,7 @@ flowchart LR
       orderdb[(order-db\nPostgreSQL planned)]
       paymentdb[(payment-db\nPostgreSQL planned)]
       notificationdb[(notification-db\nPostgreSQL planned)]
-      chattingdb[(chatting-db\nPostgreSQL planned)]
+      inventorydb[(inventory-db\nPostgreSQL planned)]
     end
 
     subgraph obs[Observability Stack - Planned]
@@ -56,7 +56,7 @@ flowchart LR
   gateway --> order
   gateway --> payment
   gateway --> notification
-  gateway --> chatting
+  gateway --> inventory
 
   auth --> authdb
   product --> productdb
@@ -66,11 +66,11 @@ flowchart LR
   order --> orderdb
   payment --> paymentdb
   notification --> notificationdb
-  chatting --> chattingdb
+  inventory --> inventorydb
 
   flashsale -. atomic reserve .-> redis
   gateway -. rate limit/session/cache planned .-> redis
-  chatting -. presence/cache planned .-> redis
+  inventory -. inventory/cache planned .-> redis
 
   campaign -. campaign.item.prepared.v1 .-> kafka
   flashsale -. order.requested.v1 .-> kafka
@@ -91,7 +91,7 @@ flowchart LR
   order -. metrics .-> prometheus
   payment -. metrics .-> prometheus
   notification -. metrics .-> prometheus
-  chatting -. metrics .-> prometheus
+  inventory -. metrics .-> prometheus
 
   gateway -. OTLP traces .-> otel
   auth -. OTLP traces .-> otel
@@ -102,7 +102,7 @@ flowchart LR
   order -. OTLP traces .-> otel
   payment -. OTLP traces .-> otel
   notification -. OTLP traces .-> otel
-  chatting -. OTLP traces .-> otel
+  inventory -. OTLP traces .-> otel
 
   otel --> tempo
   alloy --> loki
@@ -116,9 +116,9 @@ flowchart LR
   classDef obs fill:#f5f3ff,stroke:#7c3aed,color:#0f172a;
   classDef deferred fill:#f8fafc,stroke:#64748b,color:#0f172a;
 
-  class gateway,auth,product,cart,campaign,flashsale,order,payment,notification,chatting current;
+  class gateway,auth,product,cart,campaign,flashsale,order,payment,notification,inventory current;
   class ingress planned;
-  class redis,kafka,authdb,productdb,cartdb,campaigndb,flashsaledb,orderdb,paymentdb,notificationdb,chattingdb data;
+  class redis,kafka,authdb,productdb,cartdb,campaigndb,flashsaledb,orderdb,paymentdb,notificationdb,inventorydb data;
   class prometheus,otel,alloy,loki,tempo,grafana obs;
 ```
 

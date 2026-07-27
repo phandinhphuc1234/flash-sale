@@ -169,12 +169,12 @@ services:
       context: ../..
       dockerfile: services/notification-service/Dockerfile
 
-  chatting-service:
+  inventory-service:
     <<: *backend-common
-    image: ${CHATTING_SERVICE_IMAGE:-flash-sale/chatting-service:local}
+    image: ${INVENTORY_SERVICE_IMAGE:-flash-sale/inventory-service:local}
     build:
       context: ../..
-      dockerfile: services/chatting-service/Dockerfile
+      dockerfile: services/inventory-service/Dockerfile
 
   cart-service:
     <<: *backend-common

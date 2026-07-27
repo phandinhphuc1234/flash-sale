@@ -1,10 +1,10 @@
-package com.philia.flashsale.chatting;
+package com.philia.flashsale.inventory;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ChattingServiceApplicationTests {
+class InventoryServiceApplicationTests {
 
     @Test
     void contextLoads() {

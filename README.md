@@ -19,7 +19,7 @@ flash-sale/
 │   ├── order-service/
 │   ├── payment-service/
 │   ├── notification-service/
-│   └── chatting-service/
+│   └── inventory-service/
 ├── infra/                    # Shared platform and environment assets
 │   ├── docker/
 │   ├── k8s/

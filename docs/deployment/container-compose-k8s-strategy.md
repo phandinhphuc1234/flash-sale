@@ -59,7 +59,7 @@ host
 api-gateway
   ↓ Docker DNS names
 authentication-service, product-service, cart-service, campaign-service, flashsale-service,
-order-service, payment-service, notification-service, chatting-service
+order-service, payment-service, notification-service, inventory-service
   ↓
 postgres, redis, kafka
 ```
@@ -140,7 +140,7 @@ flashsale_db
 order_db
 payment_db
 notification_db
-chatting_db
+inventory_db
 ```
 
 This is a local convenience. It does not mean the system has one shared service database.

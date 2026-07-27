@@ -1,12 +1,12 @@
-package com.philia.flashsale.chatting;
+package com.philia.flashsale.inventory;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ChattingServiceApplication {
+public class InventoryServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ChattingServiceApplication.class, args);
+        SpringApplication.run(InventoryServiceApplication.class, args);
     }
 }

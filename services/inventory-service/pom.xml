@@ -11,7 +11,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>chatting-service</artifactId>
+    <artifactId>inventory-service</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
