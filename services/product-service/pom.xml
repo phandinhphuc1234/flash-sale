@@ -16,6 +16,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.philia.flashsale</groupId>
+            <artifactId>common-web</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
@@ -101,6 +106,8 @@
                 <configuration>
                     <release>21</release>
                     <parameters>true</parameters>
+                    <!-- Do not set outputDirectory globally: Maven uses different directories for main and testCompile. -->
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.mapstruct</groupId>

@@ -788,3 +788,28 @@ only; real values belong in the ignored `infra/docker/.env` file.
 
 This does not complete JWT signing or JWKS publication. Authentication is explicitly out of scope
 for Feature 013 and requires its own approved authentication feature.
+
+## 2026-07-29 — Real Redis-down Compose smoke
+
+Detailed cross-feature evidence is recorded in
+[`docs/local-compose-smoke-validation.md`](../../docs/local-compose-smoke-validation.md).
+
+Environment:
+
+- Docker Engine 29.4.0;
+- real `infra/docker/.env` with unrecorded secrets;
+- Gateway rate limiting enabled;
+- Gateway, Authentication, Product, Inventory, PostgreSQL, Redis, and Kafka containers.
+
+Observed behavior:
+
+- Redis-up Product catalog through Gateway returned 200.
+- Gateway was restarted with `--no-deps` while Redis was stopped.
+- Gateway aggregate health, liveness, and readiness each returned 200.
+- Product catalog still returned 200 through the typed Gateway fail-open path.
+- Authentication login returned `503 AUTHENTICATION_UNAVAILABLE` through its fail-closed throttle.
+- Redis was restored healthy; Auth resumed normal behavior after an approximately ten-second client
+  reconnect window without an application restart or database reconciliation.
+
+Validation result: PASS for the local MVP Redis-down orchestration behavior. This evidence does not
+complete the deferred k6, exhaustive observability, or Kubernetes work in Feature 013.

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Spring Clean Feature Architecture"
+  short_description: "Structure Spring Boot services by feature and clean boundaries"
+  default_prompt: "Use $spring-clean-feature-architecture to design or review the package structure of this Spring Boot service or feature."
+
+policy:
+  allow_implicit_invocation: true

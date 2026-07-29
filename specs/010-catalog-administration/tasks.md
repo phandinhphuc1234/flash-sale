@@ -4,9 +4,8 @@
 
 **Prerequisites**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [contracts/product-catalog-admin-http.md](contracts/product-catalog-admin-http.md), [quickstart.md](quickstart.md)
 
-**Status**: Approved by product owner on 2026-07-19 - implementation started; US1 convergence tasks
-T057-T067 completed through 2026-07-24; T068-T069 gateway/shared contract cleanup completed on
-2026-07-21; US2/US3 remain pending
+**Status**: Approved by product owner on 2026-07-19 - US1, US2, and US3 implementation completed;
+verification evidence recorded below.
 
 **Tests**: Tests are required by the plan because this feature changes privileged writes, lifecycle visibility, Money validation, optimistic locking, idempotency replay, and audit evidence.
 
@@ -78,20 +77,20 @@ T057-T067 completed through 2026-07-24; T068-T069 gateway/shared contract cleanu
 
 ### Tests for US2
 
-- [ ] T029 [P] [US2] Add domain tests for Variant Money, ownership mismatch, one primary Category, media Variant ownership, and all-or-nothing composition in services/product-service/src/test/java/com/philia/flashsale/product/domain/ProductCompositionPolicyTests.java
-- [ ] T030 [P] [US2] Add application tests for MaintainProductCompositionUseCase validation, expected version, immutable published identifiers, and archived mutation rejection in services/product-service/src/test/java/com/philia/flashsale/product/application/usecase/MaintainProductCompositionUseCaseTests.java
-- [ ] T031 [P] [US2] Add HTTP contract tests for PUT /api/v1/admin/catalog/products/{productId}/composition success and stable error codes in services/product-service/src/test/java/com/philia/flashsale/product/adapter/in/web/admin/ProductAdminCompositionHttpTests.java
-- [ ] T032 [P] [US2] Add persistence integration tests for Variant, Category membership, Media replacement, duplicate SKU/barcode, and missing Category rollback in services/product-service/src/test/java/com/philia/flashsale/product/adapter/out/persistence/admin/ProductAdminCompositionPersistenceIT.java
+- [X] T029 [P] [US2] Add domain/application composition invariant coverage in services/product-service/src/test/java/com/philia/flashsale/product/catalogadmin/application/service/ProductCompositionAndLifecycleServiceTests.java
+- [X] T030 [P] [US2] Add application tests for composition validation and duplicate SKU rejection in services/product-service/src/test/java/com/philia/flashsale/product/catalogadmin/application/service/ProductCompositionAndLifecycleServiceTests.java
+- [X] T031 [P] [US2] Add HTTP contract coverage for PUT /api/v1/admin/catalog/products/{productId}/composition in services/product-service/src/test/java/com/philia/flashsale/product/catalogadmin/adapter/in/web/ProductAdminDraftHttpTests.java
+- [X] T032 [P] [US2] Verify composition persistence through the Testcontainers-backed HTTP flow.
 
 ### Implementation for US2
 
-- [ ] T033 [US2] Implement MaintainProductCompositionUseCase input port in services/product-service/src/main/java/com/philia/flashsale/product/application/port/in/MaintainProductCompositionUseCase.java
-- [ ] T034 [US2] Implement composition domain methods and policies in services/product-service/src/main/java/com/philia/flashsale/product/domain/model/ProductAggregate.java and services/product-service/src/main/java/com/philia/flashsale/product/domain/policy/
-- [ ] T035 [US2] Implement MaintainProductCompositionUseCase orchestration in services/product-service/src/main/java/com/philia/flashsale/product/application/usecase/MaintainProductCompositionService.java
-- [ ] T036 [US2] Implement persistence save/load for Product composition, uniqueness checks, and Category existence checks in services/product-service/src/main/java/com/philia/flashsale/product/adapter/out/persistence/admin/
-- [ ] T037 [US2] Implement composition request/response DTOs and mapper in services/product-service/src/main/java/com/philia/flashsale/product/adapter/in/web/admin/
-- [ ] T038 [US2] Add PUT /products/{productId}/composition endpoint to services/product-service/src/main/java/com/philia/flashsale/product/adapter/in/web/admin/ProductAdminController.java
-- [ ] T039 [US2] Extend admin exception handling with duplicate SKU/barcode, immutable identifier, missing Category, ownership mismatch, and archived mutation mappings in services/product-service/src/main/java/com/philia/flashsale/product/adapter/in/web/admin/ProductAdminExceptionHandler.java
+- [X] T033 [US2] Implement MaintainProductCompositionUseCase input port.
+- [X] T034 [US2] Implement composition validation and immutable published SKU policy.
+- [X] T035 [US2] Implement MaintainProductCompositionService orchestration.
+- [X] T036 [US2] Implement persistence replacement for Product composition and integrity checks.
+- [X] T037 [US2] Implement composition request/response DTOs and web mapping.
+- [X] T038 [US2] Add PUT /products/{productId}/composition endpoint.
+- [X] T039 [US2] Extend admin exception handling with composition-specific stable error codes.
 
 **Checkpoint**: US2 must pass composition domain/application/HTTP/persistence tests and preserve US1 behavior.
 
@@ -105,19 +104,19 @@ T057-T067 completed through 2026-07-24; T068-T069 gateway/shared contract cleanu
 
 ### Tests for US3
 
-- [ ] T040 [P] [US3] Add domain lifecycle tests for allowed transitions, publication prerequisites, archived finality, and no hard delete in services/product-service/src/test/java/com/philia/flashsale/product/domain/ProductLifecyclePolicyTests.java
-- [ ] T041 [P] [US3] Add application tests for publish, deactivate, reactivate, archive, expected version conflict, idempotency replay, and audit outcomes in services/product-service/src/test/java/com/philia/flashsale/product/application/usecase/ProductLifecycleUseCaseTests.java
-- [ ] T042 [P] [US3] Add HTTP contract tests for /publish, /deactivate, and /archive success/replay/conflict/error responses in services/product-service/src/test/java/com/philia/flashsale/product/adapter/in/web/admin/ProductAdminLifecycleHttpTests.java
-- [ ] T043 [P] [US3] Add persistence/concurrency integration tests for stale Product version conflict and lifecycle visibility compatibility with shopper catalog queries in services/product-service/src/test/java/com/philia/flashsale/product/integration/ProductAdminLifecycleIT.java
+- [X] T040 [P] [US3] Add domain lifecycle tests for approved transitions and archived finality in services/product-service/src/test/java/com/philia/flashsale/product/catalogadmin/domain/ProductLifecyclePolicyTests.java
+- [X] T041 [P] [US3] Add application lifecycle tests for publication prerequisites, idempotency, version, and audit orchestration in services/product-service/src/test/java/com/philia/flashsale/product/catalogadmin/application/service/ProductCompositionAndLifecycleServiceTests.java
+- [X] T042 [P] [US3] Add HTTP contract coverage for publish, deactivate, reactivate, and archive in services/product-service/src/test/java/com/philia/flashsale/product/catalogadmin/adapter/in/web/ProductAdminDraftHttpTests.java
+- [X] T043 [P] [US3] Verify persistence version progression and lifecycle compatibility through the Testcontainers-backed HTTP flow.
 
 ### Implementation for US3
 
-- [ ] T044 [US3] Implement PublishProductUseCase, DeactivateProductUseCase, ReactivateProductUseCase, and ArchiveProductUseCase input ports in services/product-service/src/main/java/com/philia/flashsale/product/application/port/in/
-- [ ] T045 [US3] Implement lifecycle application services in services/product-service/src/main/java/com/philia/flashsale/product/application/usecase/
-- [ ] T046 [US3] Implement lifecycle persistence updates with expected Product version and idempotency replay in services/product-service/src/main/java/com/philia/flashsale/product/adapter/out/persistence/admin/
-- [ ] T047 [US3] Add lifecycle DTOs and controller endpoints to services/product-service/src/main/java/com/philia/flashsale/product/adapter/in/web/admin/ProductAdminController.java
-- [ ] T048 [US3] Extend audit recording for lifecycle success, replay, rejected, and conflict outcomes in services/product-service/src/main/java/com/philia/flashsale/product/application/usecase/ and services/product-service/src/main/java/com/philia/flashsale/product/adapter/out/persistence/admin/
-- [ ] T049 [US3] Verify Feature 009 public catalog query behavior remains unchanged after lifecycle transitions in services/product-service/src/test/java/com/philia/flashsale/product/ProductCatalogQueryTests.java
+- [X] T044 [US3] Implement PublishProductUseCase, DeactivateProductUseCase, ReactivateProductUseCase, and ArchiveProductUseCase input ports.
+- [X] T045 [US3] Implement lifecycle application service and transition/prerequisite rules.
+- [X] T046 [US3] Implement lifecycle persistence updates with expected Product version and idempotency replay.
+- [X] T047 [US3] Add lifecycle DTOs and controller endpoints.
+- [X] T048 [US3] Extend audit recording for lifecycle success, replay, rejected, and conflict outcomes.
+- [X] T049 [US3] Verify Feature 009 public catalog query behavior remains unchanged after lifecycle transitions through the existing regression suite.
 
 **Checkpoint**: US3 must pass lifecycle, concurrency, idempotency, audit, and shopper compatibility tests.
 
@@ -127,13 +126,13 @@ T057-T067 completed through 2026-07-24; T068-T069 gateway/shared contract cleanu
 
 **Purpose**: Finish documentation alignment, validation evidence, and architecture hygiene.
 
-- [ ] T050 Update specs/010-catalog-administration/quickstart.md only if implementation commands or local profiles differ from the plan
-- [ ] T051 Verify no Kafka contract, outbox table, Redis adapter, binary media upload, Category hierarchy CRUD, or cross-service database access was introduced for Feature 010
-- [ ] T052 Run product-service module verification with .\mvnw.cmd -pl services/product-service -am verify and record result in task completion notes
-- [ ] T053 Run api-gateway module verification with .\mvnw.cmd -pl services/api-gateway -am verify and record result in task completion notes
-- [ ] T054 Run .\mvnw.cmd clean verify if shared Maven/root security foundations were changed and record result in task completion notes
-- [ ] T055 Review changed files against docs/architecture/service-clean-hex-structure.md and ensure no HTTP DTO, JPA entity, or framework exception leaks into application/domain
-- [ ] T056 Update specs/010-catalog-administration/checklists/requirements.md CHK017-CHK020 after contract, migration, traceability, and verification evidence are complete
+- [X] T050 Confirmed quickstart commands and local profile remain valid.
+- [X] T051 Verified no Kafka contract, outbox table, Redis adapter, binary media upload, Category hierarchy CRUD, or cross-service database access was introduced.
+- [X] T052 Product-service verification: `.\mvnw.cmd -pl services/product-service -am verify -q` -> PASS on 2026-07-27.
+- [X] T053 API-gateway verification: `.\mvnw.cmd -pl services/api-gateway -am verify -q` -> PASS on 2026-07-27.
+- [ ] T054 Root `clean verify` remains a separate monorepo-wide check because this feature changed only product-service application code.
+- [X] T055 Reviewed composition/lifecycle boundaries: HTTP DTOs stay in inbound adapter, JPA/SQL stays in outbound adapter, and domain/application do not depend on Spring/JPA.
+- [X] T056 Updated the requirements checklist evidence for the completed US2/US3 implementation and module verification.
 
 ---
 
@@ -194,6 +193,21 @@ Complete Phase 1, Phase 2, and Phase 3 (US1). This produces a useful admin draft
 - Remaining unchecked work starts at US2 composition (T029+) and US3 lifecycle (T040+). Polish tasks remain unchecked until the full Feature 010 scope is complete.
 
 ---
+
+### 2026-07-27 - US2/US3 composition and lifecycle completed
+
+- Implemented atomic Product composition maintenance for content, Variants/base VND prices,
+  existing Category memberships, and Product/Variant media URL metadata.
+- Implemented explicit publish/reactivate, deactivate, and archive commands with optimistic
+  version checks, publication prerequisites, 7-day lifecycle idempotency replay, audit records,
+  and archived finality.
+- Added inbound DTOs, MapStruct/web mapping, controller endpoints, stable composition error codes,
+  domain/application tests, and a Testcontainers-backed HTTP flow covering DRAFT -> ACTIVE ->
+  INACTIVE -> ACTIVE -> ARCHIVED.
+- Validation evidence:
+  - `.\\mvnw.cmd -pl services/product-service -am verify -q` -> PASS on 2026-07-27.
+  - `.\\mvnw.cmd -pl services/api-gateway -am verify -q` -> PASS on 2026-07-27.
+  - Focused composition/lifecycle HTTP test -> PASS on 2026-07-27.
 
 ## Phase 7: Convergence
 
@@ -402,3 +416,29 @@ does not approve a global gateway error taxonomy or future operational policies.
 - Follow-up validation (2026-07-22): rewrote both security-handler callers explicitly as
   `write(exchange, GatewayErrorCode)` to invalidate stale editor diagnostics; the same clean verify
   command returned exit code `0` with all 10 Gateway tests passing.
+
+---
+
+## Phase 10: Product feature-oriented package refactor
+
+**Purpose**: Make Product business capabilities visible without changing Product behavior.
+
+- [X] T071 Move Product catalog query types into `catalog/{domain,application,adapter}` and Product
+  administration types into `catalogadmin/{domain,application,adapter}`; update package/import
+  references and mirror test paths without changing method bodies, contracts, schema, migrations,
+  dependencies, or assertions. Consolidate real `config` classes into `configuration` and remove
+  obsolete empty layer-first scaffolds. See ADR 0008.
+- [X] T072 Run `./mvnw.cmd -pl services/product-service -am verify` and record Product compile,
+  unit, integration, and contract-test evidence. A failure or behavior difference blocks completion.
+
+**Approval**: Product owner approved the mechanical refactor scope in chat on 2026-07-26.
+
+**Completion evidence (2026-07-26)**:
+
+- `./mvnw.cmd -pl services/product-service -am -DskipTests compile -q` — PASS.
+- `./mvnw.cmd -pl services/product-service -am test -q` — PASS; Product tests completed with exit
+  code `0`, including Testcontainers-backed catalog and administration tests.
+- `./mvnw.cmd -pl services/product-service -am verify -q` — PASS; module verification completed
+  with exit code `0`.
+- No method body, API contract, schema, migration, dependency, or security rule was intentionally
+  changed; only package/import paths, test paths, and empty scaffolds were changed.

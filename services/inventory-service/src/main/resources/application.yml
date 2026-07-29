@@ -1,9 +1,42 @@
 spring:
   application:
     name: inventory-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/inventory_db}
+    username: ${SPRING_DATASOURCE_USERNAME:flashsale}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
   liquibase:
     enabled: ${LIQUIBASE_ENABLED:true}
     change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://authentication-service:8080}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+
+springdoc:
+  api-docs:
+    enabled: ${INVENTORY_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${INVENTORY_API_DOCS_ENABLED:false}
+    path: /swagger-ui.html
+
+flashsale:
+  inventory:
+    security:
+      jwt:
+        enabled: ${INVENTORY_JWT_ENABLED:true}
+        audience: ${JWT_AUDIENCE:flash-sale-api}
 
 server:
   port: ${SERVER_PORT:8080}

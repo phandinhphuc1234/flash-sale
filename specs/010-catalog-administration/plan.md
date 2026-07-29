@@ -6,6 +6,23 @@
 
 **Status**: Implementing - approved; US1 MVP stabilized, US2/US3 pending
 
+## Architecture Amendment: Product feature-oriented packages
+
+ADR 0008 approves a mechanical package refactor for the existing Product implementation. The
+public catalog capability moves under `catalog/`; privileged administration moves under
+`catalogadmin/`; the real `config` classes move under the single `configuration/` package. Empty
+layer-first scaffolds are removed. No method body, contract, schema, migration, dependency,
+security rule, or observable behavior may change.
+
+```text
+product/
+├── catalog/{domain,application,adapter}
+├── catalogadmin/{domain,application,adapter}
+└── configuration/
+```
+
+Within each feature, dependencies remain `adapter -> application -> domain`.
+
 ## Summary
 
 Implement the first privileged Product Catalog Administration slice. `product-service` owns the

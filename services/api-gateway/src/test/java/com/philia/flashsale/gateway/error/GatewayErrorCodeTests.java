@@ -23,12 +23,13 @@ class GatewayErrorCodeTests {
     }
 
     @Test
-    void containsOnlyTheEightGatewayOwnedCodes() {
+    void containsOnlyTheNineGatewayOwnedCodes() {
         assertThat(GatewayErrorCode.values())
                 .containsExactly(
                         GatewayErrorCode.INVALID_ADMIN_REQUEST,
                         GatewayErrorCode.UNAUTHENTICATED,
                         GatewayErrorCode.CATALOG_ADMIN_REQUIRED,
+                        GatewayErrorCode.INVENTORY_ADMIN_REQUIRED,
                         GatewayErrorCode.ACCESS_DENIED,
                         GatewayErrorCode.RATE_LIMIT_EXCEEDED,
                         GatewayErrorCode.DOWNSTREAM_UNAVAILABLE,
@@ -50,6 +51,10 @@ class GatewayErrorCodeTests {
                         GatewayErrorCode.CATALOG_ADMIN_REQUIRED,
                         HttpStatus.FORBIDDEN,
                         "CATALOG_ADMIN authority is required"),
+                Arguments.of(
+                        GatewayErrorCode.INVENTORY_ADMIN_REQUIRED,
+                        HttpStatus.FORBIDDEN,
+                        "INVENTORY_ADMIN authority is required"),
                 Arguments.of(
                         GatewayErrorCode.ACCESS_DENIED,
                         HttpStatus.FORBIDDEN,

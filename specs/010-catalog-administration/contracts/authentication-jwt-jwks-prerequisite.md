@@ -1,6 +1,6 @@
 # Authentication JWT/JWKS Prerequisite for Catalog Administration
 
-**Status**: Blocked pending a separate approved Authentication feature
+**Status**: Trust foundation approved by Feature 014; token issuance remains a separate feature
 **Owning service**: `authentication-service`
 **Dependent feature**: `010-catalog-administration`
 
@@ -23,24 +23,32 @@ The following behavior is already approved by Feature 010:
 - Test-only JWTs may be used for isolated gateway/product-service security tests until the real
   authentication feature exists.
 
-## Missing Runtime Trust Contract
+## Approved Runtime Trust Contract (Feature 014)
+
+Feature 014 (`specs/014-authentication-jwt-trust-foundation/`) approves the following runtime trust
+values:
+
+- RS256 signing algorithm.
+- Issuer `http://authentication-service:8080`.
+- Audience `flash-sale-api`.
+- JWKS endpoint `GET /.well-known/jwks.json`.
+- Required `kid`, `sub`, `iss`, `aud`, `iat`, and `exp` claims; `authorities` carries
+  `CATALOG_ADMIN` when the caller is a catalog administrator.
+- Invalid signature/issuer/audience/expiry is 401; a valid token without the route authority is 403.
+- Private keys are deployment secrets and missing/malformed key configuration fails closed.
+
+## Deferred Authentication Decisions
 
 Real external admin E2E is blocked until a separate approved Authentication feature defines:
 
-- JWT issuer.
-- JWT audience accepted by `api-gateway` and `product-service`.
-- Signature algorithm.
-- JWKS endpoint path and availability expectations.
-- `kid` usage and signing-key rotation behavior.
-- Required claims, including actor identity and `CATALOG_ADMIN` authority placement.
-- Token lifetime, clock skew, and expiry handling.
-- Revocation/logout/refresh behavior, if any.
-- Distinction between invalid authentication failures and authenticated-but-forbidden failures.
-- Local development strategy for obtaining a real admin token.
+- Token issuance and credential/login behavior.
+- Refresh/logout/revocation and custom lifetime/clock-skew policy.
+- Automated signing-key rotation and overlapping-key deployment procedure.
+- Local strategy for obtaining a real admin token (until a separate issuance feature is approved).
 
 ## Blocked E2E Scope
 
-Until the missing contract is approved and implemented by `authentication-service`, Feature 010 may
+Until a separate token-issuance feature is approved and implemented by `authentication-service`, Feature 010 may
 verify:
 
 - product-service admin behavior with Spring Security test JWTs;
@@ -48,4 +56,3 @@ verify:
 - isolated gateway forwarding behavior with a test upstream.
 
 Feature 010 must not claim a complete real admin login-to-product E2E flow.
-

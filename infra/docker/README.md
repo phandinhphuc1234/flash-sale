@@ -58,9 +58,36 @@ example:
 openssl rand -base64 48
 ```
 
-The Gateway's `JWT_JWK_SET_URI` is currently only a configuration contract. Feature 013 does not
-implement JWT signing or the authentication-service JWKS endpoint; that work belongs to the
-separate authentication feature.
+Authentication trust and browser sessions are owned by authentication-service (Feature 015). Compose
+passes the issuer/audience to consumers, mounts the RSA key directory read-only into Auth, and passes
+the dedicated throttle HMAC secret only to Auth. Gateway receives the exact trusted-origin list for
+credentialed auth CORS. Keep the private key and real secrets outside Git.
+
+For local use, generate a key pair outside the repository and put both PEM files in the directory
+referenced by `AUTH_JWT_KEY_DIR`:
+
+```powershell
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-private.pem
+openssl rsa -pubout -in jwt-private.pem -out jwt-public.pem
+```
+
+Never commit the key files, `.env`, or a private key in any image layer. Set
+`AUTH_THROTTLE_HMAC_SECRET` to a separate Base64 secret generated from at least 32 random bytes.
+
+Authentication also requires its service-owned Liquibase schema before the first application
+startup. The normal Auth container keeps `SPRING_LIQUIBASE_ENABLED=false` so multiple replicas do
+not race migrations; apply the migration once from the built image:
+
+```powershell
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml build authentication-service
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml run --rm --no-deps `
+  -e SPRING_LIQUIBASE_ENABLED=true `
+  -e SPRING_MAIN_KEEP_ALIVE=false `
+  authentication-service --spring.main.web-application-type=none
+```
+
+Repeat the command safely after a deployment; Liquibase records completed changesets in
+`auth_db.databasechangelog`. Do not delete the PostgreSQL volume to force a migration rerun.
 
 ## Validate configuration
 
@@ -123,8 +150,13 @@ Debug ports:
 | `order-service` | `18085` |
 | `payment-service` | `18086` |
 | `notification-service` | `18087` |
-| `chatting-service` | `18088` |
+| `inventory-service` | `18088` |
 | `cart-service` | `18089` |
+
+The Gateway is loopback-bound by default (`GATEWAY_BIND_ADDRESS=127.0.0.1`). For a VPS, terminate
+HTTPS at a host reverse proxy or managed load balancer and proxy only to this loopback port. Do not
+set the bind address to `0.0.0.0` unless the host firewall and TLS boundary are intentionally managed
+outside this repository. PostgreSQL, Redis, and Kafka remain loopback-bound by default.
 
 ## Cart local runtime boundary
 
@@ -189,6 +221,34 @@ docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml 
 Running the same one-off command again is safe: Liquibase reads `databasechangelog` and executes no
 already-recorded changeset.
 
+## Inventory database and one-off migration
+
+`inventory-service` owns `inventory_db` and its changelog under
+`services/inventory-service/src/main/resources/db/changelog/`. Normal Inventory replicas keep
+`SPRING_LIQUIBASE_ENABLED=false`; apply the schema through a one-off non-web process before starting
+the service:
+
+PostgreSQL initialization scripts only run for a new volume. If the volume predates Inventory,
+check for the logical database and create only that missing database; do not delete the volume:
+
+```powershell
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml exec -T postgres psql -U flashsale -d flashsale_admin -tAc "SELECT 1 FROM pg_database WHERE datname = 'inventory_db'"
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml exec -T postgres createdb -U flashsale -O flashsale inventory_db
+```
+
+Run the `createdb` command only when the check returns no row.
+
+```powershell
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml build inventory-service
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml run --rm --no-deps `
+  -e SPRING_LIQUIBASE_ENABLED=true `
+  -e SPRING_MAIN_KEEP_ALIVE=false `
+  inventory-service --spring.main.web-application-type=none
+```
+
+The command is repeatable because Liquibase records completed changesets in
+`inventory_db.databasechangelog`. Do not delete the PostgreSQL volume to rerun a migration.
+
 ## Stop containers
 
 ```powershell
@@ -203,9 +263,9 @@ docker compose --env-file infra/docker/.env -f infra/docker/compose.yml -f infra
 
 ## Current limitations
 
-- Application service code does not yet implement PostgreSQL/JPA/Kafka/Redis adapters.
 - Application containers set `SPRING_LIQUIBASE_ENABLED=false` because schema changes run as explicit
-  one-off processes. `product-service` now has JDBC/PostgreSQL runtime and its first catalog
-  changeset; the other service shells still have empty changelogs until approved schema features.
+  one-off processes. `authentication-service`, `product-service`, and `inventory-service` have
+  service-owned migrations; the remaining service shells still have empty changelogs until approved
+  schema features.
 - PostgreSQL bootstrap creates logical local databases only; service-owned business migrations
   remain under `services/<service>/src/main/resources/db/changelog/`.

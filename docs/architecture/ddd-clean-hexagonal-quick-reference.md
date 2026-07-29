@@ -38,6 +38,38 @@ domain        -> Java thuần
 - HTTP DTO, JPA entity/projection, Kafka payload, protobuf type và vendor exception phải dừng ở adapter.
 - Domain không import Spring, JPA, Kafka, Redis, Jackson, MapStruct hoặc provider SDK.
 
+### Feature-first navigation
+
+Khi service có nhiều nghiệp vụ, hãy đặt feature/bounded capability ở cấp đầu tiên rồi giữ các
+boundary bên trong feature:
+
+```text
+<context>/
+├── account/
+│   ├── domain/
+│   ├── application/
+│   ├── adapter/in/
+│   └── adapter/out/
+├── session/
+│   ├── domain/
+│   ├── application/
+│   ├── adapter/in/
+│   └── adapter/out/
+└── configuration/
+```
+
+Như vậy người đọc thấy `account` và `session` trước, nhưng dependency vẫn là:
+
+```text
+feature/adapter -> feature/application -> feature/domain
+configuration -> feature/adapter + feature/application
+```
+
+`security`, `throttle`, `cleanup`, `websupport` hoặc `observability` chỉ tách thành technical
+capability khi chúng thực sự được nhiều feature dùng chung hoặc có lifecycle vận hành riêng. Đừng
+copy toàn bộ cây thư mục vào mọi service và đừng refactor package hiện hữu chỉ vì hình thức; việc
+di chuyển code cần feature/ADR/task được phê duyệt riêng.
+
 ## 3. Chọn nơi đặt một class
 
 | Class trả lời câu hỏi gì? | Vị trí |

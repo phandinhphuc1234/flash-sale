@@ -48,6 +48,8 @@ public final class GatewaySecurityErrorHandler
             AccessDeniedException accessDeniedException) {
         GatewayErrorCode errorCode = isAdminCatalogPath(exchange)
                 ? GatewayErrorCode.CATALOG_ADMIN_REQUIRED
+                : isAdminInventoryPath(exchange)
+                ? GatewayErrorCode.INVENTORY_ADMIN_REQUIRED
                 : GatewayErrorCode.ACCESS_DENIED;
         return errorWriter.write(exchange, errorCode, accessDeniedException);
     }
@@ -56,5 +58,10 @@ public final class GatewaySecurityErrorHandler
         String path = exchange.getRequest().getPath().value();
         return path.equals("/api/v1/admin/catalog")
                 || path.startsWith("/api/v1/admin/catalog/");
+    }
+
+    private static boolean isAdminInventoryPath(ServerWebExchange exchange) {
+        String path = exchange.getRequest().getPath().value();
+        return path.equals("/api/v1/admin/inventory") || path.startsWith("/api/v1/admin/inventory/");
     }
 }

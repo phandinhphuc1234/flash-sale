@@ -7,6 +7,16 @@
 **Reviewers**: Business/domain owner, security owner, product-service technical owner
 **Input**: User description: "Plan Feature 010 for product-service catalog administration, research the core capabilities, and ask before deciding any missing constraint."
 
+> **Architecture amendment (2026-07-26):** Feature 010 remains behaviorally unchanged but its
+> implementation uses the repository hybrid package-by-feature layout. Catalog query types live
+> under `catalog`; privileged catalog administration types live under `catalogadmin`; Clean/Hex
+> boundaries remain inside each feature. This amendment changes package paths/imports only.
+
+> **Mechanical-refactor constraint:** The Product refactor must not change method bodies, domain
+> rules, HTTP/event contracts, persistence schema, migrations, dependencies, security semantics, or
+> test assertions. Obsolete empty scaffolds may be removed. Any discovered behavior change is out
+> of scope and must stop for a separate decision.
+
 > This feature uses the Flash Sale risk profile because it introduces privileged writes, changes
 > shopper-visible catalog state, edits Variant Money, and must define concurrent-update behavior.
 > The clarified specification, implementation plan, and task graph are approved. The US1 MVP is

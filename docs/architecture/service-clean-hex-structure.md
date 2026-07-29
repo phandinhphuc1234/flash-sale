@@ -46,6 +46,92 @@ com/philia/flashsale/<context>/
 `adapter/out/time` because those boundaries are already part of the approved platform design.
 This does not approve a Redis script, outbox schema, or implementation.
 
+## Feature-Oriented Package Profile
+
+The canonical baseline above describes the dependency boundaries. As a service grows, the
+recommended navigation shape is **package by business feature, with the Clean/Hex boundaries kept
+inside each feature**. This makes the business language visible at the first directory level while
+preserving the same inward dependency rule.
+
+```text
+com/philia/flashsale/<context>/
+├── <feature-a>/
+│   ├── domain/
+│   ├── application/
+│   ├── adapter/in/
+│   └── adapter/out/
+├── <feature-b>/
+│   ├── domain/
+│   ├── application/
+│   ├── adapter/in/
+│   └── adapter/out/
+├── <technical-capability>/       # only when shared by multiple features
+└── configuration/
+```
+
+For Authentication, the first-level business features are `account` and `session`. Password/JWT,
+throttle, cleanup, HTTP support, and observability are technical capabilities; they are separate
+only when their responsibility is shared or operationally distinct.
+
+For Product, the first-level business features are `catalog` (shopper-facing reads) and
+`catalogadmin` (privileged catalog writes, lifecycle, audit, and idempotency). Both keep their own
+domain/application/adapter boundaries; Spring wiring remains under `configuration`.
+
+### Inventory feature-local Hexagonal profile
+
+Feature 016 groups by business feature and creates the Clean/Hexagonal boundaries inside a feature
+only when that responsibility exists:
+
+```text
+inventory/
+├── stock/{domain,application,adapter/in,adapter/out}
+├── allocation/{domain,application,adapter/in,adapter/out}
+├── movement/{domain,application,adapter/out}
+├── outbox/adapter/out/
+├── websupport/error/
+└── configuration/
+```
+
+This profile intentionally does not create empty packages. A feature with invariants gets `domain`; a
+feature with use cases gets `application`; an HTTP or messaging entry point belongs in `adapter/in`; a
+JPA, broker, Redis, or external-client integration belongs in `adapter/out`. This is an approved
+profile for inventory-service only and does not change the default structure of other services.
+
+```text
+authentication/
+├── account/
+│   ├── domain/
+│   ├── application/
+│   ├── adapter/in/web/
+│   └── adapter/out/persistence/
+├── session/
+│   ├── domain/
+│   ├── application/
+│   ├── adapter/in/web/
+│   └── adapter/out/persistence/
+├── security/                     # password, token, JWKS adapters
+├── throttle/                     # login-throttle capability
+├── cleanup/                      # retention capability
+├── websupport/                   # shared HTTP error/trace boundary
+├── observability/
+└── configuration/
+```
+
+This is a navigation profile, not permission to collapse boundaries. A feature's `application`
+package still owns ports and orchestration; its `adapter/in` package still owns controllers and
+DTOs; its `adapter/out` package still owns JPA/Redis/provider code. The following dependencies remain
+mandatory:
+
+```text
+feature/adapter -> feature/application -> feature/domain
+configuration -> feature/application + feature/adapter
+```
+
+Use this profile when a service has enough business concepts that a layer-first tree hides the
+language of the domain. Keep the smaller canonical shape for a service that has only one small
+capability. Do not move an existing feature solely for visual consistency; a package refactor is a
+separate approved change and should preserve imports, contracts, and tests.
+
 `api-gateway` is an edge service and uses the technical profile accepted in
 [ADR 0003](../adr/0003-lean-api-gateway-package-structure.md):
 
@@ -245,8 +331,10 @@ For reliable state change plus event publication, prefer one capability boundary
 `flashsale-service`, `order-service`, and `payment-service` are core risk services. They should use the full domain/application/adapter structure when real behavior is added.
 
 `authentication-service`, `product-service`, `cart-service`, `campaign-service`,
-`notification-service`, and `chatting-service` use the same dependency direction, but should only
-fill packages that a real use case needs.
+`notification-service`, and `inventory-service` use the same dependency direction, but should only
+fill packages that a real use case needs. When one of these services has multiple business
+capabilities, prefer the feature-oriented profile above so developers can find the business flow
+first and the technical boundary second.
 
 `api-gateway` is an edge service. Keep it lean: routing, filters, security, error translation,
 fault tolerance, rate limiting, and observability belong in their technical edge packages;

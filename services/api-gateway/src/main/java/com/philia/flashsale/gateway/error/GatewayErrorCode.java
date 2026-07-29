@@ -14,6 +14,9 @@ public enum GatewayErrorCode {
     CATALOG_ADMIN_REQUIRED(
             HttpStatus.FORBIDDEN,
             "CATALOG_ADMIN authority is required"),
+    INVENTORY_ADMIN_REQUIRED(
+            HttpStatus.FORBIDDEN,
+            "INVENTORY_ADMIN authority is required"),
     ACCESS_DENIED(
             HttpStatus.FORBIDDEN,
             "Access is denied"),

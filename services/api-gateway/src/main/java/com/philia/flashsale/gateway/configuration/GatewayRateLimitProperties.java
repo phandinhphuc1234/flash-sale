@@ -32,9 +32,7 @@ public record GatewayRateLimitProperties(
     private static final String DEFAULT_ENVIRONMENT = "local";
     private static final String DEFAULT_KEY_PREFIX = "rl";
     private static final Duration DEFAULT_COMMAND_TIMEOUT = Duration.ofMillis(50);
-    private static final String MVP_POLICY_ID = "public-catalog-read";
-    private static final String MVP_ROUTE_ID = "product-catalog";
-    private static final String MVP_IDENTITY_STRATEGY = "CLIENT_IP";
+    private static final Set<String> APPROVED_POLICY_IDS = Set.of("public-catalog-read", "auth-login", "auth-refresh");
     private static final String MVP_FAILURE_MODE = "ALLOW_WITH_METRIC";
     private static final int MIN_HMAC_SECRET_BYTES = 32;
 
@@ -130,7 +128,12 @@ public record GatewayRateLimitProperties(
         private RateLimitPolicy toPolicy(String policyId) {
             validateMvpIdentifier(policyId);
             validateStateVersion(stateVersion);
-            validateMvpSelector(routeId, methods, identityStrategy, failureMode);
+            validateMvpSelector(policyId, routeId, methods, identityStrategy, failureMode);
+            long validatedCapacity = requiredLong(capacity, "capacity");
+            long validatedRefillTokens = requiredLong(refillTokens, "refill tokens");
+            Duration validatedRefillPeriod = requiredDuration(refillPeriod, "refill period");
+            long validatedRequestCost = requiredLong(requestCost, "request cost");
+            validateApprovedNumbers(policyId, validatedCapacity, validatedRefillTokens, validatedRefillPeriod, validatedRequestCost);
 
             return RateLimitPolicy.create(
                     policyId,
@@ -138,17 +141,34 @@ public record GatewayRateLimitProperties(
                     routeId,
                     Set.copyOf(methods),
                     identityStrategy,
-                    requiredLong(capacity, "capacity"),
-                    requiredLong(refillTokens, "refill tokens"),
-                    requiredDuration(refillPeriod, "refill period"),
-                    requiredLong(requestCost, "request cost"),
+                    validatedCapacity,
+                    validatedRefillTokens,
+                    validatedRefillPeriod,
+                    validatedRequestCost,
                     failureMode,
                     enabled);
         }
 
+        private static void validateApprovedNumbers(String policyId, long capacity, long refillTokens,
+                                                    Duration refillPeriod, long requestCost) {
+            if ("public-catalog-read".equals(policyId)) {
+                return;
+            }
+            boolean valid = switch (policyId) {
+                case "public-catalog-read" -> capacity == 60 && refillTokens == 30
+                        && Duration.ofSeconds(1).equals(refillPeriod) && requestCost == 1;
+                case "auth-login" -> capacity == 10 && refillTokens == 10
+                        && Duration.ofMinutes(1).equals(refillPeriod) && requestCost == 1;
+                case "auth-refresh" -> capacity == 30 && refillTokens == 30
+                        && Duration.ofMinutes(1).equals(refillPeriod) && requestCost == 1;
+                default -> false;
+            };
+            if (!valid) throw new IllegalArgumentException(policyId + " must use its approved MVP rate-limit preset");
+        }
+
         private static void validateMvpIdentifier(String policyId) {
-            if (!MVP_POLICY_ID.equals(policyId)) {
-                throw new IllegalArgumentException("only public-catalog-read rate-limit policy is supported in MVP");
+            if (!APPROVED_POLICY_IDS.contains(policyId)) {
+                throw new IllegalArgumentException("unsupported rate-limit policy for Feature 015: " + policyId);
             }
         }
 
@@ -159,18 +179,25 @@ public record GatewayRateLimitProperties(
         }
 
         private static void validateMvpSelector(
-                String routeId, List<HttpMethod> methods, String identityStrategy, String failureMode) {
-            if (!MVP_ROUTE_ID.equals(routeId)) {
-                throw new IllegalArgumentException("public catalog rate-limit route id must be product-catalog");
+                String policyId, String routeId, List<HttpMethod> methods, String identityStrategy, String failureMode) {
+            String expectedRoute = switch (policyId) {
+                case "public-catalog-read" -> "product-catalog";
+                case "auth-login" -> "authentication-login";
+                case "auth-refresh" -> "authentication-refresh";
+                default -> throw new IllegalArgumentException("unsupported rate-limit policy: " + policyId);
+            };
+            Set<HttpMethod> expectedMethods = "public-catalog-read".equals(policyId) ? Set.of(HttpMethod.GET) : Set.of(HttpMethod.POST);
+            if (!expectedRoute.equals(routeId)) {
+                throw new IllegalArgumentException(policyId + " rate-limit route id must be " + expectedRoute);
             }
-            if (methods == null || !Set.copyOf(methods).equals(Set.of(HttpMethod.GET))) {
-                throw new IllegalArgumentException("public catalog rate-limit methods must be exactly GET");
+            if (methods == null || !Set.copyOf(methods).equals(expectedMethods)) {
+                throw new IllegalArgumentException(policyId + " rate-limit methods are invalid for the approved preset");
             }
-            if (!MVP_IDENTITY_STRATEGY.equals(identityStrategy)) {
-                throw new IllegalArgumentException("public catalog rate-limit identity strategy must be CLIENT_IP");
+            if (!"CLIENT_IP".equals(identityStrategy)) {
+                throw new IllegalArgumentException("rate-limit identity strategy must be CLIENT_IP");
             }
-            if (!MVP_FAILURE_MODE.equals(failureMode)) {
-                throw new IllegalArgumentException("public catalog rate-limit failure mode must be ALLOW_WITH_METRIC");
+            if (!"ALLOW_WITH_METRIC".equals(failureMode)) {
+                throw new IllegalArgumentException("rate-limit failure mode must be ALLOW_WITH_METRIC");
             }
         }
 

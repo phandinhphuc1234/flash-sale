@@ -1,4 +1,7 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
   application:
     name: product-service
   liquibase:
@@ -16,7 +19,14 @@ spring:
     oauth2:
       resourceserver:
         jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://authentication-service:8080}
           jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+
+flashsale:
+  product:
+    security:
+      jwt:
+        audience: ${JWT_AUDIENCE:flash-sale-api}
 
 server:
   port: ${SERVER_PORT:8080}

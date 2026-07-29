@@ -38,7 +38,11 @@ public class GatewaySecurityConfiguration {
                                 "/actuator/prometheus")
                         .permitAll()
                         .pathMatchers("/api/v1/catalog/**").permitAll()
+                        .pathMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout").permitAll()
+                        .pathMatchers("/api/v1/auth/logout-all").authenticated()
                         .pathMatchers("/api/v1/admin/catalog/**").hasAuthority("CATALOG_ADMIN")
+                        .pathMatchers("/api/v1/admin/inventory/**").hasAuthority("INVENTORY_ADMIN")
                         .anyExchange().denyAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(securityErrorHandler)
