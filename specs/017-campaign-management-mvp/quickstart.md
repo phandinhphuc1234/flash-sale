@@ -1,6 +1,6 @@
 # Feature 017 Quickstart and Validation
 
-**Status**: Planned commands — production implementation does not exist yet  
+**Status**: T017 baseline recorded — full Feature 017 implementation remains in progress
 **Purpose**: Define the repeatable local validation flow that implementation tasks must make pass
 
 ## 1. Prerequisites
@@ -43,6 +43,32 @@ Then run the full reactor:
 ```powershell
 .\mvnw.cmd clean verify
 ```
+
+### T017 baseline evidence (2026-07-30)
+
+The foundational Campaign and Authentication context/migration baselines were run independently
+before advancing to the next Feature 017 phase. Local Campaign datasource settings were injected
+through the environment and are intentionally not recorded here.
+
+Campaign baseline:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am clean test
+```
+
+Result: exit code `0`, `9` tests run, `0` failures, `0` errors. The Campaign Spring context loaded,
+Liquibase reported the schema as up to date against the configured local PostgreSQL database, and
+the Testcontainers migration checks passed.
+
+Authentication baseline:
+
+```powershell
+.\mvnw.cmd -pl services/authentication-service -am clean test
+```
+
+Result: exit code `0`, `43` tests run, `0` failures, `0` errors. The Authentication Spring context,
+refresh/concurrency persistence tests, and PostgreSQL Testcontainers Liquibase migration checks
+passed.
 
 ## 3. Validate Compose configuration
 

@@ -55,7 +55,7 @@ contracts, trace context, and architecture rules required by every user story.
 - [x] T014 Implement separate ordered public-admin and internal-service JWT security chains with issuer/audience validation in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/security/configuration/CampaignSecurityConfiguration.java` and `CampaignJwtTrustConfiguration.java`
 - [x] T015 [P] Implement bounded `X-Trace-Id` request context, response propagation, and credential-safe Campaign error contract in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/websupport/context/CampaignRequestContext.java`, `websupport/filter/CampaignTraceIdFilter.java`, and `websupport/error/`
 - [x] T016 [P] Add package-by-feature dependency rules for Campaign domain/application/adapters and remove obsolete empty scaffold markers in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/architecture/CampaignArchitectureTests.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/`
-- [ ] T017 Run the Campaign and Authentication context plus migration test baseline and record command/results in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T017 Run the Campaign and Authentication context plus migration test baseline and record command/results in `specs/017-campaign-management-mvp/quickstart.md`
 
 **Checkpoint**: PostgreSQL owns durable Campaign/Auth state; Campaign public and internal security are isolated; adapters depend inward.
 
@@ -73,7 +73,7 @@ leave stored data unchanged.
 
 ### Tests for User Story 1
 
-- [ ] T018 [P] [US1] Add unit tests for code normalization, time range, one-item replacement, price/quantity/limit validation, draft-only mutation, and version advancement in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/domain/CampaignDraftDomainTests.java`
+- [x] T018 [P] [US1] Add unit tests for code normalization, time range, one-item replacement, price/quantity/limit validation, draft-only mutation, and version advancement in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/domain/CampaignDraftDomainTests.java`
 - [ ] T019 [P] [US1] Add application tests for create, metadata replacement, item replacement, detail lookup, duplicate code, active-operation blocking, and no downstream calls in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/application/CampaignDraftUseCaseTests.java`
 - [ ] T020 [P] [US1] Add PostgreSQL tests for case-insensitive code uniqueness, optimistic version conflicts, atomic replacement, and audit actor/time persistence in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/integration/CampaignDraftPersistenceIntegrationTests.java`
 - [ ] T021 [P] [US1] Add MockMvc contract tests for all four draft endpoints, validation errors, direct DTO bodies, `Location`, `ETag`, and `X-Trace-Id` in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/contract/CampaignAdminDraftHttpContractTests.java`
