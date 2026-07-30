@@ -71,6 +71,10 @@ public class JwtSigningConfiguration {
                     .build();
             decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                     org.springframework.security.oauth2.jwt.JwtValidators.createDefaultWithIssuer(properties.issuer()),
+                    token -> token.getAudience() != null && token.getAudience().contains(properties.audience())
+                            ? OAuth2TokenValidatorResult.success()
+                            : OAuth2TokenValidatorResult.failure(new OAuth2Error(
+                                    "invalid_token", "Required JWT audience is missing", null)),
                     token -> "at+jwt".equals(token.getHeaders().get("typ"))
                             ? OAuth2TokenValidatorResult.success()
                             : OAuth2TokenValidatorResult.failure(new OAuth2Error(

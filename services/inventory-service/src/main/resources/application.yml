@@ -34,9 +34,17 @@ springdoc:
 flashsale:
   inventory:
     security:
+      # Public/admin requests keep the existing flash-sale-api audience.
       jwt:
         enabled: ${INVENTORY_JWT_ENABLED:true}
         audience: ${JWT_AUDIENCE:flash-sale-api}
+      # Internal Campaign allocation calls use a separate audience and scope.
+      internal-jwt:
+        issuer: ${JWT_ISSUER_URI:http://authentication-service:8080}
+        jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+        audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+        subject: campaign-service
+        required-scope: inventory.campaign.allocate
 
 server:
   port: ${SERVER_PORT:8080}

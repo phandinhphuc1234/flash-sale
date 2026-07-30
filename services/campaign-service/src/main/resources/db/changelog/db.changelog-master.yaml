@@ -1,1 +1,9 @@
-databaseChangeLog: []
+databaseChangeLog:
+  - preConditions:
+      - onFail: HALT
+      - onError: HALT
+      - dbms:
+          type: postgresql
+  - include:
+      file: changes/001-create-campaign-schema.sql
+      relativeToChangelogFile: true

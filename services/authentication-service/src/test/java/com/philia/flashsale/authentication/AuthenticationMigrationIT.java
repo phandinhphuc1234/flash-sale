@@ -26,7 +26,8 @@ class AuthenticationMigrationIT {
 
     private static final String CHANGELOG = "classpath:/db/changelog/db.changelog-master.yaml";
     private static final Set<String> EXPECTED_TABLES = Set.of(
-            "users", "user_sessions", "refresh_tokens", "databasechangelog", "databasechangeloglock");
+            "users", "user_sessions", "refresh_tokens", "oauth_clients", "oauth_client_scopes",
+            "databasechangelog", "databasechangeloglock");
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
@@ -53,13 +54,17 @@ class AuthenticationMigrationIT {
                 FROM databasechangelog
                 ORDER BY orderexecuted
                 """);
-        assertThat(changes).hasSize(2);
+        assertThat(changes).hasSize(3);
         assertThat(changes.getFirst())
                 .containsEntry("id", "authentication-001-create-schema")
                 .containsEntry("author", "flashsale")
                 .containsEntry("exectype", "EXECUTED");
         assertThat(changes.get(1))
                 .containsEntry("id", "authentication-002-align-refresh-token-hash-type")
+                .containsEntry("author", "flashsale")
+                .containsEntry("exectype", "EXECUTED");
+        assertThat(changes.get(2))
+                .containsEntry("id", "authentication-003-create-oauth-client-schema")
                 .containsEntry("author", "flashsale")
                 .containsEntry("exectype", "EXECUTED");
         assertThat(jdbc.queryForObject("""
@@ -80,7 +85,7 @@ class AuthenticationMigrationIT {
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())).afterPropertiesSet();
 
         assertThat(publicTables()).isEqualTo(before);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(3);
     }
 
     @Test

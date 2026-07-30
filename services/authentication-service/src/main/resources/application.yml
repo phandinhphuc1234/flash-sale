@@ -26,6 +26,7 @@ spring:
 
 flashsale:
   auth:
+    # Public-user JWT contract used by browser/API clients.
     jwt:
       issuer: ${JWT_ISSUER:http://authentication-service:8080}
       audience: ${JWT_AUDIENCE:flash-sale-api}
@@ -34,6 +35,24 @@ flashsale:
       public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
       private-key-pem: ${JWT_PRIVATE_KEY_PEM:}
       private-key-location: ${JWT_PRIVATE_KEY_LOCATION:}
+    # Short-lived machine-token policy for service-to-service calls.
+    service-token:
+      audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+      max-ttl-seconds: 300
+    # Fixed machine clients provisioned by Authentication Service.
+    service-clients:
+      campaign:
+        client-id: ${CAMPAIGN_CLIENT_ID:campaign-service}
+        client-secret: ${CAMPAIGN_CLIENT_SECRET:}
+        allowed-scopes:
+          - catalog.read
+          - inventory.campaign.allocate
+          - inventory.campaign.release
+      flashsale:
+        client-id: ${FLASHSALE_CLIENT_ID:flashsale-service}
+        client-secret: ${FLASHSALE_CLIENT_SECRET:}
+        allowed-scopes:
+          - campaign.snapshot.read
   authentication:
     cookie:
       secure: ${AUTH_COOKIE_SECURE:false}
