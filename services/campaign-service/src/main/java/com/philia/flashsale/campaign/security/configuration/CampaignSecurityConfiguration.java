@@ -1,5 +1,6 @@
 package com.philia.flashsale.campaign.security.configuration;
 
+import com.philia.flashsale.campaign.websupport.error.CampaignSecurityFailureHandler;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -34,7 +35,8 @@ public class CampaignSecurityConfiguration {
     SecurityFilterChain campaignInternalSecurityChain(
             HttpSecurity http,
             @Qualifier("campaignInternalJwtDecoder") JwtDecoder internalJwtDecoder,
-            CampaignJwtAuthenticationConverter campaignJwtAuthenticationConverter)
+            CampaignJwtAuthenticationConverter campaignJwtAuthenticationConverter,
+            CampaignSecurityFailureHandler securityFailureHandler)
             throws Exception {
         return http
                 .securityMatcher("/internal/**")
@@ -42,7 +44,12 @@ public class CampaignSecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         // T082 adds the exact snapshot subject and scope rule to this boundary.
                         .anyRequest().authenticated())
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(securityFailureHandler)
+                        .accessDeniedHandler(securityFailureHandler))
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(securityFailureHandler)
+                        .accessDeniedHandler(securityFailureHandler)
                         .jwt(jwt -> jwt
                                 .decoder(internalJwtDecoder)
                                 .jwtAuthenticationConverter(campaignJwtAuthenticationConverter)))
@@ -54,14 +61,20 @@ public class CampaignSecurityConfiguration {
     SecurityFilterChain campaignPublicAdminSecurityChain(
             HttpSecurity http,
             @Qualifier("campaignPublicJwtDecoder") JwtDecoder publicJwtDecoder,
-            CampaignJwtAuthenticationConverter campaignJwtAuthenticationConverter)
+            CampaignJwtAuthenticationConverter campaignJwtAuthenticationConverter,
+            CampaignSecurityFailureHandler securityFailureHandler)
             throws Exception {
         return http
                 .securityMatcher("/api/v1/admin/campaigns/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .anyRequest().hasAuthority("SCOPE_CAMPAIGN_ADMIN"))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(securityFailureHandler)
+                        .accessDeniedHandler(securityFailureHandler))
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(securityFailureHandler)
+                        .accessDeniedHandler(securityFailureHandler)
                         .jwt(jwt -> jwt
                                 .decoder(publicJwtDecoder)
                                 .jwtAuthenticationConverter(campaignJwtAuthenticationConverter)))
