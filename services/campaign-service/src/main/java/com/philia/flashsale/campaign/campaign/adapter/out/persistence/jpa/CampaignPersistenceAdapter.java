@@ -7,6 +7,7 @@ import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.reposi
 import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import java.util.Optional;
 import java.util.UUID;
+import org.mapstruct.factory.Mappers;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -23,10 +24,10 @@ public class CampaignPersistenceAdapter {
     private final CampaignPersistenceMapper mapper;
 
     public CampaignPersistenceAdapter(
-            CampaignJpaRepository repository,
-            CampaignPersistenceMapper mapper) {
+            CampaignJpaRepository repository) {
         this.repository = repository;
-        this.mapper = mapper;
+        // The mapper is stateless and generated at compile time, so no Spring bean is required here.
+        this.mapper = Mappers.getMapper(CampaignPersistenceMapper.class);
     }
 
     /** Loads the aggregate with its one-item MVP relation and maps it back to the domain model. */
