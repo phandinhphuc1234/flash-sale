@@ -74,7 +74,7 @@ leave stored data unchanged.
 ### Tests for User Story 1
 
 - [x] T018 [P] [US1] Add unit tests for code normalization, time range, one-item replacement, price/quantity/limit validation, draft-only mutation, and version advancement in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/domain/CampaignDraftDomainTests.java`
-- [ ] T019 [P] [US1] Add application tests for create, metadata replacement, item replacement, detail lookup, duplicate code, active-operation blocking, and no downstream calls in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/application/CampaignDraftUseCaseTests.java`
+- [x] T019 [P] [US1] Add application tests for create, metadata replacement, item replacement, detail lookup, duplicate code, active-operation blocking, and no downstream calls in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/application/CampaignDraftUseCaseTests.java`
 - [ ] T020 [P] [US1] Add PostgreSQL tests for case-insensitive code uniqueness, optimistic version conflicts, atomic replacement, and audit actor/time persistence in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/integration/CampaignDraftPersistenceIntegrationTests.java`
 - [ ] T021 [P] [US1] Add MockMvc contract tests for all four draft endpoints, validation errors, direct DTO bodies, `Location`, `ETag`, and `X-Trace-Id` in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/contract/CampaignAdminDraftHttpContractTests.java`
 - [ ] T022 [P] [US1] Add Campaign admin JWT tests for missing/invalid tokens, wrong audience, and missing/present `SCOPE_CAMPAIGN_ADMIN` in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/security/CampaignAdminSecurityTests.java`
@@ -82,9 +82,9 @@ leave stored data unchanged.
 
 ### Implementation for User Story 1
 
-- [ ] T024 [P] [US1] Define draft commands, admin-detail query, results, and input ports in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/command/`, `query/`, `result/`, and `port/in/`
-- [ ] T025 [P] [US1] Define Campaign load/save, uniqueness, active-operation check, and clock/actor output ports in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/port/out/`
-- [ ] T026 [US1] Implement transactional create, replace-metadata, replace-item, and admin-detail use cases in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/usecase/`
+- [x] T024 [P] [US1] Define draft commands, admin-detail query, results, and input ports in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/command/`, `query/`, `result/`, and `port/in/`
+- [x] T025 [P] [US1] Define Campaign load/save, uniqueness, active-operation check, and clock/actor output ports in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/port/out/`
+- [x] T026 [US1] Implement transactional create, replace-metadata, replace-item, and admin-detail use cases in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/usecase/`
 - [ ] T027 [US1] Implement version-aware persistence, code uniqueness, active-operation guard, and atomic one-item replacement in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/persistence/jpa/CampaignPersistenceAdapter.java`
 - [ ] T028 [P] [US1] Implement Jakarta-validated admin request/response DTOs and MapStruct web mapping in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/in/web/admin/request/`, `response/`, and `mapper/CampaignAdminWebMapper.java`
 - [ ] T029 [US1] Implement the separated OpenAPI contract and controller for create, metadata update, item replacement, and detail in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/in/web/admin/CampaignAdminApi.java` and `CampaignAdminController.java`
