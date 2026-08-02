@@ -307,3 +307,20 @@ Authentication module tests: 44 passed, 0 failures, 0 errors
 `ROLE_ADMIN` access tokens now carry `CAMPAIGN_ADMIN` alongside the existing administrator
 authorities. The compatibility test verifies the complete canonical claim list and JWT trust
 headers/audience remain unchanged.
+
+## 14. T032 Gateway route and authority evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/api-gateway -am "-Dtest=CampaignAdminGatewayRouteTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD SUCCESS
+Campaign Gateway contract tests: 6 passed, 0 failures, 0 errors
+
+.\mvnw.cmd -pl services/api-gateway -am verify
+BUILD SUCCESS
+```
+
+Gateway now forwards `/api/v1/admin/campaigns/**` to `${CAMPAIGN_SERVICE_URL}` and requires
+`SCOPE_CAMPAIGN_ADMIN`. The route contract verifies method/path/query/body and required headers,
+wrong-audience rejection, missing-scope denial, and that `/internal/**` remains unexposed.

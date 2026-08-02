@@ -35,6 +35,10 @@ spring:
               uri: ${INVENTORY_SERVICE_URL:http://inventory-service:8080}
               predicates:
                 - Path=/api/v1/admin/inventory/**
+            - id: campaign-admin
+              uri: ${CAMPAIGN_SERVICE_URL:http://campaign-service:8080}
+              predicates:
+                - Path=/api/v1/admin/campaigns/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:

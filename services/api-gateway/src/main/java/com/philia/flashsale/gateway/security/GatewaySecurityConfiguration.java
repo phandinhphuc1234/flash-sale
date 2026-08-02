@@ -43,6 +43,7 @@ public class GatewaySecurityConfiguration {
                         .pathMatchers("/api/v1/auth/logout-all").authenticated()
                         .pathMatchers("/api/v1/admin/catalog/**").hasAuthority("CATALOG_ADMIN")
                         .pathMatchers("/api/v1/admin/inventory/**").hasAuthority("INVENTORY_ADMIN")
+                        .pathMatchers("/api/v1/admin/campaigns/**").hasAuthority("SCOPE_CAMPAIGN_ADMIN")
                         .anyExchange().denyAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(securityErrorHandler)

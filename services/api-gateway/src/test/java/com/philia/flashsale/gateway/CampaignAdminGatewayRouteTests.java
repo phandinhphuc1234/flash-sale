@@ -7,6 +7,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
@@ -111,12 +112,22 @@ class CampaignAdminGatewayRouteTests {
     }
 
     @Test
+    void internalCampaignEndpointsAreNotExposedThroughGateway() {
+        webTestClient.get()
+                .uri("/internal/campaigns/campaign-001/snapshot")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + CAMPAIGN_ADMIN_TOKEN)
+                .header("X-Trace-Id", "campaign-internal-boundary")
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
     void forwardsCampaignMethodPathQueryBodyAndRequiredHeaders() {
         CAPTURED_REQUEST.set(null);
         byte[] requestBody = bytes("{\"name\":\"Flash phone\",\"code\":\"FLASH-001\"}");
 
         webTestClient.post()
-                .uri("/api/v1/admin/campaigns?source=admin&tag=flash%2Bsale")
+                .uri(URI.create("/api/v1/admin/campaigns?source=admin&tag=flash%2Bsale"))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + CAMPAIGN_ADMIN_TOKEN)
                 .header("X-Trace-Id", "campaign-forward-001")
                 .header("Idempotency-Key", "campaign-create-001")
