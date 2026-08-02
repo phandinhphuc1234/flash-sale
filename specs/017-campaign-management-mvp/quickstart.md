@@ -364,3 +364,18 @@ unknown-client, inactive-client, wrong-secret, disallowed-grant, and disallowed-
 The current red result is expected because the `/oauth2/token` Authorization Server endpoint and
 its durable client registry adapter are not wired yet; later US2 implementation tasks must make
 this suite green.
+
+## 17. T035 service-client persistence evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/authentication-service -am "-Dtest=ServiceClientPersistenceIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD SUCCESS
+Service-client persistence tests: 5 passed, 0 failures, 0 errors
+```
+
+The PostgreSQL contract verifies Argon2-only secret storage and verification, client-scoped
+allowed-scope loading, inactive status preservation for authorization checks, and idempotent fixed
+client provisioning without overwriting an existing secret or scope set. The tests use a real
+Liquibase-created schema and remain independent of future Spring Authorization Server adapter code.
