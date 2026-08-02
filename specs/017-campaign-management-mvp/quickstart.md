@@ -324,3 +324,26 @@ BUILD SUCCESS
 Gateway now forwards `/api/v1/admin/campaigns/**` to `${CAMPAIGN_SERVICE_URL}` and requires
 `SCOPE_CAMPAIGN_ADMIN`. The route contract verifies method/path/query/body and required headers,
 wrong-audience rejection, missing-scope denial, and that `/internal/**` remains unexposed.
+
+## 15. T033 US1 independent draft acceptance evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/api-gateway,services/authentication-service,services/campaign-service -am verify
+BUILD SUCCESS
+```
+
+Surefire totals for the US1 service set:
+
+| Module | Tests | Failures | Errors | Skipped |
+|---|---:|---:|---:|---:|
+| API Gateway | 183 | 0 | 0 | 0 |
+| Authentication Service | 44 | 0 | 0 | 0 |
+| Campaign Service | 33 | 0 | 0 | 0 |
+
+The independent draft acceptance path is green: Campaign draft contract/security/persistence
+tests pass, administrator JWT issuance includes the Campaign authority, and Gateway route/security
+tests pass while internal Campaign endpoints remain denied. This validates the US1 boundary only;
+Campaign scheduling, Product/Inventory calls, service identities, Kafka, and lifecycle workers
+remain in later tasks.

@@ -91,7 +91,7 @@ leave stored data unchanged.
 - [x] T030 [US1] Map validation, not-found, duplicate-code, stale-version, invalid-status, and operation-in-progress failures to the approved body/status contract in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/websupport/error/CampaignHttpExceptionHandler.java`
 - [x] T031 [P] [US1] Add `CAMPAIGN_ADMIN` to administrator authority issuance and its compatibility test in `services/authentication-service/src/main/java/com/philia/flashsale/authentication/account/domain/AccountRole.java` and `services/authentication-service/src/test/java/com/philia/flashsale/authentication/integration/JwtTrustCompatibilityIntegrationTests.java`
 - [x] T032 [US1] Add only the `/api/v1/admin/campaigns/**` Gateway route and `SCOPE_CAMPAIGN_ADMIN` rule while keeping `/internal/**` unexposed in `services/api-gateway/src/main/resources/application.yml` and `services/api-gateway/src/main/java/com/philia/flashsale/gateway/security/GatewaySecurityConfiguration.java`
-- [ ] T033 [US1] Run the US1 Campaign/Auth/Gateway tests and record the independent draft acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T033 [US1] Run the US1 Campaign/Auth/Gateway tests and record the independent draft acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
 
 **Checkpoint**: US1 is independently usable through Gateway and performs no Product, Inventory, Client Credentials, or Kafka work.
 
