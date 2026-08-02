@@ -2,8 +2,7 @@ package com.philia.flashsale.authentication.session.adapter.in.web;
 
 import com.philia.flashsale.authentication.session.application.login.AuthenticateAccountUseCase;
 import com.philia.flashsale.authentication.session.application.login.AuthenticationResult;
-import com.philia.flashsale.authentication.websupport.context.AuthenticationRequestContext;
-import com.philia.flashsale.authentication.websupport.error.AuthenticationApiResponse;
+import com.philia.flashsale.common.web.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -27,18 +26,13 @@ public class LoginController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthenticationApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request,
+    public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request,
                                                                             HttpServletRequest httpRequest,
                                                                             HttpServletResponse httpResponse) {
         String userAgent = httpRequest.getHeader("User-Agent");
         String directIp = httpRequest.getRemoteAddr();
         AuthenticationResult result = useCase.authenticate(LoginWebMapper.toCommand(request, userAgent, directIp));
         cookieWriter.write(httpResponse, result.refreshCredential(), result.refreshMaxAgeSeconds());
-        return ResponseEntity.ok(new AuthenticationApiResponse<>(LoginWebMapper.toResponse(result), traceId(httpRequest)));
-    }
-
-    private String traceId(HttpServletRequest request) {
-        Object value = request.getAttribute(AuthenticationRequestContext.TRACE_ATTRIBUTE);
-        return value == null ? "" : value.toString();
+        return ResponseEntity.ok(ApiResponse.success(LoginWebMapper.toResponse(result)));
     }
 }

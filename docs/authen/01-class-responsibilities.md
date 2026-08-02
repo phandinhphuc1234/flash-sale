@@ -109,8 +109,8 @@ exception package.
 | `RefreshCookieWriter` | Centralizes cookie attributes and cookie clearing. |
 | `LogoutController` | Performs idempotent current-session logout and clears the cookie. |
 | `LogoutAllController` | Extracts the already verified JWT subject and invokes logout-all. |
-| `AuthenticationApiResponse` | Success envelope containing `data` and `traceId`. |
-| `AuthenticationErrorResponse` | Error envelope containing `code`, `message`, and `traceId`. |
+| `ApiResponse<T>` (common-web) | Shared success envelope containing service-owned data. |
+| `ApiErrorResponse` (common-web) | Shared safe error envelope with service-owned `errorCode`. |
 | `AuthenticationErrorCode` | Stable Auth-owned HTTP error taxonomy. |
 | `AuthenticationHttpExceptionHandler` | Translates domain/application/web failures into safe HTTP statuses and bodies. |
 | `AuthenticationRequestContext` | Stores the request trace-id attribute key. |

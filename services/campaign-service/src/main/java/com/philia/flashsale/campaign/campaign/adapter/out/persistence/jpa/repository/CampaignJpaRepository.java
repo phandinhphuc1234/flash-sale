@@ -12,7 +12,7 @@ public interface CampaignJpaRepository extends JpaRepository<CampaignJpaEntity, 
     @EntityGraph(attributePaths = "item")
     Optional<CampaignJpaEntity> findDetailedById(UUID id);
 
-    boolean existsByCode(String code);
+    boolean existsByCodeIgnoreCase(String code);
 
     Optional<CampaignJpaEntity> findByCode(String code);
 }

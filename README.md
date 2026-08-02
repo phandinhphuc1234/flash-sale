@@ -93,7 +93,7 @@ docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml 
 Run platform services only:
 
 ```powershell
-docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d postgres redis kafka
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d postgres redis kafka schema-registry
 ```
 
 Run the full local app topology:

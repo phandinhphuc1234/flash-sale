@@ -16,6 +16,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.philia.flashsale</groupId>
+            <artifactId>common-web</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
         </dependency>

@@ -25,7 +25,7 @@ import java.util.Objects;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Orchestrates local Campaign draft operations through ports and the aggregate. */
-public final class CampaignDraftApplicationService implements
+public class CampaignDraftApplicationService implements
         CreateCampaignUseCase,
         ReplaceCampaignMetadataUseCase,
         ReplaceCampaignItemUseCase,

@@ -29,6 +29,10 @@ Use:
 Do not add `compose.prod.yml` for this repository. Production/staging deployment should be modeled
 by future Kubernetes resources under `infra/k8s/`.
 
+The baseline also provides a local Confluent Schema Registry at `http://localhost:8081`. It stores
+schemas in Kafka's compacted `_schemas` topic and is intentionally not required by application
+containers until an approved Kafka serialization feature adopts it.
+
 ## Prepare local environment
 
 ```powershell
@@ -108,7 +112,9 @@ docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml 
 Use this while coding one service from the IDE or Maven:
 
 ```powershell
-docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d postgres redis kafka
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d postgres redis kafka schema-registry
+
+curl http://localhost:8081/subjects
 ```
 
 Then run the service you are actively developing outside Docker, for example:

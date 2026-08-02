@@ -43,7 +43,7 @@ class GatewayDownstreamUnavailableTests {
         JsonNode body = unavailableResponse("trace-downstream-unavailable");
 
         assertExactUnavailableEnvelope(body);
-        assertThat(body.path("traceId").asText()).isEqualTo("trace-downstream-unavailable");
+        assertThat(body.path("traceId").isMissingNode()).isTrue();
         assertNoInfrastructureLeakage(body.toString());
     }
 
@@ -52,7 +52,7 @@ class GatewayDownstreamUnavailableTests {
         JsonNode body = unavailableResponse(null);
 
         assertExactUnavailableEnvelope(body);
-        assertThat(body.path("traceId").asText()).isNotBlank();
+        assertThat(body.path("traceId").isMissingNode()).isTrue();
         assertNoInfrastructureLeakage(body.toString());
     }
 
@@ -63,23 +63,25 @@ class GatewayDownstreamUnavailableTests {
             request = request.header("X-Trace-Id", traceId);
         }
 
-        byte[] responseBody = request.exchange()
+        var response = request.exchange()
                 .expectStatus().isEqualTo(503)
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectHeader().valueMatches("X-Trace-Id", ".+")
                 .expectBody()
-                .returnResult()
-                .getResponseBody();
+                .returnResult();
+
+        byte[] responseBody = response.getResponseBody();
 
         assertThat(responseBody).isNotNull();
         return objectMapper.readTree(responseBody);
     }
 
     private void assertExactUnavailableEnvelope(JsonNode body) {
-        assertThat(body.size()).isEqualTo(3);
-        assertThat(body.path("code").asText()).isEqualTo("DOWNSTREAM_UNAVAILABLE");
+        assertThat(body.size()).isEqualTo(5);
+        assertThat(body.path("errorCode").asText()).isEqualTo("DOWNSTREAM_UNAVAILABLE");
         assertThat(body.path("message").asText())
                 .isEqualTo("The requested service is temporarily unavailable");
-        assertThat(body.hasNonNull("traceId")).isTrue();
+        assertThat(body.has("traceId")).isFalse();
     }
 
     private void assertNoInfrastructureLeakage(String responseBody) {

@@ -67,7 +67,7 @@ public class StockApplicationService
     public InventoryResult adjust(AdjustStockCommand command) {
         var previous = loadStockMovement.findByRequestId(command.requestId());
         InventoryItem item = loadInventoryItem.findByVariantIdForUpdate(command.variantId())
-                .orElseThrow(() -> new StockApplicationException("Inventory item not found"));
+                .orElseThrow(() -> StockApplicationException.notFound("Inventory item not found"));
         if (previous.isPresent()) {
             if (!previous.get().inventoryItemId().equals(item.id())) {
                 throw new StockApplicationException(
@@ -97,7 +97,7 @@ public class StockApplicationService
     @Transactional(readOnly = true)
     public InventoryResult get(GetInventoryQuery query) {
         InventoryItem item = loadInventoryItem.findByVariantId(query.variantId())
-                .orElseThrow(() -> new StockApplicationException("Inventory item not found"));
+                .orElseThrow(() -> StockApplicationException.notFound("Inventory item not found"));
         return InventoryResult.from(item);
     }
 

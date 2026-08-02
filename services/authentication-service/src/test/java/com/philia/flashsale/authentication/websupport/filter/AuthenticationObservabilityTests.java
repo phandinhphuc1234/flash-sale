@@ -61,10 +61,10 @@ class AuthenticationObservabilityTests {
         filter.doFilter(request, response, new MockFilterChain());
 
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_FORBIDDEN);
-        assertThat(response.getContentAsString()).isEqualTo(
-                "{\"code\":\"AUTH_CROSS_SITE_REQUEST_REJECTED\","
-                        + "\"message\":\"Cross-site request rejected\","
-                        + "\"traceId\":\"trace-origin-1\"}");
+        assertThat(response.getHeader("X-Trace-Id")).isEqualTo("trace-origin-1");
+        assertThat(response.getContentAsString())
+                .contains("\"success\":false", "\"errorCode\":\"AUTH_CROSS_SITE_REQUEST_REJECTED\"")
+                .doesNotContain("traceId");
     }
 
     @Test

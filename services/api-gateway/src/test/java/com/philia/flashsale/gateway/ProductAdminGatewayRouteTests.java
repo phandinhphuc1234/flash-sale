@@ -56,9 +56,9 @@ class ProductAdminGatewayRouteTests {
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("UNAUTHENTICATED")
+                .jsonPath("$.errorCode").isEqualTo("UNAUTHENTICATED")
                 .jsonPath("$.message").isEqualTo("Authentication is required")
-                .jsonPath("$.traceId").isEqualTo("trace-unauthenticated");
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test
@@ -73,9 +73,9 @@ class ProductAdminGatewayRouteTests {
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectHeader().doesNotExist(HttpHeaders.WWW_AUTHENTICATE)
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("CATALOG_ADMIN_REQUIRED")
+                .jsonPath("$.errorCode").isEqualTo("CATALOG_ADMIN_REQUIRED")
                 .jsonPath("$.message").isEqualTo("CATALOG_ADMIN authority is required")
-                .jsonPath("$.traceId").isEqualTo("trace-forbidden");
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test
@@ -88,10 +88,10 @@ class ProductAdminGatewayRouteTests {
                 .expectStatus().isBadRequest()
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("INVALID_ADMIN_REQUEST")
+                .jsonPath("$.errorCode").isEqualTo("INVALID_ADMIN_REQUEST")
                 .jsonPath("$.message")
                 .isEqualTo("X-Trace-Id must be non-blank and no longer than 128 characters")
-                .jsonPath("$.traceId").isNotEmpty();
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test
@@ -137,9 +137,8 @@ class ProductAdminGatewayRouteTests {
         assertThat(chainInvoked).isFalse();
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)))
-                .contains("\"code\":\"INVALID_ADMIN_REQUEST\"")
-                .doesNotContain("\"traceId\":null")
-                .containsPattern("\\\"traceId\\\":\\\"[^\\\"]+\\\"");
+                .contains("\"errorCode\":\"INVALID_ADMIN_REQUEST\"")
+                .doesNotContain("\"traceId\"");
     }
 
     @Test
@@ -158,9 +157,8 @@ class ProductAdminGatewayRouteTests {
         assertThat(chainInvoked).isFalse();
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)))
-                .contains("\"code\":\"INVALID_ADMIN_REQUEST\"")
-                .doesNotContain("\"traceId\":null")
-                .containsPattern("\\\"traceId\\\":\\\"[^\\\"]+\\\"");
+                .contains("\"errorCode\":\"INVALID_ADMIN_REQUEST\"")
+                .doesNotContain("\"traceId\"");
     }
 
     @Test

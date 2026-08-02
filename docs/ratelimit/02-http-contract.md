@@ -17,15 +17,17 @@ Cache-Control: no-store
 
 ```json
 {
-  "code": "RATE_LIMIT_EXCEEDED",
+  "success": false,
+  "errorCode": "RATE_LIMIT_EXCEEDED",
   "message": "Too many requests",
-  "traceId": "<non-blank correlation value>"
+  "errors": null,
+  "timestamp": "2026-08-01T00:00:00Z"
 }
 ```
 
-There are exactly three top-level body fields. The body must not expose timestamp, status, path,
-policy, balance, caller identity, HMAC digest, Redis key/detail, downstream destination, or
-exception data.
+The body must not expose status, path, policy, balance, caller identity, HMAC digest, Redis
+key/detail, downstream destination, exception data, or `traceId`. Correlation is carried in the
+`X-Trace-Id` response header.
 
 ## 2. Header Rules
 
@@ -36,7 +38,7 @@ exception data.
 | `Cache-Control` | Exact directive `no-store`. |
 | `RateLimit`, `RateLimit-Policy`, `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` | Do not emit. |
 | `X-RateLimit-*` | Do not emit. |
-| `X-Trace-Id` response header | Not introduced by Feature 013. |
+| `X-Trace-Id` response header | Echoed/generated correlation value; JSON remains header-only. |
 
 `Retry-After` is the earliest coordinator delay for the same one-unit request. It is not the time
 until the bucket is full and is not an HTTP date. Before returning a rejection, Lua must prove the

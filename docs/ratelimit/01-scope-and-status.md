@@ -29,7 +29,7 @@ purchase limits.
 | Baseline | Required behavior |
 |----------|-------------------|
 | Spring Cloud Gateway WebFlux | Request path remains reactive and non-blocking. |
-| Feature 012 429 body | `RATE_LIMIT_EXCEEDED`, `Too many requests`, and `traceId` stay unchanged. |
+| Feature 012 429 body | `ApiErrorResponse` with `RATE_LIMIT_EXCEEDED` and `Retry-After`; trace is header-only. |
 | Downstream response ownership | A downstream 429 or error is passed through unchanged. |
 | One root Redis runtime | Reuse root `infra/docker` Redis 7.4; do not add another Redis topology. |
 | Gateway package shape | Follow ADR 0003 lean edge packages; no fake business Clean/Hex layers. |

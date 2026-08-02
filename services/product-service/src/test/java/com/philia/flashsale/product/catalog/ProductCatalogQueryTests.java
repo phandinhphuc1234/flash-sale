@@ -3,6 +3,7 @@ package com.philia.flashsale.product.catalog;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
@@ -103,19 +104,21 @@ class ProductCatalogQueryTests {
         insertVariant(inactiveVariantOnly, "SKU-INACTIVE", "Inactive Default", "1000.0000", "INACTIVE", 0);
 
         mockMvc.perform(get("/api/v1/catalog/products")
+                        .header("X-Trace-Id", "trace-product-catalog")
                         .param("page", "0")
                         .param("size", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(2)))
-                .andExpect(jsonPath("$.data[0].slug").value("new-phone"))
-                .andExpect(jsonPath("$.data[0].variants", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].variants[0].basePrice").value("199000.0000"))
-                .andExpect(jsonPath("$.data[0].displayPrice").doesNotExist())
-                .andExpect(jsonPath("$.data[1].slug").value("old-phone"))
-                .andExpect(jsonPath("$.page.number").value(0))
-                .andExpect(jsonPath("$.page.size").value(20))
-                .andExpect(jsonPath("$.page.totalElements").value(2))
-                .andExpect(jsonPath("$.page.hasNext").value(false));
+                .andExpect(header().string("X-Trace-Id", "trace-product-catalog"))
+                .andExpect(jsonPath("$.data.data", hasSize(2)))
+                .andExpect(jsonPath("$.data.data[0].slug").value("new-phone"))
+                .andExpect(jsonPath("$.data.data[0].variants", hasSize(1)))
+                .andExpect(jsonPath("$.data.data[0].variants[0].basePrice").value("199000.0000"))
+                .andExpect(jsonPath("$.data.data[0].displayPrice").doesNotExist())
+                .andExpect(jsonPath("$.data.data[1].slug").value("old-phone"))
+                .andExpect(jsonPath("$.data.page.number").value(0))
+                .andExpect(jsonPath("$.data.page.size").value(20))
+                .andExpect(jsonPath("$.data.page.totalElements").value(2))
+                .andExpect(jsonPath("$.data.page.hasNext").value(false));
     }
 
     @Test
@@ -145,27 +148,27 @@ class ProductCatalogQueryTests {
 
         mockMvc.perform(get("/api/v1/catalog/categories"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(3)))
-                .andExpect(jsonPath("$.data[0].slug").value("phones"))
-                .andExpect(jsonPath("$.data[1].slug").value("laptops"))
-                .andExpect(jsonPath("$.data[2].slug").value("empty"));
+                .andExpect(jsonPath("$.data.data", hasSize(3)))
+                .andExpect(jsonPath("$.data.data[0].slug").value("phones"))
+                .andExpect(jsonPath("$.data.data[1].slug").value("laptops"))
+                .andExpect(jsonPath("$.data.data[2].slug").value("empty"));
 
         mockMvc.perform(get("/api/v1/catalog/products")
                         .param("categorySlug", "phones"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].slug").value("phone"));
+                .andExpect(jsonPath("$.data.data", hasSize(1)))
+                .andExpect(jsonPath("$.data.data[0].slug").value("phone"));
 
         mockMvc.perform(get("/api/v1/catalog/products")
                         .param("categorySlug", "empty"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(0)))
-                .andExpect(jsonPath("$.page.totalElements").value(0));
+                .andExpect(jsonPath("$.data.data", hasSize(0)))
+                .andExpect(jsonPath("$.data.page.totalElements").value(0));
 
         mockMvc.perform(get("/api/v1/catalog/products")
                         .param("categorySlug", "missing"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("CATEGORY_NOT_FOUND"));
+                .andExpect(jsonPath("$.errorCode").value("CATEGORY_NOT_FOUND"));
     }
 
     @Test
@@ -193,23 +196,23 @@ class ProductCatalogQueryTests {
 
         mockMvc.perform(get("/api/v1/catalog/products/detail-phone"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.slug").value("detail-phone"))
-                .andExpect(jsonPath("$.variants", hasSize(1)))
-                .andExpect(jsonPath("$.variants[0].sku").value("SKU-ACTIVE"))
-                .andExpect(jsonPath("$.variants[0].basePrice").value("123000.0000"))
-                .andExpect(jsonPath("$.displayPrice").doesNotExist())
-                .andExpect(jsonPath("$.categories", hasSize(1)))
-                .andExpect(jsonPath("$.categories[0].primary").value(true))
-                .andExpect(jsonPath("$.media", hasSize(1)))
-                .andExpect(jsonPath("$.media[0].url").value("https://cdn.example.test/detail.webp"));
+                .andExpect(jsonPath("$.data.slug").value("detail-phone"))
+                .andExpect(jsonPath("$.data.variants", hasSize(1)))
+                .andExpect(jsonPath("$.data.variants[0].sku").value("SKU-ACTIVE"))
+                .andExpect(jsonPath("$.data.variants[0].basePrice").value("123000.0000"))
+                .andExpect(jsonPath("$.data.displayPrice").doesNotExist())
+                .andExpect(jsonPath("$.data.categories", hasSize(1)))
+                .andExpect(jsonPath("$.data.categories[0].primary").value(true))
+                .andExpect(jsonPath("$.data.media", hasSize(1)))
+                .andExpect(jsonPath("$.data.media[0].url").value("https://cdn.example.test/detail.webp"));
 
         mockMvc.perform(get("/api/v1/catalog/products/hidden-phone"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+                .andExpect(jsonPath("$.errorCode").value("PRODUCT_NOT_FOUND"));
 
         mockMvc.perform(get("/api/v1/catalog/products/missing-phone"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+                .andExpect(jsonPath("$.errorCode").value("PRODUCT_NOT_FOUND"));
     }
 
     @Test
@@ -217,7 +220,7 @@ class ProductCatalogQueryTests {
         mockMvc.perform(get("/api/v1/catalog/products")
                         .param("size", "101"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_CATALOG_REQUEST"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_CATALOG_REQUEST"));
     }
 
     private UUID insertCategory(

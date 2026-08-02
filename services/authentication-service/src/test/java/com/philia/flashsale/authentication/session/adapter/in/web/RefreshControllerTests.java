@@ -39,8 +39,9 @@ class RefreshControllerTests {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")))
-                .andExpect(jsonPath("$.code").value("AUTHENTICATION_UNAVAILABLE"))
-                .andExpect(jsonPath("$.traceId").value("trace-refresh-signing"));
+                .andExpect(header().string("X-Trace-Id", "trace-refresh-signing"))
+                .andExpect(jsonPath("$.errorCode").value("AUTHENTICATION_UNAVAILABLE"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
     }
 
     private AuthenticationProperties properties() {

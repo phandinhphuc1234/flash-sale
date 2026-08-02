@@ -1,8 +1,8 @@
 package com.philia.flashsale.gateway.error;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.philia.flashsale.common.web.ApiErrorResponse;
 import com.philia.flashsale.gateway.observability.GatewayErrorObservation;
 import com.philia.flashsale.gateway.observability.GatewayTraceIdResolver;
 import java.nio.charset.StandardCharsets;
@@ -25,6 +25,9 @@ public final class GatewayHttpErrorWriter {
             ObjectMapper objectMapper,
             GatewayTraceIdResolver traceIdResolver,
             GatewayErrorObservation errorObservation) {
+        // Ensure the shared envelope timestamp (java.time.Instant) is serializable even when
+        // this writer is constructed directly in a focused unit test.
+        objectMapper.findAndRegisterModules();
         this.objectMapper = objectMapper;
         this.traceIdResolver = traceIdResolver;
         this.errorObservation = errorObservation;
@@ -46,15 +49,15 @@ public final class GatewayHttpErrorWriter {
         String traceId = traceIdResolver.resolve(exchange);
         byte[] body;
         try {
-            body = objectMapper.writeValueAsBytes(new GatewayErrorResponse(
+            body = objectMapper.writeValueAsBytes(ApiErrorResponse.of(
                     GatewayErrorCode.RATE_LIMIT_EXCEEDED.name(),
-                    GatewayErrorCode.RATE_LIMIT_EXCEEDED.message(),
-                    traceId));
+                    GatewayErrorCode.RATE_LIMIT_EXCEEDED.message()));
         } catch (JsonProcessingException exception) {
             removeRateLimitHeaders(exchange.getResponse().getHeaders());
             body = fallbackInternalErrorBody(traceId);
             exchange.getResponse().setStatusCode(GatewayErrorCode.GATEWAY_INTERNAL_ERROR.status());
             exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+            exchange.getResponse().getHeaders().set("X-Trace-Id", traceId);
             errorObservation.record(
                     GatewayErrorCode.GATEWAY_INTERNAL_ERROR,
                     traceId,
@@ -67,6 +70,7 @@ public final class GatewayHttpErrorWriter {
 
         HttpHeaders headers = exchange.getResponse().getHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Trace-Id", traceId);
         headers.set(HttpHeaders.RETRY_AFTER, retryAfterSeconds(retryAfter));
         headers.setCacheControl("no-store");
         exchange.getResponse().setStatusCode(GatewayErrorCode.RATE_LIMIT_EXCEEDED.status());
@@ -88,10 +92,9 @@ public final class GatewayHttpErrorWriter {
         Throwable observedFailure = failure;
         byte[] body;
         try {
-            body = objectMapper.writeValueAsBytes(new GatewayErrorResponse(
+            body = objectMapper.writeValueAsBytes(ApiErrorResponse.of(
                     errorCode.name(),
-                    errorCode.message(),
-                    traceId));
+                    errorCode.message()));
         } catch (JsonProcessingException exception) {
             // A minimal encoder keeps the public contract safe even if normal JSON mapping fails.
             renderedErrorCode = GatewayErrorCode.GATEWAY_INTERNAL_ERROR;
@@ -101,6 +104,7 @@ public final class GatewayHttpErrorWriter {
 
         exchange.getResponse().setStatusCode(renderedErrorCode.status());
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        exchange.getResponse().getHeaders().set("X-Trace-Id", traceId);
         errorObservation.record(
                 renderedErrorCode,
                 traceId,
@@ -112,11 +116,9 @@ public final class GatewayHttpErrorWriter {
     }
 
     private byte[] fallbackInternalErrorBody(String traceId) {
-        String escapedTraceId = new String(
-                JsonStringEncoder.getInstance().quoteAsString(traceId));
-        String body = "{\"code\":\"GATEWAY_INTERNAL_ERROR\","
-                + "\"message\":\"The gateway could not process the request\","
-                + "\"traceId\":\"" + escapedTraceId + "\"}";
+        String body = "{\"success\":false,\"errorCode\":\"GATEWAY_INTERNAL_ERROR\","
+                + "\"message\":\"The gateway could not process the request\",\"errors\":null,\"timestamp\":\""
+                + java.time.Instant.now() + "\"}";
         return body.getBytes(StandardCharsets.UTF_8);
     }
 

@@ -44,7 +44,7 @@ class GatewayUnexpectedFailureTests {
         JsonNode body = unexpectedFailureResponse(null);
 
         assertExactInternalErrorEnvelope(body);
-        assertThat(body.path("traceId").asText()).isNotBlank();
+        assertThat(body.path("traceId").isMissingNode()).isTrue();
         assertNoSensitiveDetail(body.toString());
     }
 
@@ -53,7 +53,7 @@ class GatewayUnexpectedFailureTests {
         JsonNode body = unexpectedFailureResponse(" trace-unexpected-failure ");
 
         assertExactInternalErrorEnvelope(body);
-        assertThat(body.path("traceId").asText()).isEqualTo("trace-unexpected-failure");
+        assertThat(body.path("traceId").isMissingNode()).isTrue();
         assertNoSensitiveDetail(body.toString());
     }
 
@@ -65,24 +65,26 @@ class GatewayUnexpectedFailureTests {
             request.header("X-Trace-Id", traceId);
         }
 
-        byte[] responseBody = request
+        var response = request
                 .bodyValue("{\"value\":\"" + BODY_SENTINEL + "\"}")
                 .exchange()
                 .expectStatus().isEqualTo(500)
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectHeader().valueMatches("X-Trace-Id", ".+")
                 .expectBody()
-                .returnResult()
-                .getResponseBody();
+                .returnResult();
+
+        byte[] responseBody = response.getResponseBody();
 
         assertThat(responseBody).isNotNull();
         return objectMapper.readTree(responseBody);
     }
 
     private void assertExactInternalErrorEnvelope(JsonNode body) {
-        assertThat(body.size()).isEqualTo(3);
-        assertThat(body.path("code").asText()).isEqualTo("GATEWAY_INTERNAL_ERROR");
+        assertThat(body.size()).isEqualTo(5);
+        assertThat(body.path("errorCode").asText()).isEqualTo("GATEWAY_INTERNAL_ERROR");
         assertThat(body.path("message").asText()).isEqualTo("The gateway could not process the request");
-        assertThat(body.hasNonNull("traceId")).isTrue();
+        assertThat(body.has("traceId")).isFalse();
     }
 
     private void assertNoSensitiveDetail(String responseBody) {

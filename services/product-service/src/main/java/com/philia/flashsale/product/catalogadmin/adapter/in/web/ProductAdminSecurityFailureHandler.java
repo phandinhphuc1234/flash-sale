@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.philia.flashsale.common.web.ApiErrorResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -61,6 +62,6 @@ public final class ProductAdminSecurityFailureHandler
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(
                 response.getOutputStream(),
-                new AdminCatalogErrorResponse(code, message, request.getHeader("X-Trace-Id")));
+                ApiErrorResponse.of(code, message));
     }
 }

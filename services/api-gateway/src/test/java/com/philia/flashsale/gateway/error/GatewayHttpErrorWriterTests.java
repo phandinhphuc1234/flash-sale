@@ -46,10 +46,14 @@ class GatewayHttpErrorWriterTests {
                 .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(exchange.getResponse().getHeaders().getContentType())
                 .isEqualTo(MediaType.APPLICATION_JSON);
-        assertThat(exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)))
-                .isEqualTo("{\"code\":\"DOWNSTREAM_UNAVAILABLE\","
-                        + "\"message\":\"The requested service is temporarily unavailable\","
-                        + "\"traceId\":\"trace-503\"}");
+        JsonNode body = objectMapper.readTree(
+                exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)));
+        assertThat(body.path("success").asBoolean()).isFalse();
+        assertThat(body.path("errorCode").asText()).isEqualTo("DOWNSTREAM_UNAVAILABLE");
+        assertThat(body.path("message").asText())
+                .isEqualTo("The requested service is temporarily unavailable");
+        assertThat(body.path("traceId").isMissingNode()).isTrue();
+        assertThat(exchange.getResponse().getHeaders().getFirst("X-Trace-Id")).isEqualTo("trace-503");
         verify(observation).record(
                 GatewayErrorCode.DOWNSTREAM_UNAVAILABLE,
                 "trace-503",
@@ -68,7 +72,8 @@ class GatewayHttpErrorWriterTests {
 
         JsonNode body = objectMapper.readTree(
                 exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)));
-        String traceId = body.path("traceId").asText();
+        assertThat(body.path("traceId").isMissingNode()).isTrue();
+        String traceId = exchange.getResponse().getHeaders().getFirst("X-Trace-Id");
         assertThat(traceId).isNotBlank();
         assertThat(UUID.fromString(traceId).toString()).isEqualTo(traceId);
         verify(observation).record(
@@ -80,7 +85,7 @@ class GatewayHttpErrorWriterTests {
     }
 
     @Test
-    void writesTheExactRateLimitContractWithTheExistingTraceSemantics() {
+    void writesTheExactRateLimitContractWithTheExistingTraceSemantics() throws Exception {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/catalog/products")
                         .header("X-Trace-Id", "  trace-rate-limit  ")
@@ -96,10 +101,12 @@ class GatewayHttpErrorWriterTests {
         assertThat(exchange.getResponse().getHeaders().getFirst("Retry-After")).isEqualTo("1");
         assertThat(exchange.getResponse().getHeaders().getFirst("Cache-Control")).isEqualTo("no-store");
         assertNoForbiddenRateLimitAccountingHeaders(exchange);
-        assertThat(exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)))
-                .isEqualTo("{\"code\":\"RATE_LIMIT_EXCEEDED\","
-                        + "\"message\":\"Too many requests\","
-                        + "\"traceId\":\"trace-rate-limit\"}");
+        JsonNode body = objectMapper.readTree(
+                exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)));
+        assertThat(body.path("errorCode").asText()).isEqualTo("RATE_LIMIT_EXCEEDED");
+        assertThat(body.path("traceId").isMissingNode()).isTrue();
+        assertThat(exchange.getResponse().getHeaders().getFirst("X-Trace-Id"))
+                .isEqualTo("trace-rate-limit");
         verifyNoInteractions(observation);
     }
 
@@ -163,12 +170,13 @@ class GatewayHttpErrorWriterTests {
 
         assertThat(exchange.getResponse().getStatusCode())
                 .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)))
-                .isEqualTo("{\"code\":\"GATEWAY_INTERNAL_ERROR\","
-                        + "\"message\":\"The gateway could not process the request\","
-                        + "\"traceId\":\"trace-fallback\"}")
+        String body = exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5));
+        assertThat(body).contains("\"errorCode\":\"GATEWAY_INTERNAL_ERROR\"")
                 .doesNotContain("secret serialization detail")
-                .doesNotContain("original failure");
+                .doesNotContain("original failure")
+                .doesNotContain("traceId");
+        assertThat(exchange.getResponse().getHeaders().getFirst("X-Trace-Id"))
+                .isEqualTo("trace-fallback");
         verify(observation).record(
                 GatewayErrorCode.GATEWAY_INTERNAL_ERROR,
                 "trace-fallback",
@@ -201,11 +209,12 @@ class GatewayHttpErrorWriterTests {
         assertThat(exchange.getResponse().getHeaders().containsKey("Retry-After")).isFalse();
         assertThat(exchange.getResponse().getHeaders().containsKey("Cache-Control")).isFalse();
         assertNoForbiddenRateLimitAccountingHeaders(exchange);
-        assertThat(exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5)))
-                .isEqualTo("{\"code\":\"GATEWAY_INTERNAL_ERROR\","
-                        + "\"message\":\"The gateway could not process the request\","
-                        + "\"traceId\":\"trace-rate-limit-fallback\"}")
-                .doesNotContain("rate limit serialization detail");
+        String body = exchange.getResponse().getBodyAsString().block(Duration.ofSeconds(5));
+        assertThat(body).contains("\"errorCode\":\"GATEWAY_INTERNAL_ERROR\"")
+                .doesNotContain("rate limit serialization detail")
+                .doesNotContain("traceId");
+        assertThat(exchange.getResponse().getHeaders().getFirst("X-Trace-Id"))
+                .isEqualTo("trace-rate-limit-fallback");
         verify(observation).record(
                 GatewayErrorCode.GATEWAY_INTERNAL_ERROR,
                 "trace-rate-limit-fallback",

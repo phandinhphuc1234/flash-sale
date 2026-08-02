@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.UUID;
 
 import com.philia.flashsale.common.web.PageResponse;
+import com.philia.flashsale.common.web.ApiResponse;
 import com.philia.flashsale.product.catalogadmin.application.port.in.BrowseAdminCatalogUseCase;
 import com.philia.flashsale.product.catalogadmin.application.port.in.CreateProductDraftUseCase;
 import com.philia.flashsale.product.catalogadmin.application.port.in.ViewAdminProductUseCase;
@@ -72,7 +73,7 @@ class ProductAdminController {
 
     // Convert the admin HTTP request into an application command; business rules stay inside the use case/domain.
     @PostMapping("/products")
-    ResponseEntity<CreateProductDraftResponse> createProductDraft(
+    ResponseEntity<ApiResponse<CreateProductDraftResponse>> createProductDraft(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader("X-Trace-Id") String traceId,
             @Valid @RequestBody CreateProductDraftRequest request) {
@@ -83,12 +84,12 @@ class ProductAdminController {
                         requiredTraceId(traceId),
                         requiredHeader(idempotencyKey, "Idempotency-Key")));
         return ResponseEntity.created(URI.create("/api/v1/admin/catalog/products/" + result.id()))
-                .body(mapper.toResponse(result));
+                .body(ApiResponse.success(mapper.toResponse(result)));
     }
 
     // Admin browsing can include draft/inactive products, so it is intentionally separate from the public catalog API.
     @GetMapping("/products")
-    PageResponse<AdminProductSummaryResponse> browseProducts(
+    ApiResponse<PageResponse<AdminProductSummaryResponse>> browseProducts(
             @RequestHeader("X-Trace-Id") String traceId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String q,
@@ -99,62 +100,62 @@ class ProductAdminController {
         AdminCatalogPageResult<AdminProductSummaryResult> result =
                 browseAdminCatalogUseCase.browse(
                         new BrowseAdminCatalogQuery(parsedStatus, q, page, size));
-        return mapper.toSummaryPage(result);
+        return ApiResponse.success(mapper.toSummaryPage(result));
     }
 
     // Admin detail uses the product id because code/slug may still be edited while the product is a draft.
     @GetMapping("/products/{productId}")
-    AdminProductDetailResponse viewProduct(
+    ApiResponse<AdminProductDetailResponse> viewProduct(
             @PathVariable UUID productId,
             @RequestHeader("X-Trace-Id") String traceId) {
         requiredTraceId(traceId);
-        return mapper.toResponse(viewAdminProductUseCase.view(new ViewAdminProductQuery(productId)));
+        return ApiResponse.success(mapper.toResponse(viewAdminProductUseCase.view(new ViewAdminProductQuery(productId))));
     }
 
     // Composition is one application command so variants, categories and media move together atomically.
     @PutMapping("/products/{productId}/composition")
-    ResponseEntity<ProductMutationResponse> maintainComposition(
+    ResponseEntity<ApiResponse<ProductMutationResponse>> maintainComposition(
             @PathVariable UUID productId,
             @RequestHeader("If-Match") long expectedVersion,
             @RequestHeader("X-Trace-Id") String traceId,
             @Valid @RequestBody MaintainProductCompositionRequest request) {
         MaintainProductCompositionResult result = maintainProductCompositionUseCase.maintain(
                 mapper.toCompositionCommand(request, productId, expectedVersion, currentActor(), requiredTraceId(traceId)));
-        return ResponseEntity.ok(mapper.toResponse(result));
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(result)));
     }
 
     // Lifecycle commands share the same idempotency and optimistic-version contract.
     @PostMapping("/products/{productId}/publish")
-    ResponseEntity<ProductLifecycleResponse> publish(
+    ResponseEntity<ApiResponse<ProductLifecycleResponse>> publish(
             @PathVariable UUID productId,
             @RequestHeader("If-Match") long expectedVersion,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader("X-Trace-Id") String traceId) {
         ProductLifecycleResult result = publishProductUseCase.publish(lifecycleCommand(
                 productId, expectedVersion, idempotencyKey, traceId, AdminCommandName.PUBLISH_PRODUCT));
-        return ResponseEntity.ok(mapper.toResponse(result));
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(result)));
     }
 
     @PostMapping("/products/{productId}/deactivate")
-    ResponseEntity<ProductLifecycleResponse> deactivate(
+    ResponseEntity<ApiResponse<ProductLifecycleResponse>> deactivate(
             @PathVariable UUID productId,
             @RequestHeader("If-Match") long expectedVersion,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader("X-Trace-Id") String traceId) {
         ProductLifecycleResult result = deactivateProductUseCase.deactivate(lifecycleCommand(
                 productId, expectedVersion, idempotencyKey, traceId, AdminCommandName.DEACTIVATE_PRODUCT));
-        return ResponseEntity.ok(mapper.toResponse(result));
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(result)));
     }
 
     @PostMapping("/products/{productId}/archive")
-    ResponseEntity<ProductLifecycleResponse> archive(
+    ResponseEntity<ApiResponse<ProductLifecycleResponse>> archive(
             @PathVariable UUID productId,
             @RequestHeader("If-Match") long expectedVersion,
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader("X-Trace-Id") String traceId) {
         ProductLifecycleResult result = archiveProductUseCase.archive(lifecycleCommand(
                 productId, expectedVersion, idempotencyKey, traceId, AdminCommandName.ARCHIVE_PRODUCT));
-        return ResponseEntity.ok(mapper.toResponse(result));
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(result)));
     }
 
     private ChangeProductLifecycleCommand lifecycleCommand(UUID productId, long expectedVersion,

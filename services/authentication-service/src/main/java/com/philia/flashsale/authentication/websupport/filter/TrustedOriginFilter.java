@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.philia.flashsale.common.web.ApiErrorResponse;
 import org.springframework.http.MediaType;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
@@ -22,11 +24,17 @@ import com.philia.flashsale.authentication.websupport.context.AuthenticationRequ
 /** Servlet boundary filter protecting cookie commands with exact trusted-origin checks. */
 public class TrustedOriginFilter extends OncePerRequestFilter {
     private final Set<String> trustedOrigins;
+    private final ObjectMapper objectMapper;
 
     public TrustedOriginFilter(AuthenticationProperties properties) {
+        this(properties, new ObjectMapper().findAndRegisterModules());
+    }
+
+    TrustedOriginFilter(AuthenticationProperties properties, ObjectMapper objectMapper) {
         this.trustedOrigins = Arrays.stream(properties.trustedOrigins() == null
                         ? new String[0] : properties.trustedOrigins().split(","))
                 .map(String::trim).filter(value -> !value.isBlank()).collect(Collectors.toUnmodifiableSet());
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -47,14 +55,14 @@ public class TrustedOriginFilter extends OncePerRequestFilter {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         String traceId = String.valueOf(request.getAttribute(AuthenticationRequestContext.TRACE_ATTRIBUTE));
-        response.getWriter().write("{\"code\":\"AUTH_CROSS_SITE_REQUEST_REJECTED\","
-                + "\"message\":\"Cross-site request rejected\","
-                + "\"traceId\":\"" + escapeJson(traceId) + "\"}");
-    }
-
-    private String escapeJson(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"")
-                .replace("\r", "\\r").replace("\n", "\\n");
+        response.setHeader("X-Trace-Id", traceId);
+        try {
+            response.getWriter().write(objectMapper.writeValueAsString(
+                    ApiErrorResponse.of("AUTH_CROSS_SITE_REQUEST_REJECTED", "Cross-site request rejected")));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException exception) {
+            response.getWriter().write("{\"success\":false,\"errorCode\":\"AUTH_CROSS_SITE_REQUEST_REJECTED\","
+                    + "\"message\":\"Cross-site request rejected\"}");
+        }
     }
 
     private String originFromReferer(String referer) {

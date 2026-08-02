@@ -39,10 +39,11 @@ class GatewayAuthenticationFailureContractTests {
                 .expectStatus().isUnauthorized()
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+                .expectHeader().valueMatches("X-Trace-Id", ".+")
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("UNAUTHENTICATED")
+                .jsonPath("$.errorCode").isEqualTo("UNAUTHENTICATED")
                 .jsonPath("$.message").isEqualTo("Authentication is required")
-                .jsonPath("$.traceId").isNotEmpty();
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test
@@ -54,10 +55,11 @@ class GatewayAuthenticationFailureContractTests {
                 .expectStatus().isEqualTo(503)
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectHeader().doesNotExist(HttpHeaders.WWW_AUTHENTICATE)
+                .expectHeader().valueMatches("X-Trace-Id", ".+")
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("AUTHENTICATION_UNAVAILABLE")
+                .jsonPath("$.errorCode").isEqualTo("AUTHENTICATION_UNAVAILABLE")
                 .jsonPath("$.message").isEqualTo("Authentication is temporarily unavailable")
-                .jsonPath("$.traceId").isNotEmpty()
+                .jsonPath("$.traceId").doesNotExist()
                 .consumeWith(result -> assertThat(new String(
                                 result.getResponseBody(), StandardCharsets.UTF_8))
                         .doesNotContain(PROVIDER_SENTINEL)

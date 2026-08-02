@@ -61,7 +61,7 @@ api-gateway
 authentication-service, product-service, cart-service, campaign-service, flashsale-service,
 order-service, payment-service, notification-service, inventory-service
   ↓
-postgres, redis, kafka
+postgres, redis, kafka, schema-registry
 ```
 
 Only `api-gateway` is exposed by default. Other application services are reachable by Docker DNS
@@ -80,13 +80,13 @@ This mirrors future Kubernetes Service names and avoids the common beginner trap
 
 `infra/docker/compose.yml` has:
 
-- default platform services: `postgres`, `redis`, `kafka`
+- default platform services: `postgres`, `redis`, `kafka`, `schema-registry`
 - `apps` profile: the 10 Spring Boot service containers
 
 Run platform only:
 
 ```powershell
-docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d postgres redis kafka
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d postgres redis kafka schema-registry
 ```
 
 Run all app containers:

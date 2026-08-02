@@ -29,8 +29,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * HTTP contract coverage for the four local Campaign draft endpoints.
  *
  * <p>The assertions intentionally describe the wire contract rather than controller internals:
- * Campaign success bodies are direct DTOs, mutations expose quoted versions, and the effective
- * trace ID is echoed in every response.</p>
+ * Campaign success bodies use the shared envelope, mutations expose quoted versions, and the
+ * effective trace ID is echoed in the header only.</p>
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -68,7 +68,7 @@ class CampaignAdminDraftHttpContractTests {
     }
 
     @Test
-    void supportsCreateMetadataReplacementItemReplacementAndDetailWithDirectBodies() throws Exception {
+    void supportsCreateMetadataReplacementItemReplacementAndDetailWithSharedBodies() throws Exception {
         MvcResult create = mockMvc.perform(post("/api/v1/admin/campaigns")
                         .header("X-Trace-Id", TRACE_ID)
                         .contentType("application/json")
@@ -86,8 +86,9 @@ class CampaignAdminDraftHttpContractTests {
                 .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith(
                         "/api/v1/admin/campaigns/")))
                 .andExpect(content().contentTypeCompatibleWith("application/json"))
-                .andExpect(jsonPath("$.data").doesNotExist())
-                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").exists())
+                .andExpect(jsonPath("$.traceId").doesNotExist())
                 .andReturn();
 
         String location = create.getResponse().getHeader("Location");
@@ -108,9 +109,9 @@ class CampaignAdminDraftHttpContractTests {
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Trace-Id", TRACE_ID))
                 .andExpect(header().string("ETag", "\"1\""))
-                .andExpect(jsonPath("$.data").doesNotExist())
-                .andExpect(jsonPath("$.id").value(campaignId))
-                .andExpect(jsonPath("$.version").value(1));
+                .andExpect(jsonPath("$.data.id").value(campaignId))
+                .andExpect(jsonPath("$.data.version").value(1))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         String variantId = UUID.randomUUID().toString();
         mockMvc.perform(put("/api/v1/admin/campaigns/{campaignId}/item", campaignId)
@@ -128,19 +129,19 @@ class CampaignAdminDraftHttpContractTests {
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Trace-Id", TRACE_ID))
                 .andExpect(header().string("ETag", "\"2\""))
-                .andExpect(jsonPath("$.data").doesNotExist())
-                .andExpect(jsonPath("$.item.variantId").value(variantId))
-                .andExpect(jsonPath("$.version").value(2));
+                .andExpect(jsonPath("$.data.item.variantId").value(variantId))
+                .andExpect(jsonPath("$.data.version").value(2))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         mockMvc.perform(get("/api/v1/admin/campaigns/{campaignId}", campaignId)
                         .header("X-Trace-Id", TRACE_ID))
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Trace-Id", TRACE_ID))
                 .andExpect(header().string("ETag", "\"2\""))
-                .andExpect(jsonPath("$.data").doesNotExist())
-                .andExpect(jsonPath("$.id").value(campaignId))
-                .andExpect(jsonPath("$.status").value("DRAFT"))
-                .andExpect(jsonPath("$.item.variantId").value(variantId));
+                .andExpect(jsonPath("$.data.id").value(campaignId))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andExpect(jsonPath("$.data.item.variantId").value(variantId))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
     }
 
     @Test
@@ -159,10 +160,10 @@ class CampaignAdminDraftHttpContractTests {
                 .andExpect(status().isBadRequest())
                 .andExpect(header().string("X-Trace-Id", TRACE_ID))
                 .andExpect(content().contentTypeCompatibleWith("application/json"))
-                .andExpect(jsonPath("$.code").value("CAMPAIGN_VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errorCode").value("CAMPAIGN_VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.message").isNotEmpty())
-                .andExpect(jsonPath("$.traceId").value(TRACE_ID))
-                .andExpect(jsonPath("$.fieldErrors").isArray());
+                .andExpect(jsonPath("$.traceId").doesNotExist())
+                .andExpect(jsonPath("$.errors").isArray());
     }
 
     @Test
@@ -179,7 +180,7 @@ class CampaignAdminDraftHttpContractTests {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(header().string("X-Trace-Id", TRACE_ID))
-                .andExpect(jsonPath("$.code").value("CAMPAIGN_VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.traceId").value(TRACE_ID));
+                .andExpect(jsonPath("$.errorCode").value("CAMPAIGN_VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
     }
 }

@@ -84,8 +84,8 @@ is removed as soon as a real class occupies its directory.
 
 On 2026-07-22, the gateway-local `GatewayAdminErrorResponse` type was renamed to
 `GatewayErrorResponse` because the `error` package owns every failure produced by the gateway edge,
-not Product Admin business failures. The body remains `{code,message,traceId}` and the three
-Feature 010 codes remain unchanged. Empty Java placeholders for unimplemented rate limiting,
+not Product Admin business failures. Feature 018 later standardized the body on shared
+`ApiErrorResponse`; correlation is now `X-Trace-Id` header-only. Empty Java placeholders for unimplemented rate limiting,
 circuit breaking, global exception handling, and observability were removed; the accepted
 technical package reservations remain marker-only until an approved feature introduces behavior.
 

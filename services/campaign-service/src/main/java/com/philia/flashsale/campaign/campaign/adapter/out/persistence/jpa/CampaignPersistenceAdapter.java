@@ -4,48 +4,55 @@ import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.entity
 import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.entity.CampaignJpaEntity;
 import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.mapper.CampaignPersistenceMapper;
 import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.repository.CampaignJpaRepository;
+import com.philia.flashsale.campaign.campaign.application.port.out.CheckCampaignCodeUniquenessPort;
+import com.philia.flashsale.campaign.campaign.application.port.out.LoadCampaignPort;
+import com.philia.flashsale.campaign.campaign.application.port.out.SaveCampaignPort;
 import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import java.util.Optional;
 import java.util.UUID;
-import org.mapstruct.factory.Mappers;
 import org.springframework.stereotype.Repository;
 
 /**
  * Persistence adapter for the Campaign aggregate.
  *
- * <p>Application output ports are introduced by the later use-case task; this
- * foundation adapter already keeps JPA entities and mapping at the outbound
- * boundary.</p>
+ * <p>The adapter keeps JPA entities and mapping at the outbound boundary while
+ * exposing only campaign-owned application ports.</p>
  */
 @Repository
-public class CampaignPersistenceAdapter {
+public class CampaignPersistenceAdapter implements
+        LoadCampaignPort,
+        SaveCampaignPort,
+        CheckCampaignCodeUniquenessPort {
 
     private final CampaignJpaRepository repository;
     private final CampaignPersistenceMapper mapper;
 
     public CampaignPersistenceAdapter(
-            CampaignJpaRepository repository) {
+            CampaignJpaRepository repository,
+            CampaignPersistenceMapper mapper) {
         this.repository = repository;
-        // The mapper is stateless and generated at compile time, so no Spring bean is required here.
-        this.mapper = Mappers.getMapper(CampaignPersistenceMapper.class);
+        this.mapper = mapper;
     }
 
     /** Loads the aggregate with its one-item MVP relation and maps it back to the domain model. */
+    @Override
     public Optional<Campaign> findById(UUID campaignId) {
         return repository.findDetailedById(campaignId).map(mapper::toDomain);
     }
 
     /** Checks code uniqueness through the Campaign-owned repository only. */
+    @Override
     public boolean existsByCode(String code) {
-        return repository.existsByCode(code);
+        return repository.existsByCodeIgnoreCase(code);
     }
 
     /**
      * Persists a new aggregate or updates the existing aggregate and its optional item.
      *
-     * <p>The mapper keeps JPA types at this outbound boundary; the application layer
-     * will provide the transaction and output-port contract in a later task.</p>
+     * <p>The mapper keeps JPA types at this outbound boundary and returns the
+     * committed optimistic-lock version for HTTP ETag generation.</p>
      */
+    @Override
     public Campaign save(Campaign campaign) {
         CampaignJpaEntity entity = repository.findDetailedById(campaign.id()).orElse(null);
         if (entity == null) {
@@ -57,7 +64,8 @@ public class CampaignPersistenceAdapter {
             mapper.updateEntity(campaign, entity);
             synchronizeItem(campaign, entity);
         }
-        return mapper.toDomain(repository.save(entity));
+        // Flush before returning so the optimistic version exposed as ETag is the committed value.
+        return mapper.toDomain(repository.saveAndFlush(entity));
     }
 
     /** Aligns the persisted child with the aggregate's current one-item state. */

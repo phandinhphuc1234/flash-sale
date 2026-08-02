@@ -44,7 +44,7 @@ not connect to or flush developer Compose Redis.
 
 ## 4. Gateway Contract Assertions
 
-- Owned 429 has exact `{code,message,traceId}` body.
+- Owned 429 uses the shared `ApiErrorResponse` body; `X-Trace-Id` is a response header and JSON has no `traceId`.
 - `Retry-After` is positive integer delay seconds.
 - `Cache-Control: no-store` is present only on owned 429.
 - No `RateLimit*` or `X-RateLimit-*` accounting headers are emitted.

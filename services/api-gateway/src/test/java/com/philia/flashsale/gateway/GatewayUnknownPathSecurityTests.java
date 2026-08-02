@@ -26,9 +26,9 @@ class GatewayUnknownPathSecurityTests {
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("UNAUTHENTICATED")
+                .jsonPath("$.errorCode").isEqualTo("UNAUTHENTICATED")
                 .jsonPath("$.message").isEqualTo("Authentication is required")
-                .jsonPath("$.traceId").isNotEmpty();
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test
@@ -42,9 +42,9 @@ class GatewayUnknownPathSecurityTests {
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectHeader().doesNotExist(HttpHeaders.WWW_AUTHENTICATE)
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("ACCESS_DENIED")
+                .jsonPath("$.errorCode").isEqualTo("ACCESS_DENIED")
                 .jsonPath("$.message").isEqualTo("Access is denied")
-                .jsonPath("$.traceId").isNotEmpty();
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test
@@ -55,8 +55,8 @@ class GatewayUnknownPathSecurityTests {
                 .expectStatus().isUnauthorized()
                 .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("UNAUTHENTICATED")
-                .jsonPath("$.traceId").isNotEmpty();
+                .jsonPath("$.errorCode").isEqualTo("UNAUTHENTICATED")
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test
@@ -67,8 +67,8 @@ class GatewayUnknownPathSecurityTests {
                 .expectStatus().isUnauthorized()
                 .expectHeader().valueEquals(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("UNAUTHENTICATED")
-                .jsonPath("$.traceId").isNotEmpty();
+                .jsonPath("$.errorCode").isEqualTo("UNAUTHENTICATED")
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test
@@ -81,8 +81,8 @@ class GatewayUnknownPathSecurityTests {
                 .expectStatus().isForbidden()
                 .expectHeader().doesNotExist(HttpHeaders.WWW_AUTHENTICATE)
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("ACCESS_DENIED")
-                .jsonPath("$.traceId").isNotEmpty();
+                .jsonPath("$.errorCode").isEqualTo("ACCESS_DENIED")
+                .jsonPath("$.traceId").doesNotExist();
     }
 
     @Test

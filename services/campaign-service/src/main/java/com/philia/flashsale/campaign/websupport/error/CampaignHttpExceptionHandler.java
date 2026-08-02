@@ -2,6 +2,8 @@ package com.philia.flashsale.campaign.websupport.error;
 
 import com.philia.flashsale.campaign.campaign.domain.exception.CampaignDomainException;
 import com.philia.flashsale.campaign.websupport.context.CampaignRequestContext;
+import com.philia.flashsale.common.web.ApiErrorResponse;
+import com.philia.flashsale.common.web.FieldViolation;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,17 +28,17 @@ public class CampaignHttpExceptionHandler {
     private static final Logger LOG = LoggerFactory.getLogger(CampaignHttpExceptionHandler.class);
 
     @ExceptionHandler(CampaignDomainException.class)
-    ResponseEntity<CampaignErrorResponse> domainFailure(
+    ResponseEntity<ApiErrorResponse> domainFailure(
             CampaignDomainException exception, HttpServletRequest request) {
         CampaignErrorCode code = CampaignErrorCode.from(exception.code());
         return error(code, request, null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<CampaignErrorResponse> validation(
+    ResponseEntity<ApiErrorResponse> validation(
             MethodArgumentNotValidException exception, HttpServletRequest request) {
-        List<CampaignFieldError> fieldErrors = exception.getBindingResult().getFieldErrors().stream()
-                .map(fieldError -> new CampaignFieldError(
+        List<FieldViolation> fieldErrors = exception.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> new FieldViolation(
                         fieldError.getField(),
                         fieldError.getDefaultMessage() == null ? "Invalid value" : fieldError.getDefaultMessage()))
                 .collect(Collectors.toList());
@@ -44,25 +46,25 @@ public class CampaignHttpExceptionHandler {
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MissingRequestHeaderException.class})
-    ResponseEntity<CampaignErrorResponse> malformedRequest(
+    ResponseEntity<ApiErrorResponse> malformedRequest(
             Exception exception, HttpServletRequest request) {
         return error(CampaignErrorCode.CAMPAIGN_VALIDATION_FAILED, request, null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    ResponseEntity<CampaignErrorResponse> methodNotAllowed(
+    ResponseEntity<ApiErrorResponse> methodNotAllowed(
             HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
         return error(CampaignErrorCode.CAMPAIGN_METHOD_NOT_ALLOWED, request, null);
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    ResponseEntity<CampaignErrorResponse> unsupportedMediaType(
+    ResponseEntity<ApiErrorResponse> unsupportedMediaType(
             HttpMediaTypeNotSupportedException exception, HttpServletRequest request) {
         return error(CampaignErrorCode.CAMPAIGN_UNSUPPORTED_MEDIA_TYPE, request, null);
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<CampaignErrorResponse> unexpected(
+    ResponseEntity<ApiErrorResponse> unexpected(
             Exception exception, HttpServletRequest request) {
         String traceId = CampaignRequestContext.resolveTraceId(request);
         LOG.error("campaign_unexpected_failure traceId={} exceptionType={}",
@@ -70,15 +72,15 @@ public class CampaignHttpExceptionHandler {
         return error(CampaignErrorCode.CAMPAIGN_INTERNAL_ERROR, request, null);
     }
 
-    private ResponseEntity<CampaignErrorResponse> error(
+    private ResponseEntity<ApiErrorResponse> error(
             CampaignErrorCode code,
             HttpServletRequest request,
-            List<CampaignFieldError> fieldErrors) {
+            List<FieldViolation> fieldErrors) {
         String traceId = CampaignRequestContext.resolveTraceId(request);
         return ResponseEntity.status(code.status())
                 .header(CampaignRequestContext.TRACE_HEADER, traceId)
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new CampaignErrorResponse(code.name(), code.message(), traceId, fieldErrors));
+                .body(ApiErrorResponse.of(code.name(), code.message(), fieldErrors));
     }
 }

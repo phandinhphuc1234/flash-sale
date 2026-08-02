@@ -9,6 +9,8 @@ import com.philia.flashsale.product.catalogadmin.application.exception.Duplicate
 import com.philia.flashsale.product.catalogadmin.application.exception.CategoryNotFoundException;
 import com.philia.flashsale.product.catalogadmin.application.exception.StaleProductVersionException;
 import com.philia.flashsale.product.catalogadmin.domain.exception.CatalogDomainException;
+import com.philia.flashsale.common.web.ApiErrorResponse;
+import com.philia.flashsale.common.web.FieldViolation;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,74 +26,74 @@ class ProductAdminExceptionHandler {
 
     // Translate application exceptions into stable HTTP errors for admin clients.
     @ExceptionHandler(AdminProductNotFoundException.class)
-    ResponseEntity<AdminCatalogErrorResponse> productNotFound(
+    ResponseEntity<ApiErrorResponse> productNotFound(
             AdminProductNotFoundException exception,
             HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", exception.getMessage(), request);
     }
 
     @ExceptionHandler(DuplicateProductCodeException.class)
-    ResponseEntity<AdminCatalogErrorResponse> duplicateCode(
+    ResponseEntity<ApiErrorResponse> duplicateCode(
             DuplicateProductCodeException exception,
             HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "DUPLICATE_PRODUCT_CODE", exception.getMessage(), request);
     }
 
     @ExceptionHandler(DuplicateProductSlugException.class)
-    ResponseEntity<AdminCatalogErrorResponse> duplicateSlug(
+    ResponseEntity<ApiErrorResponse> duplicateSlug(
             DuplicateProductSlugException exception,
             HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "DUPLICATE_PRODUCT_SLUG", exception.getMessage(), request);
     }
 
     @ExceptionHandler(IdempotencyKeyReusedException.class)
-    ResponseEntity<AdminCatalogErrorResponse> idempotencyConflict(
+    ResponseEntity<ApiErrorResponse> idempotencyConflict(
             IdempotencyKeyReusedException exception,
             HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_REUSED", exception.getMessage(), request);
     }
 
     @ExceptionHandler(DuplicateVariantSkuException.class)
-    ResponseEntity<AdminCatalogErrorResponse> duplicateVariantSku(
+    ResponseEntity<ApiErrorResponse> duplicateVariantSku(
             DuplicateVariantSkuException exception, HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "DUPLICATE_VARIANT_SKU", exception.getMessage(), request);
     }
 
     @ExceptionHandler(DuplicateVariantBarcodeException.class)
-    ResponseEntity<AdminCatalogErrorResponse> duplicateVariantBarcode(
+    ResponseEntity<ApiErrorResponse> duplicateVariantBarcode(
             DuplicateVariantBarcodeException exception, HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "DUPLICATE_BARCODE", exception.getMessage(), request);
     }
 
     @ExceptionHandler(CategoryNotFoundException.class)
-    ResponseEntity<AdminCatalogErrorResponse> categoryNotFound(
+    ResponseEntity<ApiErrorResponse> categoryNotFound(
             CategoryNotFoundException exception, HttpServletRequest request) {
         return error(HttpStatus.NOT_FOUND, "CATEGORY_NOT_FOUND", exception.getMessage(), request);
     }
 
     @ExceptionHandler(StaleProductVersionException.class)
-    ResponseEntity<AdminCatalogErrorResponse> staleVersion(
+    ResponseEntity<ApiErrorResponse> staleVersion(
             StaleProductVersionException exception, HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "STALE_PRODUCT_VERSION", exception.getMessage(), request);
     }
 
     // Domain failures are exposed by domain-owned error codes, not by framework exception names.
     @ExceptionHandler(CatalogDomainException.class)
-    ResponseEntity<AdminCatalogErrorResponse> domainFailure(
+    ResponseEntity<ApiErrorResponse> domainFailure(
             CatalogDomainException exception,
             HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, exception.code(), exception.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    ResponseEntity<AdminCatalogErrorResponse> invalidRequest(
+    ResponseEntity<ApiErrorResponse> invalidRequest(
             IllegalArgumentException exception,
             HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, "INVALID_ADMIN_REQUEST", exception.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<AdminCatalogErrorResponse> invalidBody(
+    ResponseEntity<ApiErrorResponse> invalidBody(
             MethodArgumentNotValidException exception,
             HttpServletRequest request) {
         return error(
@@ -102,7 +104,7 @@ class ProductAdminExceptionHandler {
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
-    ResponseEntity<AdminCatalogErrorResponse> missingHeader(
+    ResponseEntity<ApiErrorResponse> missingHeader(
             MissingRequestHeaderException exception,
             HttpServletRequest request) {
         return error(
@@ -113,7 +115,7 @@ class ProductAdminExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<AdminCatalogErrorResponse> malformedBody(
+    ResponseEntity<ApiErrorResponse> malformedBody(
             HttpMessageNotReadableException exception,
             HttpServletRequest request) {
         return error(
@@ -124,7 +126,7 @@ class ProductAdminExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    ResponseEntity<AdminCatalogErrorResponse> invalidArgumentType(
+    ResponseEntity<ApiErrorResponse> invalidArgumentType(
             MethodArgumentTypeMismatchException exception,
             HttpServletRequest request) {
         return error(
@@ -135,12 +137,13 @@ class ProductAdminExceptionHandler {
     }
 
     // Echo the trace id so operators can connect a failed admin request to logs/traces later.
-    private ResponseEntity<AdminCatalogErrorResponse> error(
+    private ResponseEntity<ApiErrorResponse> error(
             HttpStatus status,
             String code,
             String message,
             HttpServletRequest request) {
         return ResponseEntity.status(status)
-                .body(new AdminCatalogErrorResponse(code, message, request.getHeader("X-Trace-Id")));
+                .header("X-Trace-Id", request.getHeader("X-Trace-Id"))
+                .body(ApiErrorResponse.of(code, message));
     }
 }

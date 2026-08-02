@@ -94,6 +94,26 @@ services:
     networks:
       - flash-sale-net
 
+  schema-registry:
+    image: ${SCHEMA_REGISTRY_IMAGE:-confluentinc/cp-schema-registry:8.3.0}
+    hostname: schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${SCHEMA_REGISTRY_BIND_ADDRESS:-127.0.0.1}:${SCHEMA_REGISTRY_HOST_PORT:-8081}:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: "1"
+    healthcheck:
+      <<: *platform-health-defaults
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8081; printf \"GET /subjects HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"HTTP/1.1 200\" <&3'"]
+    networks:
+      - flash-sale-net
+
   api-gateway:
     <<: *app-common
     depends_on: {}

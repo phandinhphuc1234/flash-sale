@@ -64,10 +64,11 @@ class GatewayRateLimitContractTests {
         assertThat(exchange.getResponse().getHeaders().getFirst("Retry-After")).isEqualTo("2");
         assertThat(exchange.getResponse().getHeaders().getFirst("Cache-Control")).isEqualTo("no-store");
         assertNoForbiddenRateLimitAccountingHeaders(exchange);
-        assertThat(exchange.getResponse().getBodyAsString().block(TEST_TIMEOUT))
-                .isEqualTo("{\"code\":\"RATE_LIMIT_EXCEEDED\","
-                        + "\"message\":\"Too many requests\","
-                        + "\"traceId\":\"trace-contract-429\"}");
+        String body = exchange.getResponse().getBodyAsString().block(TEST_TIMEOUT);
+        assertThat(body).contains("\"errorCode\":\"RATE_LIMIT_EXCEEDED\"")
+                .doesNotContain("traceId");
+        assertThat(exchange.getResponse().getHeaders().getFirst("X-Trace-Id"))
+                .isEqualTo("trace-contract-429");
         verifyNoInteractions(errorObservation);
     }
 
@@ -106,8 +107,9 @@ class GatewayRateLimitContractTests {
 
         assertThat(downstreamCalls).hasValue(0);
         String body = exchange.getResponse().getBodyAsString().block(TEST_TIMEOUT);
-        String responseTraceId = new ObjectMapper().readTree(body).path("traceId").asText();
+        String responseTraceId = exchange.getResponse().getHeaders().getFirst("X-Trace-Id");
         assertThat(responseTraceId).isNotBlank();
+        assertThat(new ObjectMapper().readTree(body).has("traceId")).isFalse();
         assertThat(traceIdResolver.resolve(exchange)).isEqualTo(responseTraceId);
         assertThat(exchange.getResponse().getHeaders().getFirst("Retry-After")).isEqualTo("1");
         assertNoForbiddenRateLimitAccountingHeaders(exchange);

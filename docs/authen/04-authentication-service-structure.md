@@ -118,9 +118,9 @@ com/philia/flashsale/authentication/
     │   │   │   └── TrustedOriginFilter.java
     │   │   │
     │   │   └── auth/
-    │   │       ├── AuthenticationApiResponse.java
+    │   │       ├── ApiResponse<T> (libs/common-web)
     │   │       ├── AuthenticationErrorCode.java
-    │   │       ├── AuthenticationErrorResponse.java
+    │   │       ├── ApiErrorResponse (libs/common-web)
     │   │       ├── AuthenticationHttpExceptionHandler.java
     │   │       ├── AuthenticationHttpMetrics.java
     │   │       ├── AuthenticationRequestContext.java

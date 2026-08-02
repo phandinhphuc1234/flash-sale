@@ -8,6 +8,7 @@ import com.philia.flashsale.authentication.session.application.login.LoginRateLi
 import com.philia.flashsale.authentication.session.application.refresh.RefreshCredentialIssuanceUnavailableException;
 import com.philia.flashsale.authentication.session.domain.SessionFailure;
 import com.philia.flashsale.authentication.websupport.context.AuthenticationRequestContext;
+import com.philia.flashsale.common.web.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,8 +64,9 @@ class AuthenticationHttpStatusMatrixTests {
         assertThat(malformed.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(method.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
         assertThat(media.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
-        assertThat(crossSite.getBody()).isEqualTo(new AuthenticationErrorResponse(
-                "AUTH_CROSS_SITE_REQUEST_REJECTED", "Cross-site request rejected", "trace-status-1"));
+        assertThat(crossSite.getBody().success()).isFalse();
+        assertThat(crossSite.getBody().errorCode()).isEqualTo("AUTH_CROSS_SITE_REQUEST_REJECTED");
+        assertThat(crossSite.getHeaders().getFirst("X-Trace-Id")).isEqualTo("trace-status-1");
         assertThat(invalidRefresh.getBody().message()).doesNotContain("raw-secret");
         assertThat(malformed.getBody().message()).doesNotContain("raw-secret");
     }
@@ -74,7 +76,9 @@ class AuthenticationHttpStatusMatrixTests {
         var response = handler.unexpected(new IllegalStateException("private-key=secret"), request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(response.getBody()).isEqualTo(new AuthenticationErrorResponse(
-                "AUTH_INTERNAL_ERROR", "Authentication service error", "trace-status-1"));
+        assertThat(response.getBody()).isEqualTo(
+                new ApiErrorResponse(false, "AUTH_INTERNAL_ERROR", "Authentication service error", null,
+                        response.getBody().timestamp()));
+        assertThat(response.getHeaders().getFirst("X-Trace-Id")).isEqualTo("trace-status-1");
     }
 }

@@ -7,6 +7,7 @@ import com.philia.flashsale.inventory.stock.application.exception.StockApplicati
 import com.philia.flashsale.inventory.stock.domain.exception.InventoryDomainException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -16,12 +17,13 @@ public class InventoryExceptionHandler {
     @ExceptionHandler({StockApplicationException.class, AllocationApplicationException.class,
             InventoryDomainException.class, AllocationDomainException.class})
     public ResponseEntity<ApiErrorResponse> handleBusiness(RuntimeException exception) {
-        boolean notFound = exception.getMessage() != null
-                && exception.getMessage().contains("not found");
+        boolean notFound = exception instanceof StockApplicationException stock && stock.isNotFound()
+                || exception instanceof AllocationApplicationException allocation && allocation.isNotFound();
         String code = notFound ? "INVENTORY_NOT_FOUND" : "INVENTORY_OPERATION_REJECTED";
         HttpStatus status = notFound ? HttpStatus.NOT_FOUND : HttpStatus.CONFLICT;
+        String message = notFound ? "Inventory resource was not found" : "Inventory operation was rejected";
         return ResponseEntity.status(status)
-                .body(ApiErrorResponse.of(code, exception.getMessage()));
+                .body(ApiErrorResponse.of(code, message));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -38,6 +40,12 @@ public class InventoryExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleArgument(IllegalArgumentException exception) {
         return ResponseEntity.badRequest().body(
-                ApiErrorResponse.of("VALIDATION_ERROR", exception.getMessage()));
+                ApiErrorResponse.of("VALIDATION_ERROR", "Request validation failed"));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleMalformedBody(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().body(
+                ApiErrorResponse.of("VALIDATION_ERROR", "Request body is malformed"));
     }
 }

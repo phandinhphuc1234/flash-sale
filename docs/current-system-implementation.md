@@ -174,10 +174,10 @@ com.philia.flashsale.common.web/
 
 Current consumers:
 
-- `product-service`: `PageResponse` and `PageMeta` only.
-- `inventory-service`: success, error, validation, and pagination types.
-- `api-gateway`: no dependency on `common-web`; owns its edge error shape.
-- `authentication-service`: no dependency on `common-web`; owns Auth response shapes.
+- `product-service`: shared envelopes plus `PageResponse`/`PageMeta`; item DTOs remain feature-local.
+- `inventory-service`: shared success, error, validation, and pagination types.
+- `api-gateway`: shared `ApiErrorResponse` for Gateway-owned failures; downstream bodies pass through.
+- `authentication-service`: shared success/error envelopes; token and cookie DTOs remain feature-local.
 
 ### 4.2 Reserved shared-library directories
 
@@ -213,7 +213,6 @@ com.philia.flashsale.gateway/
 │   └── GatewayRateLimitProperties.java
 ├── error/
 │   ├── GatewayErrorCode.java
-│   ├── GatewayErrorResponse.java
 │   ├── GatewayFailureClassifier.java
 │   ├── GatewayHttpErrorWriter.java
 │   └── GatewayWebExceptionHandler.java
@@ -305,11 +304,17 @@ JWT validation currently enforces:
 
 ```json
 {
-  "code": "GATEWAY_ERROR_CODE",
+  "success": false,
+  "errorCode": "GATEWAY_ERROR_CODE",
   "message": "Client-safe message",
-  "traceId": "correlation-value"
+  "errors": null,
+  "timestamp": "2026-08-01T00:00:00Z"
 }
 ```
+
+Correlation is returned in the `X-Trace-Id` response header; Gateway-owned JSON never contains
+`traceId`. Downstream-owned responses are passed through byte-for-byte and remain owned by the
+downstream service.
 
 | Error code | HTTP status |
 |---|---:|
@@ -645,8 +650,11 @@ Successful Auth body:
 
 ```json
 {
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Operation completed successfully",
   "data": {},
-  "traceId": "correlation-value"
+  "timestamp": "2026-08-01T00:00:00Z"
 }
 ```
 
@@ -654,11 +662,15 @@ Auth failure body:
 
 ```json
 {
-  "code": "AUTH_ERROR_CODE",
+  "success": false,
+  "errorCode": "AUTH_ERROR_CODE",
   "message": "Client-safe message",
-  "traceId": "correlation-value"
+  "errors": null,
+  "timestamp": "2026-08-01T00:00:00Z"
 }
 ```
+
+Auth correlation is returned through the `X-Trace-Id` response header, never in JSON.
 
 Implemented error codes:
 
@@ -903,16 +915,16 @@ Important database integrity:
 
 Current success behavior:
 
-- Public list/detail endpoints return Product-owned DTOs directly.
+- Public list/detail endpoints wrap Product-owned DTOs in shared `ApiResponse<T>`.
 - Public/admin pagination uses shared `PageResponse<T>`.
-- Admin create/composition/lifecycle endpoints return Product-owned DTOs directly.
-- Existing Product endpoints do not use shared `ApiResponse<T>`.
+- Admin create/composition/lifecycle endpoints wrap Product-owned DTOs in shared `ApiResponse<T>`.
 
 Public catalog error:
 
 ```json
 {
-  "code": "PRODUCT_NOT_FOUND",
+  "success": false,
+  "errorCode": "PRODUCT_NOT_FOUND",
   "message": "Product was not found"
 }
 ```
@@ -921,11 +933,16 @@ Admin catalog error:
 
 ```json
 {
-  "code": "STALE_PRODUCT_VERSION",
+  "success": false,
+  "errorCode": "STALE_PRODUCT_VERSION",
   "message": "Client-safe detail",
-  "traceId": "X-Trace-Id"
+  "errors": null,
+  "timestamp": "2026-08-01T00:00:00Z"
 }
 ```
+
+All Product responses carry correlation in the `X-Trace-Id` header only; JSON does not contain
+`traceId`.
 
 Admin error groups include Product/Category not found, duplicate Product identifiers, duplicate Variant SKU/barcode, reused idempotency key, stale version, domain lifecycle failures, malformed input, and missing headers.
 
@@ -1395,6 +1412,7 @@ Local development uses one PostgreSQL 17 container with separate logical databas
 | PostgreSQL | `postgres:17-alpine` | Loopback `5432` |
 | Redis | `redis:7.4-alpine` | Loopback `6379`, password required, AOF enabled |
 | Kafka | `apache/kafka:4.0.0` | Loopback `29092`, single-node KRaft |
+| Confluent Schema Registry | `confluentinc/cp-schema-registry:8.3.0` | Loopback `8081`, Kafka-backed `_schemas` topic |
 | API Gateway | Service image | Loopback `8080` |
 | 9 business services | Service images under `apps` profile | Internal only by default |
 
@@ -1519,6 +1537,8 @@ Not implemented:
 Infrastructure state:
 
 - Kafka 4.0.0 single-node local broker configured in Compose.
+- Confluent Schema Registry 8.3.0 is available for local schema validation, but no service adopts
+  a registry serializer or deserializer yet.
 - Empty repository-level `contracts/asyncapi` and `contracts/events` directories.
 
 Application state:
@@ -1547,14 +1567,15 @@ Application state:
 
 | Boundary | Success shape | Error shape |
 |---|---|---|
-| Gateway-owned failure | N/A | `GatewayErrorResponse(code,message,traceId)` |
-| Authentication | `AuthenticationApiResponse(data,traceId)` or 204 | `AuthenticationErrorResponse(code,message,traceId)` |
-| Product public | Product DTO / shared page | `CatalogErrorResponse(code,message)` |
-| Product admin | Product DTO / shared page | `AdminCatalogErrorResponse(code,message,traceId)` |
+| Gateway-owned failure | N/A | Shared `ApiErrorResponse` (`errorCode`, safe message, optional errors) |
+| Authentication | Shared `ApiResponse<T>` or 204 | Shared `ApiErrorResponse` |
+| Product public | Shared `ApiResponse<T>` with shared `PageResponse<T>` where paged | Shared `ApiErrorResponse` |
+| Product admin | Shared `ApiResponse<T>` with shared `PageResponse<T>` where paged | Shared `ApiErrorResponse` |
 | Inventory | Shared `ApiResponse<T>` | Shared `ApiErrorResponse` |
 | Scaffold services | No business contract | Default Spring behavior only |
 
-The repository currently has a shared HTTP contract library, but response envelopes are not uniform across already-approved service contracts.
+All migrated HTTP boundaries use `libs/common-web`; `X-Trace-Id` is header-only and is never emitted
+inside JSON. Gateway downstream pass-through intentionally does not rewrite service-owned bodies.
 
 ## 15. Spec Kit feature inventory
 

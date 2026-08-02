@@ -4,8 +4,7 @@ import com.philia.flashsale.authentication.session.application.refresh.RefreshSe
 import com.philia.flashsale.authentication.session.application.refresh.RefreshSessionResult;
 import com.philia.flashsale.authentication.session.application.refresh.RefreshSessionUseCase;
 import com.philia.flashsale.authentication.session.application.refresh.RefreshCredentialIssuanceUnavailableException;
-import com.philia.flashsale.authentication.websupport.context.AuthenticationRequestContext;
-import com.philia.flashsale.authentication.websupport.error.AuthenticationApiResponse;
+import com.philia.flashsale.common.web.ApiResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,7 +27,7 @@ public class RefreshController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthenticationApiResponse<TokenResponse>> refresh(HttpServletRequest request,
+    public ResponseEntity<ApiResponse<TokenResponse>> refresh(HttpServletRequest request,
                                                                                HttpServletResponse response) {
         String raw = cookie(request, "refresh_token");
         RefreshSessionResult result;
@@ -40,9 +39,8 @@ public class RefreshController {
             throw exception;
         }
         cookieWriter.write(response, result.refreshCredential(), result.refreshMaxAgeSeconds());
-        Object trace = request.getAttribute(AuthenticationRequestContext.TRACE_ATTRIBUTE);
-        return ResponseEntity.ok(new AuthenticationApiResponse<>(
-                new TokenResponse("Bearer", result.accessToken(), result.expiresIn()), String.valueOf(trace)));
+        return ResponseEntity.ok(ApiResponse.success(
+                new TokenResponse("Bearer", result.accessToken(), result.expiresIn())));
     }
 
     private String cookie(HttpServletRequest request, String name) {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Standardize API Responses"
+  short_description: "Unify Spring HTTP response and error contracts"
+  default_prompt: "Use $standardize-api-response-error-handling to standardize this service's HTTP responses and error handling."

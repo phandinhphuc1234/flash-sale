@@ -2,6 +2,7 @@ package com.philia.flashsale.campaign.websupport.error;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.campaign.websupport.context.CampaignRequestContext;
+import com.philia.flashsale.common.web.ApiErrorResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -60,6 +61,6 @@ public final class CampaignSecurityFailureHandler
         }
         objectMapper.writeValue(
                 response.getOutputStream(),
-                new CampaignErrorResponse(code.name(), code.message(), traceId, null));
+                ApiErrorResponse.of(code.name(), code.message()));
     }
 }

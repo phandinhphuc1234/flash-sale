@@ -36,7 +36,7 @@ sequenceDiagram
     Users-->>DB: committed row
     DB-->>UseCase: Account
     UseCase-->>Controller: RegisterAccountResult
-    Controller-->>Gateway: 201 {data, traceId}
+    Controller-->>Gateway: 201 ApiResponse + X-Trace-Id
     Gateway-->>Client: 201 response
 ```
 
@@ -84,7 +84,7 @@ sequenceDiagram
         Token-->>UseCase: RS256 access token
         UseCase-->>Controller: AuthenticationResult + raw refresh value
         Controller->>Cookie: write refresh_token HttpOnly cookie
-        Controller-->>Gateway: 200 {data, traceId} + Set-Cookie
+        Controller-->>Gateway: 200 ApiResponse + X-Trace-Id + Set-Cookie
         Gateway-->>Client: 200 response
     end
 ```

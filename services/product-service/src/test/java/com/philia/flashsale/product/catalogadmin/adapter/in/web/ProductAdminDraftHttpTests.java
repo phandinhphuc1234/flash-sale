@@ -102,8 +102,8 @@ class ProductAdminDraftHttpTests {
                         .content(request))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/api/v1/admin/catalog/products/")))
-                .andExpect(jsonPath("$.status").value("DRAFT"))
-                .andExpect(jsonPath("$.version").value(0))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andExpect(jsonPath("$.data.version").value(0))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -121,22 +121,22 @@ class ProductAdminDraftHttpTests {
                         .with(catalogAdmin())
                         .header("X-Trace-Id", "trace-admin-list-001"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].code").value("PROD-ADMIN-001"))
-                .andExpect(jsonPath("$.data[0].status").value("DRAFT"));
+                .andExpect(jsonPath("$.data.data", hasSize(1)))
+                .andExpect(jsonPath("$.data.data[0].code").value("PROD-ADMIN-001"))
+                .andExpect(jsonPath("$.data.data[0].status").value("DRAFT"));
 
         mockMvc.perform(get("/api/v1/admin/catalog/products/{productId}", productId)
                         .with(catalogAdmin())
                         .header("X-Trace-Id", "trace-admin-detail-001"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(productId))
-                .andExpect(jsonPath("$.variants", hasSize(0)))
-                .andExpect(jsonPath("$.categories", hasSize(0)))
-                .andExpect(jsonPath("$.media", hasSize(0)));
+                .andExpect(jsonPath("$.data.id").value(productId))
+                .andExpect(jsonPath("$.data.variants", hasSize(0)))
+                .andExpect(jsonPath("$.data.categories", hasSize(0)))
+                .andExpect(jsonPath("$.data.media", hasSize(0)));
 
         mockMvc.perform(get("/api/v1/catalog/products/admin-product-001"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+                .andExpect(jsonPath("$.errorCode").value("PRODUCT_NOT_FOUND"));
     }
 
     @Test
@@ -176,8 +176,8 @@ class ProductAdminDraftHttpTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(composition))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(productId))
-                .andExpect(jsonPath("$.version").value(1));
+                .andExpect(jsonPath("$.data.id").value(productId))
+                .andExpect(jsonPath("$.data.version").value(1));
 
         mockMvc.perform(post("/api/v1/admin/catalog/products/{productId}/publish", productId)
                         .with(catalogAdmin())
@@ -185,8 +185,8 @@ class ProductAdminDraftHttpTests {
                         .header("Idempotency-Key", "publish-composition-1")
                         .header("X-Trace-Id", "trace-publish-1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.version").value(2));
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.version").value(2));
 
         mockMvc.perform(post("/api/v1/admin/catalog/products/{productId}/deactivate", productId)
                         .with(catalogAdmin())
@@ -194,8 +194,8 @@ class ProductAdminDraftHttpTests {
                         .header("Idempotency-Key", "deactivate-composition-1")
                         .header("X-Trace-Id", "trace-deactivate-1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("INACTIVE"))
-                .andExpect(jsonPath("$.version").value(3));
+                .andExpect(jsonPath("$.data.status").value("INACTIVE"))
+                .andExpect(jsonPath("$.data.version").value(3));
 
         mockMvc.perform(post("/api/v1/admin/catalog/products/{productId}/publish", productId)
                         .with(catalogAdmin())
@@ -203,8 +203,8 @@ class ProductAdminDraftHttpTests {
                         .header("Idempotency-Key", "reactivate-composition-1")
                         .header("X-Trace-Id", "trace-reactivate-1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.version").value(4));
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.version").value(4));
 
         mockMvc.perform(post("/api/v1/admin/catalog/products/{productId}/archive", productId)
                         .with(catalogAdmin())
@@ -212,8 +212,8 @@ class ProductAdminDraftHttpTests {
                         .header("Idempotency-Key", "archive-composition-1")
                         .header("X-Trace-Id", "trace-archive-1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ARCHIVED"))
-                .andExpect(jsonPath("$.version").value(5));
+                .andExpect(jsonPath("$.data.status").value("ARCHIVED"))
+                .andExpect(jsonPath("$.data.version").value(5));
     }
 
     @Test
@@ -232,8 +232,8 @@ class ProductAdminDraftHttpTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"))
-                .andExpect(jsonPath("$.traceId").value("trace-missing-key"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         mockMvc.perform(post("/api/v1/admin/catalog/products")
                         .with(catalogAdmin())
@@ -241,7 +241,7 @@ class ProductAdminDraftHttpTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"));
 
         mockMvc.perform(post("/api/v1/admin/catalog/products")
                         .with(catalogAdmin())
@@ -250,8 +250,8 @@ class ProductAdminDraftHttpTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"code\":"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"))
-                .andExpect(jsonPath("$.traceId").value("trace-malformed-json"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         mockMvc.perform(post("/api/v1/admin/catalog/products")
                         .with(catalogAdmin())
@@ -266,8 +266,8 @@ class ProductAdminDraftHttpTests {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"))
-                .andExpect(jsonPath("$.traceId").value("trace-blank-product-name"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         String[] oversizedRequests = {
                 createRequest("C".repeat(65), "valid-slug", "Valid name", null),
@@ -284,8 +284,8 @@ class ProductAdminDraftHttpTests {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(oversizedRequests[index]))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"))
-                    .andExpect(jsonPath("$.traceId").value(traceId));
+                    .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"))
+                    .andExpect(jsonPath("$.traceId").doesNotExist());
         }
 
         mockMvc.perform(post("/api/v1/admin/catalog/products")
@@ -295,7 +295,7 @@ class ProductAdminDraftHttpTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"));
 
         assertEquals(
                 0,
@@ -307,39 +307,39 @@ class ProductAdminDraftHttpTests {
         mockMvc.perform(get("/api/v1/admin/catalog/products")
                         .with(catalogAdmin()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"));
 
         mockMvc.perform(get("/api/v1/admin/catalog/products")
                         .with(catalogAdmin())
                         .header("X-Trace-Id", "   "))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"));
 
         mockMvc.perform(get("/api/v1/admin/catalog/products")
                         .with(catalogAdmin())
                         .header("X-Trace-Id", "T".repeat(129)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"));
 
         mockMvc.perform(get("/api/v1/admin/catalog/products")
                         .with(catalogAdmin())
                         .header("X-Trace-Id", "trace-invalid-status")
                         .queryParam("status", "UNKNOWN"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"))
-                .andExpect(jsonPath("$.traceId").value("trace-invalid-status"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         mockMvc.perform(get("/api/v1/admin/catalog/products/not-a-uuid")
                         .with(catalogAdmin())
                         .header("X-Trace-Id", "trace-invalid-id"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"))
-                .andExpect(jsonPath("$.traceId").value("trace-invalid-id"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         mockMvc.perform(get("/api/v1/admin/catalog/products/{productId}", UUID.randomUUID())
                         .with(catalogAdmin()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"));
     }
 
     @Test
@@ -358,8 +358,8 @@ class ProductAdminDraftHttpTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
-                .andExpect(jsonPath("$.traceId").value("trace-admin-create-002"));
+                .andExpect(jsonPath("$.errorCode").value("UNAUTHENTICATED"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         mockMvc.perform(post("/api/v1/admin/catalog/products")
                         .with(jwt().authorities(new SimpleGrantedAuthority("CATALOG_VIEWER")))
@@ -368,8 +368,8 @@ class ProductAdminDraftHttpTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("CATALOG_ADMIN_REQUIRED"))
-                .andExpect(jsonPath("$.traceId").value("trace-admin-create-002"));
+                .andExpect(jsonPath("$.errorCode").value("CATALOG_ADMIN_REQUIRED"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         assertEquals(
                 0,
@@ -472,14 +472,14 @@ class ProductAdminDraftHttpTests {
                         .queryParam("page", "0")
                         .queryParam("size", "2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(2)))
-                .andExpect(jsonPath("$.data[0].id").value(firstId.toString()))
-                .andExpect(jsonPath("$.data[1].id").value(secondId.toString()))
-                .andExpect(jsonPath("$.page.number").value(0))
-                .andExpect(jsonPath("$.page.size").value(2))
-                .andExpect(jsonPath("$.page.totalElements").value(3))
-                .andExpect(jsonPath("$.page.totalPages").value(2))
-                .andExpect(jsonPath("$.page.hasNext").value(true));
+                .andExpect(jsonPath("$.data.data", hasSize(2)))
+                .andExpect(jsonPath("$.data.data[0].id").value(firstId.toString()))
+                .andExpect(jsonPath("$.data.data[1].id").value(secondId.toString()))
+                .andExpect(jsonPath("$.data.page.number").value(0))
+                .andExpect(jsonPath("$.data.page.size").value(2))
+                .andExpect(jsonPath("$.data.page.totalElements").value(3))
+                .andExpect(jsonPath("$.data.page.totalPages").value(2))
+                .andExpect(jsonPath("$.data.page.hasNext").value(true));
 
         mockMvc.perform(get("/api/v1/admin/catalog/products")
                         .with(catalogAdmin())
@@ -487,9 +487,9 @@ class ProductAdminDraftHttpTests {
                         .queryParam("page", "1")
                         .queryParam("size", "2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].id").value(olderId.toString()))
-                .andExpect(jsonPath("$.page.hasNext").value(false));
+                .andExpect(jsonPath("$.data.data", hasSize(1)))
+                .andExpect(jsonPath("$.data.data[0].id").value(olderId.toString()))
+                .andExpect(jsonPath("$.data.page.hasNext").value(false));
     }
 
     @Test
@@ -498,20 +498,20 @@ class ProductAdminDraftHttpTests {
                         .with(catalogAdmin())
                         .header("X-Trace-Id", "trace-empty-list"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(0)))
-                .andExpect(jsonPath("$.page.number").value(0))
-                .andExpect(jsonPath("$.page.size").value(20))
-                .andExpect(jsonPath("$.page.totalElements").value(0))
-                .andExpect(jsonPath("$.page.totalPages").value(0))
-                .andExpect(jsonPath("$.page.hasNext").value(false));
+                .andExpect(jsonPath("$.data.data", hasSize(0)))
+                .andExpect(jsonPath("$.data.page.number").value(0))
+                .andExpect(jsonPath("$.data.page.size").value(20))
+                .andExpect(jsonPath("$.data.page.totalElements").value(0))
+                .andExpect(jsonPath("$.data.page.totalPages").value(0))
+                .andExpect(jsonPath("$.data.page.hasNext").value(false));
 
         UUID missingId = uuid(999);
         mockMvc.perform(get("/api/v1/admin/catalog/products/{productId}", missingId)
                         .with(catalogAdmin())
                         .header("X-Trace-Id", "trace-missing-detail"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"))
-                .andExpect(jsonPath("$.traceId").value("trace-missing-detail"));
+                .andExpect(jsonPath("$.errorCode").value("PRODUCT_NOT_FOUND"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
 
         mockMvc.perform(get("/api/v1/admin/catalog/products")
                         .with(catalogAdmin())
@@ -579,7 +579,7 @@ class ProductAdminDraftHttpTests {
         assertEquals(
                 expectedErrorCode,
                 objectMapper.readTree(conflict.getResponse().getContentAsByteArray())
-                        .path("code")
+                        .path("errorCode")
                         .asText());
     }
 
@@ -608,9 +608,9 @@ class ProductAdminDraftHttpTests {
                             .header("X-Trace-Id", "trace-status-" + status.toLowerCase())
                             .queryParam("status", status))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data", hasSize(1)))
-                    .andExpect(jsonPath("$.data[0].id").value(expectedProductId.toString()))
-                    .andExpect(jsonPath("$.data[0].status").value(status));
+                    .andExpect(jsonPath("$.data.data", hasSize(1)))
+                    .andExpect(jsonPath("$.data.data[0].id").value(expectedProductId.toString()))
+                    .andExpect(jsonPath("$.data.data[0].status").value(status));
         } catch (Exception exception) {
             throw new AssertionError("Status filter failed for " + status, exception);
         }
@@ -622,8 +622,8 @@ class ProductAdminDraftHttpTests {
                         .header("X-Trace-Id", "trace-search-" + expectedProductId)
                         .queryParam("q", query))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].id").value(expectedProductId.toString()));
+                .andExpect(jsonPath("$.data.data", hasSize(1)))
+                .andExpect(jsonPath("$.data.data[0].id").value(expectedProductId.toString()));
     }
 
     private void assertInvalidPaging(String parameter, String value, String traceId) throws Exception {
@@ -632,8 +632,8 @@ class ProductAdminDraftHttpTests {
                         .header("X-Trace-Id", traceId)
                         .queryParam(parameter, value))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_ADMIN_REQUEST"))
-                .andExpect(jsonPath("$.traceId").value(traceId));
+                .andExpect(jsonPath("$.errorCode").value("INVALID_ADMIN_REQUEST"))
+                .andExpect(jsonPath("$.traceId").doesNotExist());
     }
 
     private void insertProduct(

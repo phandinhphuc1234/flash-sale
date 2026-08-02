@@ -10,8 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import com.philia.flashsale.authentication.account.application.registration.RegisterAccountUseCase;
-import com.philia.flashsale.authentication.websupport.context.AuthenticationRequestContext;
-import com.philia.flashsale.authentication.websupport.error.AuthenticationApiResponse;
+import com.philia.flashsale.common.web.ApiResponse;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -25,7 +24,7 @@ public class RegistrationController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationApiResponse<RegisterResponse>> register(
+    public ResponseEntity<ApiResponse<RegisterResponse>> register(
             @Valid @RequestBody RegisterRequest request,
             jakarta.servlet.http.HttpServletRequest httpRequest) {
         if (request.hasForbiddenFields()) {
@@ -35,11 +34,6 @@ public class RegistrationController {
         RegisterResponse response = RegistrationWebMapper.toResponse(registerAccountUseCase.register(
                 RegistrationWebMapper.toCommand(request)));
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new AuthenticationApiResponse<>(response, traceId(httpRequest)));
-    }
-
-    private String traceId(jakarta.servlet.http.HttpServletRequest request) {
-        Object value = request.getAttribute(AuthenticationRequestContext.TRACE_ATTRIBUTE);
-        return value == null ? "" : value.toString();
+                .body(ApiResponse.success("Account registered", response));
     }
 }

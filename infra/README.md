@@ -8,7 +8,7 @@ and monitoring server infrastructure remain planned future work.
 
 | Directory | Owns | Does not own |
 |-----------|------|--------------|
-| `docker/` | Shared local backing-service orchestration and bootstrap assets | Service runtime configuration or business-schema migrations |
+| `docker/` | Shared local backing-service orchestration and bootstrap assets, including Kafka and Schema Registry | Service runtime configuration or business-schema migrations |
 | `k8s/` | First-party Kubernetes bases and environment overlays | Application code or a second service-discovery registry |
 | `helm/` | Approved charts and third-party values | Resources already independently owned by Kustomize |
 | `monitoring/` | Prometheus scrape infrastructure, Grafana resources, and alert rules | Service-side Actuator dependencies or endpoint configuration |

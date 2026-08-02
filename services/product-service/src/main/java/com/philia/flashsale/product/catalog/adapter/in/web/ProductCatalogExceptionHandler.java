@@ -3,6 +3,7 @@ package com.philia.flashsale.product.catalog.adapter.in.web;
 import com.philia.flashsale.product.catalog.application.service.CategoryNotFoundException;
 import com.philia.flashsale.product.catalog.application.service.InvalidCatalogRequestException;
 import com.philia.flashsale.product.catalog.application.service.ProductNotFoundException;
+import com.philia.flashsale.common.web.ApiErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,15 +16,15 @@ class ProductCatalogExceptionHandler {
 
     // Keep public catalog errors simple and stable; internal exception details stay inside the service.
     @ExceptionHandler(CategoryNotFoundException.class)
-    ResponseEntity<CatalogErrorResponse> handleCategoryNotFound() {
+    ResponseEntity<ApiErrorResponse> handleCategoryNotFound() {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new CatalogErrorResponse("CATEGORY_NOT_FOUND", "Category was not found"));
+                .body(ApiErrorResponse.of("CATEGORY_NOT_FOUND", "Category was not found"));
     }
 
     @ExceptionHandler(ProductNotFoundException.class)
-    ResponseEntity<CatalogErrorResponse> handleProductNotFound() {
+    ResponseEntity<ApiErrorResponse> handleProductNotFound() {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new CatalogErrorResponse("PRODUCT_NOT_FOUND", "Product was not found"));
+                .body(ApiErrorResponse.of("PRODUCT_NOT_FOUND", "Product was not found"));
     }
 
     @ExceptionHandler({
@@ -31,8 +32,8 @@ class ProductCatalogExceptionHandler {
             MethodArgumentNotValidException.class,
             MethodArgumentTypeMismatchException.class
     })
-    ResponseEntity<CatalogErrorResponse> handleInvalidRequest(Exception exception) {
+    ResponseEntity<ApiErrorResponse> handleInvalidRequest(Exception exception) {
         return ResponseEntity.badRequest()
-                .body(new CatalogErrorResponse("INVALID_CATALOG_REQUEST", exception.getMessage()));
+                .body(ApiErrorResponse.of("INVALID_CATALOG_REQUEST", "Catalog request is invalid"));
     }
 }

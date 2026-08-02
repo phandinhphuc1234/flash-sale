@@ -1,6 +1,8 @@
 package com.philia.flashsale.authentication.websupport.error;
 
 import jakarta.servlet.http.HttpServletRequest;
+import com.philia.flashsale.common.web.ApiErrorResponse;
+import com.philia.flashsale.common.web.FieldViolation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +28,7 @@ import com.philia.flashsale.authentication.websupport.context.AuthenticationRequ
 public class AuthenticationHttpExceptionHandler {
     private static final Logger LOG = LoggerFactory.getLogger(AuthenticationHttpExceptionHandler.class);
     @ExceptionHandler(AccountFailure.class)
-    ResponseEntity<AuthenticationErrorResponse> accountFailure(AccountFailure exception, HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> accountFailure(AccountFailure exception, HttpServletRequest request) {
         AuthenticationErrorCode code = parseCode(exception.code());
         HttpStatus status = switch (code) {
             case AUTH_ACCOUNT_ALREADY_EXISTS -> HttpStatus.CONFLICT;
@@ -38,29 +40,30 @@ public class AuthenticationHttpExceptionHandler {
     }
 
     @ExceptionHandler(LoginThrottleUnavailableException.class)
-    ResponseEntity<AuthenticationErrorResponse> throttleUnavailable(LoginThrottleUnavailableException exception, HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> throttleUnavailable(LoginThrottleUnavailableException exception, HttpServletRequest request) {
         return error(HttpStatus.SERVICE_UNAVAILABLE, AuthenticationErrorCode.AUTHENTICATION_UNAVAILABLE, request);
     }
 
     @ExceptionHandler(LoginRateLimitExceededException.class)
-    ResponseEntity<AuthenticationErrorResponse> rateLimitExceeded(
+    ResponseEntity<ApiErrorResponse> rateLimitExceeded(
             LoginRateLimitExceededException exception, HttpServletRequest request) {
         AuthenticationErrorCode code = AuthenticationErrorCode.AUTH_TOO_MANY_ATTEMPTS;
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header(HttpHeaders.RETRY_AFTER, Long.toString(exception.retryAfterSeconds()))
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new AuthenticationErrorResponse(code.name(), code.message(), traceId(request)));
+                .header("X-Trace-Id", traceId(request))
+                .body(ApiErrorResponse.of(code.name(), code.message()));
     }
 
     @ExceptionHandler(RefreshCredentialIssuanceUnavailableException.class)
-    ResponseEntity<AuthenticationErrorResponse> refreshCredentialIssuanceUnavailable(
+    ResponseEntity<ApiErrorResponse> refreshCredentialIssuanceUnavailable(
             RefreshCredentialIssuanceUnavailableException exception, HttpServletRequest request) {
         return error(HttpStatus.SERVICE_UNAVAILABLE, AuthenticationErrorCode.AUTHENTICATION_UNAVAILABLE, request);
     }
 
     @ExceptionHandler(SessionFailure.class)
-    ResponseEntity<AuthenticationErrorResponse> sessionFailure(SessionFailure exception, HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> sessionFailure(SessionFailure exception, HttpServletRequest request) {
         AuthenticationErrorCode code;
         try { code = AuthenticationErrorCode.valueOf(exception.code()); }
         catch (Exception ignored) { code = AuthenticationErrorCode.AUTH_REFRESH_TOKEN_INVALID; }
@@ -70,37 +73,46 @@ public class AuthenticationHttpExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<AuthenticationErrorResponse> validation(MethodArgumentNotValidException exception, HttpServletRequest request) {
-        return error(HttpStatus.BAD_REQUEST, AuthenticationErrorCode.AUTH_VALIDATION_FAILED, request);
+    ResponseEntity<ApiErrorResponse> validation(MethodArgumentNotValidException exception, HttpServletRequest request) {
+        var violations = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> new FieldViolation(error.getField(), error.getDefaultMessage()))
+                .toList();
+        return error(HttpStatus.BAD_REQUEST, AuthenticationErrorCode.AUTH_VALIDATION_FAILED, request, violations);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<AuthenticationErrorResponse> malformed(HttpMessageNotReadableException exception, HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> malformed(HttpMessageNotReadableException exception, HttpServletRequest request) {
         return error(HttpStatus.BAD_REQUEST, AuthenticationErrorCode.AUTH_VALIDATION_FAILED, request);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    ResponseEntity<AuthenticationErrorResponse> method(HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> method(HttpRequestMethodNotSupportedException exception, HttpServletRequest request) {
         return error(HttpStatus.METHOD_NOT_ALLOWED, AuthenticationErrorCode.AUTH_METHOD_NOT_ALLOWED, request);
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    ResponseEntity<AuthenticationErrorResponse> media(HttpMediaTypeNotSupportedException exception, HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> media(HttpMediaTypeNotSupportedException exception, HttpServletRequest request) {
         return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, AuthenticationErrorCode.AUTH_UNSUPPORTED_MEDIA_TYPE, request);
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<AuthenticationErrorResponse> unexpected(Exception exception, HttpServletRequest request) {
+    ResponseEntity<ApiErrorResponse> unexpected(Exception exception, HttpServletRequest request) {
         String traceId = traceId(request);
         LOG.error("auth_unexpected_failure traceId={} type={} detail={}", traceId,
                 exception.getClass().getName(), safeDetail(exception.getMessage()));
         return error(HttpStatus.INTERNAL_SERVER_ERROR, AuthenticationErrorCode.AUTH_INTERNAL_ERROR, request);
     }
 
-    private ResponseEntity<AuthenticationErrorResponse> error(HttpStatus status, AuthenticationErrorCode code, HttpServletRequest request) {
+    private ResponseEntity<ApiErrorResponse> error(HttpStatus status, AuthenticationErrorCode code, HttpServletRequest request) {
+        return error(status, code, request, null);
+    }
+
+    private ResponseEntity<ApiErrorResponse> error(HttpStatus status, AuthenticationErrorCode code,
+            HttpServletRequest request, java.util.List<FieldViolation> violations) {
         String traceId = traceId(request);
         return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON)
-                .body(new AuthenticationErrorResponse(code.name(), code.message(), traceId));
+                .header("X-Trace-Id", traceId)
+                .body(ApiErrorResponse.of(code.name(), code.message(), violations));
     }
 
     private String traceId(HttpServletRequest request) {

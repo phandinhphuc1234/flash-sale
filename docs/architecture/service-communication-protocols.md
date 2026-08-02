@@ -156,6 +156,14 @@ When a durable database change must be followed by a required event, persist the
 and an outbox record in the same local database transaction. An outbox publisher then sends the
 record to Kafka. The plan must define retry, cleanup, deduplication, monitoring, and recovery.
 
+### 4.1 Schema Registry status
+
+The local Compose topology includes Confluent Schema Registry at `http://localhost:8081`. It is a
+platform capability for future Avro, Protobuf, or JSON Schema validation; it does not itself approve
+an event contract, replace the repository contract files, or remove the need for an outbox and
+idempotent consumers. A feature must define schema format, subject naming, compatibility mode,
+producer/consumer ownership, and rollout tests before adding a service serializer or deserializer.
+
 ## 5. Why gRPC is deferred
 
 gRPC is a valid technology, but "internal and fast" is not enough evidence to make it the default.

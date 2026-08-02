@@ -69,7 +69,7 @@ public class CampaignAllocationApplicationService implements
             return CampaignStockAllocationResult.from(prior);
         }
         InventoryItem item = loadInventoryItem.findByVariantIdForUpdate(command.variantId())
-                .orElseThrow(() -> new AllocationApplicationException("Inventory item not found"));
+                .orElseThrow(() -> AllocationApplicationException.notFound("Inventory item not found"));
         Instant now = Instant.now();
         item.allocate(command.quantity(), now);
         InventoryItem saved = saveInventoryItem.save(item);
@@ -90,12 +90,12 @@ public class CampaignAllocationApplicationService implements
     @Transactional
     public CampaignStockAllocationResult release(ReleaseCampaignStockCommand command) {
         CampaignStockAllocation allocation = loadAllocation.findByRequestId(command.requestId())
-                .orElseThrow(() -> new AllocationApplicationException("Allocation not found"));
+                .orElseThrow(() -> AllocationApplicationException.notFound("Allocation not found"));
         if (allocation.status() == AllocationStatus.RELEASED) {
             return CampaignStockAllocationResult.from(allocation);
         }
         InventoryItem item = loadInventoryItem.findByVariantIdForUpdate(allocation.variantId())
-                .orElseThrow(() -> new AllocationApplicationException("Inventory item not found"));
+                .orElseThrow(() -> AllocationApplicationException.notFound("Inventory item not found"));
         Instant now = Instant.now();
         allocation.release(now);
         item.releaseAllocation(allocation.allocatedQuantity(), now);
@@ -112,12 +112,12 @@ public class CampaignAllocationApplicationService implements
     @Transactional
     public CampaignStockAllocationResult reconcile(ReconcileCampaignStockCommand command) {
         CampaignStockAllocation allocation = loadAllocation.findByRequestId(command.requestId())
-                .orElseThrow(() -> new AllocationApplicationException("Allocation not found"));
+                .orElseThrow(() -> AllocationApplicationException.notFound("Allocation not found"));
         if (allocation.status() == AllocationStatus.RECONCILED) {
             return CampaignStockAllocationResult.from(allocation);
         }
         InventoryItem item = loadInventoryItem.findByVariantIdForUpdate(allocation.variantId())
-                .orElseThrow(() -> new AllocationApplicationException("Inventory item not found"));
+                .orElseThrow(() -> AllocationApplicationException.notFound("Inventory item not found"));
         Instant now = Instant.now();
         allocation.reconcile(command.soldQuantity(), command.returnedQuantity(), now);
         item.reconcile(command.soldQuantity(), allocation.allocatedQuantity(), now);

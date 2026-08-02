@@ -35,9 +35,9 @@ create a new global `dto`, `mapper`, `exception`, or `utils` package. Add new ty
 feature and boundary that owns the responsibility.
 
 For pagination, both catalog HTTP boundaries use the generic `PageResponse<T>` and `PageMeta` from
-`libs/common-web`. Product-specific item DTOs and error responses stay local because they describe
-Product’s own contract. The existing `ApiResponse<T>` envelope is not applied to these endpoints;
-adopting it later would be a versioned HTTP-contract decision, not an implementation detail.
+`libs/common-web`. Product-specific item DTOs remain feature-local, while success and error envelopes
+use `ApiResponse<T>` and `ApiErrorResponse` from `libs/common-web`. Trace correlation is carried only
+in the `X-Trace-Id` response header; it is not part of the JSON body.
 
 The old root-level `adapter`, `application`, `domain`, and duplicate `config` scaffolds were
 removed after their contents were moved. Git may display the move as deleted old paths plus added
