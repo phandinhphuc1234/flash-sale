@@ -430,3 +430,29 @@ the broad/public token substitution tests currently receive HTTP 200, and insuff
 request-id-conflict scenarios still return `INVENTORY_OPERATION_REJECTED`. T051-T052 must introduce
 the endpoint-specific identity/scope chain and stable machine-readable error codes while keeping
 the replay and success envelope unchanged.
+
+## 21. T039-T044 grouped US2 schedule-test evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am clean "-Dtest=CampaignDownstreamClientContractTests,ScheduleCampaignUseCaseTests,CampaignSchedulePolicyTests,ScheduleCampaignConcurrencyIntegrationTests,ScheduleCampaignRecoveryIntegrationTests,CampaignScheduleHttpContractTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD FAILURE (expected red baseline for test-first workflow)
+```
+
+| Test class | Tests | Passed | Failures | Errors |
+|---|---:|---:|---:|---:|
+| `CampaignDownstreamClientContractTests` | 2 | 0 | 2 | 0 |
+| `CampaignSchedulePolicyTests` | 7 | 7 | 0 | 0 |
+| `ScheduleCampaignUseCaseTests` | 2 | 0 | 2 | 0 |
+| `ScheduleCampaignConcurrencyIntegrationTests` | 2 | 2 | 0 | 0 |
+| `ScheduleCampaignRecoveryIntegrationTests` | 2 | 2 | 0 | 0 |
+| `CampaignScheduleHttpContractTests` | 3 | 0 | 3 | 0 |
+| **Total** | **18** | **11** | **7** | **0** |
+
+The PostgreSQL concurrency tests prove that the partial unique active-operation index leaves one
+winner and that one winner can persist the allocation snapshot, `SCHEDULED` transition, and one
+scheduled outbox row. Recovery tests preserve the operation and Inventory request identities.
+Remaining red tests are intentional: downstream client/service-token adapters, schedule application
+services, and the schedule HTTP endpoint are not implemented yet. T045-T062 must make these
+contracts green without changing the approved identity, idempotency, transaction, or trace rules.
