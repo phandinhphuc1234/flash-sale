@@ -413,3 +413,20 @@ boundary. The valid Campaign-service HTTP contract currently receives HTTP 403 b
 `/internal/v1/catalog/variants/campaign-validation` endpoint and its dedicated internal JWT chain
 are not implemented yet; T048-T050 must make that assertion green while preserving the direct
 snapshot response contract.
+
+## 20. T038 Inventory allocation compatibility evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/inventory-service -am clean "-Dtest=CampaignAllocationCompatibilityTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD FAILURE (expected red baseline for test-first workflow)
+```
+
+The suite runs against a real Liquibase-created `inventory_db` and confirms the existing success
+envelope and same-request replay behavior. The narrow `inventory.campaign.allocate` token currently
+receives HTTP 403 because Inventory still requires the broad `SCOPE_INVENTORY_WRITE`. Conversely,
+the broad/public token substitution tests currently receive HTTP 200, and insufficient-stock and
+request-id-conflict scenarios still return `INVENTORY_OPERATION_REJECTED`. T051-T052 must introduce
+the endpoint-specific identity/scope chain and stable machine-readable error codes while keeping
+the replay and success envelope unchanged.
