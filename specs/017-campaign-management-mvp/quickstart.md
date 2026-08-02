@@ -396,3 +396,20 @@ service-token contract: RS256/`at+jwt`, issuer `http://authentication-service:80
 TTL. The service-token assertion currently receives HTTP 401 because the OAuth2 client-credentials
 endpoint is not implemented yet; T047 must make this test green without changing administrator
 token claims.
+
+## 19. T037 Product campaign-validation evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/product-service -am clean "-Dtest=ProductCampaignValidationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD FAILURE (expected red baseline for test-first workflow)
+```
+
+The PostgreSQL projection test passes against a Liquibase-created `product_db` and verifies that
+only an ACTIVE, published Product with an ACTIVE positive-price VND Variant is sellable. The
+token-substitution denial test passes: a public administrator audience cannot use the internal
+boundary. The valid Campaign-service HTTP contract currently receives HTTP 403 because the
+`/internal/v1/catalog/variants/campaign-validation` endpoint and its dedicated internal JWT chain
+are not implemented yet; T048-T050 must make that assertion green while preserving the direct
+snapshot response contract.
