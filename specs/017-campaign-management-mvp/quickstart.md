@@ -247,3 +247,15 @@ docker compose --env-file infra/docker/.env -f infra/docker/compose.yml -f infra
 
 Do not report Feature 017 complete while a required test, migration, contract, concurrency, Kafka,
 security, observability, or smoke check is failing.
+## T022 Campaign admin security evidence
+
+Validated on 2026-08-02:
+
+```text
+./mvnw -pl services/campaign-service -am verify
+BUILD SUCCESS
+Campaign module tests: 33 passed, 0 failures, 0 errors
+```
+
+`CampaignAdminSecurityTests` covers missing/invalid/wrong-audience tokens (`401`), missing
+`SCOPE_CAMPAIGN_ADMIN` (`403`), and a scoped administrator reaching controller validation.

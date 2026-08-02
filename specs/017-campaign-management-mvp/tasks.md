@@ -77,7 +77,7 @@ leave stored data unchanged.
 - [x] T019 [P] [US1] Add application tests for create, metadata replacement, item replacement, detail lookup, duplicate code, active-operation blocking, and no downstream calls in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/application/CampaignDraftUseCaseTests.java`
 - [x] T020 [P] [US1] Add PostgreSQL tests for case-insensitive code uniqueness, optimistic version conflicts, atomic replacement, and audit actor/time persistence in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/integration/CampaignDraftPersistenceIntegrationTests.java`
 - [x] T021 [P] [US1] Add MockMvc contract tests for all four draft endpoints, validation errors, direct DTO bodies, `Location`, `ETag`, and `X-Trace-Id` in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/contract/CampaignAdminDraftHttpContractTests.java`
-- [ ] T022 [P] [US1] Add Campaign admin JWT tests for missing/invalid tokens, wrong audience, and missing/present `SCOPE_CAMPAIGN_ADMIN` in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/security/CampaignAdminSecurityTests.java`
+- [x] T022 [P] [US1] Add Campaign admin JWT tests for missing/invalid tokens, wrong audience, and missing/present `SCOPE_CAMPAIGN_ADMIN` in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/security/CampaignAdminSecurityTests.java`
 - [ ] T023 [P] [US1] Add Gateway route, method/path/query/body/header forwarding, public-audience validation, and Campaign authority tests in `services/api-gateway/src/test/java/com/philia/flashsale/gateway/CampaignAdminGatewayRouteTests.java`
 
 ### Implementation for User Story 1
