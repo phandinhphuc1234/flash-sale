@@ -109,7 +109,7 @@ crash-after-allocation recovery, background recovery, and absence of admin-token
 
 ### Tests for User Story 2
 
-- [ ] T034 [P] [US2] Add OAuth2 token endpoint contract tests for valid Campaign credentials plus unknown, inactive, wrong-secret, disallowed-grant, disallowed-scope, TTL, claims, and no-refresh-token cases in `services/authentication-service/src/test/java/com/philia/flashsale/authentication/serviceclient/contract/ClientCredentialsTokenEndpointTests.java`
+- [x] T034 [P] [US2] Add OAuth2 token endpoint contract tests for valid Campaign credentials plus unknown, inactive, wrong-secret, disallowed-grant, disallowed-scope, TTL, claims, and no-refresh-token cases in `services/authentication-service/src/test/java/com/philia/flashsale/authentication/serviceclient/contract/ClientCredentialsTokenEndpointTests.java`
 - [ ] T035 [P] [US2] Add PostgreSQL tests for hashed-secret persistence, allowed-scope loading, status handling, and fixed-client provisioning idempotency in `services/authentication-service/src/test/java/com/philia/flashsale/authentication/serviceclient/integration/ServiceClientPersistenceIntegrationTests.java`
 - [ ] T036 [P] [US2] Add regression tests proving existing administrator tokens remain `flash-sale-api` tokens and service tokens are RS256, internal-audience, scope-bound, and at most 300 seconds in `services/authentication-service/src/test/java/com/philia/flashsale/authentication/security/ServiceTokenClaimCompatibilityTests.java`
 - [ ] T037 [P] [US2] Add Product campaign-validation domain, HTTP, persistence-query, and token-substitution tests in `services/product-service/src/test/java/com/philia/flashsale/product/campaignvalidation/ProductCampaignValidationTests.java`

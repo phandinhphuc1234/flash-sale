@@ -347,3 +347,20 @@ tests pass, administrator JWT issuance includes the Campaign authority, and Gate
 tests pass while internal Campaign endpoints remain denied. This validates the US1 boundary only;
 Campaign scheduling, Product/Inventory calls, service identities, Kafka, and lifecycle workers
 remain in later tasks.
+
+## 16. T034 Client Credentials contract baseline
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/authentication-service -am "-Dtest=ClientCredentialsTokenEndpointTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD FAILURE (expected red baseline for test-first workflow)
+```
+
+`ClientCredentialsTokenEndpointTests` now provisions the approved OAuth client schema in a real
+PostgreSQL Testcontainer and specifies the success contract (internal audience, client subject,
+requested scopes, maximum 300-second TTL, RS256/JWKS-compatible token, and no refresh token) plus
+unknown-client, inactive-client, wrong-secret, disallowed-grant, and disallowed-scope failures.
+The current red result is expected because the `/oauth2/token` Authorization Server endpoint and
+its durable client registry adapter are not wired yet; later US2 implementation tasks must make
+this suite green.
