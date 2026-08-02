@@ -379,3 +379,20 @@ The PostgreSQL contract verifies Argon2-only secret storage and verification, cl
 allowed-scope loading, inactive status preservation for authorization checks, and idempotent fixed
 client provisioning without overwriting an existing secret or scope set. The tests use a real
 Liquibase-created schema and remain independent of future Spring Authorization Server adapter code.
+
+## 18. T036 JWT claim-boundary evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/authentication-service -am "-Dtest=ServiceTokenClaimCompatibilityTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD FAILURE (expected red baseline for test-first workflow)
+```
+
+The new regression suite proves the existing administrator issuer keeps the public
+`flash-sale-api` audience and administrator authority boundary. It also defines the executable
+service-token contract: RS256/`at+jwt`, issuer `http://authentication-service:8080`, subject
+`campaign-service`, audience `flash-sale-internal-api`, requested scope, and a maximum five-minute
+TTL. The service-token assertion currently receives HTTP 401 because the OAuth2 client-credentials
+endpoint is not implemented yet; T047 must make this test green without changing administrator
+token claims.
