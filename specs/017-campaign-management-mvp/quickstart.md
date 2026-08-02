@@ -478,3 +478,24 @@ Result: the three targeted classes completed with **13 tests, 13 passed, 0 failu
 The final Maven process exceeded the command timeout after reports were written, so the report files
 were used to confirm the completed test totals; module compilation also completed successfully with
 `-DskipTests compile`.
+
+## 23. T048-T050 Product campaign-validation implementation evidence
+
+Implemented on 2026-08-02:
+
+- Product-owned sellability policy and application use case for campaign variant validation.
+- JDBC projection adapter that reads Product tables without sharing Product JPA entities with
+  Campaign.
+- Direct internal HTTP response at `POST /internal/v1/catalog/variants/campaign-validation`.
+- Dedicated JWT decoder/security chain requiring the configured issuer, `at+jwt`, internal audience,
+  subject `campaign-service`, and `SCOPE_catalog.read`.
+- Stable `404 PRODUCT_VARIANT_NOT_FOUND`, `409 PRODUCT_VARIANT_NOT_SELLABLE`, and validation error
+  responses with trace-header preservation.
+
+Validation command:
+
+```powershell
+.\mvnw.cmd -pl services/product-service -am "-Dtest=ProductCampaignValidationTests,ProductJwtTrustConfigurationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+```
+
+Result: **7 tests, 7 passed, 0 failures, 0 errors**.

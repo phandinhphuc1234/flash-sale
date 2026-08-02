@@ -50,6 +50,13 @@ Before changing production code:
 - Eureka must not be introduced.
 - Services must not access another service's database.
 - JPA entities and repositories must never be shared between services.
+- Services that own durable relational state in PostgreSQL SHOULD use Spring Data JPA as the
+  default persistence technology.
+- `JdbcTemplate`, JDBC, or native SQL MAY be used inside `adapter/out/persistence` for read
+  projections, bulk operations, or database-specific performance needs; those types and queries
+  MUST NOT leak into domain or application layers.
+- Stateless edge services such as `api-gateway` MUST NOT add JPA merely to make service stacks
+  look uniform.
 - External traffic must enter through api-gateway.
 - Kafka contracts must be versioned.
 - PostgreSQL is the durable source of truth.
