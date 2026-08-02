@@ -54,6 +54,8 @@ flashsale:
         allowed-scopes:
           - campaign.snapshot.read
   authentication:
+    # Enables the internal OAuth2 client-credentials endpoint in deployed environments.
+    runtime-enabled: ${AUTH_RUNTIME_ENABLED:true}
     cookie:
       secure: ${AUTH_COOKIE_SECURE:false}
       same-site: ${AUTH_COOKIE_SAME_SITE:Lax}

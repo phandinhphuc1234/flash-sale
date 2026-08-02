@@ -456,3 +456,25 @@ scheduled outbox row. Recovery tests preserve the operation and Inventory reques
 Remaining red tests are intentional: downstream client/service-token adapters, schedule application
 services, and the schedule HTTP endpoint are not implemented yet. T045-T062 must make these
 contracts green without changing the approved identity, idempotency, transaction, or trace rules.
+
+## 22. T045-T047 Authentication service-client implementation evidence
+
+Implemented on 2026-08-02:
+
+- Durable `ServiceClient` domain rules and application ports/use cases.
+- JPA entities/repositories/mappers for `oauth_clients` and `oauth_client_scopes`.
+- Read-only durable `RegisteredClientRepository`, Argon2 client-secret verification, and fixed
+  client provisioning that never replaces an existing secret.
+- Ordered Spring Authorization Server client-credentials chain with RS256, `at+jwt`, internal
+  audience, client subject, requested scopes, and a maximum 300-second token TTL.
+
+Validation command:
+
+```powershell
+.\mvnw.cmd -pl services/authentication-service -am "-Dtest=ClientCredentialsTokenEndpointTests,ServiceTokenClaimCompatibilityTests,ServiceClientPersistenceIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+```
+
+Result: the three targeted classes completed with **13 tests, 13 passed, 0 failures, 0 errors**.
+The final Maven process exceeded the command timeout after reports were written, so the report files
+were used to confirm the completed test totals; module compilation also completed successfully with
+`-DskipTests compile`.

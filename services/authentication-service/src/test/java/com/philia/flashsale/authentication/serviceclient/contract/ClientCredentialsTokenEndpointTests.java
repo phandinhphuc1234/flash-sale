@@ -119,6 +119,7 @@ class ClientCredentialsTokenEndpointTests {
         assertThat(accessToken).isNotBlank();
 
         Jwt jwt = NimbusJwtDecoder.withPublicKey((RSAPublicKey) KEY_PAIR.getPublic())
+                .validateType(false)
                 .build()
                 .decode(accessToken);
         assertThat(jwt.getIssuer()).hasToString(ISSUER);
