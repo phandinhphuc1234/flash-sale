@@ -290,3 +290,20 @@ duplicate codes, stale versions, and active operations to the approved `404`/`40
 request arguments map to `CAMPAIGN_VALIDATION_FAILED` (`400`), and lifecycle state failures map to
 `CAMPAIGN_INVALID_STATUS` (`409`). The handler continues to use shared `ApiErrorResponse`, field
 violations, `X-Trace-Id`, and `Cache-Control: no-store` without exposing exception details.
+
+## 13. T031 administrator authority evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/authentication-service -am "-Dtest=JwtTrustCompatibilityIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD SUCCESS
+
+.\mvnw.cmd -pl services/authentication-service -am verify
+BUILD SUCCESS
+Authentication module tests: 44 passed, 0 failures, 0 errors
+```
+
+`ROLE_ADMIN` access tokens now carry `CAMPAIGN_ADMIN` alongside the existing administrator
+authorities. The compatibility test verifies the complete canonical claim list and JWT trust
+headers/audience remain unchanged.

@@ -58,6 +58,6 @@ class JwtTrustCompatibilityIntegrationTests {
         assertThat(jwt.getAudience()).containsExactly("flash-sale-api");
         assertThat(jwt.getSubject()).isEqualTo(admin.id().toString());
         assertThat(jwt.getClaimAsStringList("authorities"))
-                .containsExactly("ROLE_ADMIN", "CATALOG_ADMIN", "INVENTORY_ADMIN");
+                .containsExactly("ROLE_ADMIN", "CATALOG_ADMIN", "INVENTORY_ADMIN", "CAMPAIGN_ADMIN");
     }
 }

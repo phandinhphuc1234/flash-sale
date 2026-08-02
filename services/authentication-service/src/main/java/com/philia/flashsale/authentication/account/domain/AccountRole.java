@@ -9,7 +9,7 @@ public enum AccountRole {
 
     public List<String> authorities() {
         return this == ROLE_ADMIN
-                ? List.of("ROLE_ADMIN", "CATALOG_ADMIN", "INVENTORY_ADMIN")
+                ? List.of("ROLE_ADMIN", "CATALOG_ADMIN", "INVENTORY_ADMIN", "CAMPAIGN_ADMIN")
                 : List.of("ROLE_USER");
     }
 }
