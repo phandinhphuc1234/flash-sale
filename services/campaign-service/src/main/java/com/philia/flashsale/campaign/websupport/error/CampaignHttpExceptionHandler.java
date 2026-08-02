@@ -1,6 +1,10 @@
 package com.philia.flashsale.campaign.websupport.error;
 
 import com.philia.flashsale.campaign.campaign.domain.exception.CampaignDomainException;
+import com.philia.flashsale.campaign.campaign.application.exception.CampaignCodeAlreadyExistsException;
+import com.philia.flashsale.campaign.campaign.application.exception.CampaignNotFoundException;
+import com.philia.flashsale.campaign.campaign.application.exception.CampaignOperationInProgressException;
+import com.philia.flashsale.campaign.campaign.application.exception.CampaignVersionConflictException;
 import com.philia.flashsale.campaign.websupport.context.CampaignRequestContext;
 import com.philia.flashsale.common.web.ApiErrorResponse;
 import com.philia.flashsale.common.web.FieldViolation;
@@ -34,6 +38,30 @@ public class CampaignHttpExceptionHandler {
         return error(code, request, null);
     }
 
+    @ExceptionHandler(CampaignNotFoundException.class)
+    ResponseEntity<ApiErrorResponse> notFound(
+            CampaignNotFoundException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_NOT_FOUND, request, null);
+    }
+
+    @ExceptionHandler(CampaignCodeAlreadyExistsException.class)
+    ResponseEntity<ApiErrorResponse> duplicateCode(
+            CampaignCodeAlreadyExistsException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_CODE_ALREADY_EXISTS, request, null);
+    }
+
+    @ExceptionHandler(CampaignVersionConflictException.class)
+    ResponseEntity<ApiErrorResponse> staleVersion(
+            CampaignVersionConflictException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_VERSION_CONFLICT, request, null);
+    }
+
+    @ExceptionHandler(CampaignOperationInProgressException.class)
+    ResponseEntity<ApiErrorResponse> operationInProgress(
+            CampaignOperationInProgressException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_OPERATION_IN_PROGRESS, request, null);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiErrorResponse> validation(
             MethodArgumentNotValidException exception, HttpServletRequest request) {
@@ -49,6 +77,18 @@ public class CampaignHttpExceptionHandler {
     ResponseEntity<ApiErrorResponse> malformedRequest(
             Exception exception, HttpServletRequest request) {
         return error(CampaignErrorCode.CAMPAIGN_VALIDATION_FAILED, request, null);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ApiErrorResponse> invalidArgument(
+            IllegalArgumentException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_VALIDATION_FAILED, request, null);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    ResponseEntity<ApiErrorResponse> invalidState(
+            IllegalStateException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_INVALID_STATUS, request, null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

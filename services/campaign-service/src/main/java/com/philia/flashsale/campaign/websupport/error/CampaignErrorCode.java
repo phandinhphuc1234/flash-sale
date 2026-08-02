@@ -8,6 +8,7 @@ public enum CampaignErrorCode {
     CAMPAIGN_START_TIME_IN_PAST(HttpStatus.BAD_REQUEST, "Campaign start time is invalid"),
     CAMPAIGN_ITEM_REQUIRED(HttpStatus.BAD_REQUEST, "A Campaign item is required"),
     CAMPAIGN_PRICE_INVALID(HttpStatus.BAD_REQUEST, "Campaign price is invalid"),
+    CAMPAIGN_NOT_FOUND(HttpStatus.NOT_FOUND, "Campaign was not found"),
     CAMPAIGN_CODE_ALREADY_EXISTS(HttpStatus.CONFLICT, "Campaign code already exists"),
     CAMPAIGN_INVALID_STATUS(HttpStatus.CONFLICT, "Campaign status does not allow this operation"),
     CAMPAIGN_VERSION_CONFLICT(HttpStatus.CONFLICT, "Campaign version is stale"),

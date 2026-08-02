@@ -259,3 +259,34 @@ Campaign module tests: 33 passed, 0 failures, 0 errors
 
 `CampaignAdminSecurityTests` covers missing/invalid/wrong-audience tokens (`401`), missing
 `SCOPE_CAMPAIGN_ADMIN` (`403`), and a scoped administrator reaching controller validation.
+
+## 11. T023 Gateway contract-test baseline
+
+Validated on 2026-08-02 before the T032 Gateway production wiring:
+
+```powershell
+.\mvnw.cmd -pl services/api-gateway -am "-Dtest=CampaignAdminGatewayRouteTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+BUILD FAILURE (expected red baseline for test-first workflow)
+```
+
+The new `CampaignAdminGatewayRouteTests` covers route registration, unauthenticated access,
+wrong-audience rejection, missing `SCOPE_CAMPAIGN_ADMIN`, and method/path/query/body plus
+`Authorization`, `X-Trace-Id`, and `Idempotency-Key` forwarding. Two assertions fail as expected
+because T032 has not yet added the `campaign-admin` route and authority rule; the security-only
+assertions pass. Re-run this class after T032 and require a green result before completing US1.
+
+## 12. T030 Campaign HTTP error mapping evidence
+
+Validated on 2026-08-02:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am verify
+BUILD SUCCESS
+Campaign module tests: 33 passed, 0 failures, 0 errors
+```
+
+`CampaignHttpExceptionHandler` now translates application failures for missing Campaigns,
+duplicate codes, stale versions, and active operations to the approved `404`/`409` error codes;
+request arguments map to `CAMPAIGN_VALIDATION_FAILED` (`400`), and lifecycle state failures map to
+`CAMPAIGN_INVALID_STATUS` (`409`). The handler continues to use shared `ApiErrorResponse`, field
+violations, `X-Trace-Id`, and `Cache-Control: no-store` without exposing exception details.
