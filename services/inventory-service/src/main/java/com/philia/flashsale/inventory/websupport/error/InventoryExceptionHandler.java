@@ -3,6 +3,8 @@ package com.philia.flashsale.inventory.websupport.error;
 import com.philia.flashsale.common.web.ApiErrorResponse;
 import com.philia.flashsale.inventory.allocation.application.exception.AllocationApplicationException;
 import com.philia.flashsale.inventory.allocation.domain.exception.AllocationDomainException;
+import com.philia.flashsale.inventory.allocation.domain.exception.AllocationRequestConflictException;
+import com.philia.flashsale.inventory.stock.domain.exception.InsufficientStockException;
 import com.philia.flashsale.inventory.stock.application.exception.StockApplicationException;
 import com.philia.flashsale.inventory.stock.domain.exception.InventoryDomainException;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,15 @@ public class InventoryExceptionHandler {
     @ExceptionHandler({StockApplicationException.class, AllocationApplicationException.class,
             InventoryDomainException.class, AllocationDomainException.class})
     public ResponseEntity<ApiErrorResponse> handleBusiness(RuntimeException exception) {
+        if (exception instanceof InsufficientStockException) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiErrorResponse.of("INVENTORY_INSUFFICIENT_STOCK", "Insufficient available stock"));
+        }
+        if (exception instanceof AllocationRequestConflictException) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiErrorResponse.of("INVENTORY_ALLOCATION_REQUEST_CONFLICT",
+                            "Allocation request id was already used with a different payload"));
+        }
         boolean notFound = exception instanceof StockApplicationException stock && stock.isNotFound()
                 || exception instanceof AllocationApplicationException allocation && allocation.isNotFound();
         String code = notFound ? "INVENTORY_NOT_FOUND" : "INVENTORY_OPERATION_REJECTED";

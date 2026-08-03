@@ -1,6 +1,7 @@
 package com.philia.flashsale.inventory.stock.domain.model;
 
 import com.philia.flashsale.inventory.stock.domain.exception.InventoryDomainException;
+import com.philia.flashsale.inventory.stock.domain.exception.InsufficientStockException;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -59,7 +60,7 @@ public final class InventoryItem {
     public void allocate(long quantity, Instant now) {
         requirePositive(quantity);
         if (quantity > availableQuantity()) {
-            throw new InventoryDomainException("Insufficient available stock");
+            throw new InsufficientStockException();
         }
         campaignAllocatedQuantity = Math.addExact(campaignAllocatedQuantity, quantity);
         touch(now);

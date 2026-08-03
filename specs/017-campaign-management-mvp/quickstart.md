@@ -499,3 +499,24 @@ Validation command:
 ```
 
 Result: **7 tests, 7 passed, 0 failures, 0 errors**.
+
+## 24. T051-T052 Inventory allocation compatibility implementation evidence
+
+Implemented on 2026-08-02:
+
+- Typed `InsufficientStockException` and `AllocationRequestConflictException` now drive stable
+  `INVENTORY_INSUFFICIENT_STOCK` and `INVENTORY_ALLOCATION_REQUEST_CONFLICT` responses without
+  parsing exception messages.
+- `POST /internal/v1/campaign-stock-allocations` now has a dedicated internal JWT boundary requiring
+  the configured internal audience, subject `campaign-service`, and
+  `SCOPE_inventory.campaign.allocate`.
+- The existing broad Inventory authorization chain remains responsible for the other internal
+  endpoints, including release and reconciliation operations.
+
+Validation command:
+
+```powershell
+.\mvnw.cmd -pl services/inventory-service -am "-Dtest=CampaignAllocationCompatibilityTests,InventoryJwtTrustConfigurationTests,InventorySecurityConfigurationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+```
+
+Result: **9 tests, 9 passed, 0 failures, 0 errors**.

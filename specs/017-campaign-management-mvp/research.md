@@ -51,26 +51,29 @@ inside their adapters and are mapped to application commands/results or domain t
 
 ## R2. Synchronous communication
 
-**Decision**: Use documented HTTP contracts and Spring `RestClient` for Campaign-to-Product and
+**Decision**: Use documented HTTP contracts and Spring Cloud OpenFeign for Campaign-to-Product and
 Campaign-to-Inventory calls.
 
 Campaign is already a servlet service and these schedule calls are blocking request/response calls.
-`RestClient` keeps the boundary synchronous and works with virtual threads without introducing
-WebFlux into the service. Calls occur outside Campaign database transactions and use bounded connect
-and response timeouts. Transport failures map to the approved 503 Campaign errors. No application
-retry may create a new Inventory request ID.
+OpenFeign keeps the boundary synchronous and works with virtual threads without introducing WebFlux
+into the service. Feign interfaces and transport DTOs remain inside each feature's outbound adapter;
+the application layer depends only on capability-oriented output ports. Calls occur outside Campaign
+database transactions and use bounded connect and response timeouts. Transport failures map to the
+approved 503 Campaign errors. No application retry may create a new Inventory request ID.
 
 Spring Security's OAuth2 client support will attach the service bearer token to outbound requests.
 Two client-side registration IDs share the Campaign client credentials but request different scope
 sets, so Product validation does not receive Inventory authority and Inventory allocation does not
-receive Product authority.
+receive Product authority. The Feign request configuration must preserve the registration-specific
+token selection, `X-Trace-Id` propagation, bounded timeouts, and response/error translation.
 
 **Rejected**:
 
 - gRPC, because the Constitution currently requires documented synchronous HTTP and the MVP already
   defines HTTP contracts;
 - WebClient/Reactor, because it adds a second programming model without a reactive end-to-end path;
-- OpenFeign, because no Spring Cloud client abstraction is needed for two small explicit adapters;
+- Spring `RestClient`, because OpenFeign keeps the same adapter boundary while reducing repetitive
+  request construction for the two typed internal clients;
 - a resilience/circuit-breaker dependency in Feature 017, because circuit breaking is outside the
   approved MVP and bounded failure mapping is sufficient for the first slice.
 

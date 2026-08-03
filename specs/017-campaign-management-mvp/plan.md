@@ -1,8 +1,8 @@
 # Implementation Plan: Campaign Management MVP
 
 **Branch**: `017-campaign-management-mvp` | **Date**: 2026-07-30 | **Spec**: [spec.md](./spec.md)  
-**Status**: Approved — project owner approved 2026-07-30  
-**Input**: Approved Feature 017 specification and approved ADRs 0012/0013
+**Status**: Amended — pending re-approval after the OpenFeign transport decision
+**Input**: Approved Feature 017 specification, approved ADRs 0012/0013, and proposed ADR 0015
 
 ## Summary
 
@@ -23,7 +23,8 @@ The feature also adds the minimum cross-service compatibility required to run th
 
 Implementation uses package-by-feature with pragmatic Clean/Hexagonal boundaries, short local
 transactions around remote HTTP calls, optimistic/conditional PostgreSQL concurrency controls, and
-Kafka only after the durable outbox is working. Redis, purchase reservation, cancellation/release,
+OpenFeign only inside Campaign outbound adapters. Kafka is added only after the durable outbox is
+working. Redis, purchase reservation, cancellation/release,
 and full OIDC are not introduced.
 
 ## Technical Context
@@ -32,14 +33,14 @@ and full OIDC are not introduced.
 **Framework**: Spring Boot 3.5.16, Spring Security 6.5.x managed by Boot, Spring Cloud Gateway
 2025.0.3 in the existing Gateway  
 **Primary Dependencies**: Spring MVC, Validation, Data JPA, Security Resource Server, OAuth2 Client,
-Spring Authorization Server, Spring Kafka, Liquibase, MapStruct 1.6.3, Actuator, Micrometer
-Prometheus registry  
+Spring Authorization Server, Spring Kafka, Spring Cloud OpenFeign, Liquibase, MapStruct 1.6.3,
+Actuator, Micrometer Prometheus registry
 **Storage**: Campaign-owned PostgreSQL (`campaign_db`); Authentication-owned PostgreSQL client
 registry (`auth_db`); no Campaign Redis  
 **Messaging**: Kafka topic `campaign.lifecycle.v1`, three local partitions, Campaign ID key,
 at-least-once outbox delivery  
 **HTTP**: Gateway-to-Campaign admin HTTP; Campaign-to-Product/Inventory internal HTTP using
-`RestClient`; Client Credentials token endpoint at Authentication  
+OpenFeign adapters; Client Credentials token endpoint at Authentication
 **Threading**: Servlet/MVC with Java virtual threads enabled declaratively for Campaign; no Reactor
 business pipeline  
 **Testing**: JUnit 5, AssertJ, Mockito, Spring Security Test, MockMvc/WebTestClient as appropriate,
@@ -70,7 +71,7 @@ Campaign schedule/lifecycle/outbox races, two lifecycle event types
 | Observability | PASS | Actuator/Prometheus already declarative; `X-Trace-Id` propagation and metrics are planned |
 | Contracts/dependencies | PASS | All cross-service/API/event contracts identified; new dependencies justified in `research.md` |
 | Validation | PASS | unit/integration/contract/concurrency/Kafka/smoke/module/reactor checks are planned |
-| Architecture decision | PASS | ADR 0012 and ADR 0013 record Client Credentials and snapshot identity choices |
+| Architecture decision | PENDING | ADR 0012 and ADR 0013 are accepted; proposed ADR 0015 records the OpenFeign transport choice |
 
 Redis Lua is not applicable because Feature 017 does not implement the purchase hot path or runtime
 stock deduction.
@@ -137,8 +138,8 @@ services/campaign-service/
     │   │   │       ├── in/web/internal/{response,mapper}/
     │   │   │       ├── in/scheduling/
     │   │   │       ├── out/persistence/jpa/{entity,repository,mapper}/
-    │   │   │       ├── out/client/product/{dto,mapper}/
-    │   │   │       └── out/client/inventory/{dto,mapper}/
+    │   │   │       ├── out/client/product/{ProductFeignClient,dto,mapper}/
+    │   │   │       └── out/client/inventory/{InventoryFeignClient,dto,mapper}/
     │   │   ├── scheduleoperation/
     │   │   │   ├── domain/{model,exception}/
     │   │   │   ├── application/{port/in,port/out,usecase}/
@@ -216,7 +217,8 @@ ports.
 
 ### Slice 0 — Build and configuration baseline
 
-1. Update the affected module POMs with only the dependencies justified in `research.md`.
+1. Update the affected module POMs with only the dependencies justified in `research.md`, including
+   `org.springframework.cloud:spring-cloud-starter-openfeign` for Campaign outbound adapters.
 2. Configure Campaign virtual threads, datasource/JPA validation, disabled-by-default normal-replica
    Liquibase, JWT trust, OAuth2 clients, Product/Inventory URLs, Kafka producer, scheduler/outbox
    properties, health, and Prometheus exposure.
@@ -252,8 +254,9 @@ Product, Inventory, and Kafka are not called by local draft operations.
    security chain.
 4. Inventory narrows allocation authorization, introduces stable allocation error distinctions, and
    preserves the existing endpoint/envelope.
-5. Campaign adds the background-capable Client Credentials manager and scope-specific RestClient
-   adapters.
+5. Campaign adds the background-capable Client Credentials manager and scope-specific OpenFeign
+   adapters. Feign interfaces remain transport-only; adapters translate wire DTOs and failures into
+   application ports/results.
 6. Cross-module contract tests prove token/audience/subject/scope isolation and no admin-token relay.
 
 ### Slice 4 — Idempotent schedule and durable event creation
@@ -406,6 +409,7 @@ also run `kubectl apply --dry-run=client -k <overlay>`.
 - [Kafka lifecycle contract](./contracts/campaign-lifecycle-events.md)
 - `docs/adr/0012-campaign-oauth2-client-credentials.md`
 - `docs/adr/0013-flashsale-campaign-snapshot-identity.md`
+- `docs/adr/0015-campaign-openfeign-http-clients.md` (proposed amendment)
 
 ## Complexity Tracking
 
@@ -425,6 +429,8 @@ Authentication capability
 
 - 2026-07-30 — Project owner approved this plan and its research, data-model, quickstart, HTTP,
   security, compatibility, and Kafka contract artifacts.
+- 2026-08-02 — The transport decision was amended from `RestClient` to OpenFeign for the two
+  Campaign outbound HTTP adapters; plan re-approval is required before production implementation.
 
 Plan approval permits `speckit-tasks` to generate `tasks.md`. It does not permit production-code
 implementation yet. The generated task ledger must be reviewed and explicitly approved before

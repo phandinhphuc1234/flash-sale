@@ -13,6 +13,7 @@ import com.philia.flashsale.inventory.allocation.application.port.out.SaveCampai
 import com.philia.flashsale.inventory.allocation.application.result.CampaignStockAllocationResult;
 import com.philia.flashsale.inventory.allocation.domain.model.AllocationStatus;
 import com.philia.flashsale.inventory.allocation.domain.model.CampaignStockAllocation;
+import com.philia.flashsale.inventory.allocation.domain.exception.AllocationRequestConflictException;
 import com.philia.flashsale.inventory.movement.application.port.out.RecordStockMovementPort;
 import com.philia.flashsale.inventory.movement.domain.model.MovementType;
 import com.philia.flashsale.inventory.movement.domain.model.StockMovement;
@@ -63,8 +64,7 @@ public class CampaignAllocationApplicationService implements
             if (!prior.campaignId().equals(command.campaignId())
                     || !prior.variantId().equals(command.variantId())
                     || prior.allocatedQuantity() != command.quantity()) {
-                throw new AllocationApplicationException(
-                        "Request ID was already used for another allocation");
+                throw new AllocationRequestConflictException();
             }
             return CampaignStockAllocationResult.from(prior);
         }

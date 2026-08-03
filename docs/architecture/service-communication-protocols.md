@@ -103,9 +103,11 @@ records, logs, traces, metrics, or OpenTelemetry baggage.
 Use HTTP when the caller cannot continue without an immediate answer. Typical future examples are
 reading a product snapshot while preparing a campaign or retrieving an order status.
 
-In Spring MVC services, prefer a service-owned outbound adapter backed by `RestClient` or a Spring
-HTTP Interface. A reactive caller may use `WebClient`. The application layer depends on a
-capability-oriented output port; domain code does not depend on either HTTP client.
+In Spring MVC services, prefer a service-owned outbound adapter backed by `RestClient`, Spring HTTP
+Interface, or an approved OpenFeign client. A reactive caller may use `WebClient`. The application
+layer depends on a capability-oriented output port; domain code does not depend on any HTTP client.
+OpenFeign interfaces belong inside the outbound adapter and require an approved dependency/plan;
+they must not leak into application ports or domain code.
 
 Each HTTP interaction must define before implementation:
 

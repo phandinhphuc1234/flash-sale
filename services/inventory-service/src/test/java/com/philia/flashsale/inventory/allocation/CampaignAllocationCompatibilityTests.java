@@ -107,7 +107,7 @@ class CampaignAllocationCompatibilityTests {
         mockMvc.perform(allocationRequest(UUID.randomUUID(), UUID.randomUUID(), variantId, 10)
                         .with(jwt().jwt(token -> token.subject(CAMPAIGN_SUBJECT)
                                 .audience(List.of(INTERNAL_AUDIENCE)))
-                                .authorities(new SimpleGrantedAuthority("SCOPE_" + BROAD_SCOPE))))
+                        .authorities(new SimpleGrantedAuthority("SCOPE_" + BROAD_SCOPE))))
                 .andExpect(status().isForbidden());
     }
 
@@ -131,7 +131,7 @@ class CampaignAllocationCompatibilityTests {
         mockMvc.perform(allocationRequest(UUID.randomUUID(), UUID.randomUUID(), variantId, 10)
                         .with(jwt().jwt(token -> token.subject(CAMPAIGN_SUBJECT)
                                 .audience(List.of(INTERNAL_AUDIENCE)))
-                                .authorities(new SimpleGrantedAuthority("SCOPE_" + BROAD_SCOPE))))
+                                .authorities(new SimpleGrantedAuthority("SCOPE_" + NARROW_SCOPE))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("INVENTORY_INSUFFICIENT_STOCK"));
     }
@@ -142,17 +142,17 @@ class CampaignAllocationCompatibilityTests {
         insertInventoryItem(variantId, 100);
         UUID requestId = UUID.randomUUID();
         UUID campaignId = UUID.randomUUID();
-        var broadToken = jwt().jwt(token -> token.subject(CAMPAIGN_SUBJECT)
+        var narrowToken = jwt().jwt(token -> token.subject(CAMPAIGN_SUBJECT)
                 .audience(List.of(INTERNAL_AUDIENCE)))
-                .authorities(new SimpleGrantedAuthority("SCOPE_" + BROAD_SCOPE));
+                .authorities(new SimpleGrantedAuthority("SCOPE_" + NARROW_SCOPE));
 
-        mockMvc.perform(allocationRequest(requestId, campaignId, variantId, 10).with(broadToken))
+        mockMvc.perform(allocationRequest(requestId, campaignId, variantId, 10).with(narrowToken))
                 .andExpect(status().isOk());
 
         mockMvc.perform(allocationRequest(requestId, campaignId, variantId, 20)
                         .with(jwt().jwt(token -> token.subject(CAMPAIGN_SUBJECT)
                                 .audience(List.of(INTERNAL_AUDIENCE)))
-                                .authorities(new SimpleGrantedAuthority("SCOPE_" + BROAD_SCOPE))))
+                                .authorities(new SimpleGrantedAuthority("SCOPE_" + NARROW_SCOPE))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errorCode").value("INVENTORY_ALLOCATION_REQUEST_CONFLICT"));
     }
@@ -167,7 +167,7 @@ class CampaignAllocationCompatibilityTests {
         MvcResult first = mockMvc.perform(allocationRequest(requestId, campaignId, variantId, 10)
                         .with(jwt().jwt(token -> token.subject(CAMPAIGN_SUBJECT)
                                 .audience(List.of(INTERNAL_AUDIENCE)))
-                                .authorities(new SimpleGrantedAuthority("SCOPE_" + BROAD_SCOPE))))
+                                .authorities(new SimpleGrantedAuthority("SCOPE_" + NARROW_SCOPE))))
                 .andExpect(status().isOk())
                 .andReturn();
         String firstId = allocationId(first);
@@ -175,7 +175,7 @@ class CampaignAllocationCompatibilityTests {
         MvcResult replay = mockMvc.perform(allocationRequest(requestId, campaignId, variantId, 10)
                         .with(jwt().jwt(token -> token.subject(CAMPAIGN_SUBJECT)
                                 .audience(List.of(INTERNAL_AUDIENCE)))
-                                .authorities(new SimpleGrantedAuthority("SCOPE_" + BROAD_SCOPE))))
+                                .authorities(new SimpleGrantedAuthority("SCOPE_" + NARROW_SCOPE))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.requestId").value(requestId.toString()))
                 .andReturn();

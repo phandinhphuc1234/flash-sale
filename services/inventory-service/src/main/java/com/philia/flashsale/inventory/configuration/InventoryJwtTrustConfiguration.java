@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -24,8 +25,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
         matchIfMissing = true)
 public class InventoryJwtTrustConfiguration {
 
-    @Bean
-    @ConditionalOnMissingBean(JwtDecoder.class)
+    @Bean(name = "inventoryJwtDecoder")
+    @Primary
+    @ConditionalOnMissingBean(name = "inventoryJwtDecoder")
     JwtDecoder inventoryJwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuer,

@@ -1525,7 +1525,8 @@ Implemented behavior:
 
 Not implemented:
 
-- Service-owned outbound `RestClient`, HTTP Interface, or `WebClient` business clients.
+- Service-owned outbound HTTP business clients (`RestClient`, OpenFeign, HTTP Interface, or
+  `WebClient`) are not implemented yet.
 - Circuit breaker/fallback implementation.
 - Bounded retry policies for business calls.
 - Service workload-identity token issuance.
