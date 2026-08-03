@@ -579,3 +579,29 @@ Focused validation command:
 
 Result: **4 tests, 4 passed, 0 failures, 0 errors**. T057 and later schedule orchestration work
 remain intentionally unchecked.
+
+## 27. T057 Schedule-operation preparation evidence
+
+Implemented on 2026-08-03:
+
+- Added a transactional `PrepareScheduleOperationService` that performs only the local
+  create/load/replay/reopen decision and never wraps downstream HTTP calls.
+- Added stable operation and Inventory request IDs for newly-created commands; retained records are
+  loaded by `(campaignId, idempotencyKey)` and never expire.
+- Added same-fingerprint/version replay and FAILED-operation reopen behavior, while rejecting a
+  reused key with a different request identity or a different active operation for the Campaign.
+- Added a JPA persistence adapter with pessimistic locking for existing identity lookups and
+  `saveAndFlush` mapping at the outbound boundary.
+
+Focused validation command:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am clean "-Dtest=PrepareScheduleOperationServiceTests,ScheduleOperationDomainTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+```
+
+Result: **8 tests, 8 passed, 0 failures, 0 errors**. A separate full Spring context check remains
+blocked by the pre-existing missing `CampaignPersistenceMapper` bean; it is unrelated to the T057
+operation tests and must be repaired before the broader Campaign baseline is green.
+
+The focused architecture check was also run with the T056/T057 tests: **11 tests, 11 passed, 0
+failures, 0 errors**.
