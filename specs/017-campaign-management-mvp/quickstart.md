@@ -556,3 +556,26 @@ A broader clean Campaign test run compiled all 79 production sources but remains
 on five test-first assertions owned by unimplemented T056-T061: two schedule-operation/orchestrator
 type markers and three schedule HTTP cases. No T053-T055 test failed; T063 remains the later US2
 aggregate validation gate.
+
+## 26. T056 Schedule-operation identity model evidence
+
+Implemented on 2026-08-03:
+
+- Added framework-free `ScheduleOperationStatus` transitions for the approved
+  `STARTED -> INVENTORY_ALLOCATED -> COMPLETED`, `STARTED -> FAILED`, and `FAILED -> STARTED`
+  retry paths.
+- Added a deterministic SHA-256 `ScheduleOperationFingerprint` value object for the canonical
+  command/configuration identity.
+- Added the `ScheduleOperation` domain model, including stable idempotency and Inventory request
+  identities, retained-key matching, failure recording, and same-operation retry rules.
+- Added capability-oriented load/save application ports without coupling the application boundary
+  to JPA or Spring.
+
+Focused validation command:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am "-Dtest=ScheduleOperationDomainTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+```
+
+Result: **4 tests, 4 passed, 0 failures, 0 errors**. T057 and later schedule orchestration work
+remain intentionally unchecked.
