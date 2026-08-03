@@ -72,11 +72,10 @@ flowchart LR
   gateway -. rate limit/session/cache planned .-> redis
   inventory -. inventory/cache planned .-> redis
 
-  campaign -. campaign.item.prepared.v1 .-> kafka
-  flashsale -. order.requested.v1 .-> kafka
-  order -. order.created.v1 / order.failed.v1 .-> kafka
-  payment -. payment.succeeded.v1 / payment.failed.v1 .-> kafka
-  notification -. notification.requested.v1 .-> kafka
+  campaign -. CampaignScheduled.v1 / CampaignActivated.v1 .-> kafka
+  flashsale -. PurchaseAccepted - proposed .-> kafka
+  order -. PaymentRequested / final Order events - proposed .-> kafka
+  payment -. Payment result events - proposed .-> kafka
 
   kafka -. consume .-> order
   kafka -. consume .-> payment

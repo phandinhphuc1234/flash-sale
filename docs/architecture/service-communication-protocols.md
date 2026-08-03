@@ -44,6 +44,53 @@ Use these status labels consistently:
 | WebSocket | A future client-facing realtime feature such as chat or order-status push, if justified | Service-to-service RPC, durable messaging, or replacing Kafka | **NOT ADOPTED** |
 | RabbitMQ | No approved use case | A second broker added only because it is familiar | **NOT ADOPTED**; Kafka is the selected asynchronous baseline |
 
+## Current API Gateway route inventory
+
+The following table reflects the routes currently declared in
+`services/api-gateway/src/main/resources/application.yml`. It is implementation evidence, not a
+promise that every downstream business feature is complete.
+
+| Gateway route family | Downstream service | Status | Purpose |
+|---|---|---|---|
+| `/api/v1/auth/**` | Authentication Service | **CURRENT** | Register/login/refresh/logout/session endpoints |
+| `/api/v1/catalog/**` | Product Service | **CURRENT** | Public catalog reads |
+| `/api/v1/admin/catalog/**` | Product Service | **CURRENT** | Product administration |
+| `/api/v1/admin/inventory/**` | Inventory Service | **CURRENT** | Inventory administration |
+| `/api/v1/admin/campaigns/**` | Campaign Service | **CURRENT** | Campaign administration |
+| Shopper purchase routes | Flash Sale Service | **PLANNED** | Submit and query purchase acceptance |
+| Shopper/admin Order routes | Order Service | **PLANNED** | Query Order state and approved management operations |
+| Cart routes | Cart Service | **DEFERRED** | Cart service is currently a shell with no business API |
+| General public Payment routes | Payment Service | **NOT ADOPTED** | Checkout is exposed through Order/Flash Sale boundaries; provider webhook needs its own future contract |
+| General public Notification routes | Notification Service | **NOT ADOPTED** | Notification is normally an asynchronous participant |
+
+Gateway responsibilities remain edge-only: routing, coarse authorization, JWT validation, CORS,
+rate limiting, trace propagation, and Gateway-owned errors. Gateway must not orchestrate Campaign,
+Purchase, Payment, Inventory, or compensation workflows, and it must not access service databases.
+
+## Target service interaction matrix
+
+| Caller | Callee | Mechanism | Status | Reason |
+|---|---|---|---|---|
+| Gateway | Authentication/Product/Campaign/Inventory | HTTP/JSON | **CURRENT** | Public/admin request requires an immediate response |
+| Gateway | Flash Sale/Order | HTTP/JSON | **PLANNED** | Purchase acceptance and Order query boundaries |
+| Campaign | Authentication | OAuth2 token HTTP | **CURRENT for Feature 017** | Obtain short-lived service identity |
+| Campaign | Product | OpenFeign HTTP | **CURRENT for Feature 017** | Immediate authoritative variant validation |
+| Campaign | Inventory | OpenFeign HTTP | **CURRENT for Feature 017** | Immediate idempotent Campaign allocation |
+| Payment | Payment provider | HTTPS | **PLANNED** | Provider charge/refund/query with provider idempotency |
+| Flash Sale | Order | Kafka event | **PLANNED** | Durable `PurchaseAccepted` handoff |
+| Order | Payment/Flash Sale | Kafka commands | **PLANNED** | Purchase Saga steps and compensation |
+| Campaign | Flash Sale/Inventory | Kafka commands | **PLANNED** | Campaign end/cancellation workflow |
+| Domain owners | Notification/analytics/projections | Kafka events | **PLANNED** | Independent choreography/fan-out |
+
+Internal HTTP currently uses the shared service-token audience `flash-sale-internal-api` with
+endpoint-specific scopes. Service-specific audiences shown in old design drafts are not the current
+Feature 017 contract.
+
+Detailed target flows and reliability rules are split into:
+
+- [Flash Sale end-to-end business flow](flash-sale-end-to-end-flow.md)
+- [Saga messaging and reliability design](saga-messaging-reliability.md)
+
 ## 1. Client to API Gateway
 
 Use an HTTP API with JSON for web and mobile clients. Production traffic must use TLS. Local
@@ -212,18 +259,21 @@ Client
 
 flashsale-service
   -> transactional outbox when applicable
-  -> Kafka: illustrative order.requested.v1
+  -> Kafka: proposed PurchaseAccepted
   -> order-service creates its own pending order idempotently
-  -> Kafka: illustrative order.created.v1 or order.failed.v1
+  -> Kafka: proposed PaymentRequested command
   -> payment-service performs an idempotent provider operation
-  -> Kafka: illustrative payment.succeeded.v1 or payment.failed.v1
+  -> Kafka: proposed PaymentSucceeded or PaymentFailed result
+  -> order-service commands Flash Sale to confirm/release the reservation
+  -> order-service publishes a final Order event only after the Saga outcome
   -> notification-service reacts to approved outcome events
 ```
 
 Important corrections:
 
 - `flashsale-service` must not publish "order created" because `order-service` owns order creation.
-  It may publish an accepted purchase/order request after the future contract defines that fact.
+  It may publish `PurchaseAccepted` only after the future feature defines and reaches its durable
+  acceptance boundary.
 - A `202 Accepted` response is safe only after the request has reached the durable or recoverable
   acceptance boundary defined by the feature. Returning success after only an in-memory handoff can
   lose the request.
@@ -233,8 +283,9 @@ Important corrections:
   "sequentially and safely". Each owns its state transition and publishes/consumes explicit
   contracts. Ordering exists only inside the selected Kafka partition.
 - Payment-provider calls require their own idempotency and reconciliation rules.
-- The candidate names ending in `.v1` remain illustrative until an approved feature creates their
-  schemas under its `contracts/` directory.
+- Candidate Purchase/Payment/Order names remain illustrative until an approved feature creates
+  their schemas under its `contracts/` directory. The already approved Campaign names are documented
+  separately by Feature 017.
 
 ## 8. Artifact ownership
 
