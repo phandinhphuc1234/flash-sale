@@ -1,7 +1,7 @@
 # Implementation Plan: Campaign Management MVP
 
 **Branch**: `017-campaign-management-mvp` | **Date**: 2026-07-30 | **Spec**: [spec.md](./spec.md)  
-**Status**: Approved — OpenFeign amendment accepted 2026-08-03
+**Status**: Amendment Draft — Avro/Schema Registry selected; re-approval pending
 **Input**: Approved Feature 017 specification and approved ADRs 0012, 0013, and 0015
 
 ## Summary
@@ -9,7 +9,8 @@
 Implement Campaign Service as the PostgreSQL-backed control plane that prepares one-Variant flash
 sale Campaigns, validates Product truth, allocates Inventory quota idempotently, freezes the
 sellable snapshot, progresses `DRAFT -> SCHEDULED -> ACTIVE -> ENDED`, and reliably publishes
-`CampaignScheduled.v1` and `CampaignActivated.v1` through a transactional outbox.
+Avro `CampaignScheduled.v1` and `CampaignActivated.v1` records through a transactional outbox and
+Confluent Schema Registry.
 
 The feature also adds the minimum cross-service compatibility required to run that workflow:
 
@@ -23,8 +24,8 @@ The feature also adds the minimum cross-service compatibility required to run th
 
 Implementation uses package-by-feature with pragmatic Clean/Hexagonal boundaries, short local
 transactions around remote HTTP calls, optimistic/conditional PostgreSQL concurrency controls, and
-OpenFeign only inside Campaign outbound adapters. Kafka is added only after the durable outbox is
-working. Redis, purchase reservation, cancellation/release,
+OpenFeign only inside Campaign outbound adapters. Kafka/Avro publication is added only after the
+durable outbox is working. Redis, purchase reservation, cancellation/release,
 and full OIDC are not introduced.
 
 ## Technical Context
@@ -34,11 +35,13 @@ and full OIDC are not introduced.
 2025.0.3 in the existing Gateway  
 **Primary Dependencies**: Spring MVC, Validation, Data JPA, Security Resource Server, OAuth2 Client,
 Spring Authorization Server, Spring Kafka, Spring Cloud OpenFeign, Liquibase, MapStruct 1.6.3,
-Actuator, Micrometer Prometheus registry
+Actuator, Micrometer Prometheus registry; the approved contract module adds Avro and Confluent
+serializer/Schema Registry tooling dependencies
 **Storage**: Campaign-owned PostgreSQL (`campaign_db`); Authentication-owned PostgreSQL client
 registry (`auth_db`); no Campaign Redis  
 **Messaging**: Kafka topic `campaign.lifecycle.v1`, three local partitions, Campaign ID key,
-at-least-once outbox delivery  
+at-least-once outbox delivery, Avro SpecificRecord values, `TopicRecordNameStrategy`,
+`BACKWARD_TRANSITIVE` compatibility, controlled Schema Registry registration
 **HTTP**: Gateway-to-Campaign admin HTTP; Campaign-to-Product/Inventory internal HTTP using
 OpenFeign adapters; Client Credentials token endpoint at Authentication
 **Threading**: Servlet/MVC with Java virtual threads enabled declaratively for Campaign; no Reactor
@@ -63,24 +66,25 @@ Campaign schedule/lifecycle/outbox races, two lifecycle event types
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Specification traceability | PASS | Feature 017 is approved; code/idempotency/outbox/service-identity decisions are resolved |
+| Specification traceability | AMENDMENT REQUIRED | Existing Feature 017 is approved, but Avro/Schema Registry changes are a pending amendment |
 | Service ownership | PASS | Campaign/Auth own their migrations; Product/Inventory remain authoritative; no shared JPA/domain model |
 | Communication | PASS | Gateway ingress; documented HTTP contracts; versioned Kafka contract; Kubernetes DNS-compatible URLs |
 | Data and messaging | PASS | PostgreSQL truth; transactional outbox; stable Inventory request ID; idempotent consumers required |
 | Root infrastructure ownership | PASS | Compose/topic orchestration planned under `infra/docker`; service runtime/migrations remain in modules |
 | Observability | PASS | Actuator/Prometheus already declarative; `X-Trace-Id` propagation and metrics are planned |
-| Contracts/dependencies | PASS | All cross-service/API/event contracts identified; new dependencies justified in `research.md` |
+| Contracts/dependencies | AMENDMENT REQUIRED | Avro schemas, contract-module dependency, subjects, and registration workflow must be approved |
 | Validation | PASS | unit/integration/contract/concurrency/Kafka/smoke/module/reactor checks are planned |
-| Architecture decision | PASS | ADR 0012, ADR 0013, and ADR 0015 are accepted |
+| Architecture decision | AMENDMENT REQUIRED | ADR 0012, ADR 0013, and ADR 0015 are accepted; ADR 0016 is Proposed |
 
 Redis Lua is not applicable because Feature 017 does not implement the purchase hot path or runtime
 stock deduction.
 
 ### Post-design gate
 
-PASS. Phase 1 artifacts preserve the same boundaries. The only new durable schemas are owned by
-Campaign and Authentication; all HTTP/event contracts exist before code; no platform asset moves
-into a service; no Constitution exception is required.
+AMENDMENT PENDING. The proposed Avro contract module preserves service ownership and keeps wire
+types at Kafka adapters, but the root module, Schema Registry subjects, compatibility tests, and
+ADR 0016 must be approved before code. No platform asset moves into a service and no Constitution
+exception is requested.
 
 ## Project Structure
 
@@ -104,8 +108,24 @@ specs/017-campaign-management-mvp/
     └── campaign-lifecycle-events.md
 ```
 
-`tasks.md` is intentionally not created by this planning phase. It is produced only after this plan
-is approved.
+`tasks.md` contains the previously generated Feature 017 ledger plus the pending Avro amendment
+phase. The amendment tasks must remain unchecked until this plan, contract, and ADR 0016 are
+approved.
+
+### Root protocol contract module
+
+```text
+contracts/kafka-avro-contracts/
+├── pom.xml
+└── src/main/avro/com/philia/flashsale/contract/
+    └── campaign/lifecycle/v1/
+        ├── CampaignScheduledV1.avsc
+        └── CampaignActivatedV1.avsc
+```
+
+This module contains generated transport contracts only. It must not contain JPA entities, domain
+aggregates, application services, or service-specific business rules. Adding it to the root Maven
+reactor and consuming it from Campaign requires the accepted ADR 0016 and this amendment approval.
 
 ### Campaign Service source layout
 
@@ -278,12 +298,16 @@ transition, even though broker publication is implemented in the next slice.
 
 ### Slice 5 — Outbox Kafka publication and recovery
 
-1. Add Spring Kafka producer configuration only now.
-2. Add multi-instance-safe due-row claim/lease and earliest-aggregate-version ordering.
-3. Publish the approved envelope with Campaign ID key and producer idempotence/`acks=all`.
-4. Implement success, exponential backoff, tenth-attempt terminal failure, lease reclaim, and
+1. Add the approved Avro contract module, generated SpecificRecord types, and compatibility fixtures.
+2. Add Schema Registry client configuration with `auto.register.schemas=false` for stable profiles
+   and `TopicRecordNameStrategy` for lifecycle subjects.
+3. Add Spring Kafka producer configuration only now, using the generated Avro values.
+4. Add multi-instance-safe due-row claim/lease and earliest-aggregate-version ordering.
+5. Publish the approved Avro record with Campaign ID key and producer idempotence/`acks=all`.
+6. Implement success, exponential backoff, tenth-attempt terminal failure, lease reclaim, and
    authenticated requeue of the same event.
-5. Add real Kafka-compatible integration tests for key/envelope/order/retry/duplicate identity.
+7. Add real Kafka-compatible and Schema Registry compatibility integration tests for key/record/
+   order/retry/duplicate identity and Registry/Kafka outage recovery.
 
 ### Slice 6 — Lifecycle, activation event, ending, and snapshot
 
@@ -299,11 +323,14 @@ transition, even though broker publication is implemented in the next slice.
 ### Slice 7 — Local topology and operational evidence
 
 1. Update root Compose environment/service dependencies and local Kafka topic provisioning.
-2. Apply Auth and Campaign migrations with one-off non-web migration processes.
-3. Run the end-to-end smoke path through Gateway/Auth/Campaign/Product/Inventory/PostgreSQL/Kafka.
-4. Verify health/readiness/Prometheus, trace propagation, redaction, service-token renewal, outbox
-   failure/requeue, and restart recovery.
-5. Run affected-module builds, the full reactor, and applicable configuration validation.
+2. Register the approved lifecycle subjects through controlled tooling; never register from
+   application startup.
+3. Apply Auth and Campaign migrations with one-off non-web migration processes.
+4. Run the end-to-end smoke path through Gateway/Auth/Campaign/Product/Inventory/PostgreSQL/Kafka/
+   Schema Registry.
+5. Verify health/readiness/Prometheus, W3C Kafka header trace propagation, redaction, service-token
+   renewal, outbox failure/requeue, Registry outage, and restart recovery.
+6. Run affected-module builds, the full reactor, and applicable configuration validation.
 
 ## Transaction Boundaries
 
@@ -348,7 +375,7 @@ resolved by the same event ID plus consumer idempotency.
 | Crash after allocation response | retry/recovery recalls same request and finalizes once |
 | Concurrent schedule | unique operation/index/version gates; one allocation/result/event |
 | Concurrent activation/end | conditional update permits one transition |
-| Kafka unavailable | durable outbox retries; Campaign state remains truth |
+| Kafka or Schema Registry unavailable | durable outbox remains pending and retries; Campaign state remains truth |
 | Publisher crashes after send | same event may redeliver; identity unchanged; consumer deduplicates |
 | Ten publish failures | row FAILED; later events for Campaign blocked until authorized requeue |
 | Auth token endpoint unavailable | unexpired cached token may continue; otherwise 503/resumable operation |
@@ -359,7 +386,8 @@ resolved by the same event ID plus consumer idempotency.
 - Continue declarative `health`, `info`, and `prometheus` exposure; do not instantiate a Prometheus
   registry in Java.
 - Propagate/normalize `X-Trace-Id` across admin/internal HTTP, OAuth acquisition, Product/Inventory,
-  schedule operations, scheduler-created work, outbox payload, Kafka headers, and structured logs.
+  schedule operations, scheduler-created work, outbox metadata, and structured logs. For Kafka,
+  inject W3C `traceparent`/`tracestate` headers; do not require a trace ID in the Avro business body.
 - Record semantic counters/timers/gauges for Campaign commands, schedule outcomes/latency, downstream
   calls, lifecycle transitions, outbox pending/failed/oldest age, publisher retries, lease recovery,
   and operator requeues.
@@ -378,7 +406,7 @@ resolved by the same event ID plus consumer idempotency.
 | OAuth issuance | valid/invalid client, status/grant/scope, claims/TTL/no refresh token tests |
 | Product/Inventory/Campaign security | audience/subject/scope substitution matrix |
 | Schedule | PostgreSQL concurrency + stable request/replay/crash recovery |
-| Outbox/Kafka | real broker-compatible envelope/key/order/retry/reclaim/requeue tests |
+| Outbox/Kafka/Schema Registry | Avro serialization, subject compatibility, real broker-compatible key/order/retry/reclaim/requeue, and Registry outage tests |
 | Lifecycle | two-worker activation/end race tests with controllable Clock |
 | Observability | health/Prometheus/trace/redaction tests |
 | Local environment | Compose config plus full smoke path |
@@ -410,13 +438,15 @@ also run `kubectl apply --dry-run=client -k <overlay>`.
 - [Product validation contract](./contracts/product-campaign-validation-http.md)
 - [Inventory compatibility contract](./contracts/inventory-allocation-compatibility.md)
 - [Kafka lifecycle contract](./contracts/campaign-lifecycle-events.md)
+- [ADR 0016: Avro and Schema Registry](../../docs/adr/0016-avro-schema-registry-campaign-lifecycle.md)
 - `docs/adr/0012-campaign-oauth2-client-credentials.md`
 - `docs/adr/0013-flashsale-campaign-snapshot-identity.md`
 - `docs/adr/0015-campaign-openfeign-http-clients.md`
 
 ## Complexity Tracking
 
-No Constitution violation or exception is requested.
+No Constitution violation or exception is requested. The Avro contract module and Schema Registry
+client are an approved-amendment dependency change, not a shared business-domain library.
 
 The cross-module work is required by the approved end-to-end security/ownership contracts, but each
 module remains independently deployable and the rollout order avoids a lockstep deployment:
@@ -436,6 +466,9 @@ Authentication capability
   Campaign outbound HTTP adapters; plan re-approval is required before production implementation.
 - 2026-08-03 — Project owner explicitly approved implementing T053–T055 with the repository
   OpenFeign skill; ADR 0015 and this plan amendment are accepted.
+- 2026-08-03 — Avro/Schema Registry amendment drafted from the project owner's selection. ADR 0016,
+  contract-module dependency changes, and task-ledger updates require re-approval before production
+  implementation.
 
 Plan approval permits `speckit-tasks` to generate `tasks.md`. It does not permit production-code
 implementation yet. The generated task ledger must be reviewed and explicitly approved before

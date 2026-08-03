@@ -26,6 +26,8 @@ PRODUCT_SERVICE_URL=http://product-service:8080
 INVENTORY_SERVICE_URL=http://inventory-service:8080
 OAUTH_TOKEN_URI=http://authentication-service:8080/oauth2/token
 SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+SCHEMA_REGISTRY_URL=http://schema-registry:8081
+KAFKA_AUTO_REGISTER_SCHEMAS=false
 ```
 
 Authentication and the corresponding client container receive the same raw bootstrap secret through
@@ -84,7 +86,7 @@ This must not print real secret values in captured CI/PR evidence.
 ## 4. Start backing services
 
 ```powershell
-docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d postgres redis kafka
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d postgres redis kafka schema-registry
 ```
 
 For an old PostgreSQL volume, verify `auth_db`, `product_db`, `campaign_db`, and `inventory_db` exist.
@@ -130,7 +132,9 @@ docker compose --env-file infra/docker/.env `
 ```
 
 The implementation must ensure local topic `campaign.lifecycle.v1` exists with three partitions and
-replication factor one before the outbox publisher is expected to succeed.
+replication factor one before the outbox publisher is expected to succeed. The Avro amendment also
+requires Schema Registry at `http://schema-registry:8081`; controlled registration must complete
+before a producer rollout because `auto.register.schemas=false`.
 
 Debug endpoints:
 
@@ -205,11 +209,12 @@ Verify after schedule:
 - Campaign is SCHEDULED and immutable;
 - snapshot/allocation quantity is complete;
 - exactly one `CampaignScheduled.v1` outbox row exists;
-- Kafka receives the approved envelope with Campaign ID key;
+- Kafka receives the approved Avro SpecificRecord with Campaign ID key and W3C trace headers;
 - repeated identical schedule returns/resumes the same result;
 - changed request with the same key returns 409 without another allocation;
 - Product/Inventory request capture contains a Campaign service token, never the administrator token;
-- `X-Trace-Id` appears across Gateway, Campaign, downstream calls, outbox, Kafka, and logs.
+- `X-Trace-Id` appears across HTTP boundaries; W3C `traceparent`/`tracestate` appears in Kafka
+  headers, outbox relay spans, and logs.
 
 ## 10. Lifecycle and snapshot smoke
 
@@ -229,7 +234,7 @@ Exercise at least:
 - stop Product before schedule -> 503 and Campaign remains DRAFT;
 - stop Inventory before/around allocation -> resumable operation with unchanged request ID;
 - simulate crash after Inventory success -> retry completes one Campaign/one event;
-- stop Kafka -> outbox remains durable and retries with backoff;
+- stop Kafka or Schema Registry -> outbox remains durable and retries with backoff;
 - reach ten publication failures -> FAILED;
 - authorized requeue -> same event ID returns PENDING and later publishes;
 - expire publisher lease -> another instance reclaims without changing event identity;
@@ -243,10 +248,12 @@ Record command, scope, exit code/result, and relevant CI/PR reference for:
 .\mvnw.cmd -pl services/api-gateway,services/authentication-service,services/product-service,services/inventory-service,services/campaign-service -am verify
 .\mvnw.cmd clean verify
 docker compose --env-file infra/docker/.env -f infra/docker/compose.yml -f infra/docker/compose.dev.yml --profile apps config
+curl.exe http://localhost:8081/subjects
 ```
 
 Do not report Feature 017 complete while a required test, migration, contract, concurrency, Kafka,
 security, observability, or smoke check is failing.
+
 ## T022 Campaign admin security evidence
 
 Validated on 2026-08-02:
@@ -605,3 +612,18 @@ operation tests and must be repaired before the broader Campaign baseline is gre
 
 The focused architecture check was also run with the T056/T057 tests: **11 tests, 11 passed, 0
 failures, 0 errors**.
+
+## 28. Avro amendment validation (pending approval)
+
+After Feature 017 and ADR 0016 are approved, add the protocol-module and Registry evidence here:
+
+```powershell
+.\mvnw.cmd -pl contracts/kafka-avro-contracts -am verify
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d kafka schema-registry
+curl.exe http://localhost:8081/subjects
+```
+
+The evidence must show deterministic SpecificRecord generation, `TopicRecordNameStrategy`,
+`BACKWARD_TRANSITIVE` compatibility checks, controlled registration with auto-registration disabled,
+and a Kafka/Registry outage leaving the original outbox event ID pending for retry. Until those
+artifacts are approved, the commands are design targets and must not be recorded as passed.

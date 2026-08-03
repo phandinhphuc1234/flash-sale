@@ -156,7 +156,7 @@ whether allocation already occurred.
 | `event_type` | VARCHAR(100) | no | `CampaignScheduled` or `CampaignActivated` |
 | `event_version` | INTEGER | no | `1` |
 | `event_key` | VARCHAR(100) | no | Campaign ID text used as Kafka key |
-| `payload` | JSONB | no | immutable approved event envelope |
+| `payload` | JSONB | no | immutable internal source payload mapped to the approved Avro SpecificRecord by the relay |
 | `publish_status` | VARCHAR(32) | no | `PENDING`, `PROCESSING`, `PUBLISHED`, `FAILED` |
 | `retry_count` | INTEGER | no | current automatic attempt count |
 | `next_attempt_at` | TIMESTAMPTZ | yes | due time for PENDING retry |
@@ -168,7 +168,7 @@ whether allocation already occurred.
 | `requeue_count` | INTEGER | no | explicit operator recoveries |
 | `requeued_by` | VARCHAR(100) | yes | authorized operator subject |
 | `requeued_at` | TIMESTAMPTZ | yes | latest explicit recovery time |
-| `trace_id` | VARCHAR(128) | no | transition correlation identity |
+| `trace_id` | VARCHAR(128) | no | internal transition correlation metadata used to build W3C Kafka headers; never serialized into the Avro body |
 | `created_at` | TIMESTAMPTZ | no | UTC |
 | `updated_at` | TIMESTAMPTZ | no | UTC |
 

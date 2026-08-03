@@ -11,6 +11,10 @@ will publish versioned integration events. A centralized schema service is usefu
 event compatibility, but no current service should become coupled to it before an event contract
 is approved.
 
+Feature 017's Avro adoption details are proposed separately in
+[ADR 0016](0016-avro-schema-registry-campaign-lifecycle.md). This ADR remains the local platform
+foundation and does not by itself authorize Avro in a service.
+
 ## Decision
 
 Add one root-owned Confluent Schema Registry container to `infra/docker/compose.yml`:

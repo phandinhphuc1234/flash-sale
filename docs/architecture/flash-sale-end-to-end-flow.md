@@ -5,12 +5,15 @@
 This document is a target workflow guide. It does not approve production behavior, Kafka topics,
 Redis TTLs, payment policy, or Campaign lifecycle changes by itself.
 
-The currently approved Campaign contract remains Feature 017:
+The Feature 017 baseline and pending amendment govern Campaign:
 
 - `DRAFT -> SCHEDULED -> ACTIVE -> ENDED`;
 - `CampaignScheduled.v1` and `CampaignActivated.v1`;
 - synchronous Product validation and Inventory allocation during scheduling;
 - no Campaign cancellation or ended event in that MVP.
+
+The amendment draft selects Avro SpecificRecords through Confluent Schema Registry for the two
+lifecycle events. Until re-approval, the existing JSON baseline remains the runtime contract.
 
 Purchase, payment, Campaign draining/end orchestration, and cancellation below are proposed future
 features. Their specs, ADRs, contracts, plans, and tasks must be approved before implementation.

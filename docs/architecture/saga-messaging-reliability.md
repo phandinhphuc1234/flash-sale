@@ -9,8 +9,8 @@ In particular:
 
 - Feature 017 owns `CampaignScheduled.v1`, `CampaignActivated.v1`, and topic
   `campaign.lifecycle.v1`;
-- Schema Registry is available in local infrastructure, but Avro is not yet the approved repository
-  serialization format;
+- Schema Registry is available in local infrastructure, and Avro is selected in the Feature 017
+  amendment draft; no production serializer is authorized until that amendment is approved;
 - Purchase, Payment, Order, Campaign end, and cancellation messaging require future Spec Kit
   artifacts and, where boundaries change, ADRs.
 
@@ -119,8 +119,8 @@ W3C `traceparent` and approved baggage belong in Kafka headers. JWTs, client sec
 credentials, and raw authorization headers must never enter payloads, headers, logs, or traces.
 
 Do not create one shared Java event class used by all services. Schemas are wire contracts; every
-adapter maps them to its service-owned application/domain model. The existing Feature 017 Campaign
-event envelope remains unchanged unless a separately approved compatibility migration replaces it.
+adapter maps them to its service-owned application/domain model. Feature 017's amendment draft
+replaces its JSON Campaign event envelope with Avro SpecificRecords only after re-approval.
 
 ## 6. PostgreSQL transactional outbox
 
@@ -277,8 +277,9 @@ Exact TTLs, attempts, backoff, timeout, and manual-review policies remain featur
 
 ## 12. Schema Registry and compatibility
 
-Confluent Schema Registry is available in local infrastructure. Before adopting Avro, Protobuf, or
-JSON Schema, an approved feature must define:
+Confluent Schema Registry is available in local infrastructure. Feature 017's amendment draft
+defines Avro adoption for the first Campaign lifecycle producer. Every later format adoption still
+requires an approved feature to define:
 
 - serialization format;
 - subject naming strategy;

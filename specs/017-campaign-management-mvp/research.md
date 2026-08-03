@@ -18,9 +18,9 @@
   locking. Its current internal authorization is the broader `SCOPE_INVENTORY_WRITE`.
 - Kafka exists only in local infrastructure; no application module currently publishes a promoted
   integration event.
-- Repository-wide OpenTelemetry export remains planned. Current implemented request correlation is
-  `X-Trace-Id`; Feature 017 preserves that compatibility path and does not pretend it is full W3C
-  distributed tracing.
+- Repository-wide OpenTelemetry export remains planned. Feature 017's Avro amendment uses W3C
+  `traceparent`/`tracestate` Kafka headers; existing HTTP `X-Trace-Id` remains a compatibility
+  boundary until the repository-wide tracing feature is approved.
 
 ## R1. Service and package architecture
 
@@ -204,7 +204,9 @@ reads, and Redis in Campaign Service.
 ## R8. Transactional outbox and Kafka
 
 **Decision**: Persist each scheduled/activated event in the same PostgreSQL transaction as its
-Campaign transition; publish later to `campaign.lifecycle.v1` with `campaignId` as Kafka key.
+Campaign transition; publish later as Avro SpecificRecords to `campaign.lifecycle.v1` with
+`campaignId` as Kafka key. The Feature 017 amendment selects `TopicRecordNameStrategy`,
+`BACKWARD_TRANSITIVE`, controlled registration, and `auto.register.schemas=false`.
 
 The publisher claims due rows in a short transaction using a processing lease, sends outside the
 claim transaction, then marks the same row published or schedules its next retry. Only the earliest
@@ -246,9 +248,9 @@ sizes or an invalid retry limit.
 
 ## R10. Observability
 
-**Decision**: Keep Actuator/Prometheus declarative auto-configuration and propagate the existing
-`X-Trace-Id` through Gateway, Campaign, OAuth token acquisition, Product, Inventory, outbox payloads,
-Kafka records, schedulers, and structured logs.
+**Decision**: Keep Actuator/Prometheus declarative auto-configuration. Preserve `X-Trace-Id` at
+HTTP boundaries, and propagate W3C `traceparent`/`tracestate` through Kafka headers, outbox relay,
+schedulers, and structured logs. Trace context is not an Avro business field.
 
 Important metrics include schedule results/latency, downstream failures, lifecycle transition
 counts, outbox pending/failed/oldest-age, publication attempts, and recovery/requeue counts. Business
@@ -266,7 +268,7 @@ Micrometer Tracing/OpenTelemetry export remains a later cross-service observabil
 | MVC/security | status/headers/body, validation, 401/403, two-audience token substitution |
 | PostgreSQL Testcontainers | Liquibase, constraints, optimistic races, active-operation uniqueness, scheduler/outbox claims |
 | HTTP contract | Gateway forwarding; Campaign/Product/Inventory/Auth request/response compatibility |
-| Kafka integration | real broker/compatible test proves key, envelope, ordering, retry, duplicate identity |
+| Kafka integration | real broker/Registry-compatible test proves SpecificRecord schema, key, ordering, retry, duplicate identity, and W3C headers |
 | Recovery/concurrency | concurrent schedule and activation; crash after allocation; publisher reclaim |
 | Local smoke | Client -> Gateway -> Auth -> Campaign -> Product/Inventory -> PostgreSQL/Kafka |
 | Module/reactor | affected-module verify then full `clean verify` |
@@ -285,6 +287,7 @@ profile for schedule/lifecycle workers is included because correctness under rac
 | Campaign | `org.mapstruct:mapstruct` | explicit web/persistence boundary mapping |
 | Campaign | PostgreSQL runtime driver | Campaign database |
 | Campaign | `spring-kafka` | outbox publication after the Kafka slice begins |
+| Root `contracts/kafka-avro-contracts` | Apache Avro code generation + Confluent serializer/Registry tooling | generated SpecificRecord protocol artifact and compatibility gates; protocol-only, no domain types |
 | Authentication | `spring-boot-starter-oauth2-authorization-server` | standards-based Client Credentials token endpoint |
 
 Test-only additions are Spring Security Test, Spring Kafka Test, Spring Boot Testcontainers,

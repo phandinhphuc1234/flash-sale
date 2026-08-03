@@ -61,6 +61,10 @@ See [Service communication protocols](docs/architecture/service-communication-pr
 the approved HTTP/Kafka baseline, JWT validation boundary, deferred gRPC rule, and flash-sale
 reliability guardrails.
 
+See [Kafka and Data Contract Guide](docs/kafka/README.md) for the local KRaft/Schema Registry
+topology, proposed Avro contract governance, outbox/inbox reliability, tracing, CI, and rollout
+checklists.
+
 ## Build
 
 Requirements: Java 21 and network access for the first Maven Wrapper dependency download.

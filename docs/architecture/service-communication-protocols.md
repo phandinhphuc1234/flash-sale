@@ -207,11 +207,12 @@ record to Kafka. The plan must define retry, cleanup, deduplication, monitoring,
 
 ### 4.1 Schema Registry status
 
-The local Compose topology includes Confluent Schema Registry at `http://localhost:8081`. It is a
-platform capability for future Avro, Protobuf, or JSON Schema validation; it does not itself approve
-an event contract, replace the repository contract files, or remove the need for an outbox and
-idempotent consumers. A feature must define schema format, subject naming, compatibility mode,
-producer/consumer ownership, and rollout tests before adding a service serializer or deserializer.
+The local Compose topology includes Confluent Schema Registry at `http://localhost:8081`. Feature
+017's amendment draft selects Avro SpecificRecords, `TopicRecordNameStrategy`, and
+`BACKWARD_TRANSITIVE` for the Campaign lifecycle topic. This is still an amendment, not runtime
+authorization: the feature must be re-approved and then add the protocol module, generated types,
+controlled registration, and compatibility tests. Registry does not replace repository contract
+files, the outbox, or idempotent consumers.
 
 ## 5. Why gRPC is deferred
 

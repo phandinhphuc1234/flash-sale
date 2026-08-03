@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-29
 
-**Status**: Approved (service-identity amendment approved 2026-07-30)
+**Status**: Amendment Draft — Avro/Schema Registry adoption selected; re-approval pending
 
 **Input**: `C:\Users\MSi\Downloads\campaign-service-minimal-mvp-spec.md`
 
@@ -40,6 +40,8 @@ stock-backed, and ready to activate.
 - automatically end an active campaign at its end time;
 - expose an internal campaign snapshot for Flash Sale Service recovery and cache rebuilding;
 - publish versioned scheduled and activated lifecycle notifications reliably;
+- publish those lifecycle notifications as schema-first Avro records governed by Confluent Schema
+  Registry, with compatibility validation before rollout;
 - authorize campaign administration through the existing Gateway and revalidate authorization in
   Campaign Service;
 - add the minimal OAuth2 Client Credentials capability required for Campaign Service to obtain a
@@ -92,6 +94,19 @@ stock-backed, and ready to activate.
   `flash-sale-internal-api`, and scope `campaign.snapshot.read`. Campaign Service independently
   validates that identity and exposes no public shopper access to the snapshot.
 
+### Session 2026-08-03 — Avro/Schema Registry amendment
+
+- Q: Which serialization format should the Campaign lifecycle contract use? → A: Avro
+  schema-first with generated `SpecificRecord` classes and Confluent Schema Registry. The existing
+  JSON contract is replaced only after this amendment is approved and rolled out according to the
+  compatibility plan.
+- Q: Which subject and compatibility policies apply? → A: Use
+  `TopicRecordNameStrategy`, `BACKWARD_TRANSITIVE`, and `auto.register.schemas=false` outside local
+  experiments. Consumers are deployed before producers that emit a compatible schema revision.
+- Q: Where does trace context live? → A: W3C `traceparent`/`tracestate` Kafka headers; do not
+  require a `traceId` field in the Avro business payload. No JWT, cookie, secret, or raw
+  Authorization header may be placed in the record or headers.
+
 ## Baseline References
 
 - `campaign-service` is currently a runnable scaffold without business schema or business APIs.
@@ -107,8 +122,9 @@ stock-backed, and ready to activate.
   `SCOPE_inventory.campaign.allocate` compatibility contract.
 - Product currently has no internal campaign-validation API; Feature 017 introduces that contract
   protected by `SCOPE_catalog.read`.
-- The local platform provides PostgreSQL and a Kafka broker, but Campaign Service currently has no
-  producer, consumer, or promoted lifecycle-event contract.
+- The local platform provides PostgreSQL, Kafka, and Confluent Schema Registry. Campaign Service
+  currently has no running publisher/consumer; this amendment promotes the lifecycle Avro contract
+  only after its artifacts and implementation tasks are approved.
 
 ## User Scenarios & Testing
 
@@ -461,6 +477,18 @@ workflow metadata.
   remain independent from the Campaign client. Campaign Service MUST independently validate the
   token signature, issuer, internal audience, expiration, `flashsale-service` subject, and snapshot
   authority before returning internal snapshot data.
+- **FR-041**: `CampaignScheduled.v1` and `CampaignActivated.v1` MUST be Avro records with generated
+  protocol types, registered and compatibility-checked under their Schema Registry subjects before
+  a producer rollout.
+- **FR-042**: The lifecycle producer MUST use the approved subject naming and compatibility policy;
+  an incompatible schema change MUST be rejected before publication and MUST NOT mutate Campaign
+  state.
+- **FR-043**: If Kafka or Schema Registry is unavailable, the already committed Campaign transition
+  and its stable outbox event identity MUST remain durable and retryable; the system MUST NOT create
+  a second Campaign transition or event identity.
+- **FR-044**: Lifecycle records MUST carry stable event identity and Campaign key as defined by the
+  contract, while W3C trace context is propagated through Kafka headers and sensitive credentials
+  are absent from payloads and headers.
 
 ### Non-Functional Requirements
 
@@ -471,6 +499,8 @@ workflow metadata.
   business result for the same campaign version.
 - **NFR-REL-001**: A simulated interruption after successful Inventory allocation MUST be recoverable
   without manual data repair and without duplicate allocation.
+- **NFR-REL-002**: A simulated Kafka or Schema Registry outage after a successful Campaign transition
+  MUST preserve one pending lifecycle event that can later be published with its original identity.
 - **NFR-SEC-001**: All tested unauthorized administrative calls MUST be denied at both ingress and
   owning-service boundaries.
 - **NFR-SEC-002**: Contract tests MUST demonstrate that administrator/service token substitution,
@@ -493,7 +523,8 @@ workflow metadata.
 - **Schedule Operation**: The durable identity and progress of one idempotent cross-service schedule
   attempt, including the stable Inventory request identity and request fingerprint.
 - **Campaign Lifecycle Notification**: A versioned fact for one successful campaign transition,
-  retained durably until publication succeeds or reaches its approved recovery state.
+  represented by an approved Avro record and retained durably until publication succeeds or reaches
+  its approved recovery state.
 - **OAuth Client Registration**: Authentication-owned machine-client identity containing a hashed
   credential, client status, allowed grant, access-token TTL, and least-privilege scopes.
 
@@ -540,6 +571,9 @@ workflow metadata.
 - **SC-010**: Every tested internal snapshot request from an identity other than
   `flashsale-service`, or without `SCOPE_campaign.snapshot.read`, is denied without returning
   campaign data.
+- **SC-011**: Every tested lifecycle schema passes the approved compatibility check, can be
+  serialized/deserialized by producer and consumer contract tests, and remains publishable with
+  the original event identity after a Kafka or Schema Registry outage.
 
 ## Dependencies and Compatibility
 
@@ -559,8 +593,12 @@ workflow metadata.
   Inventory endpoint. Its authorization is narrowed from `SCOPE_INVENTORY_WRITE` to
   `SCOPE_inventory.campaign.allocate` through an approved compatibility change.
 - `CampaignScheduled.v1` and `CampaignActivated.v1` are new versioned integration contracts whose
-  envelope, partition key, compatibility, and consumer expectations must be approved before
-  implementation.
+  Avro record schema, subject naming, compatibility, partition key, headers, and consumer
+  expectations must be approved before implementation.
+- The root protocol-only `contracts/kafka-avro-contracts` module is a proposed build artifact; it
+  must not contain JPA entities, domain models, or service business logic.
+- Schema Registry is a runtime contract service, not durable business truth. PostgreSQL outbox rows
+  remain authoritative for Campaign transitions and pending publication.
 - Campaign Service must remain backward compatible as an independently deployable scaffold while
   slices are introduced in dependency order.
 - Flash Sale Service does not need purchase-path implementation in Feature 017, but its approved
@@ -582,6 +620,8 @@ workflow metadata.
 - Configuration remains locked while a schedule operation is active, so the crash-after-allocation
   recovery path completes scheduling rather than releasing the allocation.
 - Kafka delivery is at least once; downstream consumers remain responsible for idempotent handling.
+- Avro schemas are committed to Git, generated deterministically, compatibility-checked before
+  release, and registered through controlled tooling rather than application startup.
 
 ## Constitutional Constraints
 
@@ -592,13 +632,15 @@ workflow metadata.
   snapshot is not a public shopper route.
 - **API/event contracts**: Admin Campaign, Product validation, Inventory allocation compatibility,
   service-token issuance/trust, internal snapshot, `CampaignScheduled.v1`, and
-  `CampaignActivated.v1` contracts must be documented and approved before implementation; Kafka
-  contracts are versioned.
+  `CampaignActivated.v1` contracts must be documented and approved before implementation; the
+  lifecycle contracts use approved Avro schemas and compatibility tests.
 - **Durable and hot-path data**: Campaign state and operation history use Campaign Service's
   PostgreSQL database as durable truth. Redis and purchase hot-path behavior are out of scope.
 - **Messaging reliability**: Scheduled/activated state changes require a transactional outbox;
   publication is at least once, consumers are idempotent, ordering is per campaign, and terminal
   failure is recovered by an authenticated `SCOPE_CAMPAIGN_ADMIN` requeue of the same durable event.
+  Schema Registry or Kafka unavailability cannot erase the committed transition or replace its event
+  identity.
 - **Root infrastructure ownership**: Service-owned runtime configuration and schema migrations stay
   under `services/campaign-service`; shared Compose/Kubernetes/monitoring changes stay under root
   `infra/`.
@@ -614,7 +656,8 @@ workflow metadata.
 - **Architecture decisions**: The feature has high correctness, stock-allocation, concurrency,
   security, data, and contract risk, so the repository risk workflow and pragmatic feature-local
   Clean/Hexagonal structure apply. No service-boundary change is proposed; any new cross-service
-  authentication or communication-style decision requires an ADR before implementation.
+  authentication or communication-style decision requires an ADR before implementation. Avro and
+  Schema Registry adoption is tracked by ADR 0016 and must be accepted before code changes.
 
 ## Approval and History
 
@@ -629,3 +672,6 @@ workflow metadata.
 - 2026-07-30 — Project owner approved a separate `flashsale-service` Client Credentials identity
   with `campaign.snapshot.read` for the internal Campaign snapshot; the last open specification
   security boundary was resolved.
+- 2026-08-03 — Avro schema-first contracts, Confluent Schema Registry, TopicRecordNameStrategy,
+  BACKWARD_TRANSITIVE compatibility, controlled registration, and W3C Kafka header tracing selected
+  for amendment; re-approval is required before implementation.

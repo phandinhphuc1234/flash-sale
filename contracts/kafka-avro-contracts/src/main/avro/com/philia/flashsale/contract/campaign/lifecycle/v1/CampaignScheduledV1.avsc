@@ -1,0 +1,52 @@
+{
+  "type": "record",
+  "name": "CampaignScheduledV1",
+  "namespace": "com.philia.flashsale.contract.campaign.lifecycle.v1",
+  "doc": "Immutable campaign snapshot published after a campaign is scheduled.",
+  "fields": [
+    {"name": "eventId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "eventType", "type": "string", "doc": "CampaignScheduled"},
+    {"name": "eventVersion", "type": "int"},
+    {"name": "aggregateType", "type": "string", "doc": "CAMPAIGN"},
+    {"name": "aggregateId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "aggregateVersion", "type": "long"},
+    {"name": "occurredAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {
+      "name": "data",
+      "type": {
+        "type": "record",
+        "name": "CampaignScheduledDataV1",
+        "fields": [
+          {"name": "campaignId", "type": {"type": "string", "logicalType": "uuid"}},
+          {"name": "campaignCode", "type": "string"},
+          {"name": "startAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+          {"name": "endAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+          {
+            "name": "item",
+            "type": {
+              "type": "record",
+              "name": "CampaignScheduledItemV1",
+              "fields": [
+                {"name": "variantId", "type": {"type": "string", "logicalType": "uuid"}},
+                {"name": "inventoryAllocationId", "type": {"type": "string", "logicalType": "uuid"}},
+                {"name": "variantSku", "type": "string"},
+                {
+                  "name": "campaignPrice",
+                  "type": {
+                    "type": "bytes",
+                    "logicalType": "decimal",
+                    "precision": 19,
+                    "scale": 4
+                  }
+                },
+                {"name": "currency", "type": "string", "default": "VND"},
+                {"name": "allocatedQuantity", "type": "long"},
+                {"name": "purchaseLimitPerUser", "type": "long"}
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

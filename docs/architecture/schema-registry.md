@@ -1,10 +1,15 @@
 # Confluent Schema Registry Foundation
 
+> Implementation guide: start at
+> [Kafka and Data Contract Guide](../kafka/README.md), then use the dedicated local-platform,
+> Avro-governance, and reliable-integration documents linked there.
+
 ## Scope
 
 The repository provides a local Confluent Schema Registry alongside the existing single-node
-Apache Kafka broker. This is platform support only. No service currently depends on Schema Registry
-for startup, serialization, or message publication.
+Apache Kafka broker. This is platform support only. Feature 017 selects Avro in an amendment draft,
+but no service depends on Registry for startup, serialization, or message publication until that
+amendment is approved and implemented.
 
 ## Local topology
 
@@ -49,3 +54,8 @@ An approved Kafka feature must define the following before adding a service seri
 
 Schema Registry does not replace the repository's versioned event contracts, outbox, or idempotent
 consumer requirements.
+
+The current Compose addresses are `kafka:9092` and `http://schema-registry:8081` inside Docker,
+and `localhost:29092` and `http://localhost:8081` from the host. The Feature 017 amendment draft
+selects Avro SpecificRecords, `TopicRecordNameStrategy`, and `BACKWARD_TRANSITIVE`; Registry
+availability alone does not activate that migration.

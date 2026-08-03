@@ -149,6 +149,15 @@ public final class Campaign {
         touch(normalizedActor, normalizedNow);
     }
 
+    /** Applies the authoritative schedule snapshot without creating an extra draft mutation. */
+    public void applySchedulingSnapshot(CampaignItem item) {
+        ensureDraftEditable();
+        if (item == null) {
+            throw new IllegalArgumentException("Campaign item is required");
+        }
+        this.item = item;
+    }
+
     /** Finalizes a draft only after its complete snapshot/allocation and future start are present. */
     public void markScheduled(String actor, Instant now) {
         requireTransition(CampaignStatus.SCHEDULED);
