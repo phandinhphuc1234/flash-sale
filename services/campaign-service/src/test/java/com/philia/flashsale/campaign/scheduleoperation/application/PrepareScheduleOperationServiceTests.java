@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.philia.flashsale.campaign.scheduleoperation.application.command.PrepareScheduleOperationCommand;
 import com.philia.flashsale.campaign.scheduleoperation.application.exception.ScheduleOperationInProgressException;
 import com.philia.flashsale.campaign.scheduleoperation.application.exception.ScheduleOperationRequestConflictException;
-import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadScheduleOperationPort;
+import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadLockedScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.SaveScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.result.ScheduleOperationPreparationResult;
 import com.philia.flashsale.campaign.scheduleoperation.application.usecase.PrepareScheduleOperationService;
@@ -96,7 +96,7 @@ class PrepareScheduleOperationServiceTests {
     }
 
     private static final class InMemoryOperations
-            implements LoadScheduleOperationPort, SaveScheduleOperationPort {
+            implements LoadLockedScheduleOperationPort, SaveScheduleOperationPort {
         private ScheduleOperation saved;
         private int saveCount;
         private boolean inFlight;
@@ -107,6 +107,12 @@ class PrepareScheduleOperationServiceTests {
                     && saved.idempotencyKey().equals(idempotencyKey)
                     ? Optional.of(saved)
                     : Optional.empty();
+        }
+
+        @Override
+        public Optional<ScheduleOperation> findLockedByCampaignIdAndIdempotencyKey(
+                UUID campaignId, String idempotencyKey) {
+            return findByCampaignIdAndIdempotencyKey(campaignId, idempotencyKey);
         }
 
         @Override

@@ -295,9 +295,9 @@ be proved by mocks.
 ## 13. Recommended first implementation
 
 The safest first production path is the Campaign lifecycle producer because its owner, topic, key,
-event identity, ordering, and outbox behavior are specified. The Feature 017 amendment draft now
-selects Avro for this path; implementation remains blocked until the amendment and ADR 0016 are
-approved.
+event identity, ordering, and outbox behavior are specified. The approved Feature 017 amendment
+now selects Avro SpecificRecords for this path; generated contracts and compatibility gates are
+present, while live publisher/Registry smoke evidence is tracked by later runtime tasks.
 
 After one producer/outbox path is green, create a separate Flash Sale projection-consumer feature
 with inbox idempotency. Do not begin with the complete Payment/Purchase Saga because that combines

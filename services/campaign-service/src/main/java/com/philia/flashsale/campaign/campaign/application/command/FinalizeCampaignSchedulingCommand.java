@@ -23,14 +23,9 @@ public record FinalizeCampaignSchedulingCommand(
         Objects.requireNonNull(product, "Product validation result is required");
         Objects.requireNonNull(allocation, "Inventory allocation is required");
         Objects.requireNonNull(now, "Schedule time is required");
-        if (expectedVersion < 0) {
-            throw new IllegalArgumentException("Campaign version must not be negative");
-        }
-        if (actor == null || actor.isBlank()) {
-            throw new IllegalArgumentException("Campaign actor is required");
-        }
-        if (traceId == null || traceId.isBlank()) {
-            throw new IllegalArgumentException("Trace id is required");
+        if (expectedVersion < 0 || actor == null || actor.isBlank()
+                || traceId == null || traceId.isBlank()) {
+            throw new IllegalArgumentException("Invalid scheduling finalization command");
         }
     }
 }

@@ -137,12 +137,12 @@ crash-after-allocation recovery, background recovery, and absence of admin-token
 - [x] T055 [P] [US2] Implement Inventory allocation DTOs, `InventoryFeignClient`, common-envelope parsing, identity/result verification, stable-error mapping, and `X-Trace-Id` propagation in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/client/inventory/`
 - [x] T056 [P] [US2] Implement schedule-operation status/model/fingerprint rules and application ports in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/scheduleoperation/domain/` and `scheduleoperation/application/port/`
 - [x] T057 [US2] Implement short-transaction schedule-operation creation/loading, indefinite key retention, stable Inventory request ID, same-config reopen, and conflict detection in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/scheduleoperation/application/usecase/PrepareScheduleOperationService.java` and `scheduleoperation/adapter/out/persistence/jpa/ScheduleOperationPersistenceAdapter.java`
-- [ ] T058 [US2] Implement the schedule orchestrator with no database transaction around token/Product/Inventory HTTP calls in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/usecase/ScheduleCampaignService.java`
-- [ ] T059 [US2] Implement version/config revalidation, immutable snapshot freeze, `DRAFT -> SCHEDULED`, operation completion, and one `CampaignScheduled.v1` outbox insert in one final transaction in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/persistence/jpa/CampaignSchedulingPersistenceAdapter.java`
-- [ ] T060 [US2] Add canonical scheduled-event envelope/payload creation without broker publication in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/domain/event/CampaignScheduled.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/outbox/application/model/CampaignOutboxEvent.java`
-- [ ] T061 [US2] Expose the approved schedule command through the existing Campaign admin API/controller and error mappings in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/in/web/admin/CampaignAdminApi.java`, `CampaignAdminController.java`, and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/websupport/error/CampaignHttpExceptionHandler.java`
-- [ ] T062 [US2] Implement batch recovery of resumable schedule operations using Campaign's service identity and stable Inventory request identity in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/scheduleoperation/adapter/in/scheduling/ScheduleOperationRecoveryJob.java`
-- [ ] T063 [US2] Run affected Auth/Product/Inventory/Campaign schedule tests and record the independent US2 acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T058 [US2] Implement the schedule orchestrator with no database transaction around token/Product/Inventory HTTP calls in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/usecase/ScheduleCampaignService.java`
+- [x] T059 [US2] Implement version/config revalidation, immutable snapshot freeze, `DRAFT -> SCHEDULED`, operation completion, and one `CampaignScheduled.v1` outbox insert in one final transaction in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/persistence/jpa/CampaignSchedulingPersistenceAdapter.java`
+- [x] T060 [US2] Add canonical scheduled-event envelope/payload creation without broker publication in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/domain/event/CampaignScheduled.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/outbox/application/model/CampaignOutboxEvent.java`
+- [x] T061 [US2] Expose the approved schedule command through the existing Campaign admin API/controller and error mappings in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/in/web/admin/CampaignAdminApi.java`, `CampaignAdminController.java`, and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/websupport/error/CampaignHttpExceptionHandler.java`
+- [x] T062 [US2] Implement batch recovery of resumable schedule operations using Campaign's service identity and stable Inventory request identity in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/scheduleoperation/adapter/in/scheduling/ScheduleOperationRecoveryJob.java`
+- [x] T063 [US2] Run affected Auth/Product/Inventory/Campaign schedule tests and record the independent US2 acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
 
 **Checkpoint**: US2 schedules exactly once, persists one immutable snapshot/allocation/outbox identity, and never relays an administrator token.
 
@@ -228,16 +228,16 @@ and the required module/reactor evidence without expanding Feature 017 scope.
 
 ---
 
-## Phase 8: Avro and Schema Registry Amendment (Blocking before T076/T086)
+## Phase 8: Avro and Schema Registry Foundation
 
 **Purpose**: Establish the approved protocol artifact and Registry compatibility gate before any
-Campaign producer or consumer is wired. These tasks are draft amendment work and must not be
-checked until Feature 017 and ADR 0016 are re-approved.
+Campaign producer or consumer is wired. The Feature 017 amendment and ADR 0016 are now approved;
+runtime publisher wiring remains in T101 and later implementation tasks.
 
-- [ ] T098 [P] Create the protocol-only Maven module at `contracts/kafka-avro-contracts/`, add it to the root reactor, pin Avro/Confluent versions, and configure deterministic SpecificRecord generation without sharing domain classes
-- [ ] T099 [P] Validate and version `CampaignScheduledV1.avsc` and `CampaignActivatedV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/com/philia/flashsale/contract/campaign/lifecycle/v1/`, preserving UUID, timestamp, and decimal logical types
-- [ ] T100 Add Registry subject/compatibility tests for `TopicRecordNameStrategy`, `BACKWARD_TRANSITIVE`, additive revisions, breaking revisions, and `auto.register.schemas=false` in the contract module
-- [ ] T101 Replace Campaign JSON Kafka serializer settings with approved `KafkaAvroSerializer`/SpecificRecord settings, Registry URL, and W3C header propagation in `services/campaign-service/src/main/resources/application.yml` and the Campaign Kafka configuration after amendment approval
+- [x] T098 [P] Create the protocol-only Maven module at `contracts/kafka-avro-contracts/`, add it to the root reactor, pin Avro/Confluent versions, and configure deterministic SpecificRecord generation without sharing domain classes
+- [x] T099 [P] Validate and version `CampaignScheduledV1.avsc` and `CampaignActivatedV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/campaign.lifecycle.v1/`, preserving UUID, timestamp, and decimal logical types
+- [x] T100 Add Registry subject/compatibility tests for `TopicRecordNameStrategy`, `BACKWARD_TRANSITIVE`, additive revisions, breaking revisions, and `auto.register.schemas=false` in the contract module
+- [ ] T101 Complete Campaign runtime Kafka wiring with approved `KafkaAvroSerializer`/SpecificRecord settings, Registry URL, and W3C header propagation in `services/campaign-service/src/main/resources/application.yml` and the Campaign Kafka configuration
 - [ ] T102 Update Feature 017 contract, quickstart, and Kafka architecture evidence with Registry subject names, controlled registration, consumer-first rollout, and Kafka/Registry outage recovery
 - [ ] T103 Run contract-module generation/compatibility tests and Campaign Avro serialization/Registry integration tests; record command, result, and any Registry test profile in `specs/017-campaign-management-mvp/quickstart.md`
 
@@ -255,12 +255,12 @@ mark a batch complete when its required tests are still red.
 | B2 | T064-T074 | Activation/ending policies, conditional persistence, scheduler, manual activation, ordering, and US3 acceptance | `feat(campaign): implement safe campaign lifecycle progression` |
 | B3 | T075, T079-T083 | Protected Campaign snapshot, Flash Sale service identity, snapshot HTTP contract, and security tests | `feat(campaign): add secure snapshot recovery boundary` |
 | B4 | T078, T084-T085, T088 | Outbox ports, leases, ordering, retry state, terminal failure, and authenticated same-event requeue | `feat(campaign): add durable outbox recovery and requeue` |
-| B5 | T098-T100 | Avro protocol-only module, deterministic generation, Registry subjects, and compatibility gates; requires ADR 0016/spec/plan/tasks approval | `build(kafka): add avro contract module and registry gates` |
+| B5 | T098-T100 | Avro protocol-only module, deterministic generation, Registry subjects, and compatibility gates | `build(kafka): add avro contract module and registry gates` |
 | B6 | T076-T077, T086-T087, T101, T103 | Avro contract tests, Kafka/Registry integration, SpecificRecord publisher, W3C headers, and Registry outage validation | `feat(campaign): publish lifecycle events with avro registry` |
 | B7 | T090-T094, T102 | Campaign observability, trace/log redaction, Compose wiring, topic provisioning, and documentation evidence | `chore(campaign): add observability and local messaging operations` |
 | B8 | T089, T095-T097 | US4 acceptance, full Gateway-to-Registry smoke, affected-module verify, and full reactor verify | `test(campaign): complete feature 017 acceptance evidence` |
 
-Recommended dependency order is `B1 -> B2 -> B3/B4`, then `B5 -> B6`, followed by `B7 -> B8`.
+Recommended dependency order is `B5 -> B1 -> B2 -> B3/B4 -> B6 -> B7 -> B8`.
 B3 and B4 may run in parallel after B2 only when they touch separate files and their focused tests
 do not depend on unfinished code from the other batch. B5 is the approval gate for all Avro runtime
 work; B6 must not start from the draft schemas alone.
@@ -278,7 +278,8 @@ work; B6 must not start from the draft schemas alone.
 - **Phase 5 — US3**: Depends on US2 because only a scheduled, snapshotted Campaign can activate.
 - **Phase 6 — US4**: Snapshot work depends on US2; activated-event ordering depends on US3; outbox publication can be developed after US2 event durability exists.
 - **Phase 7 — Polish**: Depends on every story selected for the release.
-- **Phase 8 — Avro amendment**: Must be approved and completed before T076, T077, T086, T087, T093, or T095 can be implemented or marked complete.
+- **Phase 8 — Avro foundation**: T098-T100 are complete; T076, T077, T086, T087, T093, and T095
+  remain gated on their own runtime/integration validation tasks.
 
 ### Critical Cross-Service Rollout
 

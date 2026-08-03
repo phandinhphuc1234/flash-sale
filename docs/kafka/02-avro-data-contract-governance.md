@@ -2,13 +2,12 @@
 
 ## 1. Status
 
-Avro is selected by the Feature 017 amendment draft, but it is not yet the repository's production
-wire format until the amended artifacts and ADR 0016 are approved.
+Avro SpecificRecord is the approved Feature 017 lifecycle wire-format direction. The protocol
+module is schema-first; service runtime serializer wiring remains a separate implementation step.
 
 Feature 017's baseline was an exact JSON contract for `CampaignScheduled.v1` and
-`CampaignActivated.v1` on `campaign.lifecycle.v1`. The current amendment changes those payloads to
-Avro SpecificRecords and requires re-approval of the Feature 017 spec, contracts, plan, and tasks
-before a serializer is wired.
+`CampaignActivated.v1` on `campaign.lifecycle.v1`. The approved amendment changes those payloads
+to Avro SpecificRecords; live serializer/Registry publication remains a separate runtime task.
 
 ## 2. Contract model
 
@@ -30,13 +29,22 @@ Do not use:
 - a generic string `payload` that hides arbitrary JSON from Schema Registry;
 - one shared Java domain model across services.
 
+### Java implementation rule
+
+Every approved Java producer/consumer uses the generated `SpecificRecord` type for its Kafka
+adapter boundary together with Confluent's `KafkaAvroSerializer` and `KafkaAvroDeserializer`.
+`GenericRecord` is not an application-wide message model. Reflection-based Avro generation,
+JSON strings as Kafka values, and JPA entities as Kafka contracts are prohibited. The serializer
+stores a Schema Registry ID plus the Avro binary payload; the full schema is not duplicated in
+each message.
+
 The shared artifact is a protocol contract only. Each service maps between the generated record
 and its service-owned application/domain model.
 
 ## 3. Proposed monorepo structure
 
-The Feature 017 amendment drafts this protocol-only module. Create the Maven module and production
-dependencies only after the amended artifacts are approved:
+The approved Feature 017 amendment implements this protocol-only module. Its Maven module and
+deterministic generated sources are already part of the root reactor:
 
 ```text
 contracts/
@@ -195,7 +203,23 @@ topic conforms to one compatible schema family.
 The feature contract must explicitly choose the strategy; client configuration and Registry/CI
 registration must use the same subject names.
 
-## 9. Compatibility policy
+## 9. Source layout by topic family
+
+The protocol module groups `.avsc` files by the Kafka topic that carries them:
+
+```text
+contracts/kafka-avro-contracts/src/main/avro/topics/<topic-name>/
+```
+
+For example, the currently approved lifecycle schemas are stored under
+`topics/campaign.lifecycle.v1/`. This directory convention improves discovery and ownership
+without changing the Avro namespace, record name, Schema Registry subject, or generated Java
+package. Each event or command remains a separate schema file and generated `SpecificRecord`.
+
+Only schemas approved by an owning feature may be added to a topic folder. The folder is not a
+replacement for the feature contract, compatibility policy, or topic provisioning decision.
+
+## 10. Compatibility policy
 
 Recommended project baseline:
 
@@ -225,7 +249,7 @@ Typical rules:
 | Reuse a field with new meaning | Reject; introduce a semantic version |
 | Delete/rename a field | Treat as breaking unless compatibility evidence proves otherwise |
 
-## 10. Registration policy
+## 11. Registration policy
 
 Local experiments may temporarily use:
 
@@ -254,7 +278,7 @@ schema committed to Git
 Never edit a Registry schema only through a UI without committing the same source contract to Git.
 Git is the contract source of truth; Registry is the runtime version/ID authority.
 
-## 11. Maven and CI responsibilities
+## 12. Maven and CI responsibilities
 
 An approved contract-module plan should pin and document:
 
@@ -279,7 +303,7 @@ reject incompatible changes
 After approval/merge, a controlled delivery job may use the Schema Registry Maven plugin's
 `register` goal. Registration must not occur during ordinary unit tests or application startup.
 
-## 12. Contract review checklist
+## 13. Contract review checklist
 
 - [ ] Producer and every consumer are named.
 - [ ] Command versus event semantics are explicit.

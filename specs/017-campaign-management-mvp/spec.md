@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-29
 
-**Status**: Amendment Draft — Avro/Schema Registry adoption selected; re-approval pending
+**Status**: Approved — Avro/Schema Registry adoption confirmed (2026-08-03)
 
 **Input**: `C:\Users\MSi\Downloads\campaign-service-minimal-mvp-spec.md`
 
@@ -673,5 +673,5 @@ workflow metadata.
   with `campaign.snapshot.read` for the internal Campaign snapshot; the last open specification
   security boundary was resolved.
 - 2026-08-03 — Avro schema-first contracts, Confluent Schema Registry, TopicRecordNameStrategy,
-  BACKWARD_TRANSITIVE compatibility, controlled registration, and W3C Kafka header tracing selected
-  for amendment; re-approval is required before implementation.
+  BACKWARD_TRANSITIVE compatibility, controlled registration, and W3C Kafka header tracing approved
+  as the Feature 017 wire-format amendment.

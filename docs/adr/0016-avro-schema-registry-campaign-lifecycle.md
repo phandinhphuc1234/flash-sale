@@ -1,6 +1,6 @@
 # ADR 0016: Avro and Schema Registry for Campaign Lifecycle Events
 
-**Status**: Proposed — Feature 017 amendment pending approval  
+**Status**: Accepted — Feature 017 amendment approved
 **Date**: 2026-08-03  
 **Owners**: Project owner; architecture reviewer  
 **Scope**: Feature 017 first adopter; protocol baseline for future Kafka features
@@ -28,9 +28,8 @@ dependency decision, not a local serializer refactor.
    step, not application startup behavior.
 7. Keep stable `eventId`, Campaign ID Kafka key, at-least-once outbox delivery, and idempotent
    consumers unchanged.
-8. Propagate W3C `traceparent`/`tracestate` through Kafka headers. Do not put JWTs, secrets, or raw
-   authorization headers in payloads or headers. The Feature 017 amendment must explicitly decide
-   whether the legacy body `traceId` is removed or retained during compatibility rollout.
+8. Propagate W3C `traceparent`/`tracestate` through Kafka headers. Do not put JWTs, secrets, raw
+   authorization headers, or trace IDs in the Avro business payload.
 9. Keep PostgreSQL `JSONB` outbox storage as an internal durable representation if useful; the
    outbox relay maps it to the generated Avro record outside the business transaction.
 
@@ -74,13 +73,12 @@ dependency decision, not a local serializer refactor.
 - **Avro types in domain/application**: couples the business core to the transport and violates the
   repository's Clean/Hexagonal boundary rules.
 
-## Required follow-up before implementation
+## Required follow-up implementation work
 
-- Amend and approve Feature 017 `spec.md`, `plan.md`, `tasks.md`, and
-  `contracts/campaign-lifecycle-events.md`.
+- Keep Feature 017 `spec.md`, `plan.md`, `tasks.md`, and
+  `contracts/campaign-lifecycle-events.md` synchronized with this accepted decision.
 - Add/approve the contract Maven module and dependency versions in the plan.
 - Resolve the trace-body compatibility choice.
 - Add schema syntax, generation, compatibility, serialization, Registry, producer, and consumer
   integration tests.
-- Re-approve this ADR before production code changes.
-
+- Complete the protocol-module and runtime-adapter tasks before publishing to Kafka.

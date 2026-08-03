@@ -613,9 +613,11 @@ operation tests and must be repaired before the broader Campaign baseline is gre
 The focused architecture check was also run with the T056/T057 tests: **11 tests, 11 passed, 0
 failures, 0 errors**.
 
-## 28. Avro amendment validation (pending approval)
+## 28. Avro SpecificRecord foundation validation
 
-After Feature 017 and ADR 0016 are approved, add the protocol-module and Registry evidence here:
+The Feature 017 Avro amendment and ADR 0016 are approved. The protocol-only module now generates
+typed SpecificRecord classes from the checked-in schemas. Runtime Confluent serializer wiring and
+live Registry publication remain in T101/T103.
 
 ```powershell
 .\mvnw.cmd -pl contracts/kafka-avro-contracts -am verify
@@ -623,7 +625,25 @@ docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d ka
 curl.exe http://localhost:8081/subjects
 ```
 
-The evidence must show deterministic SpecificRecord generation, `TopicRecordNameStrategy`,
-`BACKWARD_TRANSITIVE` compatibility checks, controlled registration with auto-registration disabled,
-and a Kafka/Registry outage leaving the original outbox event ID pending for retry. Until those
-artifacts are approved, the commands are design targets and must not be recorded as passed.
+The focused contract module validation passed with exit code `0`; 3 tests passed, 0 failures, and 0
+errors. It generated `CampaignScheduledV1` and `CampaignActivatedV1` as typed Avro
+`SpecificRecord` classes, verified UUID/timestamp/decimal logical types, and checked additive
+backward compatibility versus breaking schema changes. The approved policy is
+`TopicRecordNameStrategy`, `BACKWARD_TRANSITIVE`, and `auto.register.schemas=false` outside local
+experiments. Live Registry and serializer/deserializer smoke evidence remains in T101/T103.
+
+## 29. T058-T063 schedule orchestration acceptance
+
+Validated on 2026-08-03 with Docker available:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am "-Dtest=ScheduleCampaignUseCaseTests,CampaignSchedulePolicyTests,ScheduleCampaignRecoveryIntegrationTests,CampaignScheduleHttpContractTests,PrepareScheduleOperationServiceTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+```
+
+Result: **18 tests, 18 passed, 0 failures, 0 errors**.
+
+The acceptance scope covers the no-remote-call transaction boundary, stable idempotency and
+Inventory request identities, version and request-conflict checks, immutable scheduling snapshot,
+`DRAFT -> SCHEDULED` finalization, one transactional outbox row, admin HTTP headers/error contract,
+and resumable operation recovery. The HTTP contract uses a real PostgreSQL Testcontainer and mocked
+downstream ports; it does not claim a live Product/Inventory network smoke test.

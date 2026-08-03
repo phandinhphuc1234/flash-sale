@@ -5,6 +5,7 @@ import com.philia.flashsale.campaign.scheduleoperation.application.exception.Sch
 import com.philia.flashsale.campaign.scheduleoperation.application.exception.ScheduleOperationRequestConflictException;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.in.PrepareScheduleOperationUseCase;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadScheduleOperationPort;
+import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadLockedScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.SaveScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.ScheduleOperationClockPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.result.ScheduleOperationPreparationResult;
@@ -21,14 +22,14 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>No Product, Inventory, token, or other remote call belongs inside this method. T058 consumes
  * the returned identity after this transaction has committed.</p>
  */
-public final class PrepareScheduleOperationService implements PrepareScheduleOperationUseCase {
+public class PrepareScheduleOperationService implements PrepareScheduleOperationUseCase {
 
-    private final LoadScheduleOperationPort loadPort;
+    private final LoadLockedScheduleOperationPort loadPort;
     private final SaveScheduleOperationPort savePort;
     private final ScheduleOperationClockPort clockPort;
 
     public PrepareScheduleOperationService(
-            LoadScheduleOperationPort loadPort,
+            LoadLockedScheduleOperationPort loadPort,
             SaveScheduleOperationPort savePort,
             ScheduleOperationClockPort clockPort) {
         this.loadPort = Objects.requireNonNull(loadPort, "Schedule operation load port is required");
@@ -41,7 +42,7 @@ public final class PrepareScheduleOperationService implements PrepareScheduleOpe
     public ScheduleOperationPreparationResult prepare(PrepareScheduleOperationCommand command) {
         Objects.requireNonNull(command, "Prepare schedule operation command is required");
 
-        var existing = loadPort.findByCampaignIdAndIdempotencyKey(
+        var existing = loadPort.findLockedByCampaignIdAndIdempotencyKey(
                 command.campaignId(), command.idempotencyKey());
         if (existing.isPresent()) {
             return handleExisting(existing.get(), command);

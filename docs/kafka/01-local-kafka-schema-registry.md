@@ -79,7 +79,7 @@ producer setting for portable code, but on one broker it cannot create a second 
 | Developer secrets/overrides | `infra/docker/.env`, ignored by Git |
 | Service Kafka/Registry clients | Owning service's `application.yml` and POM |
 | Topic provisioning | Future root `infra/kafka/` manifest/scripts after plan approval |
-| Event schemas | Feature 017 Avro amendment draft under `contracts/kafka-avro-contracts/`; later schemas require their own approved feature |
+| Event schemas | Approved Feature 017 Avro SpecificRecord schemas under `contracts/kafka-avro-contracts/`; later schemas require their own approved feature |
 
 Services never read or write `_schemas` directly. They use Schema Registry's HTTP API through the
 serializer, deserializer, CI tooling, or controlled administrative tooling.
@@ -140,8 +140,9 @@ This permits consumer-group parallelism while preserving per-key order, but it i
 default. Retention, compaction, and message-size settings belong to the owning feature and must not
 be guessed globally.
 
-Only `campaign.lifecycle.v1` is currently approved as a topic. Its Avro producer adoption is still
-an amendment pending approval. Topic families in the Saga design remain candidates until their
+Only `campaign.lifecycle.v1` is currently approved as a topic. Its Avro SpecificRecord producer
+adoption is approved, while runtime publisher wiring remains a separate Feature 017 task. Topic
+families in the Saga design remain candidates until their
 producer, consumers, schemas, keys, retention, and recovery are approved.
 
 ## 8. Schema Registry storage and availability

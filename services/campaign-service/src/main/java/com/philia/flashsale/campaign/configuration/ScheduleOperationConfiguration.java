@@ -1,6 +1,6 @@
 package com.philia.flashsale.campaign.configuration;
 
-import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadScheduleOperationPort;
+import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadLockedScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.SaveScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.ScheduleOperationClockPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.usecase.PrepareScheduleOperationService;
@@ -19,7 +19,7 @@ public class ScheduleOperationConfiguration {
 
     @Bean
     PrepareScheduleOperationService prepareScheduleOperationService(
-            LoadScheduleOperationPort loadPort,
+            LoadLockedScheduleOperationPort loadPort,
             SaveScheduleOperationPort savePort,
             ScheduleOperationClockPort clockPort) {
         return new PrepareScheduleOperationService(loadPort, savePort, clockPort);

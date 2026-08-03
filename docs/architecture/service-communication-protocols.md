@@ -90,6 +90,7 @@ Detailed target flows and reliability rules are split into:
 
 - [Flash Sale end-to-end business flow](flash-sale-end-to-end-flow.md)
 - [Saga messaging and reliability design](saga-messaging-reliability.md)
+- [Kafka topic and message catalog](../kafka/04-topic-message-catalog.md)
 
 ## 1. Client to API Gateway
 
@@ -208,11 +209,10 @@ record to Kafka. The plan must define retry, cleanup, deduplication, monitoring,
 ### 4.1 Schema Registry status
 
 The local Compose topology includes Confluent Schema Registry at `http://localhost:8081`. Feature
-017's amendment draft selects Avro SpecificRecords, `TopicRecordNameStrategy`, and
-`BACKWARD_TRANSITIVE` for the Campaign lifecycle topic. This is still an amendment, not runtime
-authorization: the feature must be re-approved and then add the protocol module, generated types,
-controlled registration, and compatibility tests. Registry does not replace repository contract
-files, the outbox, or idempotent consumers.
+017's approved amendment selects Avro SpecificRecords, `TopicRecordNameStrategy`, and
+`BACKWARD_TRANSITIVE` for the Campaign lifecycle topic. The protocol module, generated types, and
+compatibility gates are now present; runtime publication and outage evidence remain separate tasks.
+Registry does not replace repository contract files, the outbox, or idempotent consumers.
 
 ## 5. Why gRPC is deferred
 

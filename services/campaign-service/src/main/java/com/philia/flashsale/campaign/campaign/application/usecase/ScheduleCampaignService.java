@@ -25,14 +25,10 @@ import com.philia.flashsale.campaign.scheduleoperation.application.result.Schedu
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperation;
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperationFingerprint;
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperationStatus;
-import java.math.BigDecimal;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 
-/**
- * Orchestrates Product and Inventory calls without holding a database transaction across them.
- * Only the final aggregate/outbox transition is delegated to the transactional persistence port.
- */
+/** Orchestrates remote validation/allocation outside a database transaction. */
 @Service
 public final class ScheduleCampaignService implements ScheduleCampaignUseCase {
 
@@ -72,6 +68,9 @@ public final class ScheduleCampaignService implements ScheduleCampaignUseCase {
         Objects.requireNonNull(command, "Schedule command is required");
         Campaign campaign = campaignPort.findById(command.campaignId())
                 .orElseThrow(() -> new CampaignNotFoundException(command.campaignId()));
+        if (campaign.item() == null) {
+            throw new IllegalArgumentException("Campaign item is required before scheduling");
+        }
 
         var existing = operationPort.findByCampaignIdAndIdempotencyKey(
                 command.campaignId(), command.idempotencyKey());
@@ -83,18 +82,12 @@ public final class ScheduleCampaignService implements ScheduleCampaignUseCase {
             throw new IllegalStateException("Only a draft Campaign can be scheduled");
         }
 
-        ScheduleOperationFingerprint fingerprint = fingerprint(campaign, command.expectedVersion());
         ScheduleOperationPreparationResult preparation = operationPreparation.prepare(
                 new PrepareScheduleOperationCommand(
-                        campaign.id(),
-                        command.idempotencyKey(),
-                        fingerprint,
-                        command.expectedVersion(),
-                        actorPort.currentActor(),
-                        command.callerService(),
-                        command.traceId()));
+                        campaign.id(), command.idempotencyKey(),
+                        fingerprint(campaign, command.expectedVersion()), command.expectedVersion(),
+                        actorPort.currentActor(), command.callerService(), command.traceId()));
         ScheduleOperation operation = preparation.operation();
-
         if (operation.status() == ScheduleOperationStatus.COMPLETED) {
             return CampaignDetailResult.from(campaignPort.findById(campaign.id())
                     .orElseThrow(() -> new CampaignNotFoundException(campaign.id())));
@@ -107,14 +100,11 @@ public final class ScheduleCampaignService implements ScheduleCampaignUseCase {
 
         CampaignInventoryAllocation allocation;
         try {
-            // The operation's stable request id makes this retry an idempotent read-or-allocate call.
+            // The stable request ID makes a retry an idempotent read-or-allocate operation.
             allocation = inventoryPort.allocate(
                     new AllocateCampaignInventoryCommand(
-                            operation.inventoryRequestId(),
-                            campaign.id(),
-                            campaign.item().variantId(),
-                            campaign.item().requestedQuantity()),
-                    command.traceId());
+                            operation.inventoryRequestId(), campaign.id(), campaign.item().variantId(),
+                            campaign.item().requestedQuantity()), command.traceId());
         } catch (CampaignDownstreamException exception) {
             if (isTerminal(exception.failure())) {
                 failBusinessOperation(operation, exception.failure());
@@ -129,19 +119,13 @@ public final class ScheduleCampaignService implements ScheduleCampaignUseCase {
 
         Campaign finalized = finalizationPort.finalizeSchedule(
                 new FinalizeCampaignSchedulingCommand(
-                        campaign.id(),
-                        operation.id(),
-                        command.expectedVersion(),
-                        product,
-                        allocation,
-                        actorPort.currentActor(),
-                        command.traceId(),
-                        clockPort.now()));
+                        campaign.id(), operation.id(), command.expectedVersion(), product, allocation,
+                        actorPort.currentActor(), command.traceId(), clockPort.now()));
         return CampaignDetailResult.from(finalized);
     }
 
-    private void failBusinessOperation(ScheduleOperation operation,
-            CampaignDownstreamException.Failure failure) {
+    private void failBusinessOperation(
+            ScheduleOperation operation, CampaignDownstreamException.Failure failure) {
         if (operation.status() == ScheduleOperationStatus.STARTED) {
             operation.markFailed(failure.name(), failure.message());
             operationSavePort.save(operation);
@@ -156,18 +140,11 @@ public final class ScheduleCampaignService implements ScheduleCampaignUseCase {
 
     private ScheduleOperationFingerprint fingerprint(Campaign campaign, long expectedVersion) {
         var item = campaign.item();
-        String canonical = String.join("|",
-                campaign.id().toString(),
-                Long.toString(expectedVersion),
-                campaign.code(),
-                campaign.name(),
-                campaign.startAt().toString(),
-                campaign.endAt().toString(),
-                item == null ? "" : item.variantId().toString(),
-                item == null ? "" : item.campaignPrice().amount().toPlainString(),
-                item == null ? "" : item.campaignPrice().currency(),
-                item == null ? "" : Long.toString(item.requestedQuantity()),
-                item == null ? "" : Long.toString(item.purchaseLimitPerUser()));
+        String canonical = String.join("|", campaign.id().toString(), Long.toString(expectedVersion),
+                campaign.code(), campaign.name(), campaign.startAt().toString(), campaign.endAt().toString(),
+                item.variantId().toString(), item.campaignPrice().amount().toPlainString(),
+                item.campaignPrice().currency(), Long.toString(item.requestedQuantity()),
+                Long.toString(item.purchaseLimitPerUser()));
         return ScheduleOperationFingerprint.fromCanonicalPayload(canonical);
     }
 }

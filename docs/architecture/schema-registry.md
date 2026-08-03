@@ -7,9 +7,9 @@
 ## Scope
 
 The repository provides a local Confluent Schema Registry alongside the existing single-node
-Apache Kafka broker. This is platform support only. Feature 017 selects Avro in an amendment draft,
-but no service depends on Registry for startup, serialization, or message publication until that
-amendment is approved and implemented.
+Apache Kafka broker. Feature 017 approves Avro schema-first lifecycle contracts. Runtime service
+serializer wiring remains owned by the feature implementation and must use generated
+`SpecificRecord` classes with Confluent serializers.
 
 ## Local topology
 
@@ -50,12 +50,22 @@ An approved Kafka feature must define the following before adding a service seri
 2. schema format (Avro, Protobuf, or JSON Schema);
 3. subject naming strategy and compatibility mode;
 4. producer/consumer ownership and rollout compatibility;
-5. failure, retry, duplicate, and trace-header behavior.
+    5. failure, retry, duplicate, and trace-header behavior.
+
+For Java services, the approved adapter rule is:
+
+```text
+.avsc -> generated SpecificRecord -> KafkaAvroSerializer/KafkaAvroDeserializer
+```
+
+Do not use `GenericRecord` throughout application code, reflection-generated schemas, JSON string
+values, or JPA entities as Kafka contracts. Schema Registry wire data contains a schema ID and
+Avro binary payload; consumers resolve the schema by ID.
 
 Schema Registry does not replace the repository's versioned event contracts, outbox, or idempotent
 consumer requirements.
 
 The current Compose addresses are `kafka:9092` and `http://schema-registry:8081` inside Docker,
-and `localhost:29092` and `http://localhost:8081` from the host. The Feature 017 amendment draft
-selects Avro SpecificRecords, `TopicRecordNameStrategy`, and `BACKWARD_TRANSITIVE`; Registry
-availability alone does not activate that migration.
+and `localhost:29092` and `http://localhost:8081` from the host. Feature 017 uses Avro
+SpecificRecords, `TopicRecordNameStrategy`, and `BACKWARD_TRANSITIVE`; Registry availability alone
+does not replace the feature's outbox and idempotent-consumer requirements.

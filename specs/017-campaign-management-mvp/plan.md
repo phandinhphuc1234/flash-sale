@@ -1,8 +1,8 @@
 # Implementation Plan: Campaign Management MVP
 
 **Branch**: `017-campaign-management-mvp` | **Date**: 2026-07-30 | **Spec**: [spec.md](./spec.md)  
-**Status**: Amendment Draft — Avro/Schema Registry selected; re-approval pending
-**Input**: Approved Feature 017 specification and approved ADRs 0012, 0013, and 0015
+**Status**: Approved — Avro/Schema Registry implementation authorized (2026-08-03)
+**Input**: Approved Feature 017 specification and approved ADRs 0012, 0013, 0015, and 0016
 
 ## Summary
 
@@ -119,8 +119,9 @@ contracts/kafka-avro-contracts/
 ├── pom.xml
 └── src/main/avro/com/philia/flashsale/contract/
     └── campaign/lifecycle/v1/
-        ├── CampaignScheduledV1.avsc
-        └── CampaignActivatedV1.avsc
+        └── topics/campaign.lifecycle.v1/
+            ├── CampaignScheduledV1.avsc
+            └── CampaignActivatedV1.avsc
 ```
 
 This module contains generated transport contracts only. It must not contain JPA entities, domain
@@ -466,10 +467,9 @@ Authentication capability
   Campaign outbound HTTP adapters; plan re-approval is required before production implementation.
 - 2026-08-03 — Project owner explicitly approved implementing T053–T055 with the repository
   OpenFeign skill; ADR 0015 and this plan amendment are accepted.
-- 2026-08-03 — Avro/Schema Registry amendment drafted from the project owner's selection. ADR 0016,
-  contract-module dependency changes, and task-ledger updates require re-approval before production
-  implementation.
+- 2026-08-03 — Project owner approved the Avro/Schema Registry amendment. ADR 0016, the
+  protocol-only contract module, generated SpecificRecords, and compatibility gates are accepted;
+  live publisher/Registry runtime work remains in later tasks.
 
-Plan approval permits `speckit-tasks` to generate `tasks.md`. It does not permit production-code
-implementation yet. The generated task ledger must be reviewed and explicitly approved before
-`speckit-implement` begins.
+The plan and task ledger are approved for implementation. Runtime work must still follow the
+dependency-ordered tasks and record validation evidence in `quickstart.md`.

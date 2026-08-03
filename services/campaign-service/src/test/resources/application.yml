@@ -1,0 +1,25 @@
+spring:
+  kafka:
+    # Contract tests do not start a Kafka producer; keep the context independent of Registry.
+    producer:
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+flashsale:
+  campaign:
+    security:
+      jwt:
+        enabled: true
+      public:
+        issuer: http://localhost:18080
+        audience: flash-sale-api
+        jwk-set-uri: http://localhost:18080/.well-known/jwks.json
+      internal:
+        issuer: http://localhost:18080
+        audience: flash-sale-internal-api
+        jwk-set-uri: http://localhost:18080/.well-known/jwks.json
+    downstream:
+      # Feign validates URLs while the Spring test context starts; these endpoints are mocked below.
+      product:
+        base-url: http://localhost:18082
+      inventory:
+        base-url: http://localhost:18088

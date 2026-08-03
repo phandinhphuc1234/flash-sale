@@ -22,6 +22,7 @@ public record ScheduleCampaignCommand(
         if (traceId == null || traceId.isBlank()) {
             throw new IllegalArgumentException("Trace id is required");
         }
-        callerService = callerService == null ? "campaign-service" : callerService.trim();
+        callerService = callerService == null || callerService.isBlank()
+                ? "campaign-service" : callerService.trim();
     }
 }

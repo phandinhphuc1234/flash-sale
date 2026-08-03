@@ -3,6 +3,8 @@ package com.philia.flashsale.campaign.scheduleoperation.adapter.out.persistence.
 import com.philia.flashsale.campaign.scheduleoperation.adapter.out.persistence.jpa.entity.CampaignScheduleOperationJpaEntity;
 import com.philia.flashsale.campaign.scheduleoperation.adapter.out.persistence.jpa.repository.CampaignScheduleOperationJpaRepository;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadScheduleOperationPort;
+import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadLockedScheduleOperationPort;
+import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadResumableScheduleOperationsPort;
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.SaveScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperation;
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperationFingerprint;
@@ -11,11 +13,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.PageRequest;
 
 /** JPA adapter translating durable schedule-operation rows to the framework-free domain model. */
 @Repository
 public class ScheduleOperationPersistenceAdapter implements
-        LoadScheduleOperationPort,
+        LoadLockedScheduleOperationPort,
+        LoadResumableScheduleOperationsPort,
         SaveScheduleOperationPort {
 
     private final CampaignScheduleOperationJpaRepository repository;
@@ -32,6 +36,13 @@ public class ScheduleOperationPersistenceAdapter implements
     }
 
     @Override
+    public Optional<ScheduleOperation> findLockedByCampaignIdAndIdempotencyKey(
+            UUID campaignId, String idempotencyKey) {
+        return repository.findLockedByCampaignIdAndIdempotencyKey(campaignId, idempotencyKey)
+                .map(this::toDomain);
+    }
+
+    @Override
     public Optional<ScheduleOperation> findByInventoryRequestId(UUID inventoryRequestId) {
         return repository.findByInventoryRequestId(inventoryRequestId).map(this::toDomain);
     }
@@ -40,6 +51,14 @@ public class ScheduleOperationPersistenceAdapter implements
     public boolean existsInFlightByCampaignId(UUID campaignId) {
         return repository.existsByCampaignIdAndOperationStatusIn(
                 campaignId, List.of("STARTED", "INVENTORY_ALLOCATED"));
+    }
+
+    @Override
+    public List<ScheduleOperation> findResumable(int limit) {
+        int boundedLimit = Math.max(1, Math.min(limit, 100));
+        return repository.findByOperationStatusInOrderByUpdatedAtAsc(
+                        List.of("STARTED", "INVENTORY_ALLOCATED"), PageRequest.of(0, boundedLimit))
+                .stream().map(this::toDomain).toList();
     }
 
     @Override

@@ -72,9 +72,13 @@ spring:
     producer:
       acks: all
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # Kafka values are generated Avro SpecificRecords, never arbitrary JSON or JPA entities.
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
       properties:
         enable.idempotence: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        auto.register.schemas: ${KAFKA_AUTO_REGISTER_SCHEMAS:false}
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
     template:
       default-topic: campaign.lifecycle.v1
 

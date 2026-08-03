@@ -9,8 +9,8 @@ In particular:
 
 - Feature 017 owns `CampaignScheduled.v1`, `CampaignActivated.v1`, and topic
   `campaign.lifecycle.v1`;
-- Schema Registry is available in local infrastructure, and Avro is selected in the Feature 017
-  amendment draft; no production serializer is authorized until that amendment is approved;
+- Schema Registry is available in local infrastructure, and the Feature 017 Avro SpecificRecord
+  amendment is approved; runtime publisher/Registry smoke work remains separately tracked;
 - Purchase, Payment, Order, Campaign end, and cancellation messaging require future Spec Kit
   artifacts and, where boundaries change, ADRs.
 
@@ -37,7 +37,9 @@ PaymentRequested
 ConfirmPurchaseReservation
 ReleasePurchaseReservation
 StopCampaignSales
+DisableCampaignSales
 ReconcileCampaignStock
+ReleaseCampaignAllocation
 ```
 
 An event reports a fact that already happened:
@@ -46,9 +48,14 @@ An event reports a fact that already happened:
 PaymentSucceeded
 PurchaseReservationConfirmed
 CampaignSalesStopped
+CampaignReservationsDrained
+CampaignSalesDisabled
 CampaignStockReconciled
 OrderConfirmed
 ```
+
+The complete reconciled list and counts are maintained in
+[`docs/kafka/04-topic-message-catalog.md`](../kafka/04-topic-message-catalog.md).
 
 Rules:
 
@@ -64,7 +71,7 @@ Rules:
 
 | Topic | Status | Purpose |
 |---|---|---|
-| `campaign.lifecycle.v1` | Approved by Feature 017 | `CampaignScheduled.v1`, `CampaignActivated.v1` |
+| `campaign.lifecycle.v1` | Two events approved by Feature 017; later final events candidate | Campaign lifecycle facts |
 | `flashsale.purchase.events.v1` | Candidate | Purchase acceptance and reservation results |
 | `flashsale.purchase.commands.v1` | Candidate | Confirm/release reservation commands consumed by Flash Sale |
 | `flashsale.payment.commands.v1` | Candidate | Payment commands consumed by Payment |
@@ -119,8 +126,8 @@ W3C `traceparent` and approved baggage belong in Kafka headers. JWTs, client sec
 credentials, and raw authorization headers must never enter payloads, headers, logs, or traces.
 
 Do not create one shared Java event class used by all services. Schemas are wire contracts; every
-adapter maps them to its service-owned application/domain model. Feature 017's amendment draft
-replaces its JSON Campaign event envelope with Avro SpecificRecords only after re-approval.
+adapter maps them to its service-owned application/domain model. Feature 017's approved amendment
+replaces its JSON Campaign event envelope with generated Avro SpecificRecords.
 
 ## 6. PostgreSQL transactional outbox
 
@@ -277,8 +284,9 @@ Exact TTLs, attempts, backoff, timeout, and manual-review policies remain featur
 
 ## 12. Schema Registry and compatibility
 
-Confluent Schema Registry is available in local infrastructure. Feature 017's amendment draft
-defines Avro adoption for the first Campaign lifecycle producer. Every later format adoption still
+Confluent Schema Registry is available in local infrastructure. Feature 017's approved amendment
+defines Avro SpecificRecord adoption for the first Campaign lifecycle producer. Every later format
+adoption still
 requires an approved feature to define:
 
 - serialization format;

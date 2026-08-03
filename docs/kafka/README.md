@@ -21,10 +21,11 @@ retention period, DLT policy, or business event by itself. The governing order r
 | Schema Registry | One `confluentinc/cp-schema-registry:8.3.0` instance |
 | Local durability | Kafka data uses the `kafka-data` Docker volume |
 | Schema storage | Schema Registry owns the compacted internal `_schemas` topic with RF `1` |
-| Schema format | Avro selected in the Feature 017 amendment draft; runtime adoption pending approval |
-| Avro contract module | Draft source path created; Maven module and generated types are still pending approval |
+| Schema format | Avro schema-first with generated SpecificRecord is approved for Feature 017 |
+| Avro contract module | `contracts/kafka-avro-contracts` generates typed SpecificRecord classes |
+| Avro source layout | Schemas are grouped under `src/main/avro/topics/<topic-name>/`; namespace and generated package stay contract-owned |
 | Approved Kafka topic | `campaign.lifecycle.v1` from Feature 017 |
-| Approved Campaign wire format | Existing baseline is JSON; Avro amendment is not approved for production yet |
+| Approved Campaign wire format | Avro SpecificRecord; dependency/config foundation exists, while the outbox relay and live Registry smoke remain pending |
 | Candidate Saga topics | Documented but not approved for production code |
 
 The current one-node topology is appropriate for local learning, integration tests, and a personal
@@ -41,6 +42,9 @@ MVP. It has no Kafka high availability: losing the node stops messaging and Sche
 3. [Reliable Producer and Consumer Integration](03-reliable-producer-consumer-integration.md)
    explains adapter placement, PostgreSQL outbox, Redis Stream handoff, inbox deduplication,
    retries, DLTs, tracing, and the required test matrix.
+4. [Kafka Topic and Message Catalog](04-topic-message-catalog.md)
+   reconciles the target topic names, command/event counts, owners, partition keys, and the correct
+   Purchase and Campaign Saga ordering.
 
 Related system-level material:
 
@@ -51,12 +55,13 @@ Related system-level material:
 
 ## Recommended project decisions
 
-The following are the selected defaults for the Feature 017 Avro amendment. They become runtime
-rules only after the amended artifacts and ADR 0016 are approved:
+The following are the approved defaults for the Feature 017 Avro contract:
 
 | Concern | Recommended direction |
 |---|---|
 | Contract style | Avro schema-first with generated SpecificRecord classes |
+| Java Kafka value type | `SpecificRecord` only; no application-wide `GenericRecord` |
+| Runtime serialization | Confluent `KafkaAvroSerializer` / `KafkaAvroDeserializer` |
 | Contract sharing | One protocol-only Maven artifact; never a shared domain library |
 | Value subject naming | `TopicRecordNameStrategy` when one topic family carries several record types |
 | Compatibility | `BACKWARD_TRANSITIVE` |
@@ -71,7 +76,7 @@ rules only after the amended artifacts and ADR 0016 are approved:
 
 ```text
 K0  Keep local Kafka + Schema Registry healthy
-K1  Approve Avro adoption and create the contract build module
+K1  Generate approved Avro SpecificRecord contracts
 K2  Add one approved producer contract and compatibility tests
 K3  Publish through a PostgreSQL outbox relay
 K4  Add one idempotent consumer and its inbox transaction
@@ -79,9 +84,9 @@ K5  Add retry/DLT/operator recovery defined by that feature
 K6  Expand to Purchase Saga only after the simple flow is green
 ```
 
-Feature 017's previous baseline approved exact JSON serialization tests. The current amendment
-replaces that wire contract with Avro only after re-approval; until then no service may silently
-switch serializers or publish to the topic.
+Feature 017's previous JSON baseline is replaced by the approved Avro contract. Services still
+must not switch serializers silently: the owning feature's producer task configures the Confluent
+serializer and maps its service-owned event to the generated record at the Kafka adapter boundary.
 
 ## Fast local checks
 

@@ -4,7 +4,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
+import com.philia.flashsale.campaign.campaign.application.command.AllocateCampaignInventoryCommand;
+import com.philia.flashsale.campaign.campaign.application.port.out.AllocateCampaignInventoryPort;
+import com.philia.flashsale.campaign.campaign.application.port.out.ValidateCampaignVariantPort;
+import com.philia.flashsale.campaign.campaign.application.result.CampaignInventoryAllocation;
+import com.philia.flashsale.campaign.campaign.application.result.ValidatedCampaignVariant;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -41,6 +54,15 @@ class CampaignScheduleHttpContractTests {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @MockBean
+    private ValidateCampaignVariantPort productPort;
+
+    @MockBean
+    private AllocateCampaignInventoryPort inventoryPort;
+
+    @MockBean
+    private ClientRegistrationRepository clientRegistrations;
+
     @DynamicPropertySource
     static void configureDatasource(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
@@ -53,11 +75,25 @@ class CampaignScheduleHttpContractTests {
     void clearCampaignData() {
         jdbc.execute("TRUNCATE TABLE campaign_outbox_events, campaign_schedule_operations, "
                 + "campaign_items, campaigns");
+        when(productPort.validate(any(), anyString())).thenAnswer(invocation -> {
+            UUID variantId = invocation.getArgument(0);
+            return new ValidatedCampaignVariant(
+                    UUID.randomUUID(), variantId, "SKU-TEST", "ACTIVE", "ACTIVE", true,
+                    new BigDecimal("100.00"), "VND");
+        });
+        when(inventoryPort.allocate(any(AllocateCampaignInventoryCommand.class), anyString()))
+                .thenAnswer(invocation -> {
+                    AllocateCampaignInventoryCommand command = invocation.getArgument(0);
+                    return new CampaignInventoryAllocation(
+                            UUID.randomUUID(), command.requestId(), command.campaignId(), command.variantId(),
+                            command.quantity(), 0, 0, "ALLOCATED");
+                });
     }
 
     @Test
     void scheduleRequiresIfMatchAndIdempotencyKeyAndAcceptsEmptyJsonObject() throws Exception {
         UUID campaignId = UUID.randomUUID();
+        seedDraft(campaignId, 2);
 
         mockMvc.perform(post("/api/v1/admin/campaigns/{campaignId}/schedule", campaignId)
                         .header("X-Trace-Id", TRACE_ID)
@@ -68,7 +104,7 @@ class CampaignScheduleHttpContractTests {
 
         mockMvc.perform(post("/api/v1/admin/campaigns/{campaignId}/schedule", campaignId)
                         .header("X-Trace-Id", TRACE_ID)
-                        .header("If-Match", "\"0\"")
+                        .header("If-Match", "\"2\"")
                         .header("Idempotency-Key", "schedule-contract-1")
                         .contentType("application/json")
                         .content("{}"))
@@ -80,6 +116,7 @@ class CampaignScheduleHttpContractTests {
     @Test
     void sameIdempotencyKeyReplaysTheSameScheduleResultAndEtag() throws Exception {
         UUID campaignId = UUID.randomUUID();
+        seedDraft(campaignId, 2);
         var request = post("/api/v1/admin/campaigns/{campaignId}/schedule", campaignId)
                 .header("X-Trace-Id", TRACE_ID)
                 .header("If-Match", "\"2\"")
@@ -108,5 +145,21 @@ class CampaignScheduleHttpContractTests {
                 .andExpect(status().isNotFound())
                 .andExpect(header().string("X-Trace-Id", TRACE_ID))
                 .andExpect(jsonPath("$.errorCode").value("CAMPAIGN_NOT_FOUND"));
+    }
+
+    private void seedDraft(UUID campaignId, long version) {
+        UUID variantId = UUID.randomUUID();
+        Instant now = Instant.now();
+        jdbc.update("INSERT INTO campaigns (id, code, name, status, start_at, end_at, version, "
+                        + "created_by, updated_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                campaignId, "CONTRACT-" + campaignId.toString().substring(0, 8).toUpperCase(),
+                "Contract campaign", "DRAFT", Timestamp.from(now.plusSeconds(3600)),
+                Timestamp.from(now.plusSeconds(7200)), version, "test-admin", "test-admin",
+                Timestamp.from(now), Timestamp.from(now));
+        jdbc.update("INSERT INTO campaign_items (id, campaign_id, variant_id, campaign_price, "
+                        + "requested_quantity, purchase_limit_per_user, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                UUID.randomUUID(), campaignId, variantId, new BigDecimal("90.00"), 10L, 1L,
+                Timestamp.from(now), Timestamp.from(now));
     }
 }

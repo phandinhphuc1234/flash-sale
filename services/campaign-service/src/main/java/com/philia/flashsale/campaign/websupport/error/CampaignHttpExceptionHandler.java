@@ -6,6 +6,8 @@ import com.philia.flashsale.campaign.campaign.application.exception.CampaignDown
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignNotFoundException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignOperationInProgressException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignVersionConflictException;
+import com.philia.flashsale.campaign.scheduleoperation.application.exception.ScheduleOperationInProgressException;
+import com.philia.flashsale.campaign.scheduleoperation.application.exception.ScheduleOperationRequestConflictException;
 import com.philia.flashsale.campaign.websupport.context.CampaignRequestContext;
 import com.philia.flashsale.common.web.ApiErrorResponse;
 import com.philia.flashsale.common.web.FieldViolation;
@@ -61,6 +63,18 @@ public class CampaignHttpExceptionHandler {
     ResponseEntity<ApiErrorResponse> operationInProgress(
             CampaignOperationInProgressException exception, HttpServletRequest request) {
         return error(CampaignErrorCode.CAMPAIGN_OPERATION_IN_PROGRESS, request, null);
+    }
+
+    @ExceptionHandler(ScheduleOperationInProgressException.class)
+    ResponseEntity<ApiErrorResponse> scheduleOperationInProgress(
+            ScheduleOperationInProgressException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_OPERATION_IN_PROGRESS, request, null);
+    }
+
+    @ExceptionHandler(ScheduleOperationRequestConflictException.class)
+    ResponseEntity<ApiErrorResponse> scheduleRequestConflict(
+            ScheduleOperationRequestConflictException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_SCHEDULE_REQUEST_CONFLICT, request, null);
     }
 
     /** Exposes only Campaign-owned failures after outbound adapters sanitize remote details. */

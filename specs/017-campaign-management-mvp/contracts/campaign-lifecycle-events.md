@@ -1,6 +1,6 @@
-# Campaign Lifecycle Kafka Contract v1 — Avro Amendment Draft
+# Campaign Lifecycle Kafka Contract v1 — Avro SpecificRecord
 
-**Status**: Requires Feature 017 and ADR 0016 approval
+**Status**: Approved by Feature 017 amendment and ADR 0016
 
 **Owner/producer**: Campaign Service  
 **Topic**: `campaign.lifecycle.v1`  
@@ -9,16 +9,17 @@
 **Delivery**: at least once through PostgreSQL transactional outbox
 
 The previous JSON envelope is superseded by this amendment. The selected wire format is Avro
-schema-first with generated `SpecificRecord` classes and Confluent Schema Registry. No producer code
-may use the Avro contract until the amended artifacts and contract module are approved.
+schema-first with generated `SpecificRecord` classes and Confluent Schema Registry. The protocol
+module and amended artifacts are approved; runtime publisher work remains in the later tasks.
 
 ## Schema source files
 
 ```text
 contracts/kafka-avro-contracts/src/main/avro/
 └── com/philia/flashsale/contract/campaign/lifecycle/v1/
-    ├── CampaignScheduledV1.avsc
-    └── CampaignActivatedV1.avsc
+    └── topics/campaign.lifecycle.v1/
+        ├── CampaignScheduledV1.avsc
+        └── CampaignActivatedV1.avsc
 ```
 
 These are protocol-only files. They must not contain JPA entities, domain models, or application

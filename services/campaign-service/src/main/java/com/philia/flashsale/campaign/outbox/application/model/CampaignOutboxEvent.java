@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Application model for one durable lifecycle event awaiting a later publisher. */
+/** Application model for one durable lifecycle event awaiting a later Avro publisher. */
 public record CampaignOutboxEvent(
         UUID id,
         UUID aggregateId,
