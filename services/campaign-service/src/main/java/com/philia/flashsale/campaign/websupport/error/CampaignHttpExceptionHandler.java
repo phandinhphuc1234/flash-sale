@@ -2,6 +2,7 @@ package com.philia.flashsale.campaign.websupport.error;
 
 import com.philia.flashsale.campaign.campaign.domain.exception.CampaignDomainException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignCodeAlreadyExistsException;
+import com.philia.flashsale.campaign.campaign.application.exception.CampaignDownstreamException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignNotFoundException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignOperationInProgressException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignVersionConflictException;
@@ -60,6 +61,13 @@ public class CampaignHttpExceptionHandler {
     ResponseEntity<ApiErrorResponse> operationInProgress(
             CampaignOperationInProgressException exception, HttpServletRequest request) {
         return error(CampaignErrorCode.CAMPAIGN_OPERATION_IN_PROGRESS, request, null);
+    }
+
+    /** Exposes only Campaign-owned failures after outbound adapters sanitize remote details. */
+    @ExceptionHandler(CampaignDownstreamException.class)
+    ResponseEntity<ApiErrorResponse> downstreamFailure(
+            CampaignDownstreamException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.from(exception.failure().name()), request, null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

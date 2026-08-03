@@ -1,8 +1,8 @@
 # Implementation Plan: Campaign Management MVP
 
 **Branch**: `017-campaign-management-mvp` | **Date**: 2026-07-30 | **Spec**: [spec.md](./spec.md)  
-**Status**: Amended — pending re-approval after the OpenFeign transport decision
-**Input**: Approved Feature 017 specification, approved ADRs 0012/0013, and proposed ADR 0015
+**Status**: Approved — OpenFeign amendment accepted 2026-08-03
+**Input**: Approved Feature 017 specification and approved ADRs 0012, 0013, and 0015
 
 ## Summary
 
@@ -71,7 +71,7 @@ Campaign schedule/lifecycle/outbox races, two lifecycle event types
 | Observability | PASS | Actuator/Prometheus already declarative; `X-Trace-Id` propagation and metrics are planned |
 | Contracts/dependencies | PASS | All cross-service/API/event contracts identified; new dependencies justified in `research.md` |
 | Validation | PASS | unit/integration/contract/concurrency/Kafka/smoke/module/reactor checks are planned |
-| Architecture decision | PENDING | ADR 0012 and ADR 0013 are accepted; proposed ADR 0015 records the OpenFeign transport choice |
+| Architecture decision | PASS | ADR 0012, ADR 0013, and ADR 0015 are accepted |
 
 Redis Lua is not applicable because Feature 017 does not implement the purchase hot path or runtime
 stock deduction.
@@ -257,6 +257,9 @@ Product, Inventory, and Kafka are not called by local draft operations.
 5. Campaign adds the background-capable Client Credentials manager and scope-specific OpenFeign
    adapters. Feign interfaces remain transport-only; adapters translate wire DTOs and failures into
    application ports/results.
+   Product uses a 500-ms connect/1,200-ms read timeout; Inventory uses a 500-ms
+   connect/1,000-ms read timeout. Automatic Feign retry is disabled so schedule recovery remains the
+   only retry owner and always reuses the durable Inventory request identity.
 6. Cross-module contract tests prove token/audience/subject/scope isolation and no admin-token relay.
 
 ### Slice 4 — Idempotent schedule and durable event creation
@@ -409,7 +412,7 @@ also run `kubectl apply --dry-run=client -k <overlay>`.
 - [Kafka lifecycle contract](./contracts/campaign-lifecycle-events.md)
 - `docs/adr/0012-campaign-oauth2-client-credentials.md`
 - `docs/adr/0013-flashsale-campaign-snapshot-identity.md`
-- `docs/adr/0015-campaign-openfeign-http-clients.md` (proposed amendment)
+- `docs/adr/0015-campaign-openfeign-http-clients.md`
 
 ## Complexity Tracking
 
@@ -431,6 +434,8 @@ Authentication capability
   security, compatibility, and Kafka contract artifacts.
 - 2026-08-02 — The transport decision was amended from `RestClient` to OpenFeign for the two
   Campaign outbound HTTP adapters; plan re-approval is required before production implementation.
+- 2026-08-03 — Project owner explicitly approved implementing T053–T055 with the repository
+  OpenFeign skill; ADR 0015 and this plan amendment are accepted.
 
 Plan approval permits `speckit-tasks` to generate `tasks.md`. It does not permit production-code
 implementation yet. The generated task ledger must be reviewed and explicitly approved before

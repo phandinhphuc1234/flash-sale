@@ -52,6 +52,21 @@ spring:
             scope:
               - inventory.campaign.allocate
 
+  cloud:
+    openfeign:
+      client:
+        config:
+          # Product validation is a synchronous query within the Campaign scheduling budget.
+          campaign-product:
+            connectTimeout: ${CAMPAIGN_PRODUCT_CONNECT_TIMEOUT_MS:500}
+            readTimeout: ${CAMPAIGN_PRODUCT_READ_TIMEOUT_MS:1200}
+            loggerLevel: basic
+          # Inventory allocation is a write; retries belong to the durable schedule workflow.
+          campaign-inventory-allocation:
+            connectTimeout: ${CAMPAIGN_INVENTORY_CONNECT_TIMEOUT_MS:500}
+            readTimeout: ${CAMPAIGN_INVENTORY_READ_TIMEOUT_MS:1000}
+            loggerLevel: basic
+
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
     producer:

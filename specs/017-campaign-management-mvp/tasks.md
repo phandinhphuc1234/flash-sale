@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/017-campaign-management-mvp/`
 
 **Prerequisites**: Approved `spec.md`, approved `plan.md`, `research.md`, `data-model.md`,
-`quickstart.md`, approved contracts, ADR 0012, ADR 0013, and the proposed ADR 0015 amendment
+`quickstart.md`, approved contracts, ADR 0012, ADR 0013, and accepted ADR 0015
 
 **Tests**: Unit, PostgreSQL integration, HTTP/OAuth2 contract, security substitution, concurrency,
 Kafka-compatible integration, observability, Compose, and reactor validation are required by the
@@ -27,7 +27,7 @@ ledger is explicitly approved.
 **Purpose**: Add only the dependencies and declarative configuration approved by the plan while
 keeping all affected service contexts buildable.
 
-- [ ] T001 Add the approved MVC, validation, JPA, Resource Server, OAuth2 Client, OpenFeign, MapStruct, PostgreSQL, Kafka, Testcontainers, and test dependencies to `services/campaign-service/pom.xml`
+- [x] T001 Add the approved MVC, validation, JPA, Resource Server, OAuth2 Client, OpenFeign, MapStruct, PostgreSQL, Kafka, Testcontainers, and test dependencies to `services/campaign-service/pom.xml`
 - [x] T002 Add the approved Spring Authorization Server and PostgreSQL Testcontainers dependencies for durable Client Credentials support to `services/authentication-service/pom.xml`
 - [x] T003 [P] Configure Campaign virtual threads, datasource/JPA, normal-replica-disabled Liquibase, public/internal JWT trust values, OAuth2 registrations, downstream URLs, scheduler/outbox settings, Kafka producer, and declarative Actuator endpoints in `services/campaign-service/src/main/resources/application.yml`
 - [x] T004 [P] Configure service-token audience, maximum 300-second TTL, and fixed Campaign/Flash Sale client provisioning inputs in `services/authentication-service/src/main/resources/application.yml`
@@ -131,9 +131,9 @@ crash-after-allocation recovery, background recovery, and absence of admin-token
 - [x] T050 [US2] Implement Product validation request/response mapping, internal controller, exact internal JWT audience/subject/scope chain, and stable errors in `services/product-service/src/main/java/com/philia/flashsale/product/campaignvalidation/adapter/in/web/` and `services/product-service/src/main/java/com/philia/flashsale/product/configuration/ProductInternalSecurityConfiguration.java`
 - [x] T051 [P] [US2] Introduce typed insufficient-stock and allocation-request-conflict failures and stable HTTP mappings without parsing messages in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/allocation/domain/exception/` and `services/inventory-service/src/main/java/com/philia/flashsale/inventory/websupport/error/InventoryExceptionHandler.java`
 - [x] T052 [US2] Narrow only `POST /internal/v1/campaign-stock-allocations` to internal audience, `campaign-service`, and `SCOPE_inventory.campaign.allocate` while preserving other Inventory authorization in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/configuration/InventorySecurityConfiguration.java` and `InventoryJwtTrustConfiguration.java`
-- [ ] T053 [P] [US2] Implement scope-specific in-memory service-token acquisition and renewal with `AuthorizedClientServiceOAuth2AuthorizedClientManager` in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/security/serviceidentity/CampaignServiceTokenManager.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/configuration/CampaignOAuth2ClientConfiguration.java`
-- [ ] T054 [P] [US2] Implement Product validation DTOs, `ProductFeignClient`, MapStruct mapping, HTTP/status/error mapping, and `X-Trace-Id` propagation in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/client/product/`
-- [ ] T055 [P] [US2] Implement Inventory allocation DTOs, `InventoryFeignClient`, common-envelope parsing, identity/result verification, stable-error mapping, and `X-Trace-Id` propagation in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/client/inventory/`
+- [x] T053 [P] [US2] Implement scope-specific in-memory service-token acquisition and renewal with `AuthorizedClientServiceOAuth2AuthorizedClientManager` in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/security/serviceidentity/CampaignServiceTokenManager.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/configuration/CampaignOAuth2ClientConfiguration.java`
+- [x] T054 [P] [US2] Implement Product validation DTOs, `ProductFeignClient`, MapStruct mapping, HTTP/status/error mapping, and `X-Trace-Id` propagation in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/client/product/`
+- [x] T055 [P] [US2] Implement Inventory allocation DTOs, `InventoryFeignClient`, common-envelope parsing, identity/result verification, stable-error mapping, and `X-Trace-Id` propagation in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/client/inventory/`
 - [ ] T056 [P] [US2] Implement schedule-operation status/model/fingerprint rules and application ports in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/scheduleoperation/domain/` and `scheduleoperation/application/port/`
 - [ ] T057 [US2] Implement short-transaction schedule-operation creation/loading, indefinite key retention, stable Inventory request ID, same-config reopen, and conflict detection in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/scheduleoperation/application/usecase/PrepareScheduleOperationService.java` and `scheduleoperation/adapter/out/persistence/jpa/ScheduleOperationPersistenceAdapter.java`
 - [ ] T058 [US2] Implement the schedule orchestrator with no database transaction around token/Product/Inventory HTTP calls in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/usecase/ScheduleCampaignService.java`

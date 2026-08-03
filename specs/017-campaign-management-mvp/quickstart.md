@@ -520,3 +520,39 @@ Validation command:
 ```
 
 Result: **9 tests, 9 passed, 0 failures, 0 errors**.
+
+## 25. T001/T053-T055 Campaign OpenFeign client implementation evidence
+
+Implemented on 2026-08-03:
+
+- Accepted ADR 0015 and added the BOM-managed OpenFeign dependency to Campaign Service.
+- Added an in-memory `AuthorizedClientServiceOAuth2AuthorizedClientManager` and a capability-limited
+  token manager for `campaign-product` and `campaign-inventory-allocation` registrations.
+- Added separate Product and Inventory Feign interfaces, transport DTOs, MapStruct boundary mappers,
+  application output ports/results, stable error translation, `X-Trace-Id`, and response identity
+  verification.
+- Configured Product at 500-ms connect / 1,200-ms read and Inventory at 500-ms connect / 1,000-ms
+  read; both clients use `Retryer.NEVER_RETRY` so the durable schedule workflow remains retry owner.
+- Added architecture checks that keep Feign imports out of Campaign application/domain packages.
+
+Focused validation command:
+
+```powershell
+.\mvnw.cmd --% -pl services/campaign-service -am -Dtest=CampaignDownstreamClientContractTests,CampaignServiceTokenManagerTests,CampaignProductValidationClientTests,CampaignInventoryAllocationClientTests,CampaignArchitectureTests -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Result: **13 tests, 13 passed, 0 failures, 0 errors**.
+
+Spring wiring validation command:
+
+```powershell
+.\mvnw.cmd --% -pl services/campaign-service -am -Dtest=CampaignServiceApplicationTests -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Result: **1 test, 1 passed, 0 failures, 0 errors**. The application context created the OAuth2
+manager and both Feign proxies against the real Testcontainers PostgreSQL/Liquibase baseline.
+
+A broader clean Campaign test run compiled all 79 production sources but remains intentionally red
+on five test-first assertions owned by unimplemented T056-T061: two schedule-operation/orchestrator
+type markers and three schedule HTTP cases. No T053-T055 test failed; T063 remains the later US2
+aggregate validation gate.

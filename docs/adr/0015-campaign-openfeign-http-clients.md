@@ -1,7 +1,7 @@
 # ADR 0015: OpenFeign for Campaign Internal HTTP Clients
 
-- **Status**: Proposed
-- **Date**: 2026-08-02
+- **Status**: Accepted
+- **Date**: 2026-08-03
 - **Decision owner**: Project owner
 - **Feature**: `017-campaign-management-mvp`
 - **Related**: ADR 0012 (Campaign OAuth2 Client Credentials), ADR 0013 (Campaign Snapshot Identity)
@@ -26,7 +26,10 @@ not appear in domain models, application ports, or use cases.
 The Campaign service adds `org.springframework.cloud:spring-cloud-starter-openfeign`. The existing
 OAuth2 Client Credentials manager remains responsible for obtaining the correct scope-specific
 service token. Feign request configuration attaches the selected bearer token, propagates
-`X-Trace-Id`, and applies bounded connect/read timeouts. The adapter owns HTTP status/error
+`X-Trace-Id`, and applies bounded connect/read timeouts. Product uses a 500-ms connect timeout and
+1,200-ms read timeout. Inventory uses a 500-ms connect timeout and 1,000-ms read timeout so the
+combined call remains inside the approved 2,500-ms Campaign budget. Automatic Feign retry is
+disabled. The adapter owns HTTP status/error
 translation; business retries and Inventory idempotency remain governed by the approved Feature 017
 contracts.
 
@@ -70,3 +73,8 @@ Costs:
 Update Campaign's dependency/configuration tasks first, then implement T053–T055. Verify Product and
 Inventory status/error mapping, scope-specific token attachment, trace propagation, timeout behavior,
 and no administrator-token relay through contract and integration tests.
+
+## Approval
+
+Accepted by the project owner on 2026-08-03 through the explicit request to implement Feature 017
+tasks T053–T055 with the repository OpenFeign skill.

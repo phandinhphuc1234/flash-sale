@@ -1,9 +1,9 @@
 package com.philia.flashsale.campaign.scheduleoperation.adapter.out.persistence.jpa.repository;
 
 import com.philia.flashsale.campaign.scheduleoperation.adapter.out.persistence.jpa.entity.CampaignScheduleOperationJpaEntity;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.Collection;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /** Spring Data boundary for durable schedule-operation identities and replay lookup. */
@@ -15,5 +15,5 @@ public interface CampaignScheduleOperationJpaRepository
 
     Optional<CampaignScheduleOperationJpaEntity> findByInventoryRequestId(UUID inventoryRequestId);
 
-    boolean existsByCampaignIdAndOperationStatusIn(UUID campaignId, Collection<String> statuses);
+    boolean existsByCampaignIdAndOperationStatusIn(UUID campaignId, List<String> statuses);
 }

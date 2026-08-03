@@ -67,6 +67,11 @@ sets, so Product validation does not receive Inventory authority and Inventory a
 receive Product authority. The Feign request configuration must preserve the registration-specific
 token selection, `X-Trace-Id` propagation, bounded timeouts, and response/error translation.
 
+The approved timeout budget is explicit: Product uses 500 ms connect / 1,200 ms read; Inventory
+uses 500 ms connect / 1,000 ms read. Inventory takes the stricter 1,000-ms value from the supplied
+2,500-ms Campaign budget rather than the conflicting 1,500-ms example default. Feign automatic
+retry is disabled; durable schedule recovery owns retries and reuses the same Inventory request ID.
+
 **Rejected**:
 
 - gRPC, because the Constitution currently requires documented synchronous HTTP and the MVP already

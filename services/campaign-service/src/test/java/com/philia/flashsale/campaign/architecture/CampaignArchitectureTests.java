@@ -28,7 +28,9 @@ class CampaignArchitectureTests {
                 "com.philia.flashsale.campaign.outbox.adapter.",
                 "org.springframework.data.",
                 "jakarta.persistence.",
-                "org.hibernate."));
+                "org.hibernate.",
+                "org.springframework.cloud.openfeign.",
+                "feign."));
 
         assertTrue(violations.isEmpty(), () -> "Application dependency violations:\n"
                 + String.join("\n", violations));
@@ -43,7 +45,9 @@ class CampaignArchitectureTests {
                 "org.mapstruct.",
                 "org.apache.kafka.",
                 "com.fasterxml.jackson.",
-                "jakarta.servlet."));
+                "jakarta.servlet.",
+                "org.springframework.cloud.openfeign.",
+                "feign."));
 
         assertTrue(violations.isEmpty(), () -> "Domain dependency violations:\n"
                 + String.join("\n", violations));
