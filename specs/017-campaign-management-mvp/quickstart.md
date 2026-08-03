@@ -647,3 +647,33 @@ Inventory request identities, version and request-conflict checks, immutable sch
 `DRAFT -> SCHEDULED` finalization, one transactional outbox row, admin HTTP headers/error contract,
 and resumable operation recovery. The HTTP contract uses a real PostgreSQL Testcontainer and mocked
 downstream ports; it does not claim a live Product/Inventory network smoke test.
+
+## 30. B3 protected snapshot and Flash Sale identity evidence
+
+Implemented on 2026-08-03:
+
+- Added an application snapshot query boundary that returns only stable Campaign, Product snapshot,
+  and Inventory allocation fields. Draft, missing, and incomplete aggregates resolve to the approved
+  `CAMPAIGN_SNAPSHOT_NOT_FOUND` contract.
+- Added a private `GET /internal/v1/campaigns/{campaignId}/snapshot` HTTP adapter and separated
+  transport contract. The response is intentionally a direct snapshot document, not the public
+  administrator `ApiResponse` envelope.
+- Restricted the endpoint to the dedicated `flashsale-service` subject, internal audience
+  `flash-sale-internal-api`, and `SCOPE_campaign.snapshot.read`; the endpoint is not routed through
+  the API Gateway.
+- Moved fixed service-client provisioning into the OAuth adapter boundary. The Flash Sale client is
+  provisioned with an Argon2-hashed secret and only its approved snapshot scope; Campaign scopes are
+  denied.
+
+Focused validation commands:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am "-Dtest=InternalCampaignSnapshotContractTests,GetCampaignSnapshotServiceTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+# BUILD SUCCESS — 8 tests, 0 failures, 0 errors
+
+.\mvnw.cmd -pl services/authentication-service -am "-Dtest=FlashSaleServiceClientCredentialsTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+# BUILD SUCCESS — 2 tests, 0 failures, 0 errors
+```
+
+These focused checks use real PostgreSQL Testcontainers. Kafka, outbox recovery, and full topology
+smoke validation remain in T076-T078 and T084-T103.

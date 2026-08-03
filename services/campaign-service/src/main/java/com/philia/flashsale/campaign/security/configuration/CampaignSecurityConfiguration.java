@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,6 +21,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 
 /**
  * Separates administrator ingress from service-to-service ingress at the filter-chain boundary.
@@ -42,8 +45,9 @@ public class CampaignSecurityConfiguration {
                 .securityMatcher("/internal/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        // T082 adds the exact snapshot subject and scope rule to this boundary.
-                        .anyRequest().authenticated())
+                        .requestMatchers("/internal/v1/campaigns/*/snapshot")
+                        .access(flashSaleSnapshotAccess())
+                        .anyRequest().denyAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(securityFailureHandler)
                         .accessDeniedHandler(securityFailureHandler))
@@ -54,6 +58,20 @@ public class CampaignSecurityConfiguration {
                                 .decoder(internalJwtDecoder)
                                 .jwtAuthenticationConverter(campaignJwtAuthenticationConverter)))
                 .build();
+    }
+
+    /** Allows only the dedicated Flash Sale service identity to rebuild Campaign state. */
+    private AuthorizationManager<RequestAuthorizationContext> flashSaleSnapshotAccess() {
+        return (authentication, context) -> {
+            var current = authentication.get();
+            boolean allowed = current != null
+                    && current.isAuthenticated()
+                    && "flashsale-service".equals(current.getName())
+                    && current.getAuthorities().stream()
+                            .anyMatch(authority -> "SCOPE_campaign.snapshot.read"
+                                    .equals(authority.getAuthority()));
+            return new AuthorizationDecision(allowed);
+        };
     }
 
     @Bean

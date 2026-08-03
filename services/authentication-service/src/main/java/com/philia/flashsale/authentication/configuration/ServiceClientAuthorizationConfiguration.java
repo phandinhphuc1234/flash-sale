@@ -55,21 +55,6 @@ public class ServiceClientAuthorizationConfiguration {
     }
 
     @Bean
-    org.springframework.boot.ApplicationRunner fixedServiceClientProvisioner(
-            ProvisionServiceClientService service, ServiceClientsProperties properties) {
-        return args -> {
-            if (properties.campaign() != null) {
-                var client = properties.campaign();
-                service.provisionIfConfigured(client.clientId(), client.clientSecret(), client.allowedScopes());
-            }
-            if (properties.flashsale() != null) {
-                var client = properties.flashsale();
-                service.provisionIfConfigured(client.clientId(), client.clientSecret(), client.allowedScopes());
-            }
-        };
-    }
-
-    @Bean
     @Order(1)
     SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);

@@ -6,6 +6,7 @@ import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.mapper
 import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.repository.CampaignJpaRepository;
 import com.philia.flashsale.campaign.campaign.application.port.out.CheckCampaignCodeUniquenessPort;
 import com.philia.flashsale.campaign.campaign.application.port.out.LoadCampaignPort;
+import com.philia.flashsale.campaign.campaign.application.port.out.LoadCampaignSnapshotPort;
 import com.philia.flashsale.campaign.campaign.application.port.out.SaveCampaignPort;
 import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import java.util.Optional;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class CampaignPersistenceAdapter implements
         LoadCampaignPort,
+        LoadCampaignSnapshotPort,
         SaveCampaignPort,
         CheckCampaignCodeUniquenessPort {
 
@@ -38,6 +40,15 @@ public class CampaignPersistenceAdapter implements
     @Override
     public Optional<Campaign> findById(UUID campaignId) {
         return repository.findDetailedById(campaignId).map(mapper::toDomain);
+    }
+
+    /** Returns only a non-draft aggregate with a complete Product and Inventory snapshot. */
+    @Override
+    public Optional<Campaign> findCompleteSnapshotById(UUID campaignId) {
+        return findById(campaignId)
+                .filter(campaign -> !campaign.status().isEditable())
+                .filter(Campaign::hasItem)
+                .filter(campaign -> campaign.item().isReadyForScheduling());
     }
 
     /** Checks code uniqueness through the Campaign-owned repository only. */

@@ -4,6 +4,7 @@ import com.philia.flashsale.campaign.campaign.domain.exception.CampaignDomainExc
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignCodeAlreadyExistsException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignDownstreamException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignNotFoundException;
+import com.philia.flashsale.campaign.campaign.application.exception.CampaignSnapshotNotFoundException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignOperationInProgressException;
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignVersionConflictException;
 import com.philia.flashsale.campaign.scheduleoperation.application.exception.ScheduleOperationInProgressException;
@@ -45,6 +46,12 @@ public class CampaignHttpExceptionHandler {
     ResponseEntity<ApiErrorResponse> notFound(
             CampaignNotFoundException exception, HttpServletRequest request) {
         return error(CampaignErrorCode.CAMPAIGN_NOT_FOUND, request, null);
+    }
+
+    @ExceptionHandler(CampaignSnapshotNotFoundException.class)
+    ResponseEntity<ApiErrorResponse> snapshotNotFound(
+            CampaignSnapshotNotFoundException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_SNAPSHOT_NOT_FOUND, request, null);
     }
 
     @ExceptionHandler(CampaignCodeAlreadyExistsException.class)
