@@ -18,6 +18,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -37,6 +39,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class CampaignAdminSecurityTests {
 
     private static final String TRACE_ID = "campaign-admin-security-test";
+
+    @MockBean
+    private ClientRegistrationRepository clientRegistrations;
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES =

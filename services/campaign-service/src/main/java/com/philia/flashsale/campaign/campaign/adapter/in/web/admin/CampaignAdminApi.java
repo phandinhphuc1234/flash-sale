@@ -1,6 +1,7 @@
 package com.philia.flashsale.campaign.campaign.adapter.in.web.admin;
 
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.CreateCampaignRequest;
+import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.ActivateCampaignRequest;
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.ReplaceCampaignItemRequest;
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.ReplaceCampaignMetadataRequest;
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.ScheduleCampaignRequest;
@@ -30,4 +31,7 @@ public interface CampaignAdminApi {
     ResponseEntity<ApiResponse<CampaignResponse>> schedule(
             UUID campaignId, String ifMatch, String idempotencyKey, ScheduleCampaignRequest request,
             String traceId);
+
+    ResponseEntity<ApiResponse<CampaignResponse>> activate(
+            UUID campaignId, String ifMatch, ActivateCampaignRequest request, String traceId);
 }

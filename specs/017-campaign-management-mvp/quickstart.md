@@ -677,3 +677,29 @@ Focused validation commands:
 
 These focused checks use real PostgreSQL Testcontainers. Kafka, outbox recovery, and full topology
 smoke validation remain in T076-T078 and T084-T103.
+
+## 31. T064-T074 Campaign lifecycle acceptance
+
+Implemented and validated on 2026-08-04:
+
+- Added framework-free activation/ending policy tests and monotonic lifecycle rules.
+- Added conditional PostgreSQL status/version/time updates so concurrent workers have one winner.
+- Added the two-second, batch-100 scheduler with a generated scheduler trace identity.
+- Added manual `POST /api/v1/admin/campaigns/{campaignId}/activate` with quoted `If-Match`,
+  administrator scope, window/status validation, next `ETag`, and shared error handling.
+- Added atomic `CampaignActivated.v1` outbox persistence after the winning transition. The MVP does
+  not emit `CampaignEnded`.
+- Kept cross-feature persistence behind application ports; feature adapters no longer import another
+  feature's adapter directly.
+
+Focused validation command:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am "-Dtest=CampaignArchitectureTests,CampaignLifecyclePolicyTests,CampaignLifecycleSchedulerTests,CampaignManualActivationHttpContractTests,CampaignLifecycleConcurrencyIntegrationTests,CampaignLifecycleOutboxOrderingTests" "-Dsurefire.failIfNoSpecifiedTests=false" test
+```
+
+Result: **15 tests, 15 passed, 0 failures, 0 errors**. The PostgreSQL integration tests used real
+Testcontainers and verified one-winner activation/ending races, scheduled-before-activated event
+ordering, exactly one activation outbox row, and no ended event. An additional
+`.\mvnw.cmd -pl services/campaign-service -am verify` completed with exit code `0`; the broader
+reactor and topology evidence remain tracked by T095-T097.

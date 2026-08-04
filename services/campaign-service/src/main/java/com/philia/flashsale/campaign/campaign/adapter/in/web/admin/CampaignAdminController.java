@@ -2,16 +2,19 @@ package com.philia.flashsale.campaign.campaign.adapter.in.web.admin;
 
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.mapper.CampaignAdminWebMapper;
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.CreateCampaignRequest;
+import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.ActivateCampaignRequest;
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.ReplaceCampaignItemRequest;
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.ReplaceCampaignMetadataRequest;
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.request.ScheduleCampaignRequest;
 import com.philia.flashsale.campaign.campaign.adapter.in.web.admin.response.CampaignResponse;
 import com.philia.flashsale.campaign.campaign.application.port.in.CreateCampaignUseCase;
+import com.philia.flashsale.campaign.campaign.application.port.in.ActivateCampaignUseCase;
 import com.philia.flashsale.campaign.campaign.application.port.in.GetCampaignDetailUseCase;
 import com.philia.flashsale.campaign.campaign.application.port.in.ReplaceCampaignItemUseCase;
 import com.philia.flashsale.campaign.campaign.application.port.in.ReplaceCampaignMetadataUseCase;
 import com.philia.flashsale.campaign.campaign.application.port.in.ScheduleCampaignUseCase;
 import com.philia.flashsale.campaign.campaign.application.command.ScheduleCampaignCommand;
+import com.philia.flashsale.campaign.campaign.application.command.ActivateCampaignCommand;
 import com.philia.flashsale.campaign.campaign.application.query.GetCampaignDetailQuery;
 import com.philia.flashsale.campaign.campaign.application.result.CampaignDetailResult;
 import com.philia.flashsale.common.web.ApiResponse;
@@ -29,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.philia.flashsale.campaign.websupport.context.CampaignRequestContext;
+import com.philia.flashsale.campaign.campaign.application.port.out.CampaignActorPort;
+import com.philia.flashsale.campaign.campaign.application.port.out.CampaignClockPort;
 
 /** Driving HTTP adapter for local Campaign draft administration. */
 @RestController
@@ -36,25 +41,34 @@ import com.philia.flashsale.campaign.websupport.context.CampaignRequestContext;
 public class CampaignAdminController implements CampaignAdminApi {
 
     private final CreateCampaignUseCase createCampaign;
+    private final ActivateCampaignUseCase activateCampaign;
     private final ReplaceCampaignMetadataUseCase replaceMetadata;
     private final ReplaceCampaignItemUseCase replaceItem;
     private final GetCampaignDetailUseCase getDetail;
     private final ScheduleCampaignUseCase scheduleCampaign;
     private final CampaignAdminWebMapper mapper;
+    private final CampaignActorPort actorPort;
+    private final CampaignClockPort clockPort;
 
     public CampaignAdminController(
             CreateCampaignUseCase createCampaign,
+            ActivateCampaignUseCase activateCampaign,
             ReplaceCampaignMetadataUseCase replaceMetadata,
             ReplaceCampaignItemUseCase replaceItem,
             GetCampaignDetailUseCase getDetail,
             ScheduleCampaignUseCase scheduleCampaign,
-            CampaignAdminWebMapper mapper) {
+            CampaignAdminWebMapper mapper,
+            CampaignActorPort actorPort,
+            CampaignClockPort clockPort) {
         this.createCampaign = createCampaign;
+        this.activateCampaign = activateCampaign;
         this.replaceMetadata = replaceMetadata;
         this.replaceItem = replaceItem;
         this.getDetail = getDetail;
         this.scheduleCampaign = scheduleCampaign;
         this.mapper = mapper;
+        this.actorPort = actorPort;
+        this.clockPort = clockPort;
     }
 
     @Override
@@ -108,6 +122,23 @@ public class CampaignAdminController implements CampaignAdminApi {
         CampaignDetailResult result = scheduleCampaign.schedule(
                 new ScheduleCampaignCommand(campaignId, parseVersion(ifMatch), idempotencyKey,
                         "campaign-service", CampaignRequestContext.normalizeOrGenerate(traceId)));
+        return response(result);
+    }
+
+    @Override
+    @PostMapping("/{campaignId}/activate")
+    public ResponseEntity<ApiResponse<CampaignResponse>> activate(
+            @PathVariable UUID campaignId,
+            @RequestHeader(HttpHeaders.IF_MATCH) String ifMatch,
+            @Valid @RequestBody ActivateCampaignRequest request,
+            @RequestHeader(value = CampaignRequestContext.TRACE_HEADER, required = false) String traceId) {
+        CampaignDetailResult result = activateCampaign.activate(new ActivateCampaignCommand(
+                campaignId,
+                parseVersion(ifMatch),
+                actorPort.currentActor(),
+                clockPort.now(),
+                CampaignRequestContext.normalizeOrGenerate(traceId),
+                true)).campaign();
         return response(result);
     }
 

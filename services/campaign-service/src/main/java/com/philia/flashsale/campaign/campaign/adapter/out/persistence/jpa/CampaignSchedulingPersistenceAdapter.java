@@ -13,17 +13,12 @@ import com.philia.flashsale.campaign.campaign.domain.event.CampaignScheduled;
 import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignItem;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignMoney;
-import com.philia.flashsale.campaign.outbox.adapter.out.persistence.jpa.entity.CampaignOutboxEventJpaEntity;
-import com.philia.flashsale.campaign.outbox.adapter.out.persistence.jpa.repository.CampaignOutboxEventJpaRepository;
 import com.philia.flashsale.campaign.outbox.application.model.CampaignOutboxEvent;
-import com.philia.flashsale.campaign.scheduleoperation.adapter.out.persistence.jpa.entity.CampaignScheduleOperationJpaEntity;
-import com.philia.flashsale.campaign.scheduleoperation.adapter.out.persistence.jpa.repository.CampaignScheduleOperationJpaRepository;
+import com.philia.flashsale.campaign.outbox.application.port.out.SaveCampaignOutboxEventPort;
+import com.philia.flashsale.campaign.scheduleoperation.application.port.out.LoadLockedScheduleOperationPort;
+import com.philia.flashsale.campaign.scheduleoperation.application.port.out.SaveScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperation;
-import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperationFingerprint;
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperationStatus;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.UUID;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,20 +28,23 @@ public class CampaignSchedulingPersistenceAdapter implements FinalizeCampaignSch
 
     private final CampaignJpaRepository campaignRepository;
     private final CampaignPersistenceMapper mapper;
-    private final CampaignScheduleOperationJpaRepository operationRepository;
-    private final CampaignOutboxEventJpaRepository outboxRepository;
+    private final LoadLockedScheduleOperationPort operationLoader;
+    private final SaveScheduleOperationPort operationSaver;
+    private final SaveCampaignOutboxEventPort outboxSaver;
     private final ObjectMapper objectMapper;
 
     public CampaignSchedulingPersistenceAdapter(
             CampaignJpaRepository campaignRepository,
             CampaignPersistenceMapper mapper,
-            CampaignScheduleOperationJpaRepository operationRepository,
-            CampaignOutboxEventJpaRepository outboxRepository,
+            LoadLockedScheduleOperationPort operationLoader,
+            SaveScheduleOperationPort operationSaver,
+            SaveCampaignOutboxEventPort outboxSaver,
             ObjectMapper objectMapper) {
         this.campaignRepository = campaignRepository;
         this.mapper = mapper;
-        this.operationRepository = operationRepository;
-        this.outboxRepository = outboxRepository;
+        this.operationLoader = operationLoader;
+        this.operationSaver = operationSaver;
+        this.outboxSaver = outboxSaver;
         this.objectMapper = objectMapper;
     }
 
@@ -55,13 +53,12 @@ public class CampaignSchedulingPersistenceAdapter implements FinalizeCampaignSch
     public Campaign finalizeSchedule(FinalizeCampaignSchedulingCommand command) {
         CampaignJpaEntity entity = campaignRepository.findDetailedByIdForUpdate(command.campaignId())
                 .orElseThrow(() -> new IllegalArgumentException("Campaign was not found"));
-        CampaignScheduleOperationJpaEntity operationEntity = operationRepository
-                .findLockedById(command.operationId())
+        ScheduleOperation operation = operationLoader.findLockedById(command.operationId())
                 .orElseThrow(() -> new IllegalArgumentException("Schedule operation was not found"));
-        if (!command.campaignId().equals(operationEntity.getCampaignId())) {
+        if (!command.campaignId().equals(operation.campaignId())) {
             throw new IllegalArgumentException("Schedule operation does not belong to Campaign");
         }
-        if (ScheduleOperationStatus.COMPLETED.name().equals(operationEntity.getOperationStatus())) {
+        if (operation.status() == ScheduleOperationStatus.COMPLETED) {
             return mapper.toDomain(entity);
         }
 
@@ -87,20 +84,17 @@ public class CampaignSchedulingPersistenceAdapter implements FinalizeCampaignSch
         synchronizeItem(current.item(), entity);
         CampaignJpaEntity saved = campaignRepository.saveAndFlush(entity);
 
-        ScheduleOperation operation = toDomain(operationEntity);
         operation.markCompleted();
-        operationEntity.setOperationStatus(operation.status().name());
-        operationEntity.setAttemptCount(operation.attemptCount());
-        operationEntity.setUpdatedAt(operation.updatedAt());
-        operationRepository.saveAndFlush(operationEntity);
+        operationSaver.save(operation);
 
-        UUID eventId = UUID.nameUUIDFromBytes(
-                (operation.id() + ":CampaignScheduled:v1").getBytes(StandardCharsets.UTF_8));
+        java.util.UUID eventId = java.util.UUID.nameUUIDFromBytes(
+                (operation.id() + ":CampaignScheduled:v1")
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
         CampaignScheduled event = CampaignScheduled.of(eventId, current, command.now());
         CampaignOutboxEvent outbox = new CampaignOutboxEvent(
                 eventId, current.id(), current.version(), event.eventType(), event.eventVersion(),
                 current.id().toString(), serialize(event), command.traceId(), event.occurredAt(), command.now());
-        outboxRepository.save(toEntity(outbox));
+        outboxSaver.save(outbox);
         return mapper.toDomain(saved);
     }
 
@@ -122,22 +116,4 @@ public class CampaignSchedulingPersistenceAdapter implements FinalizeCampaignSch
         }
     }
 
-    private ScheduleOperation toDomain(CampaignScheduleOperationJpaEntity entity) {
-        return ScheduleOperation.rehydrate(
-                entity.getId(), entity.getCampaignId(), entity.getIdempotencyKey(),
-                entity.getInventoryRequestId(), new ScheduleOperationFingerprint(entity.getRequestHash()),
-                entity.getCampaignVersion(), ScheduleOperationStatus.valueOf(entity.getOperationStatus()),
-                entity.getAttemptCount(), entity.getLastFailureCode(), entity.getLastFailureMessage(),
-                entity.getInitiatedBy(), entity.getCallerService(), entity.getTraceId(),
-                entity.getCreatedAt(), entity.getUpdatedAt());
-    }
-
-    private CampaignOutboxEventJpaEntity toEntity(CampaignOutboxEvent source) {
-        Instant now = source.createdAt();
-        return new CampaignOutboxEventJpaEntity(
-                source.id(), source.aggregateId(), source.aggregateVersion(), source.eventType(),
-                source.eventVersion(), source.eventKey(), source.payload(), "PENDING", 0, now,
-                null, null, source.occurredAt(), null, null, 0, null, null,
-                source.traceId(), source.createdAt(), now);
-    }
 }

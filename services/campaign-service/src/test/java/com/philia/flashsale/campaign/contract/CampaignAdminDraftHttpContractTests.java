@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -39,6 +41,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class CampaignAdminDraftHttpContractTests {
 
     private static final String TRACE_ID = "campaign-draft-contract-trace";
+
+    @MockBean
+    private ClientRegistrationRepository clientRegistrations;
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES =

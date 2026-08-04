@@ -159,20 +159,20 @@ and no ended event.
 
 ### Tests for User Story 3
 
-- [ ] T064 [P] [US3] Add domain tests for activation window, complete snapshot/allocation, monotonic statuses, terminal `ENDED`, and no early/expired activation in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/domain/CampaignLifecyclePolicyTests.java`
-- [ ] T065 [US3] Add PostgreSQL two-worker activation/end race tests with a controllable clock in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/integration/CampaignLifecycleConcurrencyIntegrationTests.java`
-- [ ] T066 [P] [US3] Add manual activation HTTP contract tests for authorization, `If-Match`, window/status conflicts, `ETag`, and successful response in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/contract/CampaignManualActivationHttpContractTests.java`
-- [ ] T067 [P] [US3] Add persistence tests proving scheduled-before-activated aggregate ordering, exactly one activated outbox row, and no ended event in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/outbox/CampaignLifecycleOutboxOrderingTests.java`
+- [x] T064 [P] [US3] Add domain tests for activation window, complete snapshot/allocation, monotonic statuses, terminal `ENDED`, and no early/expired activation in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/campaign/domain/CampaignLifecyclePolicyTests.java`
+- [x] T065 [US3] Add PostgreSQL two-worker activation/end race tests with a controllable clock in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/integration/CampaignLifecycleConcurrencyIntegrationTests.java`
+- [x] T066 [P] [US3] Add manual activation HTTP contract tests for authorization, `If-Match`, window/status conflicts, `ETag`, and successful response in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/contract/CampaignManualActivationHttpContractTests.java`
+- [x] T067 [P] [US3] Add persistence tests proving scheduled-before-activated aggregate ordering, exactly one activated outbox row, and no ended event in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/outbox/CampaignLifecycleOutboxOrderingTests.java`
 
 ### Implementation for User Story 3
 
-- [ ] T068 [P] [US3] Define lifecycle commands/results and activation/end input/output ports in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/command/`, `result/`, and `port/`
-- [ ] T069 [US3] Implement conditional status/version/time persistence for one-winner activation and ending in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/persistence/jpa/CampaignLifecyclePersistenceAdapter.java`
-- [ ] T070 [US3] Implement shared automatic/manual activation and ending use cases with a configurable `Clock` in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/usecase/CampaignLifecycleService.java`
-- [ ] T071 [US3] Implement the two-second batch-100 due lifecycle scanner with scheduler trace identity in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/in/scheduling/CampaignLifecycleScheduler.java`
-- [ ] T072 [US3] Add atomic `CampaignActivated.v1` creation to the winning activation transaction and omit any ended event in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/domain/event/CampaignActivated.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/persistence/jpa/CampaignLifecyclePersistenceAdapter.java`
-- [ ] T073 [US3] Expose manual recovery activation through the Campaign admin API/controller and approved errors in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/in/web/admin/CampaignAdminApi.java`, `CampaignAdminController.java`, and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/websupport/error/CampaignHttpExceptionHandler.java`
-- [ ] T074 [US3] Run lifecycle unit/contract/concurrency/order tests and record the independent US3 acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T068 [P] [US3] Define lifecycle commands/results and activation/end input/output ports in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/command/`, `result/`, and `port/`
+- [x] T069 [US3] Implement conditional status/version/time persistence for one-winner activation and ending in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/persistence/jpa/CampaignLifecyclePersistenceAdapter.java`
+- [x] T070 [US3] Implement shared automatic/manual activation and ending use cases with a configurable `Clock` in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/application/usecase/CampaignLifecycleService.java`
+- [x] T071 [US3] Implement the two-second batch-100 due lifecycle scanner with scheduler trace identity in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/in/scheduling/CampaignLifecycleScheduler.java`
+- [x] T072 [US3] Add atomic `CampaignActivated.v1` creation to the winning activation transaction and omit any ended event in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/domain/event/CampaignActivated.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/out/persistence/jpa/CampaignLifecyclePersistenceAdapter.java`
+- [x] T073 [US3] Expose manual recovery activation through the Campaign admin API/controller and approved errors in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/campaign/adapter/in/web/admin/CampaignAdminApi.java`, `CampaignAdminController.java`, and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/websupport/error/CampaignHttpExceptionHandler.java`
+- [x] T074 [US3] Run lifecycle unit/contract/concurrency/order tests and record the independent US3 acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
 
 **Checkpoint**: Lifecycle progression is monotonic and multi-instance safe, with one activated event and no ended event.
 
@@ -245,7 +245,7 @@ runtime publisher wiring remains in T101 and later implementation tasks.
 
 ## Recommended Execution Batches
 
-The remaining 46 tasks are grouped into coherent implementation commits. Complete the tasks inside
+The remaining 20 tasks are grouped into coherent implementation commits. Complete the tasks inside
 one batch in the listed order, run its focused validation, then create the suggested commit. Do not
 mark a batch complete when its required tests are still red.
 

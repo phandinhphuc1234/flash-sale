@@ -23,6 +23,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -35,6 +37,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @Testcontainers
 class CampaignDraftPersistenceIntegrationTests {
+
+    @MockBean
+    private ClientRegistrationRepository clientRegistrations;
 
     private static final Instant CREATED_AT = Instant.parse("2026-07-30T10:00:00Z");
     private static final Instant UPDATED_AT = Instant.parse("2026-07-30T11:00:00Z");

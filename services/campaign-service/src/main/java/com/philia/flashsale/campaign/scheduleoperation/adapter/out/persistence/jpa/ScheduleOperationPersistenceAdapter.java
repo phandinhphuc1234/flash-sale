@@ -43,6 +43,11 @@ public class ScheduleOperationPersistenceAdapter implements
     }
 
     @Override
+    public Optional<ScheduleOperation> findLockedById(UUID operationId) {
+        return repository.findLockedById(operationId).map(this::toDomain);
+    }
+
+    @Override
     public Optional<ScheduleOperation> findByInventoryRequestId(UUID inventoryRequestId) {
         return repository.findByInventoryRequestId(inventoryRequestId).map(this::toDomain);
     }

@@ -2,6 +2,8 @@ package com.philia.flashsale.campaign;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -11,6 +13,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @Testcontainers
 class CampaignServiceApplicationTests {
+
+    @MockBean
+    private ClientRegistrationRepository clientRegistrations;
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES =
