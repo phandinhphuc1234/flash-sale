@@ -9,6 +9,8 @@ import com.philia.flashsale.campaign.campaign.application.exception.CampaignOper
 import com.philia.flashsale.campaign.campaign.application.exception.CampaignVersionConflictException;
 import com.philia.flashsale.campaign.scheduleoperation.application.exception.ScheduleOperationInProgressException;
 import com.philia.flashsale.campaign.scheduleoperation.application.exception.ScheduleOperationRequestConflictException;
+import com.philia.flashsale.campaign.outbox.application.exception.CampaignOutboxEventInvalidStatusException;
+import com.philia.flashsale.campaign.outbox.application.exception.CampaignOutboxEventNotFoundException;
 import com.philia.flashsale.campaign.websupport.context.CampaignRequestContext;
 import com.philia.flashsale.common.web.ApiErrorResponse;
 import com.philia.flashsale.common.web.FieldViolation;
@@ -82,6 +84,18 @@ public class CampaignHttpExceptionHandler {
     ResponseEntity<ApiErrorResponse> scheduleRequestConflict(
             ScheduleOperationRequestConflictException exception, HttpServletRequest request) {
         return error(CampaignErrorCode.CAMPAIGN_SCHEDULE_REQUEST_CONFLICT, request, null);
+    }
+
+    @ExceptionHandler(CampaignOutboxEventNotFoundException.class)
+    ResponseEntity<ApiErrorResponse> outboxEventNotFound(
+            CampaignOutboxEventNotFoundException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_EVENT_NOT_FOUND, request, null);
+    }
+
+    @ExceptionHandler(CampaignOutboxEventInvalidStatusException.class)
+    ResponseEntity<ApiErrorResponse> outboxEventInvalidStatus(
+            CampaignOutboxEventInvalidStatusException exception, HttpServletRequest request) {
+        return error(CampaignErrorCode.CAMPAIGN_EVENT_INVALID_STATUS, request, null);
     }
 
     /** Exposes only Campaign-owned failures after outbound adapters sanitize remote details. */

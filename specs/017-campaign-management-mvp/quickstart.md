@@ -703,3 +703,25 @@ Testcontainers and verified one-winner activation/ending races, scheduled-before
 ordering, exactly one activation outbox row, and no ended event. An additional
 `.\mvnw.cmd -pl services/campaign-service -am verify` completed with exit code `0`; the broader
 reactor and topology evidence remain tracked by T095-T097.
+
+## B4 — Durable outbox recovery foundation
+
+Implemented the B4 recovery boundary without Kafka publication:
+
+- `T078`: PostgreSQL Testcontainers coverage for concurrent claim/lease, expired lease reclaim,
+  aggregate ordering/predecessor blocking, bounded exponential backoff, tenth-attempt terminal
+  failure, sanitized failure text, and same-event requeue audit.
+- `T084–T085`: application-owned outbox ports/models plus PostgreSQL `FOR UPDATE SKIP LOCKED`
+  claim, lease ownership checks, retry state, terminal failure, and requeue persistence.
+- `T088`: authenticated admin requeue HTTP contract at
+  `POST /api/v1/admin/campaigns/{campaignId}/outbox-events/{eventId}/requeue`, shared
+  `ApiResponse`, OpenAPI metadata, trace header, and Campaign-owned error mappings.
+
+Validation:
+
+```text
+.\mvnw.cmd clean test -pl services/campaign-service -am "-Dtest=CampaignOutboxRecoveryIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false"
+BUILD SUCCESS — 3 PostgreSQL recovery tests passed (2026-08-04)
+```
+
+Kafka Avro publication and the scheduled publisher remain intentionally deferred to T086–T087.

@@ -123,6 +123,11 @@ class PrepareScheduleOperationServiceTests {
         }
 
         @Override
+        public Optional<ScheduleOperation> findLockedById(UUID id) {
+            return saved != null && saved.id().equals(id) ? Optional.of(saved) : Optional.empty();
+        }
+
+        @Override
         public boolean existsInFlightByCampaignId(UUID campaignId) {
             return inFlight || (saved != null && saved.campaignId().equals(campaignId)
                     && saved.status().isInFlight());
