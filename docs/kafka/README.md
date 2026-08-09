@@ -25,7 +25,7 @@ retention period, DLT policy, or business event by itself. The governing order r
 | Avro contract module | `contracts/kafka-avro-contracts` generates typed SpecificRecord classes |
 | Avro source layout | Schemas are grouped under `src/main/avro/topics/<topic-name>/`; namespace and generated package stay contract-owned |
 | Approved Kafka topic | `campaign.lifecycle.v1` from Feature 017 |
-| Approved Campaign wire format | Avro SpecificRecord; dependency/config foundation exists, while the outbox relay and live Registry smoke remain pending |
+| Approved Campaign wire format | Avro SpecificRecord; outbox relay is implemented, while live Registry smoke remains pending |
 | Candidate Saga topics | Documented but not approved for production code |
 
 The current one-node topology is appropriate for local learning, integration tests, and a personal
@@ -42,7 +42,10 @@ MVP. It has no Kafka high availability: losing the node stops messaging and Sche
 3. [Reliable Producer and Consumer Integration](03-reliable-producer-consumer-integration.md)
    explains adapter placement, PostgreSQL outbox, Redis Stream handoff, inbox deduplication,
    retries, DLTs, tracing, and the required test matrix.
-4. [Kafka Topic and Message Catalog](04-topic-message-catalog.md)
+4. [Transactional Outbox Flow](../architecture/outbox-flow.md)
+   explains the current Campaign relay, PostgreSQL claim lease, `SKIP LOCKED`, one-instance versus
+   multi-instance behavior, retries, crash recovery, and service ownership status.
+5. [Kafka Topic and Message Catalog](04-topic-message-catalog.md)
    reconciles the target topic names, command/event counts, owners, partition keys, and the correct
    Purchase and Campaign Saga ordering.
 
@@ -51,6 +54,7 @@ Related system-level material:
 - [Service communication protocols](../architecture/service-communication-protocols.md)
 - [Flash Sale end-to-end flow](../architecture/flash-sale-end-to-end-flow.md)
 - [Saga messaging and reliability](../architecture/saga-messaging-reliability.md)
+- [Transactional Outbox Flow](../architecture/outbox-flow.md)
 - [Schema Registry foundation](../architecture/schema-registry.md)
 
 ## Recommended project decisions
