@@ -217,11 +217,11 @@ events; retry, lease reclaim, terminal failure, and authorized requeue preserve 
 **Purpose**: Complete observability, local topology, secret-safe configuration, operational recovery,
 and the required module/reactor evidence without expanding Feature 017 scope.
 
-- [ ] T090 [P] Add low-cardinality metrics plus health/Prometheus/trace/redaction tests for Campaign commands, downstream calls, lifecycle, outbox, and requeue in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/observability/CampaignObservabilityTests.java`
-- [ ] T091 Implement low-cardinality Micrometer observations and trace/log propagation without a manual Prometheus registry in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/observability/CampaignObservability.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/configuration/CampaignObservabilityConfiguration.java`
-- [ ] T092 [P] Add Campaign database/application wiring, OAuth secret placeholders, service URLs, and one-off migration dependencies to `infra/docker/compose.yml`, `infra/docker/compose.dev.yml`, and `infra/docker/.env.example` without committing real credentials
-- [ ] T093 [P] Provision `campaign.lifecycle.v1` with three partitions and replication factor one through root-owned local tooling in `infra/docker/kafka/init-campaign-topics.sh`
-- [ ] T094 Validate the merged Compose application profile and record the exact command/result in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T090 [P] Add low-cardinality metrics plus health/Prometheus/trace/redaction tests for Campaign commands, downstream calls, lifecycle, outbox, and requeue in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/observability/CampaignObservabilityTests.java`
+- [x] T091 Implement low-cardinality Micrometer observations and trace/log propagation without a manual Prometheus registry in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/observability/CampaignObservability.java` and `services/campaign-service/src/main/java/com/philia/flashsale/campaign/configuration/CampaignObservabilityConfiguration.java`
+- [x] T092 [P] Add Campaign database/application wiring, OAuth secret placeholders, service URLs, and one-off migration dependencies to `infra/docker/compose.yml`, `infra/docker/compose.dev.yml`, and `infra/docker/.env.example` without committing real credentials
+- [x] T093 [P] Provision `campaign.lifecycle.v1` with three partitions and replication factor one through root-owned local tooling in `infra/docker/kafka/init-campaign-topics.sh`
+- [x] T094 Validate the merged Compose application profile and record the exact command/result in `specs/017-campaign-management-mvp/quickstart.md`
 - [ ] T095 Execute the full Gateway -> Authentication -> Campaign -> Product -> Inventory -> PostgreSQL/Kafka/Schema Registry smoke and failure/restart/requeue flow, recording sanitized evidence in `specs/017-campaign-management-mvp/quickstart.md`
 - [ ] T096 Run `./mvnw -pl services/api-gateway,services/authentication-service,services/product-service,services/inventory-service,services/campaign-service -am verify` and record exit status in `specs/017-campaign-management-mvp/quickstart.md`
 - [ ] T097 Run `./mvnw clean verify`, confirm no required test is failing, and record exit status in `specs/017-campaign-management-mvp/quickstart.md`
@@ -238,14 +238,14 @@ runtime publisher wiring remains in T101 and later implementation tasks.
 - [x] T099 [P] Validate and version `CampaignScheduledV1.avsc` and `CampaignActivatedV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/campaign.lifecycle.v1/`, preserving UUID, timestamp, and decimal logical types
 - [x] T100 Add Registry subject/compatibility tests for `TopicRecordNameStrategy`, `BACKWARD_TRANSITIVE`, additive revisions, breaking revisions, and `auto.register.schemas=false` in the contract module
 - [x] T101 Complete Campaign runtime Kafka wiring with approved `KafkaAvroSerializer`/SpecificRecord settings, Registry URL, and W3C header propagation in `services/campaign-service/src/main/resources/application.yml` and the Campaign Kafka configuration
-- [ ] T102 Update Feature 017 contract, quickstart, and Kafka architecture evidence with Registry subject names, controlled registration, consumer-first rollout, and Kafka/Registry outage recovery
+- [x] T102 Update Feature 017 contract, quickstart, and Kafka architecture evidence with Registry subject names, controlled registration, consumer-first rollout, and Kafka/Registry outage recovery
 - [ ] T103 Run contract-module generation/compatibility tests and Campaign Avro serialization/Registry integration tests; record command, result, and any Registry test profile in `specs/017-campaign-management-mvp/quickstart.md`
 
 ---
 
 ## Recommended Execution Batches
 
-The remaining 12 tasks are grouped into coherent implementation commits. Complete the tasks inside
+The remaining 6 tasks are grouped into coherent implementation commits. Complete the tasks inside
 one batch in the listed order, run its focused validation, then create the suggested commit. Do not
 mark a batch complete when its required tests are still red.
 
@@ -278,7 +278,7 @@ work; B6 must not start from the draft schemas alone.
 - **Phase 5 — US3**: Depends on US2 because only a scheduled, snapshotted Campaign can activate.
 - **Phase 6 — US4**: Snapshot work depends on US2; activated-event ordering depends on US3; outbox publication can be developed after US2 event durability exists.
 - **Phase 7 — Polish**: Depends on every story selected for the release.
-- **Phase 8 — Avro foundation**: T076, T086-T087, and T098-T101 are complete; T077, T093, and T103
+- **Phase 8 — Avro foundation**: T076, T086-T087, and T098-T102 are complete; T077 and T103
   remain gated on their own runtime/integration validation tasks.
 
 ### Critical Cross-Service Rollout

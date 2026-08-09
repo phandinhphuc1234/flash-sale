@@ -6,11 +6,11 @@ import com.philia.flashsale.campaign.outbox.application.port.out.ClaimDueCampaig
 import com.philia.flashsale.campaign.outbox.application.port.out.MarkCampaignOutboxPublishedPort;
 import com.philia.flashsale.campaign.outbox.application.port.out.PublishCampaignOutboxEventPort;
 import com.philia.flashsale.campaign.outbox.application.port.out.RecordCampaignOutboxFailurePort;
+import com.philia.flashsale.campaign.observability.CampaignObservability;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.MDC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,8 +28,6 @@ import org.springframework.stereotype.Component;
 public final class CampaignOutboxPublisherJob {
 
     private static final Logger LOG = LoggerFactory.getLogger(CampaignOutboxPublisherJob.class);
-    private static final String MDC_TRACE_ID = "traceId";
-
     private final ClaimDueCampaignOutboxEventsPort claimPort;
     private final PublishCampaignOutboxEventPort publisherPort;
     private final MarkCampaignOutboxPublishedPort markPublishedPort;
@@ -40,6 +38,7 @@ public final class CampaignOutboxPublisherJob {
     private final int maxAutomaticAttempts;
     private final Duration retryBackoffCap;
     private final String workerId;
+    private final CampaignObservability observability;
 
     public CampaignOutboxPublisherJob(
             ClaimDueCampaignOutboxEventsPort claimPort,
@@ -51,7 +50,8 @@ public final class CampaignOutboxPublisherJob {
             @Value("${flashsale.campaign.outbox.batch-size:100}") int batchSize,
             @Value("${flashsale.campaign.outbox.max-automatic-attempts:10}") int maxAutomaticAttempts,
             @Value("${flashsale.campaign.outbox.retry-backoff-cap:60s}") Duration retryBackoffCap,
-            @Value("${HOSTNAME:campaign-service}") String hostName) {
+            @Value("${HOSTNAME:campaign-service}") String hostName,
+            CampaignObservability observability) {
         this.claimPort = claimPort;
         this.publisherPort = publisherPort;
         this.markPublishedPort = markPublishedPort;
@@ -62,6 +62,7 @@ public final class CampaignOutboxPublisherJob {
         this.maxAutomaticAttempts = requirePositive(maxAutomaticAttempts, "maximum automatic attempts");
         this.retryBackoffCap = requirePositive(retryBackoffCap, "retry backoff cap");
         this.workerId = normalizeWorkerId(hostName) + "-" + UUID.randomUUID();
+        this.observability = observability;
     }
 
     /** Runs the approved 500-ms, batch-100 relay scan. */
@@ -73,48 +74,48 @@ public final class CampaignOutboxPublisherJob {
             claims = claimPort.claimDue(workerId, now, claimLease, batchSize);
         } catch (RuntimeException exception) {
             // A database outage must not terminate Spring's scheduled executor; the next scan retries.
+            observability.outbox("claim_failure");
             LOG.warn("campaign_outbox_claim_failed failureType={}", exception.getClass().getSimpleName());
             return;
         }
+        observability.outbox("claimed");
         for (OutboxClaim claim : claims) {
             publishOne(claim);
         }
     }
 
     private void publishOne(OutboxClaim claim) {
-        String previousTraceId = MDC.get(MDC_TRACE_ID);
-        MDC.put(MDC_TRACE_ID, claim.traceId());
-        try {
-            publisherPort.publish(claim);
-            boolean acknowledged = markPublishedPort.markPublished(claim.id(), workerId, clockPort.now());
-            if (!acknowledged) {
-                LOG.warn("campaign_outbox_ack_lease_lost eventId={} eventType={}",
-                        claim.id(), claim.eventType());
-            } else {
-                LOG.debug("campaign_outbox_published eventId={} eventType={} traceId={}",
-                        claim.id(), claim.eventType(), claim.traceId());
-            }
-        } catch (RuntimeException exception) {
-            boolean recorded;
+        observability.withTrace(claim.traceId(), () -> {
             try {
-                recorded = failurePort.recordFailure(
-                        claim.id(), workerId, clockPort.now(), exception.getMessage(),
-                        maxAutomaticAttempts, retryBackoffCap);
-            } catch (RuntimeException failureException) {
-                // Keep the row lease-reclaimable when the database is also unavailable.
-                recorded = false;
-                LOG.warn("campaign_outbox_failure_record_deferred eventId={} failureType={}",
-                        claim.id(), failureException.getClass().getSimpleName());
+                publisherPort.publish(claim);
+                boolean acknowledged = markPublishedPort.markPublished(
+                        claim.id(), workerId, clockPort.now());
+                if (!acknowledged) {
+                    observability.outbox("lease_lost");
+                    LOG.warn("campaign_outbox_ack_lease_lost eventId={} eventType={}",
+                            claim.id(), claim.eventType());
+                } else {
+                    observability.outbox("published");
+                    LOG.debug("campaign_outbox_published eventId={} eventType={} traceId={}",
+                            claim.id(), claim.eventType(), claim.traceId());
+                }
+            } catch (RuntimeException exception) {
+                observability.outbox("retry");
+                boolean recorded;
+                try {
+                    recorded = failurePort.recordFailure(
+                            claim.id(), workerId, clockPort.now(), exception.getMessage(),
+                            maxAutomaticAttempts, retryBackoffCap);
+                } catch (RuntimeException failureException) {
+                    // Keep the row lease-reclaimable when the database is also unavailable.
+                    recorded = false;
+                    LOG.warn("campaign_outbox_failure_record_deferred eventId={} failureType={}",
+                            claim.id(), failureException.getClass().getSimpleName());
+                }
+                LOG.warn("campaign_outbox_publish_failed eventId={} eventType={} recorded={} failureType={}",
+                        claim.id(), claim.eventType(), recorded, exception.getClass().getSimpleName());
             }
-            LOG.warn("campaign_outbox_publish_failed eventId={} eventType={} recorded={} failureType={}",
-                    claim.id(), claim.eventType(), recorded, exception.getClass().getSimpleName());
-        } finally {
-            if (previousTraceId == null) {
-                MDC.remove(MDC_TRACE_ID);
-            } else {
-                MDC.put(MDC_TRACE_ID, previousTraceId);
-            }
-        }
+        });
     }
 
     private static Duration requirePositive(Duration value, String name) {

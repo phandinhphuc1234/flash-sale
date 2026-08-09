@@ -7,6 +7,8 @@ services:
     ports:
       - "${PRODUCT_SERVICE_PORT:-18082}:8080"
 
+  # Campaign's one-off Liquibase migration uses the baseline service definition; this overlay
+  # only adds a direct debug port for local development.
   campaign-service:
     ports:
       - "${CAMPAIGN_SERVICE_PORT:-18083}:8080"

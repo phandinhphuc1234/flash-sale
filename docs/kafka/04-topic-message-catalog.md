@@ -187,6 +187,7 @@ Implemented/approved now
   -> campaign.lifecycle.v1 contract family
   -> CampaignScheduled.v1 and CampaignActivated.v1 schemas
   -> Avro SpecificRecord contract module and compatibility tests
+  -> Campaign transactional-outbox publisher with controlled Registry registration
 
 Still candidate
   -> Product lifecycle messages
@@ -197,7 +198,7 @@ Still candidate
 
 Do not create all candidate topics immediately. Implement one approved feature slice at a time:
 
-1. finish the Campaign lifecycle Avro outbox publisher and one idempotent consumer;
+1. run the opt-in Campaign lifecycle Kafka/Registry integration validation and add one idempotent consumer;
 2. approve Purchase Saga decisions and contracts;
 3. implement purchase/payment/reservation happy path;
 4. add failure, deadline, compensation, and manual recovery;

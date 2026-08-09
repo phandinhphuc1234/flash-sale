@@ -10,6 +10,8 @@ infra/docker/
 ├── compose.yml                 # Local baseline: platform services + app profile
 ├── compose.dev.yml             # Optional local debugging override
 ├── .env.example                # Safe placeholder defaults
+├── kafka/
+│   └── init-campaign-topics.sh  # Approved Feature 017 topic provisioning
 └── postgres/
     └── init/
         └── 01-create-databases.sql
@@ -254,6 +256,38 @@ docker compose --env-file infra/docker/.env -f infra/docker/compose.yml run --rm
 
 The command is repeatable because Liquibase records completed changesets in
 `inventory_db.databasechangelog`. Do not delete the PostgreSQL volume to rerun a migration.
+
+## Campaign database and one-off migration
+
+`campaign-service` owns `campaign_db` and its changelog under
+`services/campaign-service/src/main/resources/db/changelog/`. The normal Campaign container keeps
+`SPRING_LIQUIBASE_ENABLED=false`; apply its schema once before starting the application profile:
+
+```powershell
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml build campaign-service
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml run --rm --no-deps `
+  -e SPRING_LIQUIBASE_ENABLED=true `
+  -e SPRING_MAIN_KEEP_ALIVE=false `
+  campaign-service --spring.main.web-application-type=none
+```
+
+The migration command is repeatable because Liquibase records completed changesets in
+`campaign_db.databasechangelog`. Compose supplies Campaign with the PostgreSQL, Kafka, Schema
+Registry, Product, and Inventory service endpoints, but it does not make a remote HTTP call during
+the one-off migration.
+
+## Campaign lifecycle Kafka topic
+
+Feature 017 currently provisions only the approved `campaign.lifecycle.v1` topic. Start Kafka and
+Schema Registry, then run the root-owned provisioning script:
+
+```bash
+bash infra/docker/kafka/init-campaign-topics.sh
+```
+
+The script is idempotent and verifies three partitions with replication factor one. Schema
+registration is deliberately controlled by the contract-module/Registry rollout process; the
+Campaign producer keeps `auto.register.schemas=false` outside explicitly managed experiments.
 
 ## Stop containers
 

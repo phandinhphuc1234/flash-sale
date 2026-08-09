@@ -189,10 +189,38 @@ services:
 
   campaign-service:
     <<: *backend-common
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
     image: ${CAMPAIGN_SERVICE_IMAGE:-flash-sale/campaign-service:local}
     build:
       context: ../..
       dockerfile: services/campaign-service/Dockerfile
+    environment:
+      <<: *backend-environment
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/campaign_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      SPRING_LIQUIBASE_ENABLED: ${CAMPAIGN_LIQUIBASE_ENABLED:-false}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL:-http://schema-registry:8081}
+      KAFKA_AUTO_REGISTER_SCHEMAS: ${KAFKA_AUTO_REGISTER_SCHEMAS:-false}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-http://authentication-service:8080}
+      JWT_ISSUER: ${JWT_ISSUER:-http://authentication-service:8080}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-flash-sale-api}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
+      INTERNAL_JWT_AUDIENCE: ${INTERNAL_JWT_AUDIENCE:-flash-sale-internal-api}
+      OAUTH_TOKEN_URI: ${OAUTH_TOKEN_URI:-http://authentication-service:8080/oauth2/token}
+      CAMPAIGN_CLIENT_ID: ${CAMPAIGN_CLIENT_ID:-campaign-service}
+      CAMPAIGN_CLIENT_SECRET: ${CAMPAIGN_CLIENT_SECRET:?CAMPAIGN_CLIENT_SECRET must be set}
+      PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL:-http://product-service:8080}
+      INVENTORY_SERVICE_URL: ${INVENTORY_SERVICE_URL:-http://inventory-service:8080}
 
   flashsale-service:
     <<: *backend-common

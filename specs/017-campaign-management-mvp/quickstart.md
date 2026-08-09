@@ -778,3 +778,59 @@ Focused validation:
 T077/T103 remain open until the opt-in test is run against the provisioned Kafka topic and
 Schema Registry, including the approved outage/retry evidence. T089 remains the US4 acceptance
 checkpoint.
+
+## 34. B7 — observability and local messaging operations
+
+Implemented on 2026-08-09:
+
+- `T090–T091`: Added Campaign low-cardinality Micrometer observations for operation, command,
+  downstream, lifecycle, outbox, and requeue outcomes. Trace restoration is scoped to the outbox
+  relay and restores the previous MDC value; identifiers, exception text, credentials, and tokens
+  are not metric dimensions. The configuration uses the Actuator-provided registry and a
+  non-Prometheus `SimpleMeterRegistry` fallback only for minimal contexts that do not provide a
+  registry.
+- `T092`: Wired Campaign's `campaign_db`, Kafka, Schema Registry, OAuth2 client placeholders, JWT
+  trust settings, and Product/Inventory URLs in the root Compose application profile. Real secrets
+  remain required in the ignored `infra/docker/.env`; `.env.example` contains placeholders only.
+- `T093`: Added the root-owned `infra/docker/kafka/init-campaign-topics.sh` provisioning tool. It
+  creates `campaign.lifecycle.v1` idempotently and verifies three partitions and replication
+  factor one. The repository-owned script was executed successfully with the installed Git Bash;
+  a PowerShell host without Bash can run the equivalent `docker compose exec` command shown below.
+- `T094`: The merged Compose application profile rendered successfully with placeholder settings.
+- `T102`: Updated the Feature 017 Avro contract and repository Kafka documentation with exact
+  `TopicRecordNameStrategy` subjects, controlled registration, consumer-first rollout, and
+  Kafka/Registry outage recovery semantics.
+
+Focused validation:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am test "-Dtest=CampaignObservabilityTests,CampaignOutboxPublisherJobTests,CampaignLifecycleEventContractTests,CampaignLifecycleKafkaPublisherTests,CampaignArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false"
+# BUILD SUCCESS — 21 tests, 0 failures, 0 errors
+
+.\mvnw.cmd -pl services/campaign-service -am test "-Dtest=CampaignServiceApplicationTests" "-Dsurefire.failIfNoSpecifiedTests=false"
+# BUILD SUCCESS — 1 context test passed; scheduled DB warnings occur during Testcontainer shutdown
+
+.\mvnw.cmd -pl services/campaign-service -am verify
+# BUILD SUCCESS — Campaign module and its upstream modules verified
+
+docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml -f infra/docker/compose.dev.yml --profile apps config
+# exit code 0
+```
+
+The local broker was already running under the developer's `flash-sale-vps` Compose project. The
+topic was created and described without deleting volumes:
+
+```powershell
+& 'C:\Program Files\Git\bin\bash.exe' -lc 'cd /c/Users/MSi/flash-sale/infra/docker; ./kafka/init-campaign-topics.sh'
+# Provisioned campaign.lifecycle.v1 (partitions=3, replication-factor=1)
+
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml exec -T kafka `
+  /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists `
+  --topic campaign.lifecycle.v1 --partitions 3 --replication-factor 1
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml exec -T kafka `
+  /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic campaign.lifecycle.v1
+# PartitionCount: 3, ReplicationFactor: 1, partitions 0/1/2 led by broker 1
+```
+
+The full Gateway-to-Registry smoke, opt-in live Kafka/Schema Registry test, affected-module verify,
+and full reactor verify remain tracked by `T077`, `T089`, and `T095–T097`.

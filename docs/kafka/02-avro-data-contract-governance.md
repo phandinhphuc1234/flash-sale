@@ -2,8 +2,9 @@
 
 ## 1. Status
 
-Avro SpecificRecord is the approved Feature 017 lifecycle wire-format direction. The protocol
-module is schema-first; service runtime serializer wiring remains a separate implementation step.
+Avro SpecificRecord is the approved Feature 017 lifecycle wire format. The protocol module is
+schema-first and Campaign runtime serializer wiring is implemented; live Registry publication is
+still validated only by the opt-in integration profile.
 
 Feature 017's baseline was an exact JSON contract for `CampaignScheduled.v1` and
 `CampaignActivated.v1` on `campaign.lifecycle.v1`. The approved amendment changes those payloads
@@ -43,8 +44,8 @@ and its service-owned application/domain model.
 
 ## 3. Proposed monorepo structure
 
-The approved Feature 017 amendment implements this protocol-only module. Its Maven module and
-deterministic generated sources are already part of the root reactor:
+The approved Feature 017 amendment implements this protocol-only module. Its Maven module,
+deterministic generated sources, and Campaign publisher dependency are part of the root reactor:
 
 ```text
 contracts/

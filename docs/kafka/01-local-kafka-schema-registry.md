@@ -78,7 +78,7 @@ producer setting for portable code, but on one broker it cannot create a second 
 | Safe image/port defaults | `infra/docker/.env.example` |
 | Developer secrets/overrides | `infra/docker/.env`, ignored by Git |
 | Service Kafka/Registry clients | Owning service's `application.yml` and POM |
-| Topic provisioning | Future root `infra/kafka/` manifest/scripts after plan approval |
+| Topic provisioning | Root-owned scripts under `infra/docker/kafka/` after feature approval |
 | Event schemas | Approved Feature 017 Avro SpecificRecord schemas under `contracts/kafka-avro-contracts/`; later schemas require their own approved feature |
 
 Services never read or write `_schemas` directly. They use Schema Registry's HTTP API through the
@@ -141,8 +141,8 @@ default. Retention, compaction, and message-size settings belong to the owning f
 be guessed globally.
 
 Only `campaign.lifecycle.v1` is currently approved as a topic. Its Avro SpecificRecord producer
-adoption is approved, while runtime publisher wiring remains a separate Feature 017 task. Topic
-families in the Saga design remain candidates until their
+and Campaign outbox publisher are implemented; the root-owned provisioning script verifies the
+local topic shape. Topic families in the Saga design remain candidates until their
 producer, consumers, schemas, keys, retention, and recovery are approved.
 
 ## 8. Schema Registry storage and availability

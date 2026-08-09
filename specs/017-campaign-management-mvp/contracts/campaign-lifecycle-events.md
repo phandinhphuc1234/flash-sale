@@ -10,7 +10,8 @@
 
 The previous JSON envelope is superseded by this amendment. The selected wire format is Avro
 schema-first with generated `SpecificRecord` classes and Confluent Schema Registry. The protocol
-module and amended artifacts are approved; runtime publisher work remains in the later tasks.
+module, generated records, and Campaign runtime publisher are implemented; live Registry/Kafka
+integration remains an explicit opt-in validation profile.
 
 ## Schema source files
 
@@ -122,6 +123,19 @@ token, or user PII is placed in the record or headers.
   audit increments;
 - failed predecessor blocks later events for that Campaign to preserve ordering;
 - crash after broker acknowledgement may redeliver the same `eventId`.
+
+## Registry rollout and outage recovery
+
+- Register and compatibility-check the exact subjects above before deploying a producer revision;
+  the Campaign runtime uses `auto.register.schemas=false` and therefore cannot silently create a
+  new subject in production.
+- Deploy or verify consumers that understand the compatible revision before enabling a producer
+  that emits it. A breaking semantic change requires a new approved record/topic version.
+- If Kafka or Schema Registry is unavailable, the publisher leaves the original outbox row leased
+  only until the claim lease expires, then retries it with the same event ID and payload. The
+  business transition is not rolled back and no replacement event is created.
+- Topic provisioning is root-owned by `infra/docker/kafka/init-campaign-topics.sh`; it verifies
+  the approved local three-partition, replication-factor-one shape before a live test is run.
 
 ## Required contract tests
 

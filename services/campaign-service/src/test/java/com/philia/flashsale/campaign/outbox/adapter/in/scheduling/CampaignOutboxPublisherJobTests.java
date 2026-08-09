@@ -17,6 +17,8 @@ import com.philia.flashsale.campaign.outbox.application.port.out.ClaimDueCampaig
 import com.philia.flashsale.campaign.outbox.application.port.out.MarkCampaignOutboxPublishedPort;
 import com.philia.flashsale.campaign.outbox.application.port.out.PublishCampaignOutboxEventPort;
 import com.philia.flashsale.campaign.outbox.application.port.out.RecordCampaignOutboxFailurePort;
+import com.philia.flashsale.campaign.observability.CampaignObservability;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -105,7 +107,8 @@ class CampaignOutboxPublisherJobTests {
 
         assertThatThrownBy(() -> new CampaignOutboxPublisherJob(
                 fixtures.claimPort, fixtures.publisher, fixtures.markPublished, fixtures.failurePort,
-                fixtures.clock, Duration.ZERO, 100, 10, Duration.ofSeconds(60), "campaign"))
+                fixtures.clock, Duration.ZERO, 100, 10, Duration.ofSeconds(60), "campaign",
+                fixtures.observability))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("claim lease");
     }
@@ -123,11 +126,13 @@ class CampaignOutboxPublisherJobTests {
         private final MarkCampaignOutboxPublishedPort markPublished = mock(MarkCampaignOutboxPublishedPort.class);
         private final RecordCampaignOutboxFailurePort failurePort = mock(RecordCampaignOutboxFailurePort.class);
         private final CampaignClockPort clock = mock(CampaignClockPort.class);
+        private final CampaignObservability observability =
+                new CampaignObservability(new SimpleMeterRegistry());
 
         private CampaignOutboxPublisherJob job() {
             return new CampaignOutboxPublisherJob(
                     claimPort, publisher, markPublished, failurePort, clock,
-                    Duration.ofSeconds(30), 100, 10, Duration.ofSeconds(60), "campaign-test");
+                    Duration.ofSeconds(30), 100, 10, Duration.ofSeconds(60), "campaign-test", observability);
         }
     }
 }
