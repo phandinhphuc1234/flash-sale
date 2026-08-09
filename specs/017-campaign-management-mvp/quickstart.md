@@ -724,4 +724,27 @@ Validation:
 BUILD SUCCESS — 3 PostgreSQL recovery tests passed (2026-08-04)
 ```
 
-Kafka Avro publication and the scheduled publisher remain intentionally deferred to T086–T087.
+The scheduled outbox publisher remains intentionally deferred to T087.
+
+## 32. T086 Campaign Avro publisher boundary
+
+Implemented on 2026-08-09:
+
+- Added a Campaign-only Kafka producer factory that enforces `acks=all`, idempotence, the approved
+  Schema Registry URL from `spring.kafka.producer.properties`, `TopicRecordNameStrategy`, and
+  `auto.register.schemas=false`.
+- Added an outbox messaging adapter that maps canonical `CampaignScheduled` and
+  `CampaignActivated` JSON payloads to generated Avro `SpecificRecord` values, uses the Campaign ID
+  as the Kafka key, and preserves the stable outbox event ID in routing headers.
+- Added `eventId`, `eventType`, `eventVersion`, `contentType=application/avro`, and a valid W3C
+  `traceparent` Kafka header. No trace ID, credential, or secret is added to the Avro business body.
+
+Focused validation:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am test "-Dtest=CampaignLifecycleKafkaPublisherTests" "-Dsurefire.failIfNoSpecifiedTests=false"
+# BUILD SUCCESS — 5 tests, 0 failures, 0 errors
+```
+
+This task adds the producer boundary only. The scheduled batch publisher, real Kafka/Schema Registry
+integration, runtime outage recovery, and US4 acceptance remain in T087/T077/T089/T101-T103.

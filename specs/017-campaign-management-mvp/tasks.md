@@ -203,7 +203,7 @@ events; retry, lease reclaim, terminal failure, and authorized requeue preserve 
 - [x] T083 [P] [US4] Add a separate hashed `flashsale-service` fixed-client registration limited to `campaign.snapshot.read` in `services/authentication-service/src/main/java/com/philia/flashsale/authentication/serviceclient/adapter/in/oauth/ServiceClientBootstrapper.java`
 - [x] T084 [P] [US4] Define outbox claim, publish, retry, terminal-failure, and requeue ports/models/use cases in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/outbox/application/`
 - [x] T085 [US4] Implement multi-instance-safe due-row claim/lease, aggregate ordering, retry state, sanitized failure, and same-event requeue persistence in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/outbox/adapter/out/persistence/jpa/OutboxPersistenceAdapter.java`
-- [ ] T086 [US4] Configure idempotent `acks=all` KafkaAvro production, Registry URL, `TopicRecordNameStrategy`, controlled registration, W3C header propagation, and publish canonical v1 SpecificRecords keyed by Campaign ID in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/configuration/CampaignKafkaProducerConfiguration.java` and `outbox/adapter/out/messaging/kafka/KafkaCampaignLifecyclePublisher.java`
+- [x] T086 [US4] Configure idempotent `acks=all` KafkaAvro production, Registry URL, `TopicRecordNameStrategy`, controlled registration, W3C header propagation, and publish canonical v1 SpecificRecords keyed by Campaign ID in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/configuration/CampaignKafkaProducerConfiguration.java` and `outbox/adapter/out/messaging/kafka/KafkaCampaignLifecyclePublisher.java`
 - [ ] T087 [US4] Implement the 500-ms batch-100 outbox publisher, retry/backoff, lease recovery, terminal failure, and trace restoration in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/outbox/adapter/in/scheduling/CampaignOutboxPublisherJob.java`
 - [x] T088 [US4] Implement authenticated same-event requeue use case, response, OpenAPI operation, controller endpoint, and error mappings in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/outbox/application/usecase/RequeueCampaignOutboxEventService.java` and `outbox/adapter/in/web/admin/`
 - [ ] T089 [US4] Run snapshot/Auth/Kafka/outbox tests and record the independent US4 acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
@@ -245,7 +245,7 @@ runtime publisher wiring remains in T101 and later implementation tasks.
 
 ## Recommended Execution Batches
 
-The remaining 20 tasks are grouped into coherent implementation commits. Complete the tasks inside
+The remaining 15 tasks are grouped into coherent implementation commits. Complete the tasks inside
 one batch in the listed order, run its focused validation, then create the suggested commit. Do not
 mark a batch complete when its required tests are still red.
 
@@ -278,7 +278,7 @@ work; B6 must not start from the draft schemas alone.
 - **Phase 5 — US3**: Depends on US2 because only a scheduled, snapshotted Campaign can activate.
 - **Phase 6 — US4**: Snapshot work depends on US2; activated-event ordering depends on US3; outbox publication can be developed after US2 event durability exists.
 - **Phase 7 — Polish**: Depends on every story selected for the release.
-- **Phase 8 — Avro foundation**: T098-T100 are complete; T076, T077, T086, T087, T093, and T095
+- **Phase 8 — Avro foundation**: T098-T100 and T086 are complete; T076, T077, T087, T093, and T095
   remain gated on their own runtime/integration validation tasks.
 
 ### Critical Cross-Service Rollout
