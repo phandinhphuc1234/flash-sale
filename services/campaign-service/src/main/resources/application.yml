@@ -105,6 +105,8 @@ flashsale:
       topic: campaign.lifecycle.v1
       scan-delay: ${CAMPAIGN_OUTBOX_SCAN_DELAY:500ms}
       batch-size: ${CAMPAIGN_OUTBOX_BATCH_SIZE:100}
+      # A crashed publisher is reclaimed after this lease expires. Keep it longer than one broker round-trip.
+      claim-lease: ${CAMPAIGN_OUTBOX_CLAIM_LEASE:30s}
       max-automatic-attempts: ${CAMPAIGN_OUTBOX_MAX_AUTOMATIC_ATTEMPTS:10}
       retry-backoff-cap: ${CAMPAIGN_OUTBOX_RETRY_BACKOFF_CAP:60s}
 

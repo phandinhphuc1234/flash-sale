@@ -7,12 +7,12 @@ import java.util.HexFormat;
 import java.util.Locale;
 
 /** Builds a valid W3C traceparent while the service still stores its bounded correlation value. */
-final class W3CTraceContextHeaders {
+public final class W3CTraceContextHeaders {
 
     private W3CTraceContextHeaders() {
     }
 
-    static byte[] traceparent(String correlationId) {
+    public static byte[] traceparent(String correlationId) {
         String traceId = normalize(correlationId, 32, "campaign-trace");
         String spanId = normalize(correlationId, 16, "campaign-outbox-span");
         return ("00-" + traceId + "-" + spanId + "-01").getBytes(StandardCharsets.UTF_8);

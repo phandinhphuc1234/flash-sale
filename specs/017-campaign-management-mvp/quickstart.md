@@ -746,5 +746,35 @@ Focused validation:
 # BUILD SUCCESS — 5 tests, 0 failures, 0 errors
 ```
 
-This task adds the producer boundary only. The scheduled batch publisher, real Kafka/Schema Registry
-integration, runtime outage recovery, and US4 acceptance remain in T087/T077/T089/T101-T103.
+## 33. B6 — Avro contract tests and scheduled outbox relay
+
+Implemented on 2026-08-09:
+
+- `T076`: Added generated-SpecificRecord binary round-trip tests for both lifecycle records,
+  UUID/timestamp/decimal logical-type assertions, secret/credential absence checks, W3C
+  `traceparent` shape checks, and `BACKWARD_TRANSITIVE` additive/breaking compatibility fixtures.
+- `T087`: Added the 500-ms outbox scheduler. It claims at most 100 rows with a 30-second reclaim
+  lease, publishes outside the database transaction, marks only the current lease owner as
+  published, records failures through the approved retry policy, and restores the stored trace
+  identity in the logging context.
+- `T101`: Runtime YAML and Campaign producer configuration provide the Registry URL,
+  `KafkaAvroSerializer`, `TopicRecordNameStrategy`, controlled registration, idempotent producer
+  settings, and W3C header propagation.
+- Added an explicitly opt-in live test profile at
+  `CampaignLifecycleKafkaIntegrationTests`. It requires `campaign.kafka.integration=true`,
+  `campaign.kafka.bootstrap`, and `campaign.schema-registry.url`; the normal module build does not
+  contact external infrastructure.
+
+Focused validation:
+
+```powershell
+.\mvnw.cmd -pl services/campaign-service -am test "-Dtest=CampaignLifecycleEventContractTests,CampaignOutboxPublisherJobTests,CampaignLifecycleKafkaPublisherTests,CampaignArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false"
+# BUILD SUCCESS — 18 tests, 0 failures, 0 errors
+
+.\mvnw.cmd -pl services/campaign-service -am test "-Dtest=CampaignLifecycleKafkaIntegrationTests,CampaignLifecycleEventContractTests,CampaignOutboxPublisherJobTests" "-Dsurefire.failIfNoSpecifiedTests=false"
+# BUILD SUCCESS — 11 tests, 0 failures, 0 errors; live Kafka test skipped because the opt-in property was not set
+```
+
+T077/T103 remain open until the opt-in test is run against the provisioned Kafka topic and
+Schema Registry, including the approved outage/retry evidence. T089 remains the US4 acceptance
+checkpoint.
