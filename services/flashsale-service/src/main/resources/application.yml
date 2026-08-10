@@ -110,6 +110,12 @@ management:
       type: w3c
 
 flashsale:
+  security:
+    jwt:
+      enabled: ${FLASHSALE_SECURITY_JWT_ENABLED:true}
+      issuer: ${FLASHSALE_JWT_ISSUER:http://authentication-service:8080}
+      audience: ${FLASHSALE_JWT_AUDIENCE:flash-sale-api}
+      jwk-set-uri: ${FLASHSALE_JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
   reservation:
     ttl: ${FLASHSALE_RESERVATION_TTL:5m}
     idempotency-retention-after-campaign-end: ${FLASHSALE_IDEMPOTENCY_RETENTION:24h}
