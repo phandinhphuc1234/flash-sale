@@ -1,6 +1,6 @@
 # Feature 017 Quickstart and Validation
 
-**Status**: T017 baseline recorded — full Feature 017 implementation remains in progress
+**Status**: Feature 017 implemented and verified (2026-08-10)
 **Purpose**: Define the repeatable local validation flow that implementation tasks must make pass
 
 ## 1. Prerequisites
@@ -892,12 +892,67 @@ docker compose --env-file infra/docker/.env -f infra/docker/compose.yml restart 
 # Campaign restarted; internal health returned {"status":"UP"}
 ```
 
-T095 is intentionally still open. The database currently contains zero Product variants and zero
-Inventory items, and the local Compose environment has no approved administrator fixture for the
-Campaign write path. Therefore the authenticated Gateway → Campaign → Product → Inventory prepare,
-outbox requeue, and business failure/recovery path was not fabricated or marked complete. Completing
-T095 requires an approved disposable fixture/credential procedure (or seeded local data) before the
-next validation run.
+The earlier T095 fixture blocker was resolved on 2026-08-10 without adding a public Inventory
+initialization endpoint. The repeatable harness creates a disposable Authentication account,
+promotes it only in the local Auth database, creates/publishes Product data through the public admin
+API, and initializes Inventory through the opt-in test-only `InventoryLocalSmokeFixture`. That
+fixture calls Feature 016's approved application use case directly and cleans only its generated
+Variant data. Tokens and runtime secrets remain process-local and are never printed or written to a
+tracked file.
+
+```powershell
+& .\infra\docker\smoke\feature-017-campaign.ps1
+# PASS topology health and real administrator registration/login
+# PASS Product create/composition/publish and Inventory application-use-case fixture
+# PASS schedule replay/conflict and protected Flash Sale snapshot
+# PASS SCHEDULED -> ACTIVE -> ENDED with Scheduled/Activated publication only
+# PASS Product-down and Inventory-down recovery with stable Inventory request identity
+# PASS Schema Registry outage: durable PROCESSING -> PUBLISHED recovery
+# PASS Kafka terminal failure at retry 10 and authorized same-event-ID requeue -> PUBLISHED
+# PASS Campaign-keyed Avro records, W3C trace headers, and both controlled Registry subjects
+# FEATURE_017_SMOKE=PASS
+```
+
+The harness uses a bounded same-idempotency-key retry only for Gateway
+`DOWNSTREAM_UNAVAILABLE` immediately after a deliberate Campaign restart/recreate. Any Campaign
+business error, security error, or different 503 fails the smoke immediately. Its `finally` block
+restores Kafka, Schema Registry, Product, Inventory, and Campaign runtime configuration, deletes the
+disposable Auth account, and removes the generated Inventory fixture.
+
+The live run exposed and closed three cross-service correctness gaps:
+
+- real administrator JWTs carry `CAMPAIGN_ADMIN`; Gateway and Campaign now translate only that
+  approved claim to `SCOPE_CAMPAIGN_ADMIN` instead of relying on test-only `scope` claims;
+- concurrent Campaign recovery calls now replay one Inventory allocation after the Variant stock
+  row lock, producing one allocation, one movement, one outbox row, and one stock deduction;
+- Campaign finalization locks the aggregate root before loading its item graph, and schedule
+  operation persistence rejects stale state regression, preventing optimistic-lock failures when
+  HTTP and recovery workers race.
+
+Focused regression evidence:
+
+```powershell
+.\mvnw.cmd -pl services/inventory-service -am clean `
+  "-Dtest=CampaignAllocationCompatibilityTests" `
+  "-Dsurefire.failIfNoSpecifiedTests=false" test
+# BUILD SUCCESS — 7 tests, 0 failures, 0 errors
+
+.\mvnw.cmd -pl services/campaign-service -am clean `
+  "-Dtest=CampaignDraftPersistenceIntegrationTests,ScheduleOperationPersistenceAdapterTests,ScheduleCampaignConcurrencyIntegrationTests,ScheduleCampaignRecoveryIntegrationTests" `
+  "-Dsurefire.failIfNoSpecifiedTests=false" test
+# BUILD SUCCESS — 10 tests, 0 failures, 0 errors
+```
+
+Post-smoke validation:
+
+```powershell
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml `
+  -f infra/docker/compose.dev.yml --profile apps config --quiet
+# exit code 0
+
+# Gateway, Authentication, Product, Campaign, Inventory, and Schema Registry returned HTTP 200.
+# Disposable Feature 017 Authentication users remaining: 0.
+```
 
 Affected-module verification (T096):
 
@@ -910,5 +965,6 @@ Full reactor verification (T097):
 
 ```powershell
 .\mvnw.cmd clean verify
-# BUILD SUCCESS — exit code 0; all 13 reactor modules passed with no required test failures
+# BUILD SUCCESS — exit code 0 on 2026-08-10; all 13 reactor modules passed
+# No required test failures
 ```

@@ -15,6 +15,11 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -171,6 +176,42 @@ class CampaignDraftPersistenceIntegrationTests {
         assertThat(row.get("version")).isEqualTo(1L);
     }
 
+    @Test
+    void rootRowLockIsAcquiredBeforeTheAggregateGraphIsRead() throws Exception {
+        Campaign saved = persist(Campaign.createDraft(
+                UUID.randomUUID(), "LOCK-ORDER-001", "Original", START, END, "creator", CREATED_AT));
+        CountDownLatch firstHasLock = new CountDownLatch(1);
+        CountDownLatch allowFirstCommit = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<Void> first = executor.submit(() -> {
+                inTransaction(() -> {
+                    campaignRepository.lockRootById(saved.id()).orElseThrow();
+                    CampaignJpaEntity entity = campaignRepository.findDetailedById(saved.id()).orElseThrow();
+                    entity.setName("First writer");
+                    firstHasLock.countDown();
+                    await(allowFirstCommit);
+                    campaignRepository.saveAndFlush(entity);
+                });
+                return null;
+            });
+            assertThat(firstHasLock.await(10, TimeUnit.SECONDS)).isTrue();
+            Future<String> second = executor.submit(() -> inTransaction(() -> {
+                campaignRepository.lockRootById(saved.id()).orElseThrow();
+                return campaignRepository.findDetailedById(saved.id()).orElseThrow().getName();
+            }));
+
+            allowFirstCommit.countDown();
+
+            first.get(10, TimeUnit.SECONDS);
+            assertThat(second.get(10, TimeUnit.SECONDS)).isEqualTo("First writer");
+        } finally {
+            allowFirstCommit.countDown();
+            executor.shutdownNow();
+        }
+    }
+
     private Campaign persist(Campaign campaign) {
         return inTransaction(() -> persistenceAdapter.save(campaign));
     }
@@ -192,6 +233,17 @@ class CampaignDraftPersistenceIntegrationTests {
             operation.run();
             status.setRollbackOnly();
         });
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Campaign lock test timed out");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Campaign lock test was interrupted", exception);
+        }
     }
 
     private static CampaignItem draftItem(UUID variantId, long amount) {

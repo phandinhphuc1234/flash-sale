@@ -9,6 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -183,6 +188,63 @@ class CampaignAllocationCompatibilityTests {
 
         String replayId = allocationId(replay);
         assertThat(replayId).isEqualTo(firstId);
+    }
+
+    @Test
+    void concurrentSameRequestIdCreatesOneAllocationAndReplaysIt() throws Exception {
+        UUID variantId = UUID.randomUUID();
+        insertInventoryItem(variantId, 100);
+        UUID requestId = UUID.randomUUID();
+        UUID campaignId = UUID.randomUUID();
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<MvcResult> first = executor.submit(
+                    () -> performConcurrentAllocation(ready, start, requestId, campaignId, variantId));
+            Future<MvcResult> second = executor.submit(
+                    () -> performConcurrentAllocation(ready, start, requestId, campaignId, variantId));
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            MvcResult firstResult = first.get(20, TimeUnit.SECONDS);
+            MvcResult secondResult = second.get(20, TimeUnit.SECONDS);
+
+            assertThat(firstResult.getResponse().getStatus()).isEqualTo(200);
+            assertThat(secondResult.getResponse().getStatus()).isEqualTo(200);
+            assertThat(allocationId(secondResult)).isEqualTo(allocationId(firstResult));
+            assertThat(jdbc.queryForObject(
+                    "SELECT count(*) FROM campaign_stock_allocations WHERE request_id = ?",
+                    Long.class, requestId)).isEqualTo(1L);
+            assertThat(jdbc.queryForObject(
+                    "SELECT campaign_allocated_quantity FROM inventory_items WHERE variant_id = ?",
+                    Long.class, variantId)).isEqualTo(10L);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM stock_movements", Long.class))
+                    .isEqualTo(1L);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM outbox_events", Long.class))
+                    .isEqualTo(1L);
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    private MvcResult performConcurrentAllocation(
+            CountDownLatch ready,
+            CountDownLatch start,
+            UUID requestId,
+            UUID campaignId,
+            UUID variantId) throws Exception {
+        ready.countDown();
+        if (!start.await(10, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Concurrent allocation start gate timed out");
+        }
+        return mockMvc.perform(allocationRequest(requestId, campaignId, variantId, 10)
+                        .with(jwt().jwt(token -> token.subject(CAMPAIGN_SUBJECT)
+                                .audience(List.of(INTERNAL_AUDIENCE)))
+                                .authorities(new SimpleGrantedAuthority("SCOPE_" + NARROW_SCOPE))))
+                .andReturn();
     }
 
     private String allocationId(MvcResult result) throws Exception {

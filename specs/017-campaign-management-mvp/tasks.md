@@ -222,7 +222,7 @@ and the required module/reactor evidence without expanding Feature 017 scope.
 - [x] T092 [P] Add Campaign database/application wiring, OAuth secret placeholders, service URLs, and one-off migration dependencies to `infra/docker/compose.yml`, `infra/docker/compose.dev.yml`, and `infra/docker/.env.example` without committing real credentials
 - [x] T093 [P] Provision `campaign.lifecycle.v1` with three partitions and replication factor one through root-owned local tooling in `infra/docker/kafka/init-campaign-topics.sh`
 - [x] T094 Validate the merged Compose application profile and record the exact command/result in `specs/017-campaign-management-mvp/quickstart.md`
-- [ ] T095 Execute the full Gateway -> Authentication -> Campaign -> Product -> Inventory -> PostgreSQL/Kafka/Schema Registry smoke and failure/restart/requeue flow, recording sanitized evidence in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T095 Execute the full Gateway -> Authentication -> Campaign -> Product -> Inventory -> PostgreSQL/Kafka/Schema Registry smoke and failure/restart/requeue flow, recording sanitized evidence in `specs/017-campaign-management-mvp/quickstart.md`
 - [x] T096 Run `./mvnw -pl services/api-gateway,services/authentication-service,services/product-service,services/inventory-service,services/campaign-service -am verify` and record exit status in `specs/017-campaign-management-mvp/quickstart.md`
 - [x] T097 Run `./mvnw clean verify`, confirm no required test is failing, and record exit status in `specs/017-campaign-management-mvp/quickstart.md`
 

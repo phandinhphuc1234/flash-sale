@@ -12,8 +12,9 @@ import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOper
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 /** JPA adapter translating durable schedule-operation rows to the framework-free domain model. */
 @Repository
@@ -67,8 +68,18 @@ public class ScheduleOperationPersistenceAdapter implements
     }
 
     @Override
+    @Transactional
     public ScheduleOperation save(ScheduleOperation operation) {
-        CampaignScheduleOperationJpaEntity entity = repository.findById(operation.id())
+        var stored = repository.findLockedById(operation.id());
+        if (stored.isPresent()) {
+            ScheduleOperation current = toDomain(stored.get());
+            if (current.status() == operation.status()
+                    || !current.status().canTransitionTo(operation.status())) {
+                return current;
+            }
+        }
+
+        CampaignScheduleOperationJpaEntity entity = stored
                 .orElseGet(CampaignScheduleOperationJpaEntity::new);
         entity.setId(operation.id());
         entity.setCampaignId(operation.campaignId());

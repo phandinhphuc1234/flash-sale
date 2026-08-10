@@ -209,13 +209,13 @@ class CampaignAdminGatewayRouteTests {
             };
         }
 
-        private static Jwt jwt(String token, String scope) {
+        private static Jwt jwt(String token, String authority) {
             return Jwt.withTokenValue(token)
                     .header("alg", "none")
                     .header("typ", "at+jwt")
                     .subject("campaign-admin-test")
                     .audience(List.of("flash-sale-api"))
-                    .claim("scope", scope)
+                    .claim("authorities", List.of(authority))
                     .issuedAt(Instant.now().minusSeconds(60))
                     .expiresAt(Instant.now().plusSeconds(300))
                     .build();

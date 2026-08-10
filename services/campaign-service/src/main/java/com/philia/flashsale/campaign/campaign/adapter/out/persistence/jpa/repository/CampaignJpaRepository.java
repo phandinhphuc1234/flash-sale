@@ -2,16 +2,14 @@ package com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.repos
 
 import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.entity.CampaignJpaEntity;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignStatus;
-import java.util.Optional;
-import java.util.UUID;
 import java.time.Instant;
 import java.util.List;
-import jakarta.persistence.LockModeType;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,10 +19,8 @@ public interface CampaignJpaRepository extends JpaRepository<CampaignJpaEntity, 
     @EntityGraph(attributePaths = "item")
     Optional<CampaignJpaEntity> findDetailedById(UUID id);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = "item")
-    @Query("select c from CampaignJpaEntity c where c.id = :id")
-    Optional<CampaignJpaEntity> findDetailedByIdForUpdate(@Param("id") UUID id);
+    @Query(value = "SELECT id FROM campaigns WHERE id = :id FOR UPDATE", nativeQuery = true)
+    Optional<UUID> lockRootById(@Param("id") UUID id);
 
     boolean existsByCodeIgnoreCase(String code);
 

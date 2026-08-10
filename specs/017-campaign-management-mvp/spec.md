@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-29
 
-**Status**: Approved — Avro/Schema Registry adoption confirmed (2026-08-03)
+**Status**: Implemented and verified (2026-08-10)
 
 **Input**: `C:\Users\MSi\Downloads\campaign-service-minimal-mvp-spec.md`
 
@@ -675,3 +675,5 @@ workflow metadata.
 - 2026-08-03 — Avro schema-first contracts, Confluent Schema Registry, TopicRecordNameStrategy,
   BACKWARD_TRANSITIVE compatibility, controlled registration, and W3C Kafka header tracing approved
   as the Feature 017 wire-format amendment.
+- 2026-08-10 — Full local topology, failure/restart/requeue smoke, focused concurrency regressions,
+  Compose validation, and the 13-module reactor completed successfully; Feature 017 is verified.

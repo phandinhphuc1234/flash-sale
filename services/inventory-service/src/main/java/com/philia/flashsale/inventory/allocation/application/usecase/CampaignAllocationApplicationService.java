@@ -60,16 +60,18 @@ public class CampaignAllocationApplicationService implements
     public CampaignStockAllocationResult allocate(AllocateCampaignStockCommand command) {
         var existing = loadAllocation.findByRequestId(command.requestId());
         if (existing.isPresent()) {
-            var prior = existing.get();
-            if (!prior.campaignId().equals(command.campaignId())
-                    || !prior.variantId().equals(command.variantId())
-                    || prior.allocatedQuantity() != command.quantity()) {
-                throw new AllocationRequestConflictException();
-            }
-            return CampaignStockAllocationResult.from(prior);
+            return replayCompatibleAllocation(command, existing.get());
         }
         InventoryItem item = loadInventoryItem.findByVariantIdForUpdate(command.variantId())
                 .orElseThrow(() -> AllocationApplicationException.notFound("Inventory item not found"));
+
+        // A concurrent request may have committed while this transaction waited for the stock row.
+        // Rechecking under that lock turns the stable request ID into a concurrency-safe replay.
+        existing = loadAllocation.findByRequestId(command.requestId());
+        if (existing.isPresent()) {
+            return replayCompatibleAllocation(command, existing.get());
+        }
+
         Instant now = Instant.now();
         item.allocate(command.quantity(), now);
         InventoryItem saved = saveInventoryItem.save(item);
@@ -84,6 +86,17 @@ public class CampaignAllocationApplicationService implements
                         + command.campaignId() + "\",\"variantId\":\"" + command.variantId()
                         + "\",\"quantity\":" + command.quantity() + "}", now);
         return CampaignStockAllocationResult.from(result);
+    }
+
+    private CampaignStockAllocationResult replayCompatibleAllocation(
+            AllocateCampaignStockCommand command,
+            CampaignStockAllocation prior) {
+        if (!prior.campaignId().equals(command.campaignId())
+                || !prior.variantId().equals(command.variantId())
+                || prior.allocatedQuantity() != command.quantity()) {
+            throw new AllocationRequestConflictException();
+        }
+        return CampaignStockAllocationResult.from(prior);
     }
 
     @Override

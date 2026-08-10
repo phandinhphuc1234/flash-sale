@@ -138,8 +138,16 @@ public class CampaignSecurityConfiguration {
                         .map(String::valueOf)
                         .map(String::trim)
                         .filter(value -> !value.isBlank())
-                        .map(SimpleGrantedAuthority::new)
-                        .forEach(authorities::add);
+                        .forEach(value -> addAuthority(authorities, value));
+            }
+        }
+
+        private void addAuthority(List<GrantedAuthority> authorities, String authority) {
+            authorities.add(new SimpleGrantedAuthority(authority));
+            // Administrator JWTs expose Campaign capability in the canonical authorities claim;
+            // normalize it to the Feature 017 scope name enforced by this resource boundary.
+            if ("CAMPAIGN_ADMIN".equals(authority)) {
+                authorities.add(new SimpleGrantedAuthority("SCOPE_CAMPAIGN_ADMIN"));
             }
         }
 

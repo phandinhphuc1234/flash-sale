@@ -83,8 +83,16 @@ public class GatewaySecurityConfiguration {
                         .map(String::valueOf)
                         .map(String::trim)
                         .filter(value -> !value.isBlank())
-                        .map(SimpleGrantedAuthority::new)
-                        .forEach(authorities::add);
+                        .forEach(value -> addAuthority(authorities, value));
+            }
+        }
+
+        private void addAuthority(List<GrantedAuthority> authorities, String authority) {
+            authorities.add(new SimpleGrantedAuthority(authority));
+            // Auth keeps administrator capabilities in its canonical authorities claim. Campaign
+            // administration uses the OAuth-style name approved by Feature 017 at both boundaries.
+            if ("CAMPAIGN_ADMIN".equals(authority)) {
+                authorities.add(new SimpleGrantedAuthority("SCOPE_CAMPAIGN_ADMIN"));
             }
         }
 

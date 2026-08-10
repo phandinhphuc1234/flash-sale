@@ -53,7 +53,9 @@ public class CampaignSchedulingPersistenceAdapter implements FinalizeCampaignSch
     @Override
     @Transactional
     public Campaign finalizeSchedule(FinalizeCampaignSchedulingCommand command) {
-        CampaignJpaEntity entity = campaignRepository.findDetailedByIdForUpdate(command.campaignId())
+        campaignRepository.lockRootById(command.campaignId())
+                .orElseThrow(() -> new IllegalArgumentException("Campaign was not found"));
+        CampaignJpaEntity entity = campaignRepository.findDetailedById(command.campaignId())
                 .orElseThrow(() -> new IllegalArgumentException("Campaign was not found"));
         ScheduleOperation operation = operationLoader.findLockedById(command.operationId())
                 .orElseThrow(() -> new IllegalArgumentException("Schedule operation was not found"));

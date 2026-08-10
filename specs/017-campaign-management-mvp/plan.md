@@ -1,7 +1,7 @@
 # Implementation Plan: Campaign Management MVP
 
 **Branch**: `017-campaign-management-mvp` | **Date**: 2026-07-30 | **Spec**: [spec.md](./spec.md)  
-**Status**: Approved — Avro/Schema Registry implementation authorized (2026-08-03)
+**Status**: Implemented and verified (2026-08-10)
 **Input**: Approved Feature 017 specification and approved ADRs 0012, 0013, 0015, and 0016
 
 ## Summary
@@ -68,25 +68,24 @@ Campaign schedule/lifecycle/outbox races, two lifecycle event types
 
 | Gate | Result | Evidence |
 |---|---|---|
-| Specification traceability | AMENDMENT REQUIRED | Existing Feature 017 is approved, but Avro/Schema Registry changes are a pending amendment |
+| Specification traceability | PASS | Feature 017 and its Avro/Schema Registry amendment are approved and implemented |
 | Service ownership | PASS | Campaign/Auth own their migrations; Product/Inventory remain authoritative; no shared JPA/domain model |
 | Communication | PASS | Gateway ingress; documented HTTP contracts; versioned Kafka contract; Kubernetes DNS-compatible URLs |
 | Data and messaging | PASS | PostgreSQL truth; transactional outbox; stable Inventory request ID; idempotent consumers required |
 | Root infrastructure ownership | PASS | Compose/topic orchestration planned under `infra/docker`; service runtime/migrations remain in modules |
 | Observability | PASS | Actuator/Prometheus already declarative; `X-Trace-Id` propagation and metrics are planned |
-| Contracts/dependencies | AMENDMENT REQUIRED | Avro schemas, contract-module dependency, subjects, and registration workflow must be approved |
+| Contracts/dependencies | PASS | Avro schemas, contract module, subjects, and controlled registration workflow are approved |
 | Validation | PASS | unit/integration/contract/concurrency/Kafka/smoke/module/reactor checks are planned |
-| Architecture decision | AMENDMENT REQUIRED | ADR 0012, ADR 0013, and ADR 0015 are accepted; ADR 0016 is Proposed |
+| Architecture decision | PASS | ADRs 0012, 0013, 0015, and 0016 are accepted |
 
 Redis Lua is not applicable because Feature 017 does not implement the purchase hot path or runtime
 stock deduction.
 
 ### Post-design gate
 
-AMENDMENT PENDING. The proposed Avro contract module preserves service ownership and keeps wire
-types at Kafka adapters, but the root module, Schema Registry subjects, compatibility tests, and
-ADR 0016 must be approved before code. No platform asset moves into a service and no Constitution
-exception is requested.
+PASS. The approved Avro contract module preserves service ownership and keeps wire types at Kafka
+adapters. The root module, Schema Registry subjects, compatibility tests, and ADR 0016 are accepted
+and verified. No platform asset moved into a service and no Constitution exception was required.
 
 ## Project Structure
 
@@ -472,6 +471,8 @@ Authentication capability
 - 2026-08-03 — Project owner approved the Avro/Schema Registry amendment. ADR 0016, the
   protocol-only contract module, generated SpecificRecords, and compatibility gates are accepted;
   live publisher/Registry runtime work remains in later tasks.
+- 2026-08-10 — Full topology smoke, outage/restart/requeue recovery, focused concurrency tests,
+  Compose validation, and the full reactor passed; the implementation gate is complete.
 
-The plan and task ledger are approved for implementation. Runtime work must still follow the
-dependency-ordered tasks and record validation evidence in `quickstart.md`.
+The plan has been implemented and the completed task ledger is backed by validation evidence in
+`quickstart.md`.

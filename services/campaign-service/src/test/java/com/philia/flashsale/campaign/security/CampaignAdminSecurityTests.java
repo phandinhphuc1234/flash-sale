@@ -102,7 +102,7 @@ class CampaignAdminSecurityTests {
     }
 
     @Test
-    void campaignAdminScopePassesAuthorization() throws Exception {
+    void authenticationServiceCampaignAdminAuthorityPassesAuthorization() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders
                         .post("/api/v1/admin/campaigns")
                         .header("X-Trace-Id", TRACE_ID)
@@ -142,7 +142,7 @@ class CampaignAdminSecurityTests {
                     .expiresAt(now.plusSeconds(300))
                     .subject("campaign-admin-test");
             if ("campaign-admin-token".equals(token)) {
-                builder.claim("scope", "CAMPAIGN_ADMIN");
+                builder.claim("authorities", List.of("CAMPAIGN_ADMIN"));
             }
             return builder.build();
         }
