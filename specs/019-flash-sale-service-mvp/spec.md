@@ -425,3 +425,4 @@ different user receives the same safe not-found outcome as an unknown reservatio
 | 2026-08-10 | Initial Feature 019 draft extracted from the reviewed MVP proposal | Codex | Project owner | Draft — clarification required |
 | 2026-08-10 | Q1–Q3 resolved reservation expiry, durable recovery, and idempotency semantics | Codex | Project owner | Draft — ready for approval |
 | 2026-08-10 | Feature 019 specification approved for implementation planning | Project owner | Project owner | Approved |
+| 2026-08-10 | Feature 019 plan, ADR 0017, and dependency-ordered task ledger approved for implementation | Project owner | Project owner | Approved for implementation |

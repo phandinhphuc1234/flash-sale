@@ -1,6 +1,6 @@
 # Tasks: Flash Sale Service MVP
 
-**Status**: Draft — ready for task-ledger approval  
+**Status**: Approved — confirmed by project owner on 2026-08-10
 **Input**: Approved design documents from `/specs/019-flash-sale-service-mvp/`  
 **Prerequisites**: Approved `spec.md`, approved `plan.md`, accepted ADR 0017, `research.md`,
 `data-model.md`, `contracts/`, and `quickstart.md`
@@ -27,11 +27,11 @@ durable acceptance/publication -> US4 owner query.
 **Purpose**: Turn the existing Flash Sale skeleton into a configured, independently buildable module
 without implementing business behavior.
 
-- [ ] T001 Update `services/flashsale-service/pom.xml` with every approved production and test-only dependency from `plan.md`, MapStruct processing, and no excluded dependency such as Redisson, Kafka Connect, Resilience4j, gRPC, or OpenAPI
-- [ ] T002 [P] Define environment-backed JPA/Liquibase, Redis, Kafka/Schema Registry, JWT/JWKS, OAuth2 Client Credentials, virtual-thread, Actuator, Prometheus, and tracing configuration in `services/flashsale-service/src/main/resources/application.yml` and safe test overrides in `services/flashsale-service/src/test/resources/application.yml`
-- [ ] T003 [P] Enable only the planned scheduling, configuration-properties scanning, and OpenFeign capabilities in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/FlashsaleServiceApplication.java`
-- [ ] T004 [P] Add fail-fast typed configuration in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/configuration/FlashSaleProperties.java`, `RedisHotPathProperties.java`, `CampaignProjectionProperties.java`, and `OutboxProperties.java`
-- [ ] T005 Add configuration binding/validation coverage in `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/configuration/FlashSaleConfigurationPropertiesTests.java` and keep `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/FlashsaleServiceApplicationTests.java` green
+- [x] T001 Update `services/flashsale-service/pom.xml` with every approved production and test-only dependency from `plan.md`, MapStruct processing, and no excluded dependency such as Redisson, Kafka Connect, Resilience4j, gRPC, or OpenAPI
+- [x] T002 [P] Define environment-backed JPA/Liquibase, Redis, Kafka/Schema Registry, JWT/JWKS, OAuth2 Client Credentials, virtual-thread, Actuator, Prometheus, and tracing configuration in `services/flashsale-service/src/main/resources/application.yml` and safe test overrides in `services/flashsale-service/src/test/resources/application.yml`
+- [x] T003 [P] Enable only the planned scheduling, configuration-properties scanning, and OpenFeign capabilities in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/FlashsaleServiceApplication.java`
+- [x] T004 [P] Add fail-fast typed configuration in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/configuration/FlashSaleProperties.java`, `RedisHotPathProperties.java`, `CampaignProjectionProperties.java`, and `OutboxProperties.java`
+- [x] T005 Add configuration binding/validation coverage in `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/configuration/FlashSaleConfigurationPropertiesTests.java` and keep `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/FlashsaleServiceApplicationTests.java` green
 
 **Checkpoint**: The service skeleton resolves approved dependencies and rejects missing/invalid
 runtime settings before any story implementation begins.
