@@ -22,6 +22,7 @@ import com.philia.flashsale.campaign.campaign.application.result.CampaignDetailR
 import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignItem;
 import java.util.Objects;
+import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Orchestrates local Campaign draft operations through ports and the aggregate. */
@@ -111,18 +112,18 @@ public class CampaignDraftApplicationService implements
         return CampaignDetailResult.from(load(query.campaignId()));
     }
 
-    private Campaign load(java.util.UUID campaignId) {
+    private Campaign load(UUID campaignId) {
         return loadCampaignPort.findById(campaignId)
                 .orElseThrow(() -> new CampaignNotFoundException(campaignId));
     }
 
-    private void ensureEditableOperation(java.util.UUID campaignId) {
+    private void ensureEditableOperation(UUID campaignId) {
         if (activeOperationPort.hasActiveOperation(campaignId)) {
             throw new CampaignOperationInProgressException(campaignId);
         }
     }
 
-    private void ensureVersion(java.util.UUID campaignId, long expectedVersion, Campaign campaign) {
+    private void ensureVersion(UUID campaignId, long expectedVersion, Campaign campaign) {
         if (expectedVersion < 0 || campaign.version() != expectedVersion) {
             throw new CampaignVersionConflictException(campaignId, expectedVersion, campaign.version());
         }

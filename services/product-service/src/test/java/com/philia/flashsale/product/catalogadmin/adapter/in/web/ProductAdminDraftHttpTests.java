@@ -22,6 +22,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -101,7 +104,7 @@ class ProductAdminDraftHttpTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/api/v1/admin/catalog/products/")))
+                .andExpect(header().string("Location", Matchers.containsString("/api/v1/admin/catalog/products/")))
                 .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andExpect(jsonPath("$.data.version").value(0))
                 .andReturn()
@@ -168,7 +171,7 @@ class ProductAdminDraftHttpTests {
                 }
                 """;
 
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+        mockMvc.perform(MockMvcRequestBuilders
                         .put("/api/v1/admin/catalog/products/{productId}/composition", productId)
                         .with(catalogAdmin())
                         .header("If-Match", "0")
@@ -699,7 +702,7 @@ class ProductAdminDraftHttpTests {
                 """.formatted(code, slug, name, shortDescriptionJson);
     }
 
-    private static org.springframework.test.web.servlet.request.RequestPostProcessor catalogAdmin() {
+    private static RequestPostProcessor catalogAdmin() {
         return jwt()
                 .jwt(jwt -> jwt.subject("admin-1"))
                 .authorities(new SimpleGrantedAuthority("CATALOG_ADMIN"));

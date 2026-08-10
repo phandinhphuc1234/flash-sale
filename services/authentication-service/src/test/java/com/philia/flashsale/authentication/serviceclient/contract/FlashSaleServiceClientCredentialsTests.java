@@ -1,5 +1,6 @@
 package com.philia.flashsale.authentication.serviceclient.contract;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,6 +13,8 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +31,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -96,9 +100,9 @@ class FlashSaleServiceClientCredentialsTests {
                 .build()
                 .decode(body.path("access_token").asText());
 
-        org.assertj.core.api.Assertions.assertThat(token.getSubject()).isEqualTo(FLASHSALE_ID);
-        org.assertj.core.api.Assertions.assertThat(token.getAudience()).containsExactly("flash-sale-internal-api");
-        org.assertj.core.api.Assertions.assertThat(String.valueOf(token.getClaims().get("scope")))
+        assertThat(token.getSubject()).isEqualTo(FLASHSALE_ID);
+        assertThat(token.getAudience()).containsExactly("flash-sale-internal-api");
+        assertThat(String.valueOf(token.getClaims().get("scope")))
                 .contains("campaign.snapshot.read")
                 .doesNotContain("catalog.read");
     }
@@ -114,7 +118,7 @@ class FlashSaleServiceClientCredentialsTests {
                 .andExpect(jsonPath("$.error").isString());
     }
 
-    private org.springframework.test.web.servlet.ResultActions requestToken(
+    private ResultActions requestToken(
             String clientId, String secret, String scope) throws Exception {
         return mockMvc.perform(post("/oauth2/token")
                 .with(httpBasic(clientId, secret))
@@ -126,7 +130,7 @@ class FlashSaleServiceClientCredentialsTests {
     private void insertClient(String clientId, String secret, String status, String scope) {
         UUID id = UUID.randomUUID();
         String hash = Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8().encode(secret);
-        java.time.OffsetDateTime now = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         jdbc.update("""
                 INSERT INTO oauth_clients (
                     id, client_id, client_secret_hash, grant_type, status,

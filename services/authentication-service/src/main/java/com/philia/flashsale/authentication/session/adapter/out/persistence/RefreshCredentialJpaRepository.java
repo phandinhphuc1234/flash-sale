@@ -1,5 +1,6 @@
 package com.philia.flashsale.authentication.session.adapter.out.persistence;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
@@ -21,5 +22,5 @@ public interface RefreshCredentialJpaRepository extends JpaRepository<RefreshCre
     @Query("delete from RefreshCredentialJpaEntity r where r.expiresAt < :cutoff "
             + "or (r.usedAt is not null and r.usedAt < :cutoff) "
             + "or (r.revokedAt is not null and r.revokedAt < :cutoff)")
-    int deleteRetainedExpired(@Param("cutoff") java.time.Instant cutoff);
+    int deleteRetainedExpired(@Param("cutoff") Instant cutoff);
 }

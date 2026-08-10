@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,7 +46,7 @@ class ProductCompositionAndLifecycleServiceTests {
         CheckCatalogUniquenessPort uniqueness = mock(CheckCatalogUniquenessPort.class);
         LoadExistingCategoriesPort categories = mock(LoadExistingCategoriesPort.class);
         MaintainProductCompositionPort persistence = mock(MaintainProductCompositionPort.class);
-        when(loader.loadAdminProduct(productId)).thenReturn(java.util.Optional.of(detail(productId, ProductStatus.DRAFT, 0)));
+        when(loader.loadAdminProduct(productId)).thenReturn(Optional.of(detail(productId, ProductStatus.DRAFT, 0)));
         when(categories.existingCategoryIds(any())).thenReturn(Set.of());
 
         MaintainProductCompositionCommand.VariantInput first = variant(null, "SKU-1");
@@ -65,7 +66,7 @@ class ProductCompositionAndLifecycleServiceTests {
         ProductLifecyclePersistencePort persistence = mock(ProductLifecyclePersistencePort.class);
         AdminIdempotencyPort idempotency = mock(AdminIdempotencyPort.class);
         RecordCatalogAdminAuditPort audit = mock(RecordCatalogAdminAuditPort.class);
-        when(loader.loadAdminProduct(productId)).thenReturn(java.util.Optional.of(detail(productId, ProductStatus.DRAFT, 0)));
+        when(loader.loadAdminProduct(productId)).thenReturn(Optional.of(detail(productId, ProductStatus.DRAFT, 0)));
         when(idempotency.resolveMutation(any(), any(), any())).thenReturn(MutationIdempotencyDecision.fresh());
         when(persistence.updateLifecycle(productId, 0, ProductStatus.ACTIVE, Instant.parse("2026-01-01T00:00:00Z")))
                 .thenReturn(1L);

@@ -20,6 +20,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -189,7 +190,7 @@ class CampaignAllocationCompatibilityTests {
                 .path("data").path("id").asText();
     }
 
-    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder allocationRequest(
+    private MockHttpServletRequestBuilder allocationRequest(
             UUID requestId, UUID campaignId, UUID variantId, long quantity) {
         return post("/internal/v1/campaign-stock-allocations")
                 .header("X-Trace-Id", "trace-inventory-allocation")

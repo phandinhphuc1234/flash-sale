@@ -26,11 +26,14 @@ dependency decision, not a local serializer refactor.
 5. Use `BACKWARD_TRANSITIVE` compatibility for the first approved contract baseline.
 6. Set `auto.register.schemas=false` in stable environments. Registration is a controlled CI/release
    step, not application startup behavior.
-7. Keep stable `eventId`, Campaign ID Kafka key, at-least-once outbox delivery, and idempotent
+7. Use the Confluent 7.9.x Java serializer/client line with Spring Boot 3.5/Spring Kafka's managed
+   Kafka 3.9.x client. The local Schema Registry may remain on the 8.3.x image line; this mixed
+   client/server pairing is accepted only after the live compatibility test passes.
+8. Keep stable `eventId`, Campaign ID Kafka key, at-least-once outbox delivery, and idempotent
    consumers unchanged.
-8. Propagate W3C `traceparent`/`tracestate` through Kafka headers. Do not put JWTs, secrets, raw
+9. Propagate W3C `traceparent`/`tracestate` through Kafka headers. Do not put JWTs, secrets, raw
    authorization headers, or trace IDs in the Avro business payload.
-9. Keep PostgreSQL `JSONB` outbox storage as an internal durable representation if useful; the
+10. Keep PostgreSQL `JSONB` outbox storage as an internal durable representation if useful; the
    outbox relay maps it to the generated Avro record outside the business transaction.
 
 ## Boundary rules

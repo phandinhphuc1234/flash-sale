@@ -1,5 +1,6 @@
 package com.philia.flashsale.campaign.contract;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -22,6 +23,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -122,8 +125,8 @@ class CampaignManualActivationHttpContractTests {
                 .andExpect(header().string("X-Trace-Id", TRACE_ID));
 
         mockMvc.perform(post("/api/v1/admin/campaigns/{campaignId}/activate", campaignId)
-                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("user")
-                                .authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("SCOPE_OTHER")))
+                        .with(SecurityMockMvcRequestPostProcessors.user("user")
+                                .authorities(new SimpleGrantedAuthority("SCOPE_OTHER")))
                         .header("If-Match", "\"1\"")
                         .header("X-Trace-Id", TRACE_ID)
                         .contentType("application/json")
@@ -156,7 +159,7 @@ class CampaignManualActivationHttpContractTests {
     }
 
     private void assertStatus(UUID campaignId, String expected) {
-        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject(
+        assertThat(jdbc.queryForObject(
                 "SELECT status FROM campaigns WHERE id = ?", String.class, campaignId)).isEqualTo(expected);
     }
 }

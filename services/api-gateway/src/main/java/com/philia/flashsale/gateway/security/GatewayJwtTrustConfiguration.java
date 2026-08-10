@@ -6,7 +6,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
@@ -48,25 +50,25 @@ public class GatewayJwtTrustConfiguration {
         }
 
         @Override
-        public org.springframework.security.oauth2.core.OAuth2TokenValidatorResult validate(Jwt token) {
+        public OAuth2TokenValidatorResult validate(Jwt token) {
             return token.getAudience() != null
                     && token.getAudience().contains(requiredAudience)
                     && token.getSubject() != null
                     && !token.getSubject().isBlank()
-                    ? org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.success()
-                    : org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.failure(
-                            new org.springframework.security.oauth2.core.OAuth2Error(
+                    ? OAuth2TokenValidatorResult.success()
+                    : OAuth2TokenValidatorResult.failure(
+                            new OAuth2Error(
                                     "invalid_token", "Required JWT audience is missing", null));
         }
     }
 
     static final class GatewayJwtTypeValidator implements OAuth2TokenValidator<Jwt> {
         @Override
-        public org.springframework.security.oauth2.core.OAuth2TokenValidatorResult validate(Jwt token) {
+        public OAuth2TokenValidatorResult validate(Jwt token) {
             return "at+jwt".equals(token.getHeaders().get("typ"))
-                    ? org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.success()
-                    : org.springframework.security.oauth2.core.OAuth2TokenValidatorResult.failure(
-                            new org.springframework.security.oauth2.core.OAuth2Error(
+                    ? OAuth2TokenValidatorResult.success()
+                    : OAuth2TokenValidatorResult.failure(
+                            new OAuth2Error(
                                     "invalid_token", "Required JWT type is missing", null));
         }
     }

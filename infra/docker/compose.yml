@@ -168,6 +168,12 @@ services:
       JWT_PRIVATE_KEY_LOCATION: ${AUTH_JWT_PRIVATE_KEY_LOCATION:-file:/run/secrets/auth-jwt/jwt-private.pem}
       AUTH_THROTTLE_HMAC_SECRET: ${AUTH_THROTTLE_HMAC_SECRET:?AUTH_THROTTLE_HMAC_SECRET must be set}
       AUTH_TRUSTED_ORIGINS: ${AUTH_TRUSTED_ORIGINS:-http://localhost:3000}
+      # Authentication provisions the fixed machine clients from the same
+      # runtime-only secret injected into their calling service.
+      CAMPAIGN_CLIENT_ID: ${CAMPAIGN_CLIENT_ID:-campaign-service}
+      CAMPAIGN_CLIENT_SECRET: ${CAMPAIGN_CLIENT_SECRET:-}
+      FLASHSALE_CLIENT_ID: ${FLASHSALE_CLIENT_ID:-flashsale-service}
+      FLASHSALE_CLIENT_SECRET: ${FLASHSALE_CLIENT_SECRET:-}
     volumes:
       - ${AUTH_JWT_KEY_DIR:?AUTH_JWT_KEY_DIR must point to a local key directory}:/run/secrets/auth-jwt:ro
 

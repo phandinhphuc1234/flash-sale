@@ -7,6 +7,7 @@ import com.philia.flashsale.campaign.campaign.domain.exception.CampaignDomainExc
 import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignItem;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignMoney;
+import com.philia.flashsale.campaign.campaign.domain.model.CampaignStatus;
 import com.philia.flashsale.campaign.campaign.domain.policy.CampaignLifecyclePolicy;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -27,7 +28,7 @@ class CampaignSchedulePolicyTests {
 
         policy.ensureCanSchedule(campaign, NOW);
 
-        assertThat(campaign.status()).isEqualTo(com.philia.flashsale.campaign.campaign.domain.model.CampaignStatus.DRAFT);
+        assertThat(campaign.status()).isEqualTo(CampaignStatus.DRAFT);
         assertThat(campaign.item().isReadyForScheduling()).isTrue();
     }
 
@@ -88,7 +89,7 @@ class CampaignSchedulePolicyTests {
         Campaign campaign = draftWithCompleteItem();
         campaign.markScheduled("admin", NOW);
 
-        assertThat(campaign.status()).isEqualTo(com.philia.flashsale.campaign.campaign.domain.model.CampaignStatus.SCHEDULED);
+        assertThat(campaign.status()).isEqualTo(CampaignStatus.SCHEDULED);
         assertThat(campaign.item().isReadyForScheduling()).isTrue();
         assertThatThrownBy(() -> campaign.markScheduled("admin", NOW.plusSeconds(1)))
                 .isInstanceOf(IllegalStateException.class);

@@ -4,6 +4,7 @@ import com.philia.flashsale.authentication.serviceclient.application.LoadService
 import com.philia.flashsale.authentication.serviceclient.domain.ServiceClient;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
@@ -16,6 +17,6 @@ public class ServiceClientPersistenceAdapter implements LoadServiceClientPort {
     @Override public Optional<ServiceClient> findByClientId(String clientId) { return clients.findByClientId(clientId).map(this::map); }
     @Override public Optional<ServiceClient> findById(UUID id) { return clients.findById(id).map(this::map); }
     private ServiceClient map(ServiceClientJpaEntity entity) {
-        return ServiceClientPersistenceMapper.toDomain(entity, scopes.findByOauthClientIdOrderByScope(entity.getId()).stream().map(ServiceClientScopeJpaEntity::getScope).collect(java.util.stream.Collectors.toUnmodifiableSet()));
+        return ServiceClientPersistenceMapper.toDomain(entity, scopes.findByOauthClientIdOrderByScope(entity.getId()).stream().map(ServiceClientScopeJpaEntity::getScope).collect(Collectors.toUnmodifiableSet()));
     }
 }

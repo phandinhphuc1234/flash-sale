@@ -7,6 +7,7 @@ import com.philia.flashsale.gateway.observability.GatewayErrorObservation;
 import com.philia.flashsale.gateway.observability.GatewayTraceIdResolver;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -25,7 +26,7 @@ public final class GatewayHttpErrorWriter {
             ObjectMapper objectMapper,
             GatewayTraceIdResolver traceIdResolver,
             GatewayErrorObservation errorObservation) {
-        // Ensure the shared envelope timestamp (java.time.Instant) is serializable even when
+        // Ensure the shared envelope timestamp is serializable even when
         // this writer is constructed directly in a focused unit test.
         objectMapper.findAndRegisterModules();
         this.objectMapper = objectMapper;
@@ -118,7 +119,7 @@ public final class GatewayHttpErrorWriter {
     private byte[] fallbackInternalErrorBody(String traceId) {
         String body = "{\"success\":false,\"errorCode\":\"GATEWAY_INTERNAL_ERROR\","
                 + "\"message\":\"The gateway could not process the request\",\"errors\":null,\"timestamp\":\""
-                + java.time.Instant.now() + "\"}";
+                + Instant.now() + "\"}";
         return body.getBytes(StandardCharsets.UTF_8);
     }
 

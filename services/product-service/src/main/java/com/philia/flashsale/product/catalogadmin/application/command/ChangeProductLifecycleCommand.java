@@ -3,6 +3,7 @@ package com.philia.flashsale.product.catalogadmin.application.command;
 import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 import com.philia.flashsale.product.catalogadmin.domain.AdminCommandName;
@@ -16,7 +17,7 @@ public record ChangeProductLifecycleCommand(UUID productId, long expectedVersion
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest((commandName + "\n" + productId + "\n" + expectedVersion)
                             .getBytes(StandardCharsets.UTF_8)));
-        } catch (java.security.NoSuchAlgorithmException exception) {
+        } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
         }
     }

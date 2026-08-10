@@ -5,9 +5,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.common.web.ApiErrorResponse;
 import org.springframework.http.MediaType;
@@ -59,7 +61,7 @@ public class TrustedOriginFilter extends OncePerRequestFilter {
         try {
             response.getWriter().write(objectMapper.writeValueAsString(
                     ApiErrorResponse.of("AUTH_CROSS_SITE_REQUEST_REJECTED", "Cross-site request rejected")));
-        } catch (com.fasterxml.jackson.core.JsonProcessingException exception) {
+        } catch (JsonProcessingException exception) {
             response.getWriter().write("{\"success\":false,\"errorCode\":\"AUTH_CROSS_SITE_REQUEST_REJECTED\","
                     + "\"message\":\"Cross-site request rejected\"}");
         }
@@ -68,7 +70,7 @@ public class TrustedOriginFilter extends OncePerRequestFilter {
     private String originFromReferer(String referer) {
         if (referer == null || referer.isBlank()) return null;
         try {
-            var uri = java.net.URI.create(referer);
+            var uri = URI.create(referer);
             return uri.getScheme() == null || uri.getRawAuthority() == null
                     ? null : uri.getScheme() + "://" + uri.getRawAuthority();
         } catch (IllegalArgumentException ignored) {

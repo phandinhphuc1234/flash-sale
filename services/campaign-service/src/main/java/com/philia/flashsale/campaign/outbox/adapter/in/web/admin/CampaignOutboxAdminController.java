@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Drives the authenticated operator requeue use case and preserves the trace header. */
@@ -26,7 +27,7 @@ public class CampaignOutboxAdminController implements CampaignOutboxAdminApi {
     public ResponseEntity<ApiResponse<CampaignOutboxRequeueResponse>> requeue(
             UUID campaignId, UUID eventId, RequeueCampaignOutboxEventRequest request,
             HttpServletRequest httpRequest) {
-        Authentication authentication = org.springframework.security.core.context.SecurityContextHolder
+        Authentication authentication = SecurityContextHolder
                 .getContext().getAuthentication();
         String actor = authentication == null ? "unknown-operator" : authentication.getName();
         var result = requeueService.requeue(campaignId, eventId, actor);

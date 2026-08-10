@@ -11,10 +11,12 @@ import com.philia.flashsale.campaign.outbox.adapter.out.messaging.kafka.W3CTrace
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -137,7 +139,7 @@ class CampaignLifecycleKafkaIntegrationTests {
             UUID campaignId, SpecificRecord value, UUID eventId) {
         ProducerRecord<String, SpecificRecord> record =
                 new ProducerRecord<>(TOPIC, campaignId.toString(), value);
-        record.headers().add("eventId", eventId.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        record.headers().add("eventId", eventId.toString().getBytes(StandardCharsets.UTF_8));
         record.headers().add("traceparent", W3CTraceContextHeaders.traceparent(eventId.toString()));
         return record;
     }
@@ -160,7 +162,7 @@ class CampaignLifecycleKafkaIntegrationTests {
         return new CampaignScheduledV1(eventId, "CampaignScheduled", 1, "Campaign", campaignId, 1L,
                 EVENT_TIME, new CampaignScheduledDataV1(campaignId, "B6", EVENT_TIME,
                         EVENT_TIME.plusSeconds(3600), new CampaignScheduledItemV1(
-                                UUID.randomUUID(), UUID.randomUUID(), "SKU-B6", new java.math.BigDecimal("9.9900"),
+                                UUID.randomUUID(), UUID.randomUUID(), "SKU-B6", new BigDecimal("9.9900"),
                                 "VND", 10L, 1L)));
     }
 

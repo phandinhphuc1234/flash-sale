@@ -13,6 +13,7 @@ import com.philia.flashsale.campaign.campaign.application.result.CampaignLifecyc
 import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import com.philia.flashsale.campaign.campaign.domain.policy.CampaignLifecyclePolicy;
 import java.util.Objects;
+import java.util.UUID;
 
 /** Coordinates domain lifecycle rules with an atomic persistence boundary. */
 public final class CampaignLifecycleService implements ActivateCampaignUseCase, EndCampaignUseCase {
@@ -66,7 +67,7 @@ public final class CampaignLifecycleService implements ActivateCampaignUseCase, 
         return new CampaignLifecycleResult(CampaignDetailResult.from(latest), false);
     }
 
-    private Campaign load(java.util.UUID campaignId) {
+    private Campaign load(UUID campaignId) {
         return campaignPort.findById(campaignId)
                 .orElseThrow(() -> new CampaignNotFoundException(campaignId));
     }

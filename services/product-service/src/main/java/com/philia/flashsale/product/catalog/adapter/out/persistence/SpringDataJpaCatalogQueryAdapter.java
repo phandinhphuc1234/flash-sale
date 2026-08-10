@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import com.philia.flashsale.product.catalog.application.port.out.LoadCatalogPort;
@@ -162,7 +163,7 @@ class SpringDataJpaCatalogQueryAdapter implements LoadCatalogPort {
                                 row.getSortOrder())));
     }
 
-    private static <T, R> java.util.stream.Collector<T, ?, Map<UUID, List<R>>> groupingByProductId(
+    private static <T, R> Collector<T, ?, Map<UUID, List<R>>> groupingByProductId(
             Function<T, UUID> productId,
             Function<T, R> mapper) {
         return Collectors.groupingBy(

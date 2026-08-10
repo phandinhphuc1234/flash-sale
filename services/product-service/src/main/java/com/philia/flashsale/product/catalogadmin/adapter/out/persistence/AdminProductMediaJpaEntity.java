@@ -2,6 +2,7 @@ package com.philia.flashsale.product.catalogadmin.adapter.out.persistence;
 
 import java.util.UUID;
 
+import com.philia.flashsale.product.catalogadmin.application.command.MaintainProductCompositionCommand.MediaInput;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -39,7 +40,7 @@ class AdminProductMediaJpaEntity {
     }
 
     static AdminProductMediaJpaEntity from(UUID productId,
-            com.philia.flashsale.product.catalogadmin.application.command.MaintainProductCompositionCommand.MediaInput input) {
+            MediaInput input) {
         AdminProductMediaJpaEntity entity = new AdminProductMediaJpaEntity();
         entity.id = input.id() == null ? UUID.randomUUID() : input.id();
         entity.productId = productId;

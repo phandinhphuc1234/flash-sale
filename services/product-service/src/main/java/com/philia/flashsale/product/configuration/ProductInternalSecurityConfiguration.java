@@ -3,6 +3,7 @@ package com.philia.flashsale.product.configuration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,7 +45,7 @@ public class ProductInternalSecurityConfiguration {
                 .build();
     }
 
-    private AuthorizationDecision authorizeInternal(java.util.function.Supplier<Authentication> authentication,
+    private AuthorizationDecision authorizeInternal(Supplier<Authentication> authentication,
             ProductInternalJwtProperties properties) {
         Authentication current = authentication.get();
         boolean subjectMatches = current.getPrincipal() instanceof Jwt jwt

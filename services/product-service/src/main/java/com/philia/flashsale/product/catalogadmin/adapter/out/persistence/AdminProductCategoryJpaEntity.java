@@ -2,6 +2,7 @@ package com.philia.flashsale.product.catalogadmin.adapter.out.persistence;
 
 import java.util.UUID;
 
+import com.philia.flashsale.product.catalogadmin.application.command.MaintainProductCompositionCommand.CategoryInput;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -31,7 +32,7 @@ class AdminProductCategoryJpaEntity {
     }
 
     static AdminProductCategoryJpaEntity from(UUID productId,
-            com.philia.flashsale.product.catalogadmin.application.command.MaintainProductCompositionCommand.CategoryInput input) {
+            CategoryInput input) {
         AdminProductCategoryJpaEntity entity = new AdminProductCategoryJpaEntity();
         entity.productId = productId;
         entity.categoryId = input.id();

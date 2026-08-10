@@ -2,8 +2,10 @@ package com.philia.flashsale.authentication.serviceclient.adapter.in.oauth;
 
 import com.philia.flashsale.authentication.serviceclient.application.LoadServiceClientPort;
 import com.philia.flashsale.authentication.serviceclient.domain.ServiceClient;
+import java.time.Duration;
 import java.util.UUID;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
@@ -39,10 +41,10 @@ public class DurableRegisteredClientRepository implements RegisteredClientReposi
         return RegisteredClient.withId(client.id().toString())
                 .clientId(client.clientId())
                 .clientSecret(client.clientSecretHash())
-                .clientAuthenticationMethod(org.springframework.security.oauth2.core.ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scopes(scopes -> scopes.addAll(client.scopes()))
-                .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(java.time.Duration.ofSeconds(client.accessTokenTtlSeconds())).build())
+                .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofSeconds(client.accessTokenTtlSeconds())).build())
                 .build();
     }
 }

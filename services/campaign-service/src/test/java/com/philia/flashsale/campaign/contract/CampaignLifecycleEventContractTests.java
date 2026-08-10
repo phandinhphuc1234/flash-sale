@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.apache.avro.Schema;
 import org.apache.avro.io.BinaryDecoder;
@@ -67,7 +68,7 @@ class CampaignLifecycleEventContractTests {
         assertThat(price.getLogicalType().getName()).isEqualTo("decimal");
         assertThat(activated.getField("eventId").schema().getLogicalType().getName()).isEqualTo("uuid");
 
-        String schemas = (scheduled.toString() + activated).toLowerCase(java.util.Locale.ROOT);
+        String schemas = (scheduled.toString() + activated).toLowerCase(Locale.ROOT);
         assertThat(schemas).doesNotContain("password", "secret", "token", "credential");
     }
 

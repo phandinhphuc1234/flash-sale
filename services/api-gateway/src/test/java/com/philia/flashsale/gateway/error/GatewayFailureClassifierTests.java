@@ -25,6 +25,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -122,7 +123,7 @@ class GatewayFailureClassifierTests {
     @Test
     void delegatesExplicitResponseStatusExceptions() {
         ResponseStatusException failure = new ResponseStatusException(
-                org.springframework.http.HttpStatus.GATEWAY_TIMEOUT,
+                HttpStatus.GATEWAY_TIMEOUT,
                 "deferred timeout",
                 new AuthenticationServiceException("authentication unavailable"));
 

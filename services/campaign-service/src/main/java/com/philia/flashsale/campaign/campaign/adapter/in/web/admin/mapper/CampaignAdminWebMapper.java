@@ -14,9 +14,10 @@ import com.philia.flashsale.campaign.campaign.domain.model.CampaignMoney;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignStatus;
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
 
 /** Maps only the Campaign admin HTTP boundary to application commands/results. */
-@org.springframework.stereotype.Component
+@Component
 public final class CampaignAdminWebMapper {
 
     public CreateCampaignCommand toCommand(CreateCampaignRequest request) {

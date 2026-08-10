@@ -3,6 +3,7 @@ package com.philia.flashsale.authentication.websupport.error;
 import jakarta.servlet.http.HttpServletRequest;
 import com.philia.flashsale.common.web.ApiErrorResponse;
 import com.philia.flashsale.common.web.FieldViolation;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -108,7 +109,7 @@ public class AuthenticationHttpExceptionHandler {
     }
 
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, AuthenticationErrorCode code,
-            HttpServletRequest request, java.util.List<FieldViolation> violations) {
+            HttpServletRequest request, List<FieldViolation> violations) {
         String traceId = traceId(request);
         return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON)
                 .header("X-Trace-Id", traceId)

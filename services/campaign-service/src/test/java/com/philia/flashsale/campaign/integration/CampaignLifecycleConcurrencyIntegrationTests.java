@@ -19,6 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -123,14 +124,14 @@ class CampaignLifecycleConcurrencyIntegrationTests {
                 .isZero();
     }
 
-    private List<Optional<Campaign>> race(java.util.function.Supplier<Optional<Campaign>> first,
-            java.util.function.Supplier<Optional<Campaign>> second) throws Exception {
+    private List<Optional<Campaign>> race(Supplier<Optional<Campaign>> first,
+            Supplier<Optional<Campaign>> second) throws Exception {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             List<Future<Optional<Campaign>>> futures = new ArrayList<>();
-            for (java.util.function.Supplier<Optional<Campaign>> operation : List.of(first, second)) {
+            for (Supplier<Optional<Campaign>> operation : List.of(first, second)) {
                 futures.add(executor.submit(() -> {
                     ready.countDown();
                     ready.await();

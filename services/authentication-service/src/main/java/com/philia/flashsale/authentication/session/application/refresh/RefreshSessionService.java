@@ -1,6 +1,7 @@
 package com.philia.flashsale.authentication.session.application.refresh;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 
 import com.philia.flashsale.authentication.security.token.SecureRefreshCredentialAdapter;
@@ -43,7 +44,7 @@ public class RefreshSessionService implements RefreshSessionUseCase {
         } catch (RuntimeException exception) {
             throw new RefreshCredentialIssuanceUnavailableException(exception);
         }
-        long maxAge = Math.max(1, java.time.Duration.between(now, rotation.successorExpiresAt()).toSeconds());
+        long maxAge = Math.max(1, Duration.between(now, rotation.successorExpiresAt()).toSeconds());
         return new RefreshSessionResult(accessToken, rawSuccessor, 900, maxAge);
     }
 }

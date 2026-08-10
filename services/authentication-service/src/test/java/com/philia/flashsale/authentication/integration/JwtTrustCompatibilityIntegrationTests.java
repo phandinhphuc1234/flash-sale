@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -31,8 +33,8 @@ class JwtTrustCompatibilityIntegrationTests {
         generator.initialize(2048);
         KeyPair keyPair = generator.generateKeyPair();
 
-        RSAKey signingKey = new RSAKey.Builder((java.security.interfaces.RSAPublicKey) keyPair.getPublic())
-                .privateKey((java.security.interfaces.RSAPrivateKey) keyPair.getPrivate())
+        RSAKey signingKey = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
+                .privateKey((RSAPrivateKey) keyPair.getPrivate())
                 .keyID("test-key")
                 .build();
         NimbusJwtEncoder encoder = new NimbusJwtEncoder(
@@ -46,7 +48,7 @@ class JwtTrustCompatibilityIntegrationTests {
                 "admin", "argon-hash", AccountRole.ROLE_ADMIN, AccountStatus.ACTIVE, null, null, now, now);
         String token = tokenAdapter.issueAccessToken(admin, UUID.randomUUID(), now);
 
-        JwtDecoder decoder = NimbusJwtDecoder.withPublicKey((java.security.interfaces.RSAPublicKey) keyPair.getPublic())
+        JwtDecoder decoder = NimbusJwtDecoder.withPublicKey((RSAPublicKey) keyPair.getPublic())
                 .validateType(false)
                 .build();
         Jwt jwt = decoder.decode(token);

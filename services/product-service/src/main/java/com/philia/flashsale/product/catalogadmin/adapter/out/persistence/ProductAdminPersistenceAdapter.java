@@ -6,9 +6,11 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.philia.flashsale.product.catalogadmin.application.port.out.AdminIdempotencyPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.CheckCatalogUniquenessPort;
@@ -24,6 +26,8 @@ import com.philia.flashsale.product.catalogadmin.application.result.MutationIdem
 import com.philia.flashsale.product.catalogadmin.application.query.BrowseAdminCatalogQuery;
 import com.philia.flashsale.product.catalogadmin.application.exception.DuplicateProductCodeException;
 import com.philia.flashsale.product.catalogadmin.application.exception.DuplicateProductSlugException;
+import com.philia.flashsale.product.catalogadmin.application.exception.AdminProductNotFoundException;
+import com.philia.flashsale.product.catalogadmin.application.exception.StaleProductVersionException;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminCatalogPageResult;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminPageMetadata;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductCategoryResult;
@@ -150,9 +154,9 @@ public class ProductAdminPersistenceAdapter implements
     @Override
     public MaintainProductCompositionResult replaceComposition(MaintainProductCompositionCommand command) {
         AdminProductJpaEntity product = productRepository.findById(command.productId())
-                .orElseThrow(() -> new com.philia.flashsale.product.catalogadmin.application.exception.AdminProductNotFoundException(command.productId()));
+                .orElseThrow(() -> new AdminProductNotFoundException(command.productId()));
         if (product.version() != command.expectedVersion()) {
-            throw new com.philia.flashsale.product.catalogadmin.application.exception.StaleProductVersionException(
+            throw new StaleProductVersionException(
                     command.productId(), product.version());
         }
         product.updateContent(command.name().trim(), normalize(command.shortDescription()), normalize(command.description()));
@@ -161,13 +165,13 @@ public class ProductAdminPersistenceAdapter implements
             entityManager.lock(product, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
             productRepository.saveAndFlush(product);
         } catch (ObjectOptimisticLockingFailureException exception) {
-            throw new com.philia.flashsale.product.catalogadmin.application.exception.StaleProductVersionException(
+            throw new StaleProductVersionException(
                     command.productId(), command.expectedVersion() + 1);
         }
 
         var existing = variantRepository.findByProductIdOrderBySortOrderAscIdAsc(command.productId());
         var requestedIds = command.variants().stream().map(MaintainProductCompositionCommand.VariantInput::id)
-                .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+                .filter(Objects::nonNull).collect(Collectors.toSet());
         existing.stream().filter(value -> !requestedIds.contains(value.id())).forEach(AdminProductVariantJpaEntity::deactivate);
         variantRepository.saveAll(existing);
         for (MaintainProductCompositionCommand.VariantInput input : command.variants()) {
@@ -197,15 +201,15 @@ public class ProductAdminPersistenceAdapter implements
     @Override
     public long updateLifecycle(UUID productId, long expectedVersion, ProductStatus target, Instant publishedAt) {
         AdminProductJpaEntity product = productRepository.findById(productId)
-                .orElseThrow(() -> new com.philia.flashsale.product.catalogadmin.application.exception.AdminProductNotFoundException(productId));
+                .orElseThrow(() -> new AdminProductNotFoundException(productId));
         if (product.version() != expectedVersion) {
-            throw new com.philia.flashsale.product.catalogadmin.application.exception.StaleProductVersionException(productId, product.version());
+            throw new StaleProductVersionException(productId, product.version());
         }
         product.updateLifecycle(target, publishedAt);
         try {
             return productRepository.saveAndFlush(product).version();
         } catch (ObjectOptimisticLockingFailureException exception) {
-            throw new com.philia.flashsale.product.catalogadmin.application.exception.StaleProductVersionException(
+            throw new StaleProductVersionException(
                     productId, expectedVersion + 1);
         }
     }

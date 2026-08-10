@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -75,7 +76,7 @@ class RefreshRotationConcurrencyIntegrationTests extends AuthenticationPostgreSq
     void partialUniqueIndexRejectsTwoCurrentCredentialsForOneSession() {
         SessionFixture fixture = createCurrentSession(hash('f'), NOW);
         RefreshCredentialJpaEntity competingCurrent = new RefreshCredentialJpaEntity(
-                java.util.UUID.randomUUID(),
+                UUID.randomUUID(),
                 fixture.sessionId(),
                 hash('1'),
                 null,

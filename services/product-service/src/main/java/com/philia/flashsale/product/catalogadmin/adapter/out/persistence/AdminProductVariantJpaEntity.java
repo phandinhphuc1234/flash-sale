@@ -3,6 +3,7 @@ package com.philia.flashsale.product.catalogadmin.adapter.out.persistence;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import com.philia.flashsale.product.catalogadmin.application.command.MaintainProductCompositionCommand.VariantInput;
 import com.philia.flashsale.product.catalogadmin.domain.VariantStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -49,7 +50,7 @@ class AdminProductVariantJpaEntity {
     }
 
     static AdminProductVariantJpaEntity from(UUID productId,
-            com.philia.flashsale.product.catalogadmin.application.command.MaintainProductCompositionCommand.VariantInput input) {
+            VariantInput input) {
         AdminProductVariantJpaEntity entity = new AdminProductVariantJpaEntity();
         entity.id = input.id() == null ? UUID.randomUUID() : input.id();
         entity.productId = productId;
@@ -57,7 +58,7 @@ class AdminProductVariantJpaEntity {
         return entity;
     }
 
-    void update(com.philia.flashsale.product.catalogadmin.application.command.MaintainProductCompositionCommand.VariantInput input) {
+    void update(VariantInput input) {
         this.sku = input.sku().trim();
         this.barcode = input.barcode() == null || input.barcode().isBlank() ? null : input.barcode().trim();
         this.name = input.name().trim();

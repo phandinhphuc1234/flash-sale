@@ -14,6 +14,7 @@ import com.philia.flashsale.product.catalogadmin.application.port.in.ArchiveProd
 import com.philia.flashsale.product.catalogadmin.application.port.out.AdminIdempotencyPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.CheckCatalogUniquenessPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.LoadAdminProductPort;
+import com.philia.flashsale.product.catalogadmin.application.port.out.LoadExistingCategoriesPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.RecordCatalogAdminAuditPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.SaveAdminProductPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.MaintainProductCompositionPort;
@@ -90,7 +91,7 @@ public class ProductAdminConfiguration {
     @Bean
     MaintainProductCompositionUseCase maintainProductCompositionUseCase(
             LoadAdminProductPort loader, CheckCatalogUniquenessPort uniqueness,
-            com.philia.flashsale.product.catalogadmin.application.port.out.LoadExistingCategoriesPort categories,
+            LoadExistingCategoriesPort categories,
             MaintainProductCompositionPort persistence, PlatformTransactionManager transactionManager) {
         MaintainProductCompositionService service = new MaintainProductCompositionService(loader, uniqueness, categories, persistence);
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);

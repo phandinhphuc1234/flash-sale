@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.philia.flashsale.product.catalogadmin.application.command.MaintainProductCompositionCommand;
 import com.philia.flashsale.product.catalogadmin.application.port.in.MaintainProductCompositionUseCase;
@@ -16,10 +17,12 @@ import com.philia.flashsale.product.catalogadmin.application.result.AdminProduct
 import com.philia.flashsale.product.catalogadmin.application.result.MaintainProductCompositionResult;
 import com.philia.flashsale.product.catalogadmin.domain.ProductStatus;
 import com.philia.flashsale.product.catalogadmin.domain.VariantStatus;
+import com.philia.flashsale.product.catalogadmin.domain.exception.ArchivedProductImmutableException;
 import com.philia.flashsale.product.catalogadmin.domain.exception.ProductOwnershipMismatchException;
 import com.philia.flashsale.product.catalogadmin.domain.exception.InvalidMoneyException;
 import com.philia.flashsale.product.catalogadmin.domain.exception.ImmutablePublishedIdentifierException;
 import com.philia.flashsale.product.catalogadmin.application.exception.AdminProductNotFoundException;
+import com.philia.flashsale.product.catalogadmin.application.exception.CategoryNotFoundException;
 import com.philia.flashsale.product.catalogadmin.application.exception.DuplicateProductCodeException;
 import com.philia.flashsale.product.catalogadmin.application.exception.DuplicateProductSlugException;
 import com.philia.flashsale.product.catalogadmin.application.exception.DuplicateVariantBarcodeException;
@@ -49,7 +52,7 @@ public final class MaintainProductCompositionService implements MaintainProductC
             throw new StaleProductVersionException(command.productId(), current.version());
         }
         if (current.status() == ProductStatus.ARCHIVED) {
-            throw new com.philia.flashsale.product.catalogadmin.domain.exception.ArchivedProductImmutableException(
+            throw new ArchivedProductImmutableException(
                     "Archived Product cannot be mutated");
         }
         validate(command, current);
@@ -63,7 +66,7 @@ public final class MaintainProductCompositionService implements MaintainProductC
         Set<UUID> variantIds = new HashSet<>();
         Set<String> skus = new HashSet<>();
         Set<String> barcodes = new HashSet<>();
-        Set<UUID> existingIds = current.variants().stream().map(AdminProductVariantResult::id).collect(java.util.stream.Collectors.toSet());
+        Set<UUID> existingIds = current.variants().stream().map(AdminProductVariantResult::id).collect(Collectors.toSet());
         for (MaintainProductCompositionCommand.VariantInput variant : command.variants()) {
             if (variant.id() != null && !existingIds.contains(variant.id())) {
                 throw new ProductOwnershipMismatchException("Variant does not belong to Product");
@@ -114,9 +117,9 @@ public final class MaintainProductCompositionService implements MaintainProductC
         }
         long primaryCount = command.categories().stream().filter(MaintainProductCompositionCommand.CategoryInput::primary).count();
         if (primaryCount > 1) throw new IllegalArgumentException("Product may have at most one primary Category");
-        Set<UUID> categoryIds = command.categories().stream().map(MaintainProductCompositionCommand.CategoryInput::id).collect(java.util.stream.Collectors.toSet());
+        Set<UUID> categoryIds = command.categories().stream().map(MaintainProductCompositionCommand.CategoryInput::id).collect(Collectors.toSet());
         if (categories.existingCategoryIds(categoryIds).size() != categoryIds.size()) {
-            throw new com.philia.flashsale.product.catalogadmin.application.exception.CategoryNotFoundException();
+            throw new CategoryNotFoundException();
         }
         for (MaintainProductCompositionCommand.CategoryInput category : command.categories()) {
             if (category.sortOrder() < 0) {

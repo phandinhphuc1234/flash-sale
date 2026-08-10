@@ -1,6 +1,7 @@
 package com.philia.flashsale.inventory.websupport.error;
 
 import com.philia.flashsale.common.web.ApiErrorResponse;
+import com.philia.flashsale.common.web.FieldViolation;
 import com.philia.flashsale.inventory.allocation.application.exception.AllocationApplicationException;
 import com.philia.flashsale.inventory.allocation.domain.exception.AllocationDomainException;
 import com.philia.flashsale.inventory.allocation.domain.exception.AllocationRequestConflictException;
@@ -41,7 +42,7 @@ public class InventoryExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleValidation(
             MethodArgumentNotValidException exception) {
         var violations = exception.getBindingResult().getFieldErrors().stream()
-                .map(fieldError -> new com.philia.flashsale.common.web.FieldViolation(
+                .map(fieldError -> new FieldViolation(
                         fieldError.getField(), fieldError.getDefaultMessage()))
                 .toList();
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(

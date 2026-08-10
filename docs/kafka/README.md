@@ -23,9 +23,10 @@ retention period, DLT policy, or business event by itself. The governing order r
 | Schema storage | Schema Registry owns the compacted internal `_schemas` topic with RF `1` |
 | Schema format | Avro schema-first with generated SpecificRecord is approved for Feature 017 |
 | Avro contract module | `contracts/kafka-avro-contracts` generates typed SpecificRecord classes |
+| Java serializer line | Confluent 7.9.x, aligned with Spring Boot 3.5/Spring Kafka's Kafka 3.9.x client |
 | Avro source layout | Schemas are grouped under `src/main/avro/topics/<topic-name>/`; namespace and generated package stay contract-owned |
 | Approved Kafka topic | `campaign.lifecycle.v1` from Feature 017 |
-| Approved Campaign wire format | Avro SpecificRecord; outbox relay is implemented, while live Registry smoke remains pending |
+| Approved Campaign wire format | Avro SpecificRecord; outbox relay and live Registry smoke are validated |
 | Candidate Saga topics | Documented but not approved for production code |
 
 The current one-node topology is appropriate for local learning, integration tests, and a personal

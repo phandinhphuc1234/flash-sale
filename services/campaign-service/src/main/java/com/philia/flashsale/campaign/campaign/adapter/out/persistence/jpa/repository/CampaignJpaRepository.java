@@ -54,7 +54,7 @@ public interface CampaignJpaRepository extends JpaRepository<CampaignJpaEntity, 
             + "and c.startAt <= :now and c.endAt > :now")
     int activateIfDue(
             @Param("id") UUID id,
-            @Param("expectedStatus") com.philia.flashsale.campaign.campaign.domain.model.CampaignStatus expectedStatus,
+            @Param("expectedStatus") CampaignStatus expectedStatus,
             @Param("expectedVersion") long expectedVersion,
             @Param("now") Instant now,
             @Param("actor") String actor);

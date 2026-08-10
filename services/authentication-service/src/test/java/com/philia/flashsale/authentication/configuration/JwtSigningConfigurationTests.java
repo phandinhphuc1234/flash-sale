@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
@@ -102,6 +103,6 @@ class JwtSigningConfigurationTests {
 
     private record TestJwtInfrastructure(
             JwtEncoder encoder,
-            org.springframework.security.oauth2.jwt.JwtDecoder decoder) {
+            JwtDecoder decoder) {
     }
 }

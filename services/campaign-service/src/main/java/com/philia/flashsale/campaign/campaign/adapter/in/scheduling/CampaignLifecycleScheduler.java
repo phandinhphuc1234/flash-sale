@@ -10,6 +10,7 @@ import com.philia.flashsale.campaign.websupport.context.CampaignRequestContext;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -31,7 +32,7 @@ public final class CampaignLifecycleScheduler {
             ActivateCampaignUseCase activateCampaign,
             EndCampaignUseCase endCampaign,
             CampaignClockPort clock,
-            @org.springframework.beans.factory.annotation.Value("${flashsale.campaign.lifecycle.batch-size:100}")
+            @Value("${flashsale.campaign.lifecycle.batch-size:100}")
             int batchSize) {
         this.dueCampaigns = dueCampaigns;
         this.activateCampaign = activateCampaign;

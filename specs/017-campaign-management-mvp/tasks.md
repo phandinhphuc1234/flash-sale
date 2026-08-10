@@ -191,7 +191,7 @@ events; retry, lease reclaim, terminal failure, and authorized requeue preserve 
 
 - [x] T075 [P] [US4] Add internal snapshot HTTP/security contract tests for allowed statuses, missing/incomplete/draft data, exact Flash Sale subject/audience/scope, and token substitution denial in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/contract/InternalCampaignSnapshotContractTests.java`
 - [x] T076 [P] [US4] Add Avro SpecificRecord serialization, Schema Registry compatibility, logical-type, secret absence, W3C-header, and stable event-ID tests for both v1 events in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/contract/CampaignLifecycleEventContractTests.java`
-- [ ] T077 [US4] Add real Kafka/Schema Registry integration tests for topic, Campaign ID key, partition ordering, Scheduled-before-Activated, duplicate identity, compatible subject revision, and independent aggregates in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/integration/CampaignLifecycleKafkaIntegrationTests.java`
+- [x] T077 [US4] Add real Kafka/Schema Registry integration tests for topic, Campaign ID key, partition ordering, Scheduled-before-Activated, duplicate identity, compatible subject revision, and independent aggregates in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/integration/CampaignLifecycleKafkaIntegrationTests.java`
 - [x] T078 [US4] Add PostgreSQL outbox tests for batch claim/lease, expired-lease reclaim, earliest aggregate version, exponential backoff, tenth-attempt failure, predecessor blocking, and same-event requeue audit in `services/campaign-service/src/test/java/com/philia/flashsale/campaign/integration/CampaignOutboxRecoveryIntegrationTests.java`
 - [x] T079 [P] [US4] Add Authentication tests for separate `flashsale-service` credentials/scopes and denial of Campaign scopes in `services/authentication-service/src/test/java/com/philia/flashsale/authentication/serviceclient/contract/FlashSaleServiceClientCredentialsTests.java`
 
@@ -206,7 +206,7 @@ events; retry, lease reclaim, terminal failure, and authorized requeue preserve 
 - [x] T086 [US4] Configure idempotent `acks=all` KafkaAvro production, Registry URL, `TopicRecordNameStrategy`, controlled registration, W3C header propagation, and publish canonical v1 SpecificRecords keyed by Campaign ID in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/configuration/CampaignKafkaProducerConfiguration.java` and `outbox/adapter/out/messaging/kafka/KafkaCampaignLifecyclePublisher.java`
 - [x] T087 [US4] Implement the 500-ms batch-100 outbox publisher, retry/backoff, lease recovery, terminal failure, and trace restoration in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/outbox/adapter/in/scheduling/CampaignOutboxPublisherJob.java`
 - [x] T088 [US4] Implement authenticated same-event requeue use case, response, OpenAPI operation, controller endpoint, and error mappings in `services/campaign-service/src/main/java/com/philia/flashsale/campaign/outbox/application/usecase/RequeueCampaignOutboxEventService.java` and `outbox/adapter/in/web/admin/`
-- [ ] T089 [US4] Run snapshot/Auth/Kafka/outbox tests and record the independent US4 acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T089 [US4] Run snapshot/Auth/Kafka/outbox tests and record the independent US4 acceptance result in `specs/017-campaign-management-mvp/quickstart.md`
 
 **Checkpoint**: Runtime recovery is secure and reliable; no Flash Sale purchase logic or per-purchase Campaign lookup has been introduced.
 
@@ -223,29 +223,29 @@ and the required module/reactor evidence without expanding Feature 017 scope.
 - [x] T093 [P] Provision `campaign.lifecycle.v1` with three partitions and replication factor one through root-owned local tooling in `infra/docker/kafka/init-campaign-topics.sh`
 - [x] T094 Validate the merged Compose application profile and record the exact command/result in `specs/017-campaign-management-mvp/quickstart.md`
 - [ ] T095 Execute the full Gateway -> Authentication -> Campaign -> Product -> Inventory -> PostgreSQL/Kafka/Schema Registry smoke and failure/restart/requeue flow, recording sanitized evidence in `specs/017-campaign-management-mvp/quickstart.md`
-- [ ] T096 Run `./mvnw -pl services/api-gateway,services/authentication-service,services/product-service,services/inventory-service,services/campaign-service -am verify` and record exit status in `specs/017-campaign-management-mvp/quickstart.md`
-- [ ] T097 Run `./mvnw clean verify`, confirm no required test is failing, and record exit status in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T096 Run `./mvnw -pl services/api-gateway,services/authentication-service,services/product-service,services/inventory-service,services/campaign-service -am verify` and record exit status in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T097 Run `./mvnw clean verify`, confirm no required test is failing, and record exit status in `specs/017-campaign-management-mvp/quickstart.md`
 
 ---
 
 ## Phase 8: Avro and Schema Registry Foundation
 
-**Purpose**: Establish the approved protocol artifact and Registry compatibility gate before any
-Campaign producer or consumer is wired. The Feature 017 amendment and ADR 0016 are now approved;
-runtime publisher wiring remains in T101 and later implementation tasks.
+**Purpose**: Establish the approved protocol artifact, Registry compatibility gate, and Campaign
+runtime publisher. The Feature 017 amendment and ADR 0016 are approved; runtime wiring is recorded
+in T101 and integration evidence in T103.
 
 - [x] T098 [P] Create the protocol-only Maven module at `contracts/kafka-avro-contracts/`, add it to the root reactor, pin Avro/Confluent versions, and configure deterministic SpecificRecord generation without sharing domain classes
 - [x] T099 [P] Validate and version `CampaignScheduledV1.avsc` and `CampaignActivatedV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/campaign.lifecycle.v1/`, preserving UUID, timestamp, and decimal logical types
 - [x] T100 Add Registry subject/compatibility tests for `TopicRecordNameStrategy`, `BACKWARD_TRANSITIVE`, additive revisions, breaking revisions, and `auto.register.schemas=false` in the contract module
 - [x] T101 Complete Campaign runtime Kafka wiring with approved `KafkaAvroSerializer`/SpecificRecord settings, Registry URL, and W3C header propagation in `services/campaign-service/src/main/resources/application.yml` and the Campaign Kafka configuration
 - [x] T102 Update Feature 017 contract, quickstart, and Kafka architecture evidence with Registry subject names, controlled registration, consumer-first rollout, and Kafka/Registry outage recovery
-- [ ] T103 Run contract-module generation/compatibility tests and Campaign Avro serialization/Registry integration tests; record command, result, and any Registry test profile in `specs/017-campaign-management-mvp/quickstart.md`
+- [x] T103 Run contract-module generation/compatibility tests and Campaign Avro serialization/Registry integration tests; record command, result, and any Registry test profile in `specs/017-campaign-management-mvp/quickstart.md`
 
 ---
 
 ## Recommended Execution Batches
 
-The remaining 6 tasks are grouped into coherent implementation commits. Complete the tasks inside
+The remaining 1 task is grouped into a coherent validation commit. Complete the task inside
 one batch in the listed order, run its focused validation, then create the suggested commit. Do not
 mark a batch complete when its required tests are still red.
 

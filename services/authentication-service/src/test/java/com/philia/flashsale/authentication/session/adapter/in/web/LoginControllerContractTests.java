@@ -13,6 +13,7 @@ import com.philia.flashsale.authentication.session.application.login.Authenticat
 import com.philia.flashsale.authentication.session.application.login.AuthenticationResult;
 import com.philia.flashsale.authentication.websupport.filter.AuthenticationTraceFilter;
 import java.time.Duration;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -39,7 +40,7 @@ class LoginControllerContractTests {
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Trace-Id", "auth-login-contract"))
                 .andExpect(header().string("Cache-Control", "no-store"))
-                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", Matchers.containsString("refresh_token=")))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.accessToken").value("access-token"))
                 .andExpect(jsonPath("$.traceId").doesNotExist());

@@ -75,7 +75,7 @@ public class JpaAuthenticationSessionPersistenceAdapter implements LoadAccountFo
         Account account = accountRepository.findById(session.userId()).map(AccountPersistenceMapper::toDomain)
                 .orElseThrow(() -> new SessionFailure("AUTH_REFRESH_TOKEN_INVALID", "Account is invalid"));
         UUID successorId = UUID.randomUUID();
-        Instant successorExpiry = java.time.Instant.ofEpochMilli(Math.min(
+        Instant successorExpiry = Instant.ofEpochMilli(Math.min(
                 now.plus(7, ChronoUnit.DAYS).toEpochMilli(), session.expiresAt().toEpochMilli()));
         // Mark the old row used first so the partial unique index releases the
         // session slot; link the successor only after its row exists.
@@ -113,7 +113,7 @@ public class JpaAuthenticationSessionPersistenceAdapter implements LoadAccountFo
 
     @Override
     @Transactional
-    public void revokeAll(java.util.UUID userId, Instant now) {
+    public void revokeAll(UUID userId, Instant now) {
         sessionRepository.findAllByUserIdAndStatus(userId, LoginSessionStatus.ACTIVE).forEach(session -> {
             session.revoke(LoginSessionStatus.REVOKED, now, "LOGOUT_ALL");
             sessionRepository.save(session);

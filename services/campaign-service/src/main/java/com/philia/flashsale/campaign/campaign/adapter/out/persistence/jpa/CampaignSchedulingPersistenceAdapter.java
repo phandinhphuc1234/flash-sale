@@ -19,6 +19,8 @@ import com.philia.flashsale.campaign.scheduleoperation.application.port.out.Load
 import com.philia.flashsale.campaign.scheduleoperation.application.port.out.SaveScheduleOperationPort;
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperation;
 import com.philia.flashsale.campaign.scheduleoperation.domain.model.ScheduleOperationStatus;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,9 +89,9 @@ public class CampaignSchedulingPersistenceAdapter implements FinalizeCampaignSch
         operation.markCompleted();
         operationSaver.save(operation);
 
-        java.util.UUID eventId = java.util.UUID.nameUUIDFromBytes(
+        UUID eventId = UUID.nameUUIDFromBytes(
                 (operation.id() + ":CampaignScheduled:v1")
-                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        .getBytes(StandardCharsets.UTF_8));
         CampaignScheduled event = CampaignScheduled.of(eventId, current, command.now());
         CampaignOutboxEvent outbox = new CampaignOutboxEvent(
                 eventId, current.id(), current.version(), event.eventType(), event.eventVersion(),

@@ -6,6 +6,7 @@ import com.philia.flashsale.campaign.campaign.adapter.in.scheduling.CampaignLife
 import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.CampaignLifecyclePersistenceAdapter;
 import com.philia.flashsale.campaign.campaign.adapter.out.persistence.jpa.CampaignPersistenceAdapter;
 import com.philia.flashsale.campaign.campaign.application.command.ActivateCampaignCommand;
+import com.philia.flashsale.campaign.campaign.application.command.EndCampaignCommand;
 import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -105,7 +106,7 @@ class CampaignLifecycleOutboxOrderingTests {
         candidate.markEnded("scheduler", NOW);
 
         assertThat(lifecyclePersistence.end(candidate,
-                new com.philia.flashsale.campaign.campaign.application.command.EndCampaignCommand(
+                new EndCampaignCommand(
                         campaignId, 2, "scheduler", NOW, "ending-trace"))).isPresent();
         assertThat(jdbc.queryForObject("SELECT status FROM campaigns WHERE id = ?", String.class, campaignId))
                 .isEqualTo("ENDED");

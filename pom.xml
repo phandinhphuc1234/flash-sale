@@ -22,7 +22,8 @@
         <java.version>21</java.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <spring-cloud.version>2025.0.3</spring-cloud.version>
-        <confluent.version>8.3.0</confluent.version>
+        <!-- Keep the Java serializer line aligned with Spring Kafka's managed Kafka 3.9.x client. -->
+        <confluent.version>7.9.0</confluent.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>

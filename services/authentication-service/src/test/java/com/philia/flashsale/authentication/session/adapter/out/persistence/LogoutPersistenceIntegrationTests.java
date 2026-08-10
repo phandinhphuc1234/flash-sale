@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import com.philia.flashsale.authentication.session.domain.LoginSessionStatus;
 import org.junit.jupiter.api.Test;
@@ -74,9 +75,9 @@ class LogoutPersistenceIntegrationTests extends AuthenticationPostgreSqlIntegrat
         return fixture;
     }
 
-    private SessionFixture createAnotherSessionFor(java.util.UUID userId, String tokenHash) {
-        java.util.UUID sessionId = java.util.UUID.randomUUID();
-        java.util.UUID refreshId = java.util.UUID.randomUUID();
+    private SessionFixture createAnotherSessionFor(UUID userId, String tokenHash) {
+        UUID sessionId = UUID.randomUUID();
+        UUID refreshId = UUID.randomUUID();
         sessions.saveAndFlush(new LoginSessionJpaEntity(
                 sessionId,
                 userId,

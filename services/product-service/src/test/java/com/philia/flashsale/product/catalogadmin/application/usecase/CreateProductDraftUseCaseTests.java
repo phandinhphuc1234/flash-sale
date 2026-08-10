@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,6 +33,7 @@ import com.philia.flashsale.product.catalogadmin.application.result.CreateProduc
 import com.philia.flashsale.product.catalogadmin.domain.AdminCommandName;
 import com.philia.flashsale.product.catalogadmin.domain.CatalogAdminActor;
 import com.philia.flashsale.product.catalogadmin.domain.ProductAggregate;
+import com.philia.flashsale.product.catalogadmin.domain.ProductStatus;
 import com.philia.flashsale.product.catalogadmin.domain.TraceId;
 
 class CreateProductDraftUseCaseTests {
@@ -125,7 +127,7 @@ class CreateProductDraftUseCaseTests {
         UUID productId = UUID.randomUUID();
         CreateProductDraftUseCase delegate = command -> new CreateProductDraftResult(
                 productId,
-                com.philia.flashsale.product.catalogadmin.domain.ProductStatus.DRAFT,
+                ProductStatus.DRAFT,
                 0,
                 true);
         AuditedCreateProductDraftUseCase audited = new AuditedCreateProductDraftUseCase(delegate, audit);
@@ -304,7 +306,7 @@ class CreateProductDraftUseCaseTests {
     }
 
     private static final class CapturingAudit implements RecordCatalogAdminAuditPort {
-        private final java.util.ArrayList<AuditEntry> entries = new java.util.ArrayList<>();
+        private final ArrayList<AuditEntry> entries = new ArrayList<>();
 
         @Override
         public void record(

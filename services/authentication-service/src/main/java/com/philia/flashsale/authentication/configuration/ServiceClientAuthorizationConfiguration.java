@@ -1,5 +1,6 @@
 package com.philia.flashsale.authentication.configuration;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -14,14 +15,20 @@ import com.philia.flashsale.authentication.serviceclient.application.ServiceClie
 import com.philia.flashsale.authentication.serviceclient.application.ProvisionServiceClientPort;
 import com.philia.flashsale.authentication.serviceclient.application.ProvisionServiceClientService;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
+import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
@@ -33,7 +40,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 /** Composes the internal client-credentials endpoint without changing public-user JWT issuance. */
 @Configuration
-@org.springframework.boot.context.properties.EnableConfigurationProperties({ServiceTokenProperties.class, ServiceClientsProperties.class})
+@EnableConfigurationProperties({ServiceTokenProperties.class, ServiceClientsProperties.class})
 @ConditionalOnProperty(prefix = "flashsale.authentication", name = "runtime-enabled", havingValue = "true")
 public class ServiceClientAuthorizationConfiguration {
 
@@ -56,39 +63,44 @@ public class ServiceClientAuthorizationConfiguration {
 
     @Bean
     @Order(1)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    @Conditional(JwtPrivateKeyConfiguredCondition.class)
     SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
         return http.build();
     }
 
     @Bean
+    @Conditional(JwtPrivateKeyConfiguredCondition.class)
     JWKSource<SecurityContext> authorizationJwkSource(RSAKey publicJwk, RSAPrivateKey privateKey,
             JwtTrustProperties properties) {
         try {
-            RSAKey signingKey = new RSAKey.Builder((java.security.interfaces.RSAPublicKey) publicJwk.toRSAPublicKey())
+            RSAKey signingKey = new RSAKey.Builder((RSAPublicKey) publicJwk.toRSAPublicKey())
                     .privateKey(privateKey).keyID(properties.keyId()).algorithm(JWSAlgorithm.RS256).build();
             return new ImmutableJWKSet<>(new JWKSet(signingKey));
-        } catch (com.nimbusds.jose.JOSEException exception) {
+        } catch (JOSEException exception) {
             throw new IllegalStateException("OAuth signing key cannot be constructed", exception);
         }
     }
 
     @Bean
+    @Conditional(JwtPrivateKeyConfiguredCondition.class)
     AuthorizationServerSettings authorizationServerSettings(JwtTrustProperties properties) {
         return AuthorizationServerSettings.builder().issuer(properties.issuer()).build();
     }
 
     @Bean
+    @Conditional(JwtPrivateKeyConfiguredCondition.class)
     OAuth2TokenCustomizer<JwtEncodingContext> serviceTokenCustomizer(JwtTrustProperties properties,
             ServiceTokenProperties serviceTokenProperties) {
         return context -> {
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
                     && context.getRegisteredClient().getAuthorizationGrantTypes().contains(
-                            org.springframework.security.oauth2.core.AuthorizationGrantType.CLIENT_CREDENTIALS)) {
+                            AuthorizationGrantType.CLIENT_CREDENTIALS)) {
                 context.getJwsHeader().type("at+jwt");
                 context.getClaims().issuer(properties.issuer());
                 context.getClaims().subject(context.getRegisteredClient().getClientId());
-                context.getClaims().audience(java.util.List.of(serviceTokenProperties.audience()));
+                context.getClaims().audience(List.of(serviceTokenProperties.audience()));
                 context.getClaims().claim("scope", String.join(" ", context.getAuthorizedScopes()));
             }
         };

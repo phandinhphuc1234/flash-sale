@@ -5,9 +5,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.proc.SecurityContext;
@@ -20,6 +22,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -47,15 +50,14 @@ public class JwtSigningConfiguration {
     @Bean
     JwtEncoder authenticationJwtEncoder(RSAKey publicJwk, RSAPrivateKey privateKey, JwtTrustProperties properties) {
         try {
-            java.security.interfaces.RSAPublicKey publicKey =
-                    (java.security.interfaces.RSAPublicKey) publicJwk.toRSAPublicKey();
+            RSAPublicKey publicKey = (RSAPublicKey) publicJwk.toRSAPublicKey();
             if (!publicKey.getModulus().equals(privateKey.getModulus())) {
                 throw new IllegalStateException("JWT public and private keys must use the same RSA modulus");
             }
             RSAKey signingKey = new RSAKey.Builder(publicKey)
                     .privateKey(privateKey).keyID(properties.keyId()).build();
             return new NimbusJwtEncoder(new ImmutableJWKSet<SecurityContext>(new JWKSet(signingKey)));
-        } catch (com.nimbusds.jose.JOSEException exception) {
+        } catch (JOSEException exception) {
             throw new IllegalStateException("JWT signing key cannot be constructed", exception);
         }
     }
@@ -66,11 +68,11 @@ public class JwtSigningConfiguration {
             // RFC 9068 access tokens use typ=at+jwt; keep the check explicit rather than
             // relying on Spring's default typ=JWT validator.
             NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(
-                    (java.security.interfaces.RSAPublicKey) publicJwk.toRSAPublicKey())
+                    (RSAPublicKey) publicJwk.toRSAPublicKey())
                     .validateType(false)
                     .build();
             decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                    org.springframework.security.oauth2.jwt.JwtValidators.createDefaultWithIssuer(properties.issuer()),
+                    JwtValidators.createDefaultWithIssuer(properties.issuer()),
                     token -> token.getAudience() != null && token.getAudience().contains(properties.audience())
                             ? OAuth2TokenValidatorResult.success()
                             : OAuth2TokenValidatorResult.failure(new OAuth2Error(
@@ -80,7 +82,7 @@ public class JwtSigningConfiguration {
                             : OAuth2TokenValidatorResult.failure(new OAuth2Error(
                                     "invalid_token", "Required JWT type is missing", null))));
             return decoder;
-        } catch (com.nimbusds.jose.JOSEException exception) {
+        } catch (JOSEException exception) {
             throw new IllegalStateException("JWT public key cannot be constructed", exception);
         }
     }

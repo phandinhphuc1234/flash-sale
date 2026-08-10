@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
 
@@ -222,7 +223,7 @@ class CampaignSchemaMigrationIntegrationTests {
                 aggregateId.toString(), "{}", publishStatus, START, START, START);
     }
 
-    private static java.util.List<String> publicTables() {
+    private static List<String> publicTables() {
         return jdbc.queryForList("""
                 SELECT table_name
                 FROM information_schema.tables

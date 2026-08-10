@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.UUID;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,7 +89,7 @@ class CampaignAdminDraftHttpContractTests {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("X-Trace-Id", TRACE_ID))
                 .andExpect(header().string("ETag", "\"0\""))
-                .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith(
+                .andExpect(header().string("Location", Matchers.startsWith(
                         "/api/v1/admin/campaigns/")))
                 .andExpect(content().contentTypeCompatibleWith("application/json"))
                 .andExpect(jsonPath("$.success").value(true))

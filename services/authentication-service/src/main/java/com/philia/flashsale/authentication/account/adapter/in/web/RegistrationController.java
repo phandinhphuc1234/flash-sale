@@ -1,6 +1,7 @@
 package com.philia.flashsale.authentication.account.adapter.in.web;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import com.philia.flashsale.authentication.account.application.registration.RegisterAccountUseCase;
+import com.philia.flashsale.authentication.account.domain.AccountFailure;
 import com.philia.flashsale.common.web.ApiResponse;
 
 @RestController
@@ -26,9 +28,9 @@ public class RegistrationController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<RegisterResponse>> register(
             @Valid @RequestBody RegisterRequest request,
-            jakarta.servlet.http.HttpServletRequest httpRequest) {
+            HttpServletRequest httpRequest) {
         if (request.hasForbiddenFields()) {
-            throw new com.philia.flashsale.authentication.account.domain.AccountFailure(
+            throw new AccountFailure(
                     "AUTH_VALIDATION_FAILED", "Privilege fields are not accepted");
         }
         RegisterResponse response = RegistrationWebMapper.toResponse(registerAccountUseCase.register(

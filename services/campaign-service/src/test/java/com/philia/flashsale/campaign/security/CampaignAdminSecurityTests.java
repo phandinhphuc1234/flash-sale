@@ -24,6 +24,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -102,7 +103,7 @@ class CampaignAdminSecurityTests {
 
     @Test
     void campaignAdminScopePassesAuthorization() throws Exception {
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+        mockMvc.perform(MockMvcRequestBuilders
                         .post("/api/v1/admin/campaigns")
                         .header("X-Trace-Id", TRACE_ID)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer campaign-admin-token")

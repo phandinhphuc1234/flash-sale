@@ -10,10 +10,12 @@ import com.philia.flashsale.campaign.campaign.domain.model.Campaign;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignItem;
 import com.philia.flashsale.campaign.campaign.domain.model.CampaignMoney;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -177,7 +179,7 @@ class CampaignDraftPersistenceIntegrationTests {
         return inTransaction(() -> campaignRepository.findDetailedById(campaignId).orElseThrow());
     }
 
-    private <T> T inTransaction(java.util.function.Supplier<T> operation) {
+    private <T> T inTransaction(Supplier<T> operation) {
         return new TransactionTemplate(transactionManager).execute(status -> operation.get());
     }
 
@@ -205,7 +207,7 @@ class CampaignDraftPersistenceIntegrationTests {
         if (value instanceof OffsetDateTime offsetDateTime) {
             return offsetDateTime.toInstant();
         }
-        if (value instanceof java.sql.Timestamp timestamp) {
+        if (value instanceof Timestamp timestamp) {
             return timestamp.toInstant();
         }
         throw new AssertionError("Unexpected PostgreSQL timestamp type: " + value);

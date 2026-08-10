@@ -36,7 +36,9 @@ and full OIDC are not introduced.
 **Primary Dependencies**: Spring MVC, Validation, Data JPA, Security Resource Server, OAuth2 Client,
 Spring Authorization Server, Spring Kafka, Spring Cloud OpenFeign, Liquibase, MapStruct 1.6.3,
 Actuator, Micrometer Prometheus registry; the approved contract module adds Avro and Confluent
-serializer/Schema Registry tooling dependencies
+7.9.x serializer/Schema Registry client tooling dependencies. The local Registry server may run
+8.3.x; the application client line remains aligned with Spring Kafka's managed Kafka 3.9.x
+clients.
 **Storage**: Campaign-owned PostgreSQL (`campaign_db`); Authentication-owned PostgreSQL client
 registry (`auth_db`); no Campaign Redis  
 **Messaging**: Kafka topic `campaign.lifecycle.v1`, three local partitions, Campaign ID key,

@@ -2,6 +2,7 @@ package com.philia.flashsale.product.catalogadmin.adapter.in.web;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 import com.philia.flashsale.common.web.PageMeta;
 import com.philia.flashsale.common.web.PageResponse;
@@ -45,7 +46,7 @@ public interface ProductAdminWebMapper {
     /** Map the web payload explicitly so the application layer never depends on HTTP DTOs. */
     default MaintainProductCompositionCommand toCompositionCommand(
             MaintainProductCompositionRequest request,
-            java.util.UUID productId,
+            UUID productId,
             long expectedVersion,
             CatalogAdminActor actor,
             TraceId traceId) {

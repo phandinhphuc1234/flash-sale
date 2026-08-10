@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -107,8 +109,8 @@ class CommonWebResponseContractTest {
     void sharedTransportRecordsDoNotExposeTraceIdInJsonContract() {
         Set<String> traceIdComponents = Set.of(ApiResponse.class, ApiErrorResponse.class, FieldViolation.class,
                 PageMeta.class, PageResponse.class).stream()
-                .flatMap(type -> java.util.Arrays.stream(type.getRecordComponents()))
-                .map(java.lang.reflect.RecordComponent::getName)
+                .flatMap(type -> Arrays.stream(type.getRecordComponents()))
+                .map(RecordComponent::getName)
                 .filter("traceId"::equals)
                 .collect(Collectors.toSet());
 

@@ -2,6 +2,7 @@ package com.philia.flashsale.product.campaignvalidation.adapter.out.persistence;
 
 import com.philia.flashsale.product.campaignvalidation.application.port.out.LoadCampaignVariantPort;
 import com.philia.flashsale.product.campaignvalidation.domain.CampaignVariantSnapshot;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -35,7 +36,7 @@ public class ProductCampaignValidationPersistenceAdapter implements LoadCampaign
                         rs.getObject("variant_id", UUID.class),
                         rs.getString("sku"),
                         rs.getString("product_status"),
-                        rs.getObject("published_at", java.time.OffsetDateTime.class),
+                        rs.getObject("published_at", OffsetDateTime.class),
                         rs.getString("variant_status"),
                         rs.getBigDecimal("base_price"),
                         rs.getString("currency")))

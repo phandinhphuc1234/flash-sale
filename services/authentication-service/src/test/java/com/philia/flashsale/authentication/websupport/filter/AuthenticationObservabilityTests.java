@@ -3,6 +3,7 @@ package com.philia.flashsale.authentication.websupport.filter;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.time.Duration;
 
 import com.philia.flashsale.authentication.configuration.AuthenticationProperties;
 import com.philia.flashsale.authentication.observability.AuthenticationHttpMetrics;
@@ -48,7 +49,7 @@ class AuthenticationObservabilityTests {
         AuthenticationProperties properties = new AuthenticationProperties(
                 new AuthenticationProperties.Cookie(false, "Lax", "/api/v1/auth"),
                 "https://app.example", new AuthenticationProperties.Throttle(
-                        "c2VjcmV0", java.time.Duration.ofMinutes(15), java.time.Duration.ofMinutes(15), 5),
+                        "c2VjcmV0", Duration.ofMinutes(15), Duration.ofMinutes(15), 5),
                 new AuthenticationProperties.Retention(30), "0 0 3 * * *",
                 new AuthenticationProperties.Argon2(16, 32, 1, 19_456, 2));
         TrustedOriginFilter filter = new TrustedOriginFilter(properties);

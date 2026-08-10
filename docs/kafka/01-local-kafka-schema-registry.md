@@ -38,7 +38,9 @@ infrastructure change replaces the Apache broker image with a Confluent Platform
 Confluent documents Schema Registry as compatible with supported Kafka broker lines, but the exact
 mixed-image pair must still pass this repository's smoke and integration tests before service
 adoption. Do not infer application client compatibility from broker version alone; let the Spring
-Boot BOM manage `kafka-clients` unless an approved plan records an override.
+Boot BOM manage `kafka-clients`. Feature 017 uses the Confluent 7.9.x Java serializer/client line
+because it is compatible with Spring Kafka's managed Kafka 3.9.x client; the Registry server image
+remains 8.3.x and is validated separately through the live compatibility test.
 
 ## 3. Network addresses
 

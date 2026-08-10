@@ -702,7 +702,7 @@ Result: **15 tests, 15 passed, 0 failures, 0 errors**. The PostgreSQL integratio
 Testcontainers and verified one-winner activation/ending races, scheduled-before-activated event
 ordering, exactly one activation outbox row, and no ended event. An additional
 `.\mvnw.cmd -pl services/campaign-service -am verify` completed with exit code `0`; the broader
-reactor and topology evidence remain tracked by T095-T097.
+reactor and topology evidence are recorded in T095-T097 below.
 
 ## B4 — Durable outbox recovery foundation
 
@@ -775,11 +775,36 @@ Focused validation:
 # BUILD SUCCESS — 11 tests, 0 failures, 0 errors; live Kafka test skipped because the opt-in property was not set
 ```
 
-T077/T103 remain open until the opt-in test is run against the provisioned Kafka topic and
-Schema Registry, including the approved outage/retry evidence. T089 remains the US4 acceptance
-checkpoint.
+## 34. T077/T089/T103 — live Registry and US4 acceptance evidence
 
-## 34. B7 — observability and local messaging operations
+Validated on 2026-08-09 against the existing local `flash-sale-vps` Kafka and Schema Registry
+containers. The Registry was configured to `BACKWARD_TRANSITIVE` and the two approved
+TopicRecordNameStrategy subjects were registered through the Registry REST API with
+`auto.register.schemas=false`; no application startup registration was used.
+
+```powershell
+.\mvnw.cmd -pl contracts/kafka-avro-contracts -am verify
+# BUILD SUCCESS — 3 contract generation/compatibility tests
+
+.\mvnw.cmd -pl services/campaign-service -am test `
+  "-Dtest=InternalCampaignSnapshotContractTests,CampaignLifecycleEventContractTests,CampaignOutboxRecoveryIntegrationTests,CampaignLifecycleKafkaIntegrationTests" `
+  "-Dsurefire.failIfNoSpecifiedTests=false" `
+  "-Dcampaign.kafka.integration=true" `
+  "-Dcampaign.kafka.bootstrap=localhost:29092" `
+  "-Dcampaign.schema-registry.url=http://localhost:8081"
+# BUILD SUCCESS — 15 Campaign acceptance tests; live Kafka/Registry test passed
+
+.\mvnw.cmd -pl services/authentication-service -am test `
+  "-Dtest=FlashSaleServiceClientCredentialsTests" `
+  "-Dsurefire.failIfNoSpecifiedTests=false"
+# BUILD SUCCESS — 2 Auth client-credentials tests
+```
+
+The live test verified the three-partition topic, Campaign ID key, same-aggregate partition
+ordering, Scheduled-before-Activated ordering, duplicate event identity, independent aggregate
+keys, W3C `traceparent`, and Registry compatibility. T077, T089, and T103 are complete.
+
+## 35. B7 — observability and local messaging operations
 
 Implemented on 2026-08-09:
 
@@ -832,5 +857,58 @@ docker compose --env-file infra/docker/.env -f infra/docker/compose.yml exec -T 
 # PartitionCount: 3, ReplicationFactor: 1, partitions 0/1/2 led by broker 1
 ```
 
-The full Gateway-to-Registry smoke, opt-in live Kafka/Schema Registry test, affected-module verify,
-and full reactor verify remain tracked by `T077`, `T089`, and `T095–T097`.
+The full Gateway-to-Registry smoke and business recovery flow remain tracked by `T095`; the
+affected-module and full-reactor build gates are recorded below as `T096` and `T097`.
+
+## 36. T095–T097 — final local smoke and build evidence
+
+The non-mutating portion of the local topology smoke was run against the existing `flash-sale-vps`
+Compose project on 2026-08-09. Campaign was rebuilt from the current monorepo source, its Dockerfile
+was corrected to copy the root `contracts/` Maven module, and the Authentication Compose wiring was
+corrected so the runtime Campaign client secret is injected into both Authentication and Campaign
+without being committed or printed.
+
+```powershell
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml --profile apps ps
+# Authentication, Product, Inventory, Campaign, Gateway, PostgreSQL, Redis, Kafka, and Registry up
+
+# From inside the Compose network:
+# authentication-service={"status":"UP","groups":["liveness","readiness"]}
+# product-service={"status":"UP","groups":["liveness","readiness"]}
+# inventory-service={"status":"UP","groups":["liveness","readiness"]}
+# campaign-service={"status":"UP","groups":["liveness","readiness"]}
+
+Invoke-WebRequest http://127.0.0.1:18080/api/v1/catalog/products?size=1
+# HTTP 200 — Gateway public catalog route forwarded to Product
+
+docker exec flash-sale-vps-kafka-1 /opt/kafka/bin/kafka-topics.sh `
+  --bootstrap-server localhost:9092 --describe --topic campaign.lifecycle.v1
+# PartitionCount: 3, ReplicationFactor: 1
+
+Invoke-RestMethod http://127.0.0.1:8081/subjects
+# 2 controlled Campaign TopicRecordNameStrategy subjects
+
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml restart campaign-service
+# Campaign restarted; internal health returned {"status":"UP"}
+```
+
+T095 is intentionally still open. The database currently contains zero Product variants and zero
+Inventory items, and the local Compose environment has no approved administrator fixture for the
+Campaign write path. Therefore the authenticated Gateway → Campaign → Product → Inventory prepare,
+outbox requeue, and business failure/recovery path was not fabricated or marked complete. Completing
+T095 requires an approved disposable fixture/credential procedure (or seeded local data) before the
+next validation run.
+
+Affected-module verification (T096):
+
+```powershell
+.\mvnw.cmd -pl services/api-gateway,services/authentication-service,services/product-service,services/inventory-service,services/campaign-service -am verify
+# BUILD SUCCESS — exit code 0; all selected modules and upstream modules passed
+```
+
+Full reactor verification (T097):
+
+```powershell
+.\mvnw.cmd clean verify
+# BUILD SUCCESS — exit code 0; all 13 reactor modules passed with no required test failures
+```

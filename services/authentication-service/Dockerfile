@@ -6,6 +6,7 @@ WORKDIR /workspace
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
 COPY libs libs
+COPY contracts contracts
 COPY services services
 
 RUN --mount=type=cache,target=/root/.m2 \
