@@ -89,6 +89,7 @@ Feature 017 contract.
 Detailed target flows and reliability rules are split into:
 
 - [Flash Sale end-to-end business flow](flash-sale-end-to-end-flow.md)
+- [Flash Sale Service MVP repository-aligned proposal](flash-sale-service-mvp-proposal.md)
 - [Saga messaging and reliability design](saga-messaging-reliability.md)
 - [Kafka topic and message catalog](../kafka/04-topic-message-catalog.md)
 
