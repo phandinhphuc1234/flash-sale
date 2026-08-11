@@ -145,3 +145,39 @@ Summary:
   and SLF4J provider warnings were emitted.
 - Durable PostgreSQL persistence, Stream consumer recovery, expiry release, public HTTP, and Kafka
   publication remain intentionally unimplemented for G6+ and later approved task groups.
+
+## G6 — Reservation Concurrency, Failure, and Application Flow
+
+**Date**: 2026-08-11
+**Scope**: T034–T038; Redis oversell concurrency, idempotency concurrency, Redis failure/NOSCRIPT
+behavior, and the deterministic durable-acceptance application flow
+**Commands**:
+
+- `./mvnw -pl services/flashsale-service -am -Dtest=ReservationDomainTests,ReserveCampaignQuotaServiceTests,AtomicReservationRedisIntegrationTests,ReservationOversellConcurrencyIntegrationTests,ReservationIdempotencyConcurrencyIntegrationTests,ReservationRedisFailureIntegrationTests,ReserveCampaignQuotaFlowTests -Dsurefire.failIfNoSpecifiedTests=false test`
+- `./mvnw -pl services/flashsale-service -am verify`
+- `git diff --check`
+
+**Result**: PASS — focused G6 suite exit status 0; full flashsale-service reactor verification exit
+status 0; diff check reported no whitespace errors.
+
+Summary:
+
+- The oversell integration test coordinated 1,000 concurrent attempts against 100 units. Exactly
+  100 reservations were accepted, the Redis stock counter reached zero, no per-user limit was
+  violated, and the reconciled user quantities totaled 100.
+- The idempotency integration test coordinated 100 identical retries. All callers observed the same
+  logical acceptance identity, exactly one Stream entry was created, quota decremented once, and a
+  changed request under the same key was rejected without changing stock.
+- Redis failure coverage verifies fail-closed behavior with no PostgreSQL/Inventory fallback,
+  hash-tagged/protected business keys, and `NOSCRIPT` script reload before the operation proceeds.
+  The expected Lettuce reconnect warnings after deliberately stopping the Testcontainer are not
+  test failures.
+- `ReservationAcceptanceFlow` is tested with deterministic fake durable and acknowledgement ports:
+  durable success acknowledges the handoff, persistence failure returns `ACCEPTANCE_PENDING` without
+  acknowledgement, expired reservations are terminal, and acknowledgement occurs only after durable
+  persistence succeeds.
+- The focused suite passed 20 tests. Full module verification passed 58 Flash Sale tests, plus
+  `common-web` (9) and Kafka Avro contract (3) reactor tests. Maven emitted only existing Mockito
+  dynamic-agent and SLF4J provider warnings.
+- This group still does not claim real PostgreSQL durable acceptance, Stream recovery, public HTTP,
+  or Kafka publication; those remain in the later approved groups.
