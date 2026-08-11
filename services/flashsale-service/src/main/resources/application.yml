@@ -111,6 +111,10 @@ management:
 
 flashsale:
   security:
+    service-token:
+      # Machine identity used only by the control-plane Campaign snapshot client.
+      audience: ${FLASHSALE_INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+      max-ttl-seconds: ${FLASHSALE_SERVICE_TOKEN_MAX_TTL_SECONDS:300}
     jwt:
       enabled: ${FLASHSALE_SECURITY_JWT_ENABLED:true}
       issuer: ${FLASHSALE_JWT_ISSUER:http://authentication-service:8080}

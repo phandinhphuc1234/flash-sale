@@ -73,3 +73,42 @@ Summary:
 - Flash Sale tests: 21 passed; `common-web` (9) and Kafka contract (3) reactor tests also passed.
 - No Kafka consumer, OpenFeign recovery client, scheduler, reservation admission, or public API was
   implemented in G3; those remain in G4 and later groups.
+
+## G4 — Campaign Kafka Consumer and Control-Plane Recovery
+
+**Date**: 2026-08-11
+**Scope**: T020–T027; Avro Campaign lifecycle consumer, bounded manual acknowledgement, recovery-only
+OpenFeign client, OAuth2 service identity, five-second recovery scheduler, and Redis recovery evidence
+**Commands**:
+
+- `./mvnw -pl services/flashsale-service -am '-Dtest=CampaignProjectionKafkaConfigurationTests,CampaignLifecycleConsumerContractTests,CampaignSnapshotClientAdapterTests,FlashSaleServiceTokenManagerTests,CampaignProjectionRecoveryIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test`
+- `./mvnw -pl services/flashsale-service -am clean verify`
+- `git diff --check`
+
+**Result**: PASS — targeted G4 tests exit status 0; clean module verification exit status 0; diff check
+reported no whitespace errors.
+
+The final Feign child-context condition was also rerun with
+`./mvnw -pl services/flashsale-service -am verify` and remained green with 38 Flash Sale tests.
+
+Summary:
+
+- `CampaignLifecycleKafkaConsumer` accepts only generated `CampaignScheduledV1` and
+  `CampaignActivatedV1` SpecificRecords, validates key/type/version/aggregate identity, propagates
+  W3C context, and acknowledges only after the Redis projection use case succeeds.
+- Kafka configuration uses `campaign.lifecycle.v1`, group
+  `flashsale-campaign-projection-v1`, manual acknowledgement, three total deliveries with 250/500 ms
+  retry delays, no DLT, and an uncommitted offset when the bounded listener handling stops.
+- Recovery uses a Redis sorted-set queue and a five-second scheduler. The recovery-only OpenFeign
+  boundary calls Campaign with 500 ms connect and 1,000 ms read timeouts, no Feign retry, and maps
+  HTTP 401/403/404/409/429/5xx into sanitized recovery outcomes.
+- OAuth2 Client Credentials is cached by Spring's authorized-client manager for subject
+  `flashsale-service`, scope `campaign.snapshot.read`, audience `flash-sale-internal-api`, and a
+  maximum token lifetime of 300 seconds. The recovery client is outside the shopper reservation path.
+- Real Redis 7 Testcontainers tests covered scheduled projection, activation-before-schedule
+  recovery, stale/incomplete snapshot rejection, and Redis-loss fail-closed/no-ack behavior.
+- Flash Sale module verification passed 38 tests; the focused G4 suite passed 17 tests. The run also
+  passed the `common-web` (9) and Kafka Avro contract (3) reactor tests. Test output contained only
+  existing Mockito dynamic-agent and SLF4J provider warnings.
+- This evidence does not claim a live Kafka broker or Schema Registry end-to-end run; those remain
+  part of the later operational validation group.

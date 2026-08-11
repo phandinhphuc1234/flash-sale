@@ -29,6 +29,9 @@ spring:
 
 flashsale:
   security:
+    service-token:
+      audience: flash-sale-internal-api
+      max-ttl-seconds: 300
     jwt:
       enabled: true
       issuer: https://auth.example.test
