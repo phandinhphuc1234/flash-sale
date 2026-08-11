@@ -112,3 +112,36 @@ Summary:
   existing Mockito dynamic-agent and SLF4J provider warnings.
 - This evidence does not claim a live Kafka broker or Schema Registry end-to-end run; those remain
   part of the later operational validation group.
+
+## G5 — Reservation Domain and Atomic Redis Admission
+
+**Date**: 2026-08-11
+**Scope**: T028–T033; reservation lifecycle model, atomic application boundary, SHA-256
+fingerprints/stable identities, Redis Lua admission, expiry index, and Stream handoff
+**Commands**:
+
+- `./mvnw -pl services/flashsale-service -am -Dtest=ReservationDomainTests,ReserveCampaignQuotaServiceTests -Dsurefire.failIfNoSpecifiedTests=false test`
+- `./mvnw -pl services/flashsale-service -am -Dtest=AtomicReservationRedisIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test`
+- `git diff --check`
+
+**Result**: PASS — focused unit tests passed 6 tests; real Redis 7 Testcontainers passed 5 tests;
+diff check reported no whitespace errors.
+
+Summary:
+
+- Reservation domain protects the `RESERVED -> EXPIRED` lifecycle, exact four-decimal money
+  snapshot, positive quantity, stable identities, and the non-resurrectable purchase outcome.
+- The application service hashes the raw case-sensitive idempotency key and the canonical
+  `(userId, campaignId, variantId, quantity)` request, creates purchase/reservation/event IDs before
+  Lua, and calculates the approved five-minute expiry and Campaign-end-plus-24-hour retention.
+- Redis Lua evaluates projection state/window, Variant snapshot, sold-out and per-user limits,
+  idempotency replay/conflict, quota/user counters, immutable reservation snapshot, expiry ZSET, and
+  `XADD` handoff as one operation. No Java quota fallback is used.
+- Real Redis tests covered accepted snapshots, exact quota/user-counter changes, stable replay
+  identity with one Stream entry, changed-request conflict, sold-out rejection, purchase-limit
+  rejection, and unchanged counters on rejected requests.
+- Full `./mvnw -pl services/flashsale-service -am verify` then passed 49 Flash Sale tests, along
+  with the common-web (9) and Kafka Avro contract (3) reactor tests; only existing Mockito agent
+  and SLF4J provider warnings were emitted.
+- Durable PostgreSQL persistence, Stream consumer recovery, expiry release, public HTTP, and Kafka
+  publication remain intentionally unimplemented for G6+ and later approved task groups.
