@@ -48,3 +48,28 @@ Summary:
 - No user-story behavior, Redis Lua script, Kafka consumer, outbox worker, or public reservation
   endpoint was implemented in G2.
 - Maven emitted only existing Mockito dynamic-agent and SLF4J provider warnings; no test failed.
+
+## G3 — Campaign Projection
+
+**Date**: 2026-08-11
+**Scope**: T015–T019; Campaign projection domain/application core and atomic Redis projection
+scripts/adapter
+**Command**: `./mvnw -pl services/flashsale-service -am test`
+**Result**: PASS — exit status 0
+
+Summary:
+
+- Campaign projection domain validates positive aggregate versions, complete item snapshots,
+  exact four-decimal prices, uppercase currency, positive allocation/limit, and valid sale windows.
+- Application ports keep scheduled, activation, and recovery orchestration independent of Kafka,
+  Redis, and HTTP clients.
+- Redis Lua applies version guards atomically. Duplicate/lower versions return `NOOP_STALE`;
+  activation without a prepared projection returns `RECOVERY_REQUIRED` and does not create quota.
+- Recovery can replace a recovery marker at the same version and preserves an already usable stock
+  counter instead of resetting consumed quota.
+- Real Redis 7 Testcontainers tests covered duplicate/stale scheduled facts, activation-before-
+  schedule, recovery repair, activation window mismatch, active-state quota preservation, and
+  application recovery queue behavior.
+- Flash Sale tests: 21 passed; `common-web` (9) and Kafka contract (3) reactor tests also passed.
+- No Kafka consumer, OpenFeign recovery client, scheduler, reservation admission, or public API was
+  implemented in G3; those remain in G4 and later groups.
