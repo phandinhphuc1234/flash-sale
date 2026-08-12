@@ -11,7 +11,12 @@ import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** JPA representation of a durable, indefinitely retained schedule operation. */
+// /** JPA representation of a durable, indefinitely retained schedule operation. */
+// // ARCHITECTURAL PURPOSE:
+//  * 1. Idempotency protection against duplicate processing when clients resend identical requests (Retry/Network Timeout).
+//  * 2. Asynchronous transaction correlation (Correlation/Distributed Tracing) with the Inventory Service.
+//  * 3. Audit trail for error tracing and tracking retry attempts (Attempt Count).
+//  */
 @Entity(name = "CampaignScheduleOperationJpaEntity")
 @Table(name = "campaign_schedule_operations")
 public class CampaignScheduleOperationJpaEntity {
@@ -62,7 +67,10 @@ public class CampaignScheduleOperationJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    /** Required by JPA; schedule-operation mapping belongs to the persistence adapter. */
+    /**
+     * Required by JPA; schedule-operation mapping belongs to the persistence
+     * adapter.
+     */
     public CampaignScheduleOperationJpaEntity() {
     }
 
@@ -115,34 +123,123 @@ public class CampaignScheduleOperationJpaEntity {
         updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public UUID getCampaignId() { return campaignId; }
-    public void setCampaignId(UUID campaignId) { this.campaignId = campaignId; }
-    public String getIdempotencyKey() { return idempotencyKey; }
-    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
-    public UUID getInventoryRequestId() { return inventoryRequestId; }
-    public void setInventoryRequestId(UUID inventoryRequestId) { this.inventoryRequestId = inventoryRequestId; }
-    public String getRequestHash() { return requestHash; }
-    public void setRequestHash(String requestHash) { this.requestHash = requestHash; }
-    public long getCampaignVersion() { return campaignVersion; }
-    public void setCampaignVersion(long campaignVersion) { this.campaignVersion = campaignVersion; }
-    public String getOperationStatus() { return operationStatus; }
-    public void setOperationStatus(String operationStatus) { this.operationStatus = operationStatus; }
-    public int getAttemptCount() { return attemptCount; }
-    public void setAttemptCount(int attemptCount) { this.attemptCount = attemptCount; }
-    public String getLastFailureCode() { return lastFailureCode; }
-    public void setLastFailureCode(String lastFailureCode) { this.lastFailureCode = lastFailureCode; }
-    public String getLastFailureMessage() { return lastFailureMessage; }
-    public void setLastFailureMessage(String lastFailureMessage) { this.lastFailureMessage = lastFailureMessage; }
-    public String getInitiatedBy() { return initiatedBy; }
-    public void setInitiatedBy(String initiatedBy) { this.initiatedBy = initiatedBy; }
-    public String getCallerService() { return callerService; }
-    public void setCallerService(String callerService) { this.callerService = callerService; }
-    public String getTraceId() { return traceId; }
-    public void setTraceId(String traceId) { this.traceId = traceId; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public UUID getCampaignId() {
+        return campaignId;
+    }
+
+    public void setCampaignId(UUID campaignId) {
+        this.campaignId = campaignId;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public UUID getInventoryRequestId() {
+        return inventoryRequestId;
+    }
+
+    public void setInventoryRequestId(UUID inventoryRequestId) {
+        this.inventoryRequestId = inventoryRequestId;
+    }
+
+    public String getRequestHash() {
+        return requestHash;
+    }
+
+    public void setRequestHash(String requestHash) {
+        this.requestHash = requestHash;
+    }
+
+    public long getCampaignVersion() {
+        return campaignVersion;
+    }
+
+    public void setCampaignVersion(long campaignVersion) {
+        this.campaignVersion = campaignVersion;
+    }
+
+    public String getOperationStatus() {
+        return operationStatus;
+    }
+
+    public void setOperationStatus(String operationStatus) {
+        this.operationStatus = operationStatus;
+    }
+
+    public int getAttemptCount() {
+        return attemptCount;
+    }
+
+    public void setAttemptCount(int attemptCount) {
+        this.attemptCount = attemptCount;
+    }
+
+    public String getLastFailureCode() {
+        return lastFailureCode;
+    }
+
+    public void setLastFailureCode(String lastFailureCode) {
+        this.lastFailureCode = lastFailureCode;
+    }
+
+    public String getLastFailureMessage() {
+        return lastFailureMessage;
+    }
+
+    public void setLastFailureMessage(String lastFailureMessage) {
+        this.lastFailureMessage = lastFailureMessage;
+    }
+
+    public String getInitiatedBy() {
+        return initiatedBy;
+    }
+
+    public void setInitiatedBy(String initiatedBy) {
+        this.initiatedBy = initiatedBy;
+    }
+
+    public String getCallerService() {
+        return callerService;
+    }
+
+    public void setCallerService(String callerService) {
+        this.callerService = callerService;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

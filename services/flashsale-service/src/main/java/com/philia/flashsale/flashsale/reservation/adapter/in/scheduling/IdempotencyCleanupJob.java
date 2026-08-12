@@ -7,6 +7,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
+// Cleanup job for expired idempotency keys. 
+// Runs at a fixed interval to remove expired keys from the system.
 @Component
 @ConditionalOnBean(IdempotencyCleanupService.class)
 public final class IdempotencyCleanupJob {
