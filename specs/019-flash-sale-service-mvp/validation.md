@@ -239,3 +239,34 @@ Summary:
   and replay after a post-commit acknowledgement failure reuses the durable identity safely.
 - Testcontainers used Redis 7 for all focused recovery tests. Maven emitted only existing Mockito
   dynamic-agent and SLF4J provider warnings; no test failed.
+
+## G9 — Avro and Transactional Outbox Publication
+
+**Date**: 2026-08-12
+**Scope**: T052–T059; schema-first `PurchaseAcceptedV1`, leased PostgreSQL outbox relay,
+adapter-boundary Avro mapping, retry/backoff, and scheduled publication.
+**Commands**:
+
+- `./mvnw -pl contracts/kafka-avro-contracts -am test`
+- `./mvnw -pl services/flashsale-service -am -Dtest=FlashSaleOutboxPublisherTests,FlashSaleOutboxConcurrencyIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test`
+- `./mvnw -pl services/flashsale-service -am clean verify`
+- `git diff --check`
+
+**Result**: PASS — Avro contract module passed 6 tests; focused outbox tests passed 7 tests;
+full clean module verification exited 0 with 76 Flash Sale tests, 9 `common-web` tests, and 6
+Kafka Avro contract tests. The opt-in `PurchaseAcceptedKafkaIntegrationTests` compiles and is
+enabled with `RUN_KAFKA_INTEGRATION_TESTS=true` against the local Kafka + Confluent Registry
+stack; it is skipped by default when that external stack is not running.
+
+Summary:
+
+- `PurchaseAcceptedV1` uses UUID/timestamp/decimal logical types and excludes JWT, idempotency,
+  JPA, and Redis internals. Contract tests assert the record identity and compatibility policy.
+- PostgreSQL claims due rows with `FOR UPDATE SKIP LOCKED`, leases for 30 seconds, increments
+  attempts, and requeues failures indefinitely with capped exponential backoff and sanitized
+  diagnostics.
+- The relay publishes outside the claim transaction, preserves the outbox event identity and
+  key, propagates W3C trace headers, and acknowledges publication idempotently.
+- Application context wiring is conditional on JDBC availability, so lightweight context tests
+  remain bootable without a configured datasource while PostgreSQL integration tests import the
+  adapter directly.
