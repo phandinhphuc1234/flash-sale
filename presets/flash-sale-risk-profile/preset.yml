@@ -1,0 +1,81 @@
+schema_version: "1.0"
+
+preset:
+  id: "flash-sale-risk-profile"
+  name: "Flash Sale Risk Profile"
+  version: "0.1.0"
+  description: "Risk-aware Spec Kit templates and commands for distributed flash-sale features."
+  author: "Flash Sale Team"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.12.11.dev0"
+
+provides:
+  templates:
+    - type: "template"
+      name: "spec-template"
+      file: "templates/spec-template.md"
+      description: "Risk-aware feature specification template"
+      strategy: "replace"
+
+    - type: "template"
+      name: "plan-template"
+      file: "templates/plan-template.md"
+      description: "Distributed-systems implementation plan template"
+      strategy: "replace"
+
+    - type: "template"
+      name: "tasks-template"
+      file: "templates/tasks-template.md"
+      description: "Risk-based, traceable task template"
+      strategy: "replace"
+
+    - type: "template"
+      name: "checklist-template"
+      file: "templates/checklist-template.md"
+      description: "Requirements and architecture checklist template"
+      strategy: "replace"
+
+    - type: "command"
+      name: "speckit.specify"
+      file: "commands/speckit.specify.md"
+      description: "Adds high-risk business decision checks to specification"
+      strategy: "wrap"
+
+    - type: "command"
+      name: "speckit.clarify"
+      file: "commands/speckit.clarify.md"
+      description: "Prioritizes correctness, money, security, and distributed failure questions"
+      strategy: "wrap"
+
+    - type: "command"
+      name: "speckit.plan"
+      file: "commands/speckit.plan.md"
+      description: "Adds ownership, failure, recovery, and verification planning"
+      strategy: "wrap"
+
+    - type: "command"
+      name: "speckit.tasks"
+      file: "commands/speckit.tasks.md"
+      description: "Adds traceable risk and evidence tasks"
+      strategy: "wrap"
+
+    - type: "command"
+      name: "speckit.analyze"
+      file: "commands/speckit.analyze.md"
+      description: "Treats uncovered high-risk behavior as blocking findings"
+      strategy: "wrap"
+
+    - type: "command"
+      name: "speckit.implement"
+      file: "commands/speckit.implement.md"
+      description: "Constrains implementation to approved slices and evidence gates"
+      strategy: "wrap"
+
+tags:
+  - "flash-sale"
+  - "distributed-systems"
+  - "risk"
+  - "ddd"
+  - "hexagonal"

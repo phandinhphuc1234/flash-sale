@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service HTTP with OpenFeign"
+  short_description: "Build safe inter-service OpenFeign adapters"
+  default_prompt: "Use $implement-service-http-openfeign to design or implement a secure service-to-service HTTP client in this repository."

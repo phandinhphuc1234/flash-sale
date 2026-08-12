@@ -1,0 +1,38 @@
+services:
+  authentication-service:
+    ports:
+      - "${AUTHENTICATION_SERVICE_PORT:-18081}:8080"
+
+  product-service:
+    ports:
+      - "${PRODUCT_SERVICE_PORT:-18082}:8080"
+
+  # Campaign's one-off Liquibase migration uses the baseline service definition; this overlay
+  # only adds a direct debug port for local development.
+  campaign-service:
+    ports:
+      - "${CAMPAIGN_SERVICE_PORT:-18083}:8080"
+
+  flashsale-service:
+    ports:
+      - "${FLASHSALE_SERVICE_PORT:-18084}:8080"
+
+  order-service:
+    ports:
+      - "${ORDER_SERVICE_PORT:-18085}:8080"
+
+  payment-service:
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-18086}:8080"
+
+  notification-service:
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT:-18087}:8080"
+
+  inventory-service:
+    ports:
+      - "${INVENTORY_SERVICE_PORT:-18088}:8080"
+
+  cart-service:
+    ports:
+      - "${CART_SERVICE_PORT:-18089}:8080"

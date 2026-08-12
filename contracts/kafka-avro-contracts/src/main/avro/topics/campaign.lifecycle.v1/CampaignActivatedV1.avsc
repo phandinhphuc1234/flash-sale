@@ -1,0 +1,27 @@
+{
+  "type": "record",
+  "name": "CampaignActivatedV1",
+  "namespace": "com.philia.flashsale.contract.campaign.lifecycle.v1",
+  "doc": "Immutable campaign activation notification published after a conditional transition succeeds.",
+  "fields": [
+    {"name": "eventId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "eventType", "type": "string", "doc": "CampaignActivated"},
+    {"name": "eventVersion", "type": "int"},
+    {"name": "aggregateType", "type": "string", "doc": "CAMPAIGN"},
+    {"name": "aggregateId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "aggregateVersion", "type": "long"},
+    {"name": "occurredAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {
+      "name": "data",
+      "type": {
+        "type": "record",
+        "name": "CampaignActivatedDataV1",
+        "fields": [
+          {"name": "campaignId", "type": {"type": "string", "logicalType": "uuid"}},
+          {"name": "startAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+          {"name": "endAt", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+        ]
+      }
+    }
+  ]
+}

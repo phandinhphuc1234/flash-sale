@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apply Clean/Hex Architecture"
+  short_description: "Guard DDD and Clean/Hex boundaries"
+  default_prompt: "Use $apply-clean-hex-architecture to place and review this feature's classes without breaking DDD or Clean/Hex boundaries."

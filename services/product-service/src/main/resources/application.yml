@@ -1,0 +1,65 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+  application:
+    name: product-service
+  liquibase:
+    enabled: false
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+    analytics-enabled: false
+  sql:
+    init:
+      mode: never
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://authentication-service:8080}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+
+flashsale:
+  product:
+    security:
+      # Public/admin requests keep the existing flash-sale-api audience.
+      jwt:
+        audience: ${JWT_AUDIENCE:flash-sale-api}
+      # Internal Campaign calls use a separate audience and narrow scope.
+      internal-jwt:
+        issuer: ${JWT_ISSUER_URI:http://authentication-service:8080}
+        jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+        audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+        subject: campaign-service
+        required-scope: catalog.read
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}

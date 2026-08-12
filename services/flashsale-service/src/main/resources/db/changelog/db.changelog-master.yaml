@@ -1,0 +1,4 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-flash-sale-mvp-schema.sql
+      relativeToChangelogFile: false

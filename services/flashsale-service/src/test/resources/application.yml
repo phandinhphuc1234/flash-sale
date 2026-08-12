@@ -1,0 +1,62 @@
+spring:
+  liquibase:
+    enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:18081
+          jwk-set-uri: http://localhost:18081/.well-known/jwks.json
+      client:
+        provider:
+          authentication:
+            token-uri: http://localhost:18081/oauth2/token
+        registration:
+          flashsale-campaign:
+            provider: authentication
+            client-id: flashsale-service
+            client-secret: test-only-secret
+            authorization-grant-type: client_credentials
+            scope:
+              - campaign.snapshot.read
+
+flashsale:
+  security:
+    service-token:
+      audience: flash-sale-internal-api
+      max-ttl-seconds: 300
+    jwt:
+      enabled: true
+      issuer: https://auth.example.test
+      audience: flash-sale-api
+      jwk-set-uri: https://auth.example.test/.well-known/jwks.json
+  reservation:
+    ttl: 5m
+    idempotency-retention-after-campaign-end: 24h
+    idempotency-key-max-length: 128
+  redis:
+    handoff-stream: fs:{hot}:handoff
+    consumer-group: flashsale-durable-acceptance-v1
+    poll-timeout: 1s
+    batch-size: 100
+    reclaim-idle: 30s
+  campaign-projection:
+    topic: campaign.lifecycle.v1
+    consumer-group: flashsale-campaign-projection-v1
+    recovery-interval: 5s
+    max-deliveries: 3
+    retry-delays: 250ms,500ms
+    snapshot-base-url: http://localhost:18086
+  outbox:
+    topic: flashsale.purchase.events.v1
+    poll-interval: 500ms
+    batch-size: 100
+    claim-lease: 30s
+    retry-backoff-cap: 60s

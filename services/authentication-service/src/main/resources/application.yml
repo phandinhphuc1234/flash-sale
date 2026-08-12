@@ -1,0 +1,105 @@
+spring:
+  application:
+    name: authentication-service
+  threads:
+    virtual:
+      enabled: ${SPRING_THREADS_VIRTUAL_ENABLED:true}
+  main:
+    keep-alive: ${SPRING_MAIN_KEEP_ALIVE:false}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:}
+    username: ${SPRING_DATASOURCE_USERNAME:}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:500ms}
+  liquibase:
+    enabled: ${LIQUIBASE_ENABLED:true}
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+flashsale:
+  auth:
+    # Public-user JWT contract used by browser/API clients.
+    jwt:
+      issuer: ${JWT_ISSUER:http://authentication-service:8080}
+      audience: ${JWT_AUDIENCE:flash-sale-api}
+      key-id: ${JWT_KEY_ID:local-dev-1}
+      public-key-pem: ${JWT_PUBLIC_KEY_PEM:}
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
+      private-key-pem: ${JWT_PRIVATE_KEY_PEM:}
+      private-key-location: ${JWT_PRIVATE_KEY_LOCATION:}
+    # Short-lived machine-token policy for service-to-service calls.
+    service-token:
+      audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+      max-ttl-seconds: 300
+    # Fixed machine clients provisioned by Authentication Service.
+    service-clients:
+      campaign:
+        client-id: ${CAMPAIGN_CLIENT_ID:campaign-service}
+        client-secret: ${CAMPAIGN_CLIENT_SECRET:}
+        allowed-scopes:
+          - catalog.read
+          - inventory.campaign.allocate
+          - inventory.campaign.release
+      flashsale:
+        client-id: ${FLASHSALE_CLIENT_ID:flashsale-service}
+        client-secret: ${FLASHSALE_CLIENT_SECRET:}
+        allowed-scopes:
+          - campaign.snapshot.read
+  authentication:
+    # Enables the internal OAuth2 client-credentials endpoint in deployed environments.
+    runtime-enabled: ${AUTH_RUNTIME_ENABLED:true}
+    cookie:
+      secure: ${AUTH_COOKIE_SECURE:false}
+      same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+      path: ${AUTH_COOKIE_PATH:/api/v1/auth}
+    trusted-origins: ${AUTH_TRUSTED_ORIGINS:http://localhost:3000}
+    throttle:
+      hmac-secret: ${AUTH_THROTTLE_HMAC_SECRET:}
+      failure-window: ${AUTH_THROTTLE_FAILURE_WINDOW:15m}
+      cooldown: ${AUTH_THROTTLE_COOLDOWN:15m}
+      max-failures: ${AUTH_THROTTLE_MAX_FAILURES:5}
+    retention:
+      days: ${AUTH_RETENTION_DAYS:30}
+    cleanup-cron: ${AUTH_CLEANUP_CRON:0 0 3 * * *}
+    argon2:
+      salt-length: ${AUTH_ARGON2_SALT_LENGTH:16}
+      hash-length: ${AUTH_ARGON2_HASH_LENGTH:32}
+      parallelism: ${AUTH_ARGON2_PARALLELISM:1}
+      memory-kib: ${AUTH_ARGON2_MEMORY_KIB:19456}
+      iterations: ${AUTH_ARGON2_ITERATIONS:2}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}

@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - preConditions:
+      - onFail: HALT
+      - onError: HALT
+      - dbms:
+          type: postgresql
+  - include:
+      file: changes/001-create-product-catalog-schema.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/002-create-product-admin-support.sql
+      relativeToChangelogFile: true

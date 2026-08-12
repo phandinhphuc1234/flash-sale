@@ -1,0 +1,149 @@
+spring:
+  application:
+    name: flashsale-service
+
+  threads:
+    virtual:
+      enabled: ${SPRING_THREADS_VIRTUAL_ENABLED:true}
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/flashsale_db}
+    username: ${SPRING_DATASOURCE_USERNAME:flashsale}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  liquibase:
+    # Migrations run through the repository's one-off migration process before replicas start.
+    enabled: ${SPRING_LIQUIBASE_ENABLED:false}
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:1s}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://authentication-service:8080}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+      client:
+        provider:
+          authentication:
+            token-uri: ${OAUTH_TOKEN_URI:http://authentication-service:8080/oauth2/token}
+        registration:
+          flashsale-campaign:
+            provider: authentication
+            client-id: ${FLASHSALE_CLIENT_ID:flashsale-service}
+            client-secret: ${FLASHSALE_CLIENT_SECRET:}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope:
+              - campaign.snapshot.read
+
+  cloud:
+    openfeign:
+      client:
+        config:
+          flashsale-campaign:
+            connectTimeout: ${FLASHSALE_CAMPAIGN_CONNECT_TIMEOUT_MS:500}
+            readTimeout: ${FLASHSALE_CAMPAIGN_READ_TIMEOUT_MS:1000}
+            loggerLevel: basic
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        enable.idempotence: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        auto.register.schemas: ${KAFKA_AUTO_REGISTER_SCHEMAS:false}
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+    consumer:
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        specific.avro.reader: true
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  info:
+    env:
+      enabled: true
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  tracing:
+    propagation:
+      type: w3c
+
+flashsale:
+  security:
+    service-token:
+      # Machine identity used only by the control-plane Campaign snapshot client.
+      audience: ${FLASHSALE_INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+      max-ttl-seconds: ${FLASHSALE_SERVICE_TOKEN_MAX_TTL_SECONDS:300}
+    jwt:
+      enabled: ${FLASHSALE_SECURITY_JWT_ENABLED:true}
+      issuer: ${FLASHSALE_JWT_ISSUER:http://authentication-service:8080}
+      audience: ${FLASHSALE_JWT_AUDIENCE:flash-sale-api}
+      jwk-set-uri: ${FLASHSALE_JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+  reservation:
+    ttl: ${FLASHSALE_RESERVATION_TTL:5m}
+    idempotency-retention-after-campaign-end: ${FLASHSALE_IDEMPOTENCY_RETENTION:24h}
+    idempotency-key-max-length: ${FLASHSALE_IDEMPOTENCY_KEY_MAX_LENGTH:128}
+  redis:
+    handoff-stream: ${FLASHSALE_REDIS_HANDOFF_STREAM:fs:{hot}:handoff}
+    consumer-group: ${FLASHSALE_REDIS_CONSUMER_GROUP:flashsale-durable-acceptance-v1}
+    poll-timeout: ${FLASHSALE_REDIS_POLL_TIMEOUT:1s}
+    batch-size: ${FLASHSALE_REDIS_BATCH_SIZE:100}
+    reclaim-idle: ${FLASHSALE_REDIS_RECLAIM_IDLE:30s}
+  campaign-projection:
+    topic: ${FLASHSALE_CAMPAIGN_TOPIC:campaign.lifecycle.v1}
+    consumer-group: ${FLASHSALE_CAMPAIGN_CONSUMER_GROUP:flashsale-campaign-projection-v1}
+    recovery-interval: ${FLASHSALE_CAMPAIGN_RECOVERY_INTERVAL:5s}
+    max-deliveries: ${FLASHSALE_CAMPAIGN_MAX_DELIVERIES:3}
+    retry-delays: ${FLASHSALE_CAMPAIGN_RETRY_DELAYS:250ms,500ms}
+    snapshot-base-url: ${CAMPAIGN_SERVICE_URL:http://campaign-service:8080}
+  outbox:
+    topic: ${FLASHSALE_PURCHASE_TOPIC:flashsale.purchase.events.v1}
+    poll-interval: ${FLASHSALE_OUTBOX_POLL_INTERVAL:500ms}
+    batch-size: ${FLASHSALE_OUTBOX_BATCH_SIZE:100}
+    claim-lease: ${FLASHSALE_OUTBOX_CLAIM_LEASE:30s}
+    retry-backoff-cap: ${FLASHSALE_OUTBOX_RETRY_BACKOFF_CAP:60s}
+
+info:
+  app:
+    name: ${spring.application.name}

@@ -1,0 +1,292 @@
+name: ${COMPOSE_PROJECT_NAME:-flash-sale}
+
+x-platform-health-defaults: &platform-health-defaults
+  interval: 10s
+  timeout: 5s
+  retries: 10
+  start_period: 20s
+
+x-app-common: &app-common
+  profiles:
+    - apps
+  networks:
+    - flash-sale-net
+  restart: unless-stopped
+  expose:
+    - "8080"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+
+x-backend-environment: &backend-environment
+  SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+  SERVER_PORT: "8080"
+  JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0}
+  SPRING_THREADS_VIRTUAL_ENABLED: "true"
+  SPRING_MAIN_KEEP_ALIVE: "true"
+  SPRING_LIQUIBASE_ENABLED: "false"
+
+x-backend-common: &backend-common
+  <<: *app-common
+  environment:
+    <<: *backend-environment
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flashsale}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-flashsale_admin}
+    ports:
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      <<: *platform-health-defaults
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+    networks:
+      - flash-sale-net
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7.4-alpine}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+    ports:
+      - "${REDIS_BIND_ADDRESS:-127.0.0.1}:${REDIS_HOST_PORT:-6379}:6379"
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      <<: *platform-health-defaults
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+    networks:
+      - flash-sale-net
+
+  kafka:
+    image: ${KAFKA_IMAGE:-apache/kafka:4.0.0}
+    hostname: kafka
+    ports:
+      - "${KAFKA_BIND_ADDRESS:-127.0.0.1}:${KAFKA_HOST_PORT:-29092}:29092"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:${KAFKA_HOST_PORT:-29092}
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+    volumes:
+      - kafka-data:/tmp/kraft-combined-logs
+    healthcheck:
+      <<: *platform-health-defaults
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+    networks:
+      - flash-sale-net
+
+  schema-registry:
+    image: ${SCHEMA_REGISTRY_IMAGE:-confluentinc/cp-schema-registry:8.3.0}
+    hostname: schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${SCHEMA_REGISTRY_BIND_ADDRESS:-127.0.0.1}:${SCHEMA_REGISTRY_HOST_PORT:-8081}:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: "1"
+    healthcheck:
+      <<: *platform-health-defaults
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8081; printf \"GET /subjects HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"HTTP/1.1 200\" <&3'"]
+    networks:
+      - flash-sale-net
+
+  api-gateway:
+    <<: *app-common
+    depends_on: {}
+    image: ${API_GATEWAY_IMAGE:-flash-sale/api-gateway:local}
+    build:
+      context: ../..
+      dockerfile: services/api-gateway/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SERVER_PORT: "8080"
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75.0}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      GATEWAY_RATE_LIMIT_ENABLED: ${GATEWAY_RATE_LIMIT_ENABLED:-false}
+      RATE_LIMIT_ENVIRONMENT: ${RATE_LIMIT_ENVIRONMENT:-docker}
+      RATE_LIMIT_KEY_HMAC_SECRET: ${RATE_LIMIT_KEY_HMAC_SECRET:-}
+      AUTHENTICATION_SERVICE_URL: ${AUTHENTICATION_SERVICE_URL:-http://authentication-service:8080}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-http://authentication-service:8080}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-flash-sale-api}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
+      AUTH_TRUSTED_ORIGINS: ${AUTH_TRUSTED_ORIGINS:-http://localhost:3000}
+      GATEWAY_CORS_ALLOWED_ORIGINS: ${AUTH_TRUSTED_ORIGINS:-http://localhost:3000}
+    ports:
+      - "${GATEWAY_BIND_ADDRESS:-127.0.0.1}:${GATEWAY_PORT:-8080}:8080"
+
+  authentication-service:
+    <<: *backend-common
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    image: ${AUTHENTICATION_SERVICE_IMAGE:-flash-sale/authentication-service:local}
+    build:
+      context: ../..
+      dockerfile: services/authentication-service/Dockerfile
+    environment:
+      <<: *backend-environment
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      SPRING_LIQUIBASE_ENABLED: ${AUTH_LIQUIBASE_ENABLED:-false}
+      JWT_ISSUER: ${JWT_ISSUER:-http://authentication-service:8080}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-flash-sale-api}
+      JWT_KEY_ID: ${JWT_KEY_ID:-local-dev-1}
+      JWT_PUBLIC_KEY_PEM: ${JWT_PUBLIC_KEY_PEM:-}
+      JWT_PUBLIC_KEY_LOCATION: ${AUTH_JWT_PUBLIC_KEY_LOCATION:-file:/run/secrets/auth-jwt/jwt-public.pem}
+      JWT_PRIVATE_KEY_LOCATION: ${AUTH_JWT_PRIVATE_KEY_LOCATION:-file:/run/secrets/auth-jwt/jwt-private.pem}
+      AUTH_THROTTLE_HMAC_SECRET: ${AUTH_THROTTLE_HMAC_SECRET:?AUTH_THROTTLE_HMAC_SECRET must be set}
+      AUTH_TRUSTED_ORIGINS: ${AUTH_TRUSTED_ORIGINS:-http://localhost:3000}
+      # Authentication provisions the fixed machine clients from the same
+      # runtime-only secret injected into their calling service.
+      CAMPAIGN_CLIENT_ID: ${CAMPAIGN_CLIENT_ID:-campaign-service}
+      CAMPAIGN_CLIENT_SECRET: ${CAMPAIGN_CLIENT_SECRET:-}
+      FLASHSALE_CLIENT_ID: ${FLASHSALE_CLIENT_ID:-flashsale-service}
+      FLASHSALE_CLIENT_SECRET: ${FLASHSALE_CLIENT_SECRET:-}
+    volumes:
+      - ${AUTH_JWT_KEY_DIR:?AUTH_JWT_KEY_DIR must point to a local key directory}:/run/secrets/auth-jwt:ro
+
+  product-service:
+    <<: *backend-common
+    image: ${PRODUCT_SERVICE_IMAGE:-flash-sale/product-service:local}
+    build:
+      context: ../..
+      dockerfile: services/product-service/Dockerfile
+    environment:
+      <<: *backend-environment
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/product_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      SPRING_LIQUIBASE_ENABLED: ${PRODUCT_LIQUIBASE_ENABLED:-false}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-http://authentication-service:8080}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-flash-sale-api}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
+
+  campaign-service:
+    <<: *backend-common
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    image: ${CAMPAIGN_SERVICE_IMAGE:-flash-sale/campaign-service:local}
+    build:
+      context: ../..
+      dockerfile: services/campaign-service/Dockerfile
+    environment:
+      <<: *backend-environment
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/campaign_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      SPRING_LIQUIBASE_ENABLED: ${CAMPAIGN_LIQUIBASE_ENABLED:-false}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL:-http://schema-registry:8081}
+      KAFKA_AUTO_REGISTER_SCHEMAS: ${KAFKA_AUTO_REGISTER_SCHEMAS:-false}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-http://authentication-service:8080}
+      JWT_ISSUER: ${JWT_ISSUER:-http://authentication-service:8080}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-flash-sale-api}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
+      INTERNAL_JWT_AUDIENCE: ${INTERNAL_JWT_AUDIENCE:-flash-sale-internal-api}
+      OAUTH_TOKEN_URI: ${OAUTH_TOKEN_URI:-http://authentication-service:8080/oauth2/token}
+      CAMPAIGN_CLIENT_ID: ${CAMPAIGN_CLIENT_ID:-campaign-service}
+      CAMPAIGN_CLIENT_SECRET: ${CAMPAIGN_CLIENT_SECRET:?CAMPAIGN_CLIENT_SECRET must be set}
+      PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL:-http://product-service:8080}
+      INVENTORY_SERVICE_URL: ${INVENTORY_SERVICE_URL:-http://inventory-service:8080}
+
+  flashsale-service:
+    <<: *backend-common
+    image: ${FLASHSALE_SERVICE_IMAGE:-flash-sale/flashsale-service:local}
+    build:
+      context: ../..
+      dockerfile: services/flashsale-service/Dockerfile
+
+  order-service:
+    <<: *backend-common
+    image: ${ORDER_SERVICE_IMAGE:-flash-sale/order-service:local}
+    build:
+      context: ../..
+      dockerfile: services/order-service/Dockerfile
+
+  payment-service:
+    <<: *backend-common
+    image: ${PAYMENT_SERVICE_IMAGE:-flash-sale/payment-service:local}
+    build:
+      context: ../..
+      dockerfile: services/payment-service/Dockerfile
+
+  notification-service:
+    <<: *backend-common
+    image: ${NOTIFICATION_SERVICE_IMAGE:-flash-sale/notification-service:local}
+    build:
+      context: ../..
+      dockerfile: services/notification-service/Dockerfile
+
+  inventory-service:
+    <<: *backend-common
+    depends_on:
+      postgres:
+        condition: service_healthy
+    image: ${INVENTORY_SERVICE_IMAGE:-flash-sale/inventory-service:local}
+    build:
+      context: ../..
+      dockerfile: services/inventory-service/Dockerfile
+    environment:
+      <<: *backend-environment
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/inventory_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      SPRING_LIQUIBASE_ENABLED: ${INVENTORY_LIQUIBASE_ENABLED:-false}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-http://authentication-service:8080}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-flash-sale-api}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
+
+  cart-service:
+    <<: *backend-common
+    image: ${CART_SERVICE_IMAGE:-flash-sale/cart-service:local}
+    build:
+      context: ../..
+      dockerfile: services/cart-service/Dockerfile
+
+networks:
+  flash-sale-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  kafka-data:

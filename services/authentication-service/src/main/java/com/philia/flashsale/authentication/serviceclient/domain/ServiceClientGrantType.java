@@ -1,0 +1,5 @@
+package com.philia.flashsale.authentication.serviceclient.domain;
+
+public enum ServiceClientGrantType {
+    CLIENT_CREDENTIALS
+}

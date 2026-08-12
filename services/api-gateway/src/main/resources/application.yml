@@ -1,0 +1,140 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: authentication-login
+              uri: ${AUTHENTICATION_SERVICE_URL:http://authentication-service:8080}
+              predicates:
+                - Path=/api/v1/auth/login
+                - Method=POST
+            - id: authentication-refresh
+              uri: ${AUTHENTICATION_SERVICE_URL:http://authentication-service:8080}
+              predicates:
+                - Path=/api/v1/auth/refresh
+                - Method=POST
+            - id: authentication-api
+              uri: ${AUTHENTICATION_SERVICE_URL:http://authentication-service:8080}
+              predicates:
+                - Path=/api/v1/auth/**
+            - id: product-catalog-admin
+              uri: ${PRODUCT_SERVICE_URL:http://product-service:8080}
+              predicates:
+                - Path=/api/v1/admin/catalog/**
+            - id: product-catalog
+              uri: ${PRODUCT_SERVICE_URL:http://product-service:8080}
+              predicates:
+                - Path=/api/v1/catalog/**
+            - id: inventory-admin
+              uri: ${INVENTORY_SERVICE_URL:http://inventory-service:8080}
+              predicates:
+                - Path=/api/v1/admin/inventory/**
+            - id: campaign-admin
+              uri: ${CAMPAIGN_SERVICE_URL:http://campaign-service:8080}
+              predicates:
+                - Path=/api/v1/admin/campaigns/**
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowed-origins:
+                  - ${GATEWAY_CORS_ALLOWED_ORIGINS:http://localhost:3000}
+                allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+                allowed-headers: "*"
+                allow-credentials: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://authentication-service:8080}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+
+flashsale:
+  gateway:
+    security:
+      jwt:
+        audience: ${JWT_AUDIENCE:flash-sale-api}
+    rate-limit:
+      enabled: ${GATEWAY_RATE_LIMIT_ENABLED:false}
+      environment: ${RATE_LIMIT_ENVIRONMENT:local}
+      key-prefix: rl
+      command-timeout: 50ms
+      hmac-secret: ${RATE_LIMIT_KEY_HMAC_SECRET:}
+      policies:
+        public-catalog-read:
+          state-version: p1
+          route-id: product-catalog
+          methods:
+            - GET
+          identity-strategy: CLIENT_IP
+          capacity: 60
+          refill-tokens: 30
+          refill-period: 1s
+          request-cost: 1
+          failure-mode: ALLOW_WITH_METRIC
+          enabled: true
+        auth-login:
+          state-version: p1
+          route-id: authentication-login
+          methods:
+            - POST
+          identity-strategy: CLIENT_IP
+          capacity: 10
+          refill-tokens: 10
+          refill-period: 1m
+          request-cost: 1
+          failure-mode: ALLOW_WITH_METRIC
+          enabled: true
+        auth-refresh:
+          state-version: p1
+          route-id: authentication-refresh
+          methods:
+            - POST
+          identity-strategy: CLIENT_IP
+          capacity: 30
+          refill-tokens: 30
+          refill-period: 1m
+          request-cost: 1
+          failure-mode: ALLOW_WITH_METRIC
+          enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: none
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+    redis:
+      enabled: false
+  metrics:
+    distribution:
+      percentiles:
+        gateway.rate.limit.acquire: 0.5,0.95,0.99
+
+info:
+  app:
+    name: ${spring.application.name}

@@ -1,0 +1,139 @@
+spring:
+  application:
+    name: campaign-service
+
+  threads:
+    virtual:
+      enabled: ${SPRING_THREADS_VIRTUAL_ENABLED:true}
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/campaign_db}
+    username: ${SPRING_DATASOURCE_USERNAME:flashsale}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  liquibase:
+    enabled: ${SPRING_LIQUIBASE_ENABLED:false}
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://authentication-service:8080}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+      client:
+        provider:
+          authentication:
+            token-uri: ${OAUTH_TOKEN_URI:http://authentication-service:8080/oauth2/token}
+        registration:
+          campaign-product:
+            provider: authentication
+            client-id: ${CAMPAIGN_CLIENT_ID:campaign-service}
+            client-secret: ${CAMPAIGN_CLIENT_SECRET:}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope:
+              - catalog.read
+          campaign-inventory-allocation:
+            provider: authentication
+            client-id: ${CAMPAIGN_CLIENT_ID:campaign-service}
+            client-secret: ${CAMPAIGN_CLIENT_SECRET:}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope:
+              - inventory.campaign.allocate
+
+  cloud:
+    openfeign:
+      client:
+        config:
+          # Product validation is a synchronous query within the Campaign scheduling budget.
+          campaign-product:
+            connectTimeout: ${CAMPAIGN_PRODUCT_CONNECT_TIMEOUT_MS:500}
+            readTimeout: ${CAMPAIGN_PRODUCT_READ_TIMEOUT_MS:1200}
+            loggerLevel: basic
+          # Inventory allocation is a write; retries belong to the durable schedule workflow.
+          campaign-inventory-allocation:
+            connectTimeout: ${CAMPAIGN_INVENTORY_CONNECT_TIMEOUT_MS:500}
+            readTimeout: ${CAMPAIGN_INVENTORY_READ_TIMEOUT_MS:1000}
+            loggerLevel: basic
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Kafka values are generated Avro SpecificRecords, never arbitrary JSON or JPA entities.
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        enable.idempotence: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        auto.register.schemas: ${KAFKA_AUTO_REGISTER_SCHEMAS:false}
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+    template:
+      default-topic: campaign.lifecycle.v1
+
+flashsale:
+  campaign:
+    security:
+      public:
+        issuer: ${JWT_ISSUER:http://authentication-service:8080}
+        audience: ${JWT_AUDIENCE:flash-sale-api}
+        jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+      internal:
+        issuer: ${JWT_ISSUER:http://authentication-service:8080}
+        audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+        jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+    downstream:
+      product:
+        base-url: ${PRODUCT_SERVICE_URL:http://product-service:8080}
+      inventory:
+        base-url: ${INVENTORY_SERVICE_URL:http://inventory-service:8080}
+    lifecycle:
+      scan-delay: ${CAMPAIGN_LIFECYCLE_SCAN_DELAY:2s}
+      batch-size: ${CAMPAIGN_LIFECYCLE_BATCH_SIZE:100}
+    outbox:
+      topic: campaign.lifecycle.v1
+      scan-delay: ${CAMPAIGN_OUTBOX_SCAN_DELAY:500ms}
+      batch-size: ${CAMPAIGN_OUTBOX_BATCH_SIZE:100}
+      # A crashed publisher is reclaimed after this lease expires. Keep it longer than one broker round-trip.
+      claim-lease: ${CAMPAIGN_OUTBOX_CLAIM_LEASE:30s}
+      max-automatic-attempts: ${CAMPAIGN_OUTBOX_MAX_AUTOMATIC_ATTEMPTS:10}
+      retry-backoff-cap: ${CAMPAIGN_OUTBOX_RETRY_BACKOFF_CAP:60s}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  info:
+    env:
+      enabled: true
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
