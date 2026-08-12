@@ -151,10 +151,10 @@ expiry, without a second quota decrement or false 202.
 
 ### Redis Stream Recovery
 
-- [ ] T048 [US2] Implement stable Stream field mapping, idempotent consumer-group creation, new-entry consumption, and application-use-case invocation in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/in/messaging/redis/ReservationHandoffMessageMapper.java`, `ReservationHandoffConsumerGroupInitializer.java`, and `ReservationHandoffStreamConsumer.java`
-- [ ] T049 [US2] Implement terminal-outcome-only atomic `XACK` plus `XDEL`, pending reclaim, and configured 1-second/100-entry/30-second boundaries in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/out/redis/ReservationHandoffRedisAdapter.java` and `services/flashsale-service/src/main/resources/redis/reservation/ack-delete-handoff.lua`
-- [ ] T050 [US2] Verify crash after Lua, crash after read, crash after PostgreSQL commit, duplicate request-thread/consumer execution, no pending-entry trimming, and stable replay in `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/integration/ReservationHandoffRecoveryIntegrationTests.java`
-- [ ] T051 [US2] Verify `XAUTOCLAIM` transfers only entries idle at least 30 seconds and preserves immutable IDs/snapshot/trace fields in `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/integration/ReservationHandoffAutoClaimIntegrationTests.java`
+- [x] T048 [US2] Implement stable Stream field mapping, idempotent consumer-group creation, new-entry consumption, and application-use-case invocation in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/in/messaging/redis/ReservationHandoffMessageMapper.java`, `ReservationHandoffConsumerGroupInitializer.java`, and `ReservationHandoffStreamConsumer.java`
+- [x] T049 [US2] Implement terminal-outcome-only atomic `XACK` plus `XDEL`, pending reclaim, and configured 1-second/100-entry/30-second boundaries in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/out/redis/ReservationHandoffRedisAdapter.java` and `services/flashsale-service/src/main/resources/redis/reservation/ack-delete-handoff.lua`
+- [x] T050 [US2] Verify crash after Lua, crash after read, crash after PostgreSQL commit, duplicate request-thread/consumer execution, no pending-entry trimming, and stable replay in `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/integration/ReservationHandoffRecoveryIntegrationTests.java`
+- [x] T051 [US2] Verify `XAUTOCLAIM` transfers only entries idle at least 30 seconds and preserves immutable IDs/snapshot/trace fields in `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/integration/ReservationHandoffAutoClaimIntegrationTests.java`
 
 ### Avro Contract and Transactional Outbox
 

@@ -209,3 +209,33 @@ Summary:
 - Cleanup deletes only bounded batches of expired idempotency rows; purchases, reservations, and
   outbox audit history remain untouched. Redis replay fixtures now use a future clock so retained
   keys cannot expire during tests.
+
+## G8 — Redis Stream Recovery and Reclaim
+
+**Date**: 2026-08-12
+**Scope**: T048–T051; durable reservation handoff consumer-group recovery, pending reclaim, and
+terminal acknowledgement cleanup.
+**Commands**:
+
+- `./mvnw -pl services/flashsale-service -am -Dtest=ReservationHandoffAutoClaimIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test`
+- `./mvnw -pl services/flashsale-service -am -Dtest=ReservationHandoffRecoveryIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test`
+- `./mvnw -pl services/flashsale-service -am verify`
+- `git diff --check`
+
+**Result**: PASS — focused auto-claim test passed 1 test; focused recovery tests passed 3 tests;
+full module verification exited 0 with 69 Flash Sale tests, 9 `common-web` tests, and 3 Kafka
+Avro contract tests.
+
+Summary:
+
+- Redis Stream fields are mapped into the immutable accepted-reservation snapshot, and the
+  consumer group is created idempotently with `MKSTREAM`.
+- New entries and reclaimed pending entries invoke the same `ReservationAcceptanceFlow` used by
+  the request path. Redis failures leave entries pending for retry.
+- `XAUTOCLAIM` uses the configured 30-second idle threshold and 100-entry batch; the integration
+  test confirms only the old pending entry transfers and its identity, snapshot, and trace fields
+  remain unchanged.
+- Terminal handling runs the Lua `XACK` + `XDEL` sequence atomically. No stream trimming is used,
+  and replay after a post-commit acknowledgement failure reuses the durable identity safely.
+- Testcontainers used Redis 7 for all focused recovery tests. Maven emitted only existing Mockito
+  dynamic-agent and SLF4J provider warnings; no test failed.
