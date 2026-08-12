@@ -181,3 +181,31 @@ Summary:
   dynamic-agent and SLF4J provider warnings.
 - This group still does not claim real PostgreSQL durable acceptance, Stream recovery, public HTTP,
   or Kafka publication; those remain in the later approved groups.
+
+## G7 — Durable PostgreSQL Acceptance, Expiry, and Retention
+
+**Date**: 2026-08-11
+**Scope**: T039–T047; durable acceptance/outbox transaction, PostgreSQL arbitration, durable-first
+expiry, idempotent Redis quota release, and bounded idempotency cleanup.
+**Commands**:
+
+- `./mvnw -pl services/flashsale-service -am -Dtest=DurableAcceptancePersistenceIntegrationTests,DurableAcceptanceConcurrencyIntegrationTests,ReservationExpiryIntegrationTests,IdempotencyRetentionIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test`
+- `./mvnw -pl services/flashsale-service -am -Dtest=AtomicReservationRedisIntegrationTests,ReservationIdempotencyConcurrencyIntegrationTests,ReservationRedisFailureIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test`
+- `./mvnw -pl services/flashsale-service -am verify`
+- `git diff --check`
+
+**Result**: PASS — focused G7 validation passed, PostgreSQL concurrency accepted one durable result,
+the repaired Redis time fixtures passed, and full module verification exited 0 with 65 Flash Sale
+tests, 9 `common-web` tests, and 3 Kafka Avro contract tests.
+
+Summary:
+
+- Acceptance commits the purchase request, immutable reservation snapshot, scoped hashed
+  idempotency row, and `PURCHASE_REQUEST` outbox intent together. A PostgreSQL advisory transaction
+  lock serializes same-key request-thread and Stream-worker races; an after-expiry writer persists an
+  `EXPIRED` tombstone and never creates a reservation or accepted outbox event.
+- The expiry path locks PostgreSQL first, then invokes an idempotent Lua release with a one-way
+  `quotaReleased` marker after commit. It emits no expiry event.
+- Cleanup deletes only bounded batches of expired idempotency rows; purchases, reservations, and
+  outbox audit history remain untouched. Redis replay fixtures now use a future clock so retained
+  keys cannot expire during tests.

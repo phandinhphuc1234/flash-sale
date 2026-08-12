@@ -37,7 +37,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
 class ReservationIdempotencyConcurrencyIntegrationTests {
-    private static final Instant NOW = Instant.parse("2026-08-10T12:00:00Z");
+    private static final Instant NOW = Instant.parse("2030-08-10T12:00:00Z");
     private static final Instant START = NOW.minusSeconds(60);
     private static final Instant END = NOW.plusSeconds(3600);
     private static final int RETRIES = 100;
