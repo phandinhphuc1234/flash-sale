@@ -281,10 +281,11 @@ and stable event identity/payload recovery.
 
 - `.\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-DskipTests" test-compile`
 - `$env:RUN_KAFKA_INTEGRATION_TESTS='false'; .\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-Dtest=PurchaseAcceptedKafkaIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test`
-- Live run with `RUN_KAFKA_INTEGRATION_TESTS=true`: pending because Docker Desktop/Kafka/Schema
-  Registry is not running on this workstation.
+- `$env:CAMPAIGN_CLIENT_SECRET='local-test-placeholder'; docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d kafka schema-registry`
+- `$env:RUN_KAFKA_INTEGRATION_TESTS='true'; $env:KAFKA_BOOTSTRAP_SERVERS='localhost:29092'; $env:SCHEMA_REGISTRY_URL='http://localhost:8081'; .\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-Dtest=PurchaseAcceptedKafkaIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test`
+- `git diff --check`
 
-**Result**: PASS — the strengthened integration test compiles and the default build remains green
-(the environment-gated test is skipped without the external stack). Live Kafka/Schema Registry
-evidence remains pending; T060 must not be marked complete until the test is run against the local
-Compose services.
+**Result**: PASS — the live run executed 1 test with 0 failures, errors, or skips. It verified the
+`BACKWARD_TRANSITIVE` subject compatibility, the approved three-partition topic, duplicate delivery,
+broker and Schema Registry outage/recovery, and stable original event identity/payload. The Maven
+reactor (`common-web`, Avro contracts, and `flashsale-service`) completed successfully.
