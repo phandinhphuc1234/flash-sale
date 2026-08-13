@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - develop
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,11 +16,121 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  JAVA_VERSION: "21"
+
 jobs:
-  verify:
-    name: Maven Verify
+  detect_changes:
+    name: Detect affected services
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+      has_services: ${{ steps.detect.outputs.has_services }}
+
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect affected Maven services
+        id: detect
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          services=(
+            "api-gateway"
+            "authentication-service"
+            "campaign-service"
+            "cart-service"
+            "flashsale-service"
+            "inventory-service"
+            "notification-service"
+            "order-service"
+            "payment-service"
+            "product-service"
+          )
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_sha="$PR_BASE_SHA"
+            head_sha="$PR_HEAD_SHA"
+          else
+            head_sha="$PUSH_HEAD_SHA"
+            if [[ -z "${PUSH_BEFORE_SHA:-}" || "$PUSH_BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+              base_sha="$(git rev-list --max-parents=0 "$head_sha")"
+            else
+              base_sha="$PUSH_BEFORE_SHA"
+            fi
+          fi
+
+          mapfile -t changed_files < <(git diff --name-only "$base_sha" "$head_sha")
+
+          echo "Comparing $base_sha..$head_sha"
+          printf 'Changed files:\n'
+          printf ' - %s\n' "${changed_files[@]}"
+
+          build_all=false
+          declare -A affected=()
+
+          for file in "${changed_files[@]}"; do
+            case "$file" in
+              pom.xml|mvnw|mvnw.cmd|.mvn/**|libs/**|contracts/**|.github/workflows/**)
+                build_all=true
+                ;;
+              services/*/*)
+                service="${file#services/}"
+                service="${service%%/*}"
+                for known_service in "${services[@]}"; do
+                  if [[ "$service" == "$known_service" ]]; then
+                    affected["$known_service"]=1
+                    break
+                  fi
+                done
+                ;;
+            esac
+          done
+
+          if [[ "$build_all" == true ]]; then
+            selected=("${services[@]}")
+          else
+            selected=()
+            for service in "${services[@]}"; do
+              if [[ -n "${affected[$service]:-}" ]]; then
+                selected+=("$service")
+              fi
+            done
+          fi
+
+          if ((${#selected[@]} == 0)); then
+            services_json='[]'
+            has_services=false
+          else
+            services_json="$(printf '%s\n' "${selected[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
+            has_services=true
+          fi
+
+          echo "Affected services: $services_json"
+          echo "services=$services_json" >> "$GITHUB_OUTPUT"
+          echo "has_services=$has_services" >> "$GITHUB_OUTPUT"
+
+  verify_service:
+    name: Verify ${{ matrix.service }}
+    needs: detect_changes
+    if: ${{ needs.detect_changes.outputs.has_services == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.detect_changes.outputs.services) }}
 
     steps:
       - name: Checkout repository
@@ -29,14 +140,64 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
-      - name: Show Java version
-        run: java -version
+      - name: Show Java and Maven versions
+        run: |
+          java -version
+          ./mvnw --version
 
-      - name: Show Maven version
-        run: ./mvnw --version
+      - name: Build and test affected service with reactor dependencies
+        run: ./mvnw --batch-mode --no-transfer-progress -pl services/${{ matrix.service }} -am verify
 
-      - name: Build and test
-        run: ./mvnw --batch-mode --no-transfer-progress clean verify
+  verify_noop:
+    name: Verify no affected services
+    needs: detect_changes
+    if: ${{ needs.detect_changes.outputs.has_services != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Confirm documentation-only change
+        run: echo "No Maven service is affected; selective verification is complete."
+
+  ci_result:
+    name: Maven Verify
+    if: ${{ always() }}
+    needs:
+      - detect_changes
+      - verify_service
+      - verify_noop
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Aggregate selective verification result
+        env:
+          DETECT_RESULT: ${{ needs.detect_changes.result }}
+          VERIFY_RESULT: ${{ needs.verify_service.result }}
+          NOOP_RESULT: ${{ needs.verify_noop.result }}
+        run: |
+          set -euo pipefail
+
+          echo "detect-changes: $DETECT_RESULT"
+          echo "verify-service: $VERIFY_RESULT"
+          echo "verify-noop: $NOOP_RESULT"
+
+          if [[ "$DETECT_RESULT" != "success" ]]; then
+            echo "Change detection did not complete successfully."
+            exit 1
+          fi
+
+          if [[ "$VERIFY_RESULT" == "failure" || "$VERIFY_RESULT" == "cancelled" ]]; then
+            echo "At least one affected service verification failed."
+            exit 1
+          fi
+
+          if [[ "$NOOP_RESULT" == "failure" || "$NOOP_RESULT" == "cancelled" ]]; then
+            echo "The no-op verification failed."
+            exit 1
+          fi
+
+          echo "Selective Maven verification passed."
