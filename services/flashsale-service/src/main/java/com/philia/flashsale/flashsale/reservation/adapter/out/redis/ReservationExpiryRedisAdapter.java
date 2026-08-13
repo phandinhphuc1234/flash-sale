@@ -9,7 +9,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scripting.support.ResourceScriptSource;
 
-/** Executes only the approved atomic release script; repeat calls are harmless. */
+/**
+ * Executes only the approved atomic release script; repeat calls are harmless.
+ */
 public final class ReservationExpiryRedisAdapter implements ReleaseExpiredQuotaPort {
     private final StringRedisTemplate redis;
     private final DefaultRedisScript<Long> script;
@@ -22,6 +24,10 @@ public final class ReservationExpiryRedisAdapter implements ReleaseExpiredQuotaP
         this.script.setResultType(Long.class);
     }
 
+    // Executes the Lua script to release expired reservations, stock, and user
+    // quantity in Redis.
+    // The script is idempotent, so repeat calls with the same candidate are
+    // harmless.
     @Override
     public void release(ReservationExpiryCandidate candidate) {
         redis.execute(script, List.of(

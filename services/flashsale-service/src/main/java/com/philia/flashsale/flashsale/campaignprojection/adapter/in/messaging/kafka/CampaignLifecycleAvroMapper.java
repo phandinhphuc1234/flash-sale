@@ -9,7 +9,10 @@ import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
-/** Maps only approved generated Campaign SpecificRecords into application commands. */
+/**
+ * Maps only approved generated Campaign SpecificRecords into application
+ * commands.
+ */
 @Component
 public final class CampaignLifecycleAvroMapper {
 
@@ -31,6 +34,8 @@ public final class CampaignLifecycleAvroMapper {
                 data.getStartAt(), data.getEndAt(), projection, record.getOccurredAt());
     }
 
+    // Translate the CampaignActivatedV1 Avro record into an application command,
+    // validating the envelope and data.
     public ApplyCampaignActivatedCommand toActivated(String key, CampaignActivatedV1 record) {
         validateEnvelope(key, record.getEventType(), record.getEventVersion(), record.getAggregateType(),
                 record.getAggregateId(), record.getAggregateVersion(), "CampaignActivated");
@@ -41,6 +46,8 @@ public final class CampaignLifecycleAvroMapper {
                 data.getStartAt(), data.getEndAt(), record.getOccurredAt());
     }
 
+    // Validate the envelope of the Campaign lifecycle record, ensuring the event
+    // type, version, aggregate type, and IDs match expectations.
     private void validateEnvelope(String key, String eventType, int eventVersion, String aggregateType,
             UUID aggregateId, long aggregateVersion, String expectedEventType) {
         if (!expectedEventType.equals(eventType)) {

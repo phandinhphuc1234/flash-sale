@@ -9,7 +9,10 @@ import com.philia.flashsale.flashsale.reservation.domain.policy.ReservationExpir
 import java.time.Instant;
 import java.util.Objects;
 
-/** PostgreSQL decides terminal state; Redis release is deliberately outside that transaction. */
+/**
+ * PostgreSQL decides terminal state; Redis release is deliberately outside that
+ * transaction.
+ */
 public final class ExpireReservationsService implements ExpireReservationsUseCase {
     private static final int BATCH_SIZE = 100;
     private final FindDueReservationPort dueReservations;
@@ -28,6 +31,10 @@ public final class ExpireReservationsService implements ExpireReservationsUseCas
 
     @Override
     public void expireDueReservations(Instant now) {
+        // CHeckSTYLE: The following loop is intentionally not parallelized to avoid
+        // overwhelming the database with concurrent updates.
+        // Each candidate is processed sequentially to ensure that the expiry and quota
+        // release are handled in a controlled manner.
         for (ReservationExpiryCandidate candidate : dueReservations.findDue(now, BATCH_SIZE)) {
             if (policy.isDue(candidate.expiresAt(), now) && durableExpiry.persistExpiry(candidate, now)) {
                 quotaRelease.release(candidate);
