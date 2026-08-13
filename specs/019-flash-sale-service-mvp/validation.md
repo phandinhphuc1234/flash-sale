@@ -270,3 +270,21 @@ Summary:
 - Application context wiring is conditional on JDBC availability, so lightweight context tests
   remain bootable without a configured datasource while PostgreSQL integration tests import the
   adapter directly.
+
+### T060 — Live Kafka and Schema Registry validation
+
+**Date**: 2026-08-13
+**Scope**: Strengthen the opt-in black-box test for real Avro serialization, controlled subject
+compatibility, the approved three-partition topic, duplicate delivery, broker/Registry outages,
+and stable event identity/payload recovery.
+**Commands**:
+
+- `.\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-DskipTests" test-compile`
+- `$env:RUN_KAFKA_INTEGRATION_TESTS='false'; .\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-Dtest=PurchaseAcceptedKafkaIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test`
+- Live run with `RUN_KAFKA_INTEGRATION_TESTS=true`: pending because Docker Desktop/Kafka/Schema
+  Registry is not running on this workstation.
+
+**Result**: PASS — the strengthened integration test compiles and the default build remains green
+(the environment-gated test is skipped without the external stack). Live Kafka/Schema Registry
+evidence remains pending; T060 must not be marked complete until the test is run against the local
+Compose services.

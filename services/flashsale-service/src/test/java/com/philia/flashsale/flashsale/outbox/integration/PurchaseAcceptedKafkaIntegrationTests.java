@@ -55,6 +55,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "RUN_KAFKA_INTEGRATION_TESTS", matches = "true")
 class PurchaseAcceptedKafkaIntegrationTests {
     private static final String TOPIC = "flashsale.purchase.events.v1";
+    private static final int TOPIC_PARTITIONS = 3;
     private static final String BOOTSTRAP = env("KAFKA_BOOTSTRAP_SERVERS", "localhost:29092");
     private static final String REGISTRY = env("SCHEMA_REGISTRY_URL", "http://localhost:8081");
     private static final String RECORD_NAME = "com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1";
@@ -70,6 +71,7 @@ class PurchaseAcceptedKafkaIntegrationTests {
         configureCompatibility();
         SchemaRegistryClient registry = new CachedSchemaRegistryClient(REGISTRY, 20);
         assertTrue(registry.register(SUBJECT, schema) > 0, "schema must be registered explicitly");
+        assertCompatibility();
         createTopic();
         producer = new KafkaProducer<>(producerProperties(BOOTSTRAP, REGISTRY));
         consumer = new KafkaConsumer<>(consumerProperties(BOOTSTRAP, REGISTRY));
@@ -99,9 +101,8 @@ class PurchaseAcceptedKafkaIntegrationTests {
         List<ConsumerRecord<String, PurchaseAcceptedV1>> duplicates = consume(2);
         assertEquals(2, duplicates.size());
         assertEquals(key, duplicates.get(0).key());
-        assertEquals(original.eventId(), duplicates.get(0).value().getEventId());
-        assertEquals(original.eventId(), duplicates.get(1).value().getEventId());
-        assertEquals(value.getOccurredAt(), duplicates.get(1).value().getOccurredAt());
+        assertSameEvent(value, duplicates.get(0).value());
+        assertSameEvent(value, duplicates.get(1).value());
 
         PurchaseAcceptedV1 retryValue = mapper.map(event(UUID.randomUUID()));
         try (KafkaProducer<String, PurchaseAcceptedV1> registryOutage =
@@ -120,7 +121,21 @@ class PurchaseAcceptedKafkaIntegrationTests {
         producer.send(new ProducerRecord<>(TOPIC, key, retryValue)).get(10, TimeUnit.SECONDS);
         ConsumerRecord<String, PurchaseAcceptedV1> recovered = consume(1).get(0);
         assertNotNull(recovered.value());
-        assertEquals(retryValue.getEventId(), recovered.value().getEventId());
+        assertSameEvent(retryValue, recovered.value());
+    }
+
+    private static void assertSameEvent(PurchaseAcceptedV1 expected, PurchaseAcceptedV1 actual) {
+        assertEquals(expected.getEventId(), actual.getEventId());
+        assertEquals(expected.getEventType(), actual.getEventType());
+        assertEquals(expected.getEventVersion(), actual.getEventVersion());
+        assertEquals(expected.getProducer(), actual.getProducer());
+        assertEquals(expected.getAggregateType(), actual.getAggregateType());
+        assertEquals(expected.getAggregateId(), actual.getAggregateId());
+        assertEquals(expected.getAggregateVersion(), actual.getAggregateVersion());
+        assertEquals(expected.getCorrelationId(), actual.getCorrelationId());
+        assertEquals(expected.getCausationId(), actual.getCausationId());
+        assertEquals(expected.getOccurredAt(), actual.getOccurredAt());
+        assertEquals(expected.getData(), actual.getData());
     }
 
     private static List<ConsumerRecord<String, PurchaseAcceptedV1>> consume(int expected) {
@@ -136,11 +151,25 @@ class PurchaseAcceptedKafkaIntegrationTests {
     private static void createTopic() throws Exception {
         try (AdminClient admin = AdminClient.create(Map.of(
                 AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP))) {
-            admin.createTopics(List.of(new NewTopic(TOPIC, 1, (short) 1))).all().get();
+            admin.createTopics(List.of(new NewTopic(TOPIC, TOPIC_PARTITIONS, (short) 1)))
+                    .all()
+                    .get(10, TimeUnit.SECONDS);
         } catch (ExecutionException exception) {
             if (!(exception.getCause() instanceof TopicExistsException)) {
                 throw exception;
             }
+        }
+
+        try (AdminClient admin = AdminClient.create(Map.of(
+                AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP))) {
+            int partitionCount = admin.describeTopics(List.of(TOPIC))
+                    .allTopicNames()
+                    .get(10, TimeUnit.SECONDS)
+                    .get(TOPIC)
+                    .partitions()
+                    .size();
+            assertEquals(TOPIC_PARTITIONS, partitionCount,
+                    "topic must match the approved three-partition local contract");
         }
     }
 
@@ -154,6 +183,19 @@ class PurchaseAcceptedKafkaIntegrationTests {
         HttpResponse<String> response = HttpClient.newHttpClient()
                 .send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode(), response.body());
+    }
+
+    private static void assertCompatibility() throws Exception {
+        String subject = java.net.URLEncoder.encode(SUBJECT, StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        HttpRequest request = HttpRequest.newBuilder(URI.create(REGISTRY + "/config/" + subject))
+                .timeout(Duration.ofSeconds(5))
+                .GET()
+                .build();
+        HttpResponse<String> response = HttpClient.newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), response.body());
+        assertTrue(response.body().contains("BACKWARD_TRANSITIVE"), response.body());
     }
 
     private static Properties producerProperties(String bootstrap, String registry) {
