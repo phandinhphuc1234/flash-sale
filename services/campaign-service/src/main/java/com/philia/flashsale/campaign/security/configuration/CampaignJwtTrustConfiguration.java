@@ -15,19 +15,21 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 /**
- * Builds the two JWT trust boundaries used by Campaign Service.
- *
- * <p>The public and internal decoders deliberately validate different audiences so a token
- * issued for one boundary cannot be substituted at the other boundary.</p>
+ * Configures two separate JWT trust boundaries (Public & Internal) for Campaign
+ * Service.
+ * 
+ * PURPOSE: Ensures tokens issued for public/external APIs cannot be misused for
+ * internal microservice communication and vice versa.
  */
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(
-        name = "flashsale.campaign.security.jwt.enabled",
-        havingValue = "true",
-        matchIfMissing = true)
+@ConditionalOnProperty(name = "flashsale.campaign.security.jwt.enabled", havingValue = "true", matchIfMissing = true)
 public class CampaignJwtTrustConfiguration {
 
+    /**
+     * Creates a JwtDecoder dedicated to validating JWT tokens sent from
+     * public/external user requests.
+     */
     @Bean("campaignPublicJwtDecoder")
     JwtDecoder campaignPublicJwtDecoder(
             @Value("${flashsale.campaign.security.public.jwk-set-uri}") String jwkSetUri,
@@ -36,6 +38,10 @@ public class CampaignJwtTrustConfiguration {
         return decoder(jwkSetUri, issuer, audience);
     }
 
+    /**
+     * Creates a JwtDecoder dedicated to validating JWT tokens used in internal
+     * service-to-service communication.
+     */
     @Bean("campaignInternalJwtDecoder")
     JwtDecoder campaignInternalJwtDecoder(
             @Value("${flashsale.campaign.security.internal.jwk-set-uri}") String jwkSetUri,
@@ -44,19 +50,33 @@ public class CampaignJwtTrustConfiguration {
         return decoder(jwkSetUri, issuer, audience);
     }
 
+    /**
+     * Common helper method to build NimbusJwtDecoder with JWK Set URI and attach
+     * custom validators (Issuer, Type, Audience).
+     */
     private JwtDecoder decoder(String jwkSetUri, String issuer, String audience) {
-        // Disable Nimbus' default type check so the approved at+jwt check is explicit below.
+        // Build NimbusJwtDecoder and disable default type check to apply explicit
+        // custom validations below
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
                 .validateType(false)
                 .build();
+
+        // Issuer validator (validates token issuer authority)
         OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuer);
+
+        // Chain required validators together: Issuer + Type (at+jwt) + Audience
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 issuerValidator,
                 new CampaignJwtTypeValidator(),
                 new CampaignJwtAudienceValidator(audience)));
+
         return decoder;
     }
 
+    /**
+     * Custom validator: Ensures the JWT contains the required 'aud' (Audience)
+     * claim matching the boundary configuration.
+     */
     static final class CampaignJwtAudienceValidator implements OAuth2TokenValidator<Jwt> {
 
         private final String requiredAudience;
@@ -69,12 +89,16 @@ public class CampaignJwtTrustConfiguration {
         public OAuth2TokenValidatorResult validate(Jwt token) {
             return token.getAudience() != null
                     && token.getAudience().contains(requiredAudience)
-                    ? OAuth2TokenValidatorResult.success()
-                    : OAuth2TokenValidatorResult.failure(new OAuth2Error(
-                            "invalid_token", "Required JWT audience is missing", null));
+                            ? OAuth2TokenValidatorResult.success()
+                            : OAuth2TokenValidatorResult.failure(new OAuth2Error(
+                                    "invalid_token", "Required JWT audience is missing", null));
         }
     }
 
+    /**
+     * Custom validator: Ensures the JWT Header 'typ' matches the standard 'at+jwt'
+     * (Access Token JWT) format.
+     */
     static final class CampaignJwtTypeValidator implements OAuth2TokenValidator<Jwt> {
 
         @Override

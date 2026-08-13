@@ -11,7 +11,12 @@ import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** JPA representation of a durable, indefinitely retained schedule operation. */
+// /** JPA representation of a durable, indefinitely retained schedule operation. */
+// // ARCHITECTURAL PURPOSE:
+//  * 1. Idempotency protection against duplicate processing when clients resend identical requests (Retry/Network Timeout).
+//  * 2. Asynchronous transaction correlation (Correlation/Distributed Tracing) with the Inventory Service.
+//  * 3. Audit trail for error tracing and tracking retry attempts (Attempt Count).
+//  */
 @Entity(name = "CampaignScheduleOperationJpaEntity")
 @Table(name = "campaign_schedule_operations")
 public class CampaignScheduleOperationJpaEntity {
@@ -62,7 +67,10 @@ public class CampaignScheduleOperationJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    /** Required by JPA; schedule-operation mapping belongs to the persistence adapter. */
+    /**
+     * Required by JPA; schedule-operation mapping belongs to the persistence
+     * adapter.
+     */
     public CampaignScheduleOperationJpaEntity() {
     }
 

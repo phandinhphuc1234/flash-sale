@@ -12,7 +12,10 @@ import java.util.UUID;
 import java.sql.Types;
 import org.hibernate.annotations.JdbcTypeCode;
 
-/** Durable request audit row. It keeps the immutable Redis winner and its terminal outcome. */
+/**
+ * Durable request audit row.
+ * It keeps the immutable Redis winner and its terminal outcome.
+ */
 @Entity
 @Table(name = "purchase_requests")
 public class PurchaseRequestJpaEntity {
@@ -28,7 +31,8 @@ public class PurchaseRequestJpaEntity {
     private UUID userId;
     @Column(nullable = false)
     private long quantity;
-    @JdbcTypeCode(Types.CHAR) @Column(name = "request_hash", nullable = false, length = 64)
+    @JdbcTypeCode(Types.CHAR)
+    @Column(name = "request_hash", nullable = false, length = 64)
     private String requestHash;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -42,7 +46,8 @@ public class PurchaseRequestJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    protected PurchaseRequestJpaEntity() { }
+    protected PurchaseRequestJpaEntity() {
+    }
 
     public static PurchaseRequestJpaEntity accepted(AcceptedReservationSnapshot snapshot) {
         var entity = new PurchaseRequestJpaEntity();
@@ -61,7 +66,10 @@ public class PurchaseRequestJpaEntity {
         return entity;
     }
 
-    /** The terminal tombstone that wins if durable acceptance reaches PostgreSQL after expiry. */
+    /**
+     * The terminal tombstone that wins if durable acceptance reaches PostgreSQL
+     * after expiry.
+     */
     public static PurchaseRequestJpaEntity expired(AcceptedReservationSnapshot snapshot, Instant at) {
         var entity = accepted(snapshot);
         entity.outcome = Outcome.EXPIRED;
@@ -72,7 +80,8 @@ public class PurchaseRequestJpaEntity {
     }
 
     public void markExpired(Instant at) {
-        if (outcome == Outcome.ACCEPTED) return;
+        if (outcome == Outcome.ACCEPTED)
+            return;
         outcome = Outcome.EXPIRED;
         acceptedAt = null;
         updatedAt = at;

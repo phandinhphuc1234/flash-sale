@@ -16,7 +16,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-/** Consumes approved Campaign lifecycle facts and acknowledges only after Redis succeeds. */
+/**
+ * Consumes approved Campaign lifecycle facts and acknowledges only after Redis
+ * succeeds.
+ */
 @Component
 @ConditionalOnBean(StringRedisTemplate.class)
 public final class CampaignLifecycleKafkaConsumer {
@@ -33,10 +36,7 @@ public final class CampaignLifecycleKafkaConsumer {
         this.activationUseCase = activationUseCase;
     }
 
-    @KafkaListener(
-            topics = "${flashsale.campaign-projection.topic}",
-            groupId = "${flashsale.campaign-projection.consumer-group}",
-            containerFactory = "campaignProjectionKafkaListenerContainerFactory")
+    @KafkaListener(topics = "${flashsale.campaign-projection.topic}", groupId = "${flashsale.campaign-projection.consumer-group}", containerFactory = "campaignProjectionKafkaListenerContainerFactory")
     public void onMessage(ConsumerRecord<String, SpecificRecord> record, Acknowledgment acknowledgment) {
         String traceparent = header(record, FlashSaleRequestContext.TRACEPARENT_HEADER);
         String traceId = validTraceId(traceparent);
@@ -44,8 +44,11 @@ public final class CampaignLifecycleKafkaConsumer {
                 MDC.MDCCloseable parent = MDC.putCloseable(
                         FlashSaleRequestContext.TRACEPARENT_HEADER,
                         FlashSaleRequestContext.isValidTraceparent(traceparent)
-                                ? traceparent : FlashSaleTraceContext.currentOrGenerate())) {
+                                ? traceparent
+                                : FlashSaleTraceContext.currentOrGenerate())) {
             SpecificRecord value = record.value();
+            // Throw exception if the record is not a supported Campaign lifecycle fact,
+            // so that the Kafka listener can retry.
             if (value instanceof CampaignScheduledV1 scheduled) {
                 scheduleUseCase.project(mapper.toScheduled(record.key(), scheduled));
             } else if (value instanceof CampaignActivatedV1 activated) {
@@ -53,6 +56,8 @@ public final class CampaignLifecycleKafkaConsumer {
             } else {
                 throw new CampaignLifecycleRecordException("Unsupported Campaign lifecycle record");
             }
+            // Acknowledge only after Redis succeeds to ensure at-least-once delivery
+            // semantics.
             acknowledgment.acknowledge();
         }
     }
@@ -64,6 +69,7 @@ public final class CampaignLifecycleKafkaConsumer {
 
     private String validTraceId(String traceparent) {
         return FlashSaleRequestContext.isValidTraceparent(traceparent)
-                ? traceparent.substring(3, 35) : FlashSaleTraceContext.currentOrGenerate().substring(3, 35);
+                ? traceparent.substring(3, 35)
+                : FlashSaleTraceContext.currentOrGenerate().substring(3, 35);
     }
 }
