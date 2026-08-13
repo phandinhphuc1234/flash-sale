@@ -178,11 +178,12 @@ class PurchaseAcceptedKafkaIntegrationTests {
                 .replace("+", "%20");
         HttpRequest request = HttpRequest.newBuilder(URI.create(REGISTRY + "/config/" + subject))
                 .header("Content-Type", "application/vnd.schemaregistry.v1+json")
-                .PUT(HttpRequest.BodyPublishers.ofString("{\"compatibilityLevel\":\"BACKWARD_TRANSITIVE\"}"))
+                .PUT(HttpRequest.BodyPublishers.ofString("{\"compatibility\":\"BACKWARD_TRANSITIVE\"}"))
                 .build();
         HttpResponse<String> response = HttpClient.newHttpClient()
                 .send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode(), response.body());
+        assertTrue(response.body().contains("BACKWARD_TRANSITIVE"), response.body());
     }
 
     private static void assertCompatibility() throws Exception {
