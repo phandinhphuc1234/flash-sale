@@ -114,6 +114,25 @@ services:
     networks:
       - flash-sale-net
 
+  kafka-ui:
+    profiles:
+      - tools
+    image: ${KAFKA_UI_IMAGE:-ghcr.io/kafbat/kafka-ui:v1.5.0}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+    ports:
+      - "${KAFKA_UI_BIND_ADDRESS:-127.0.0.1}:${KAFKA_UI_HOST_PORT:-8088}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      DYNAMIC_CONFIG_ENABLED: "false"
+    networks:
+      - flash-sale-net
+
   api-gateway:
     <<: *app-common
     depends_on: {}

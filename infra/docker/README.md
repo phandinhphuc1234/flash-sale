@@ -119,6 +119,22 @@ docker compose --env-file infra/docker/.env -f infra/docker/compose.yml up -d po
 curl http://localhost:8081/subjects
 ```
 
+### Kafka UI
+
+The optional `tools` profile provides Kafbat UI for inspecting the local Kafka cluster and
+Confluent Schema Registry. It is loopback-bound and is not part of the default application
+topology.
+
+Start it with Kafka and Schema Registry:
+
+```powershell
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml --profile tools up -d kafka-ui
+```
+
+Open `http://localhost:8088`. The UI connects to `kafka:9092` and
+`http://schema-registry:8081` over the private `flash-sale-net` network. The image is pinned in
+`.env.example`; update `KAFKA_UI_IMAGE` only when intentionally upgrading the local tool.
+
 Then run the service you are actively developing outside Docker, for example:
 
 ```powershell
