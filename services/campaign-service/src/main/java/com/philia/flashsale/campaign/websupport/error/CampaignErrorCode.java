@@ -96,6 +96,9 @@ public enum CampaignErrorCode {
     // =========================================================================
     // 3. Resource Not Found Failures (HTTP 404 - NOT FOUND)
     // =========================================================================
+    /** Triggered when the requested campaign does not exist. */
+    CAMPAIGN_NOT_FOUND(HttpStatus.NOT_FOUND, "Campaign was not found"),
+
     /**
      * Triggered when the requested product variant ID does not exist in Catalog
      * Service.

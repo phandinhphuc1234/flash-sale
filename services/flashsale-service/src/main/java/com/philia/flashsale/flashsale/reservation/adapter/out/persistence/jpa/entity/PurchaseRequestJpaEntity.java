@@ -87,47 +87,16 @@ public class PurchaseRequestJpaEntity {
         updatedAt = at;
     }
 
-    public UUID getId() {
-        return id;
-    }
+    public UUID getId() { return id; }
+    public UUID getReservationId() { return reservationId; }
+    public UUID getCampaignId() { return campaignId; }
+    public UUID getVariantId() { return variantId; }
+    public UUID getUserId() { return userId; }
+    public long getQuantity() { return quantity; }
+    public String getRequestHash() { return requestHash; }
+    public Outcome getOutcome() { return outcome; }
+    public Instant getExpiresAt() { return expiresAt; }
+    public Instant getAcceptedAt() { return acceptedAt; }
 
-    public UUID getReservationId() {
-        return reservationId;
-    }
-
-    public UUID getCampaignId() {
-        return campaignId;
-    }
-
-    public UUID getVariantId() {
-        return variantId;
-    }
-
-    public UUID getUserId() {
-        return userId;
-    }
-
-    public long getQuantity() {
-        return quantity;
-    }
-
-    public String getRequestHash() {
-        return requestHash;
-    }
-
-    public Outcome getOutcome() {
-        return outcome;
-    }
-
-    public Instant getExpiresAt() {
-        return expiresAt;
-    }
-
-    public Instant getAcceptedAt() {
-        return acceptedAt;
-    }
-
-    public enum Outcome {
-        ACCEPTED, EXPIRED
-    }
+    public enum Outcome { ACCEPTED, EXPIRED }
 }
