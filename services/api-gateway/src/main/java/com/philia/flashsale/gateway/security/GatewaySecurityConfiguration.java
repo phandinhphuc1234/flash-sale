@@ -44,6 +44,7 @@ public class GatewaySecurityConfiguration {
                         .pathMatchers("/api/v1/admin/catalog/**").hasAuthority("CATALOG_ADMIN")
                         .pathMatchers("/api/v1/admin/inventory/**").hasAuthority("INVENTORY_ADMIN")
                         .pathMatchers("/api/v1/admin/campaigns/**").hasAuthority("SCOPE_CAMPAIGN_ADMIN")
+                        .pathMatchers("/api/v1/flash-sales/**").authenticated()
                         .anyExchange().denyAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(securityErrorHandler)

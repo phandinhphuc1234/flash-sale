@@ -1,11 +1,15 @@
 package com.philia.flashsale.flashsale.campaignprojection.adapter.out.redis;
 
 import com.philia.flashsale.flashsale.campaignprojection.application.port.out.StoreCampaignProjectionPort;
+import com.philia.flashsale.flashsale.reservation.application.port.out.LoadCampaignEndPort;
+import java.time.Instant;
 import com.philia.flashsale.flashsale.campaignprojection.application.result.CampaignProjectionUpdateResult;
 import com.philia.flashsale.flashsale.campaignprojection.domain.model.CampaignItemProjection;
 import com.philia.flashsale.flashsale.campaignprojection.domain.model.CampaignSaleProjection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -13,7 +17,7 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scripting.support.ResourceScriptSource;
 
 /** Redis driven adapter executing each projection mutation as one atomic Lua operation. */
-public final class CampaignProjectionRedisAdapter implements StoreCampaignProjectionPort {
+public final class CampaignProjectionRedisAdapter implements StoreCampaignProjectionPort, LoadCampaignEndPort {
     private final StringRedisTemplate redis;
     private final RedisScript<List> scheduledScript;
     private final RedisScript<List> activatedScript;
@@ -67,6 +71,20 @@ public final class CampaignProjectionRedisAdapter implements StoreCampaignProjec
                 item.variantId().toString(), item.inventoryAllocationId().toString(), item.skuSnapshot(),
                 item.saleUnitPrice().toPlainString(), item.currency(), Long.toString(item.allocatedQuantity()),
                 Long.toString(item.perUserLimit()));
+    }
+
+    @Override
+    public Optional<Instant> loadEndsAt(UUID campaignId) {
+        Objects.requireNonNull(campaignId, "campaignId");
+        Object value = redis.opsForHash().get(CampaignProjectionRedisKeys.meta(campaignId), "endsAt");
+        if (value == null || value.toString().isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Instant.ofEpochMilli(Long.parseLong(value.toString())));
+        } catch (NumberFormatException exception) {
+            throw new IllegalStateException("Campaign projection end boundary is invalid", exception);
+        }
     }
 
     private CampaignProjectionUpdateResult execute(RedisScript<List> script, List<String> keys, String... args) {

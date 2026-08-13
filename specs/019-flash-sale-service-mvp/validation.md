@@ -289,3 +289,34 @@ and stable event identity/payload recovery.
 `BACKWARD_TRANSITIVE` subject compatibility, the approved three-partition topic, duplicate delivery,
 broker and Schema Registry outage/recovery, and stable original event identity/payload. The Maven
 reactor (`common-web`, Avro contracts, and `flashsale-service`) completed successfully.
+
+## G10 — Public POST and Gateway integration
+
+**Date**: 2026-08-13
+**Scope**: T061–T064; public reservation submit boundary, durable acceptance/pending recovery,
+shared envelopes, authenticated Gateway routing, and request pass-through.
+**Commands**:
+
+- `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-Dtest=ReservationSubmissionServiceTests,FlashSaleReservationSubmitContractTests,FlashSaleDurableAcceptanceIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test`
+- `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/api-gateway -am "-Dtest=FlashSaleGatewayRouteTests" "-Dsurefire.failIfNoSpecifiedTests=false" test`
+- `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am -DskipTests verify`
+- `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/api-gateway -am -DskipTests verify`
+- `git diff --check`
+
+**Result**: PASS — Flash Sale focused G10 tests passed 13 tests; Gateway focused G10 tests passed
+3 tests. Both affected Maven reactors completed package verification with `-DskipTests`, and the
+diff check passed. The combined Gateway regression run also passed the new route, proxy pass-through,
+and product-admin tests; one pre-existing Campaign admin scope test timed out during the local
+combined run and again when isolated, while its other five scenarios passed.
+
+Summary:
+
+- `POST /api/v1/flash-sales/{campaignId}/reservations` binds shopper identity only from JWT `sub`,
+  validates the body and 1–128 character idempotency header, and returns shared `ApiResponse` with
+  `202`, stable `Location`, `X-Trace-Id`, and `Cache-Control: no-store` only after durable acceptance.
+- The application flow reads only the projected Campaign end boundary, executes Redis admission,
+  persists through the existing PostgreSQL acceptance port, and returns `503` with `Retry-After: 1`
+  when the recoverable Redis Stream winner is not durable yet.
+- API Gateway authenticates `/api/v1/flash-sales/**` and forwards Authorization, Idempotency-Key,
+  W3C trace headers, X-Trace-Id, path, query, body, and downstream status/body without business
+  interpretation.
