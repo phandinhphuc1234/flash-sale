@@ -98,6 +98,30 @@ class FlashSaleGatewayRouteTests {
         assertThat(request.traceId()).isEqualTo("gateway-trace-001");
     }
 
+    @Test
+    void forwardsAnAuthenticatedOwnerReservationQueryWithoutInterpretingIt() {
+        CAPTURED.set(null);
+
+        webTestClient.get()
+                .uri("/api/v1/flash-sales/reservations/00000000-0000-0000-0000-000000000004?view=owner")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer query-test-token")
+                .header("traceparent", "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01")
+                .header("X-Trace-Id", "gateway-trace-query")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody().json("{\"downstream\":\"reservation\"}");
+
+        CapturedRequest request = CAPTURED.get();
+        assertThat(request).isNotNull();
+        assertThat(request.method()).isEqualTo("GET");
+        assertThat(request.path()).isEqualTo("/api/v1/flash-sales/reservations/00000000-0000-0000-0000-000000000004");
+        assertThat(request.query()).isEqualTo("view=owner");
+        assertThat(request.body()).isEmpty();
+        assertThat(request.authorization()).isEqualTo("Bearer query-test-token");
+        assertThat(request.traceparent()).isEqualTo("00-0123456789abcdef0123456789abcdef-0123456789abcdef-01");
+        assertThat(request.traceId()).isEqualTo("gateway-trace-query");
+    }
+
     private static HttpServer startDownstream() {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
@@ -116,11 +140,15 @@ class FlashSaleGatewayRouteTests {
                 exchange.getRequestURI().getRawQuery(), new String(body, StandardCharsets.UTF_8),
                 headers.getFirst(HttpHeaders.AUTHORIZATION), headers.getFirst("Idempotency-Key"), headers.getFirst("traceparent"),
                 headers.getFirst("tracestate"), headers.getFirst("X-Trace-Id")));
-        byte[] response = "{\"downstream\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
+        boolean ownerQuery = "GET".equals(exchange.getRequestMethod());
+        byte[] response = (ownerQuery ? "{\"downstream\":\"reservation\"}" : "{\"downstream\":\"accepted\"}")
+                .getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        exchange.getResponseHeaders().set(HttpHeaders.LOCATION,
-                "/api/v1/flash-sales/reservations/00000000-0000-0000-0000-000000000004");
-        exchange.sendResponseHeaders(202, response.length);
+        if (!ownerQuery) {
+            exchange.getResponseHeaders().set(HttpHeaders.LOCATION,
+                    "/api/v1/flash-sales/reservations/00000000-0000-0000-0000-000000000004");
+        }
+        exchange.sendResponseHeaders(ownerQuery ? 200 : 202, response.length);
         try (exchange; var output = exchange.getResponseBody()) {
             output.write(response);
         }

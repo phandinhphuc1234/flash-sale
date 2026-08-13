@@ -24,6 +24,7 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Translates application/framework failures into the shared, sanitized HTTP envelope. */
 @RestControllerAdvice
@@ -91,6 +92,12 @@ public class FlashSaleHttpExceptionHandler {
             builder.header(HttpHeaders.RETRY_AFTER, "1");
         }
         return builder.body(ApiErrorResponse.of(code.name(), code.message()));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<ApiErrorResponse> responseStatus(ResponseStatusException exception,
+            HttpServletRequest request) {
+        return error(FlashSaleExceptionClassifier.classify(exception), request, null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

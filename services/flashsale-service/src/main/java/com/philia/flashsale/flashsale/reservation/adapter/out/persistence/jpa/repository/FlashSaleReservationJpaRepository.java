@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface FlashSaleReservationJpaRepository extends JpaRepository<FlashSaleReservationJpaEntity, UUID> {
     Optional<FlashSaleReservationJpaEntity> findByPurchaseRequestId(UUID purchaseRequestId);
+    Optional<FlashSaleReservationJpaEntity> findByIdAndUserId(UUID id, UUID userId);
     List<FlashSaleReservationJpaEntity> findTop100ByExpiresAtLessThanEqualOrderByExpiresAtAsc(Instant at);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select reservation from FlashSaleReservationJpaEntity reservation where reservation.id = :id")
