@@ -17,7 +17,8 @@ public enum FlashSaleErrorCode {
     FLASH_SALE_RESERVATION_EXPIRED(HttpStatus.CONFLICT, "Reservation has expired"),
     FLASH_SALE_PROJECTION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Campaign availability is temporarily unavailable"),
     FLASH_SALE_REDIS_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Flash Sale is temporarily unavailable"),
-    FLASH_SALE_ACCEPTANCE_PENDING(HttpStatus.SERVICE_UNAVAILABLE, "Reservation acceptance is being recovered"),
+    FLASH_SALE_ACCEPTANCE_PENDING(HttpStatus.SERVICE_UNAVAILABLE,
+            "The reservation decision is being recovered. Retry with the same idempotency key."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Flash Sale service error");
 
     private final HttpStatus status;

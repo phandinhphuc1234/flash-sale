@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.common.web.ApiErrorResponse;
 import com.philia.flashsale.common.web.FieldViolation;
 import com.philia.flashsale.flashsale.websupport.context.FlashSaleRequestContext;
+import com.philia.flashsale.flashsale.reservation.application.exception.ReservationSubmissionException;
+import com.philia.flashsale.flashsale.reservation.application.result.ReservationSubmissionResult;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
 
@@ -50,9 +53,44 @@ public class FlashSaleHttpExceptionHandler {
                 request, null);
     }
 
-    @ExceptionHandler({HttpMessageNotReadableException.class, IllegalArgumentException.class})
+    @ExceptionHandler(FlashSaleInvalidIdempotencyKeyException.class)
+    ResponseEntity<ApiErrorResponse> invalidIdempotencyKey(FlashSaleInvalidIdempotencyKeyException exception,
+            HttpServletRequest request) {
+        return error(FlashSaleErrorCode.IDEMPOTENCY_KEY_REQUIRED, request, null);
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class, IllegalArgumentException.class,
+            MethodArgumentTypeMismatchException.class})
     ResponseEntity<ApiErrorResponse> malformedRequest(Exception exception, HttpServletRequest request) {
         return error(FlashSaleErrorCode.VALIDATION_FAILED, request, null);
+    }
+
+    @ExceptionHandler(ReservationSubmissionException.class)
+    ResponseEntity<ApiErrorResponse> reservationOutcome(ReservationSubmissionException exception,
+            HttpServletRequest request) {
+        FlashSaleErrorCode code = switch (exception.outcome()) {
+            case IDEMPOTENCY_CONFLICT -> FlashSaleErrorCode.FLASH_SALE_IDEMPOTENCY_CONFLICT;
+            case CAMPAIGN_NOT_ACTIVE, CAMPAIGN_NOT_STARTED, CAMPAIGN_ENDED ->
+                    FlashSaleErrorCode.FLASH_SALE_CAMPAIGN_NOT_ACTIVE;
+            case RESERVATION_EXPIRED -> FlashSaleErrorCode.FLASH_SALE_RESERVATION_EXPIRED;
+            case VARIANT_NOT_ELIGIBLE -> FlashSaleErrorCode.FLASH_SALE_VARIANT_NOT_ELIGIBLE;
+            case SOLD_OUT -> FlashSaleErrorCode.FLASH_SALE_SOLD_OUT;
+            case PURCHASE_LIMIT_EXCEEDED -> FlashSaleErrorCode.FLASH_SALE_PURCHASE_LIMIT_EXCEEDED;
+            case PROJECTION_UNAVAILABLE -> FlashSaleErrorCode.FLASH_SALE_PROJECTION_UNAVAILABLE;
+            case REDIS_UNAVAILABLE -> FlashSaleErrorCode.FLASH_SALE_REDIS_UNAVAILABLE;
+            case ACCEPTANCE_PENDING -> FlashSaleErrorCode.FLASH_SALE_ACCEPTANCE_PENDING;
+            case CAMPAIGN_UNKNOWN, CAMPAIGN_RECOVERY_REQUIRED ->
+                    FlashSaleErrorCode.FLASH_SALE_PROJECTION_UNAVAILABLE;
+            case ACCEPTED_NEW, ACCEPTED_REPLAY -> FlashSaleErrorCode.INTERNAL_ERROR;
+        };
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(code.status())
+                .header(FlashSaleRequestContext.TRACE_HEADER, FlashSaleRequestContext.resolveTraceId(request))
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .contentType(MediaType.APPLICATION_JSON);
+        if (exception.outcome() == ReservationSubmissionResult.Outcome.ACCEPTANCE_PENDING) {
+            builder.header(HttpHeaders.RETRY_AFTER, "1");
+        }
+        return builder.body(ApiErrorResponse.of(code.name(), code.message()));
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

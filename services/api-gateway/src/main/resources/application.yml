@@ -39,6 +39,10 @@ spring:
               uri: ${CAMPAIGN_SERVICE_URL:http://campaign-service:8080}
               predicates:
                 - Path=/api/v1/admin/campaigns/**
+            - id: flash-sale-public
+              uri: ${FLASHSALE_SERVICE_URL:http://flashsale-service:8080}
+              predicates:
+                - Path=/api/v1/flash-sales/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:
