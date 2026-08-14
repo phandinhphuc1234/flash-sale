@@ -11,6 +11,7 @@ import com.philia.flashsale.flashsale.reservation.application.usecase.ExpireRese
 import com.philia.flashsale.flashsale.reservation.application.usecase.IdempotencyCleanupService;
 import com.philia.flashsale.flashsale.reservation.application.usecase.ReservationAcceptanceFlow;
 import com.philia.flashsale.flashsale.reservation.domain.policy.ReservationExpiryPolicy;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,8 +22,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @ConditionalOnBean(StringRedisTemplate.class)
 public class ReservationDurabilityConfiguration {
     @Bean
-    ReservationExpiryRedisAdapter reservationExpiryRedisAdapter(StringRedisTemplate redis) {
-        return new ReservationExpiryRedisAdapter(redis);
+    ReservationExpiryRedisAdapter reservationExpiryRedisAdapter(StringRedisTemplate redis,
+            FlashSaleObservability observability) {
+        return new ReservationExpiryRedisAdapter(redis, observability);
     }
 
     @Bean

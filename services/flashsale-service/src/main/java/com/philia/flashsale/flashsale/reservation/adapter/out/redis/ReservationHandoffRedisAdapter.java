@@ -1,6 +1,7 @@
 package com.philia.flashsale.flashsale.reservation.adapter.out.redis;
 
 import com.philia.flashsale.flashsale.configuration.RedisHotPathProperties;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import com.philia.flashsale.flashsale.reservation.application.port.out.AcknowledgeReservationHandoffPort;
 import io.lettuce.core.Consumer;
 import io.lettuce.core.StreamMessage;
@@ -11,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -32,6 +34,7 @@ public final class ReservationHandoffRedisAdapter implements AcknowledgeReservat
     private final RedisHotPathProperties properties;
     private final String consumerName;
     private final RedisScript<Long> acknowledgeScript;
+    private final FlashSaleObservability observability;
     private String reclaimCursor = "0-0";
 
     public ReservationHandoffRedisAdapter(StringRedisTemplate redis, RedisHotPathProperties properties) {
@@ -40,8 +43,15 @@ public final class ReservationHandoffRedisAdapter implements AcknowledgeReservat
 
     public ReservationHandoffRedisAdapter(StringRedisTemplate redis, RedisHotPathProperties properties,
             String consumerName) {
+        this(redis, properties, consumerName, FlashSaleObservability.noop());
+    }
+
+    @Autowired
+    public ReservationHandoffRedisAdapter(StringRedisTemplate redis, RedisHotPathProperties properties,
+            String consumerName, FlashSaleObservability observability) {
         this.redis = Objects.requireNonNull(redis, "redis");
         this.properties = Objects.requireNonNull(properties, "properties");
+        this.observability = Objects.requireNonNull(observability, "observability");
         if (consumerName == null || consumerName.isBlank()) {
             throw new IllegalArgumentException("consumerName must not be blank");
         }
@@ -54,15 +64,18 @@ public final class ReservationHandoffRedisAdapter implements AcknowledgeReservat
     }
 
     public List<MapRecord<String, String, String>> readNewEntries() {
-        List<MapRecord<String, String, String>> records = redis.<String, String>opsForStream().read(
+        return observability.observe(FlashSaleObservability.Operation.REDIS_HANDOFF, () -> {
+            List<MapRecord<String, String, String>> records = redis.<String, String>opsForStream().read(
                 org.springframework.data.redis.connection.stream.Consumer.from(properties.consumerGroup(), consumerName),
                 StreamReadOptions.empty().block(properties.pollTimeout()).count(properties.batchSize()),
                 StreamOffset.create(properties.handoffStream(), ReadOffset.lastConsumed()));
-        return records == null ? List.of() : records;
+            return records == null ? List.of() : records;
+        });
     }
 
     public List<MapRecord<String, String, String>> reclaimPendingEntries() {
-        ClaimedMessages<byte[], byte[]> claimed = redis.execute((RedisConnection connection) -> {
+        return observability.observe(FlashSaleObservability.Operation.REDIS_HANDOFF, () -> {
+            ClaimedMessages<byte[], byte[]> claimed = redis.execute((RedisConnection connection) -> {
             @SuppressWarnings("unchecked")
             RedisAsyncCommands<byte[], byte[]> commands =
                     (RedisAsyncCommands<byte[], byte[]>) connection.getNativeConnection();
@@ -79,20 +92,22 @@ public final class ReservationHandoffRedisAdapter implements AcknowledgeReservat
             } catch (java.util.concurrent.ExecutionException exception) {
                 throw new IllegalStateException("Redis Stream reclaim failed", exception.getCause());
             }
+            });
+            if (claimed == null) {
+                return List.of();
+            }
+            reclaimCursor = claimed.getId();
+            return claimed.getMessages().stream().map(this::mapMessage).toList();
         });
-        if (claimed == null) {
-            return List.of();
-        }
-        reclaimCursor = claimed.getId();
-        return claimed.getMessages().stream().map(this::mapMessage).toList();
     }
 
     @Override
     public void acknowledge(java.util.UUID reservationId, String handoffEntryId) {
         Objects.requireNonNull(reservationId, "reservationId");
         Objects.requireNonNull(handoffEntryId, "handoffEntryId");
-        redis.execute(acknowledgeScript, List.of(properties.handoffStream()),
-                properties.consumerGroup(), handoffEntryId);
+        observability.observe(FlashSaleObservability.Operation.REDIS_HANDOFF, () -> redis.execute(
+                acknowledgeScript, List.of(properties.handoffStream()),
+                properties.consumerGroup(), handoffEntryId));
     }
 
     String consumerName() {

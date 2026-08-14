@@ -354,3 +354,35 @@ Summary:
 - The local Windows Docker Desktop Surefire fork occasionally stalled before test discovery; the
   full validation therefore ran in the Maven JVM (`forkCount=0`) from the module directory. This is
   a local runner workaround only and does not change Maven or CI configuration.
+
+## G12 — Observability and readiness
+
+**Date**: 2026-08-14
+**Scope**: T070–T071; bounded Micrometer observations, W3C/MDC-linked HTTP and Kafka work,
+dependency-aware readiness, and observability contract coverage.
+**Commands**:
+
+- `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-Dtest=FlashSaleObservabilityTests,FlashSaleArchitectureTests,FlashsaleServiceApplicationTests,FlashSaleReservationSubmitContractTests,FlashSaleReservationQueryContractTests,CampaignLifecycleConsumerContractTests,CampaignSnapshotClientAdapterTests" "-Dsurefire.failIfNoSpecifiedTests=false" test`
+- `..\..\mvnw.cmd -f ..\..\pom.xml --batch-mode --no-transfer-progress -pl services/flashsale-service -am verify` (run from `services/flashsale-service`)
+- `git diff --check`
+
+**Result**: PASS — the focused Flash Sale suite passed 26 tests. The full Flash Sale Maven reactor
+(`common-web`, Avro contracts, and `flashsale-service`) passed 98 tests with 0 failures/errors and
+1 intentional opt-in Kafka integration skip.
+
+Summary:
+
+- HTTP admission, campaign projection/recovery, Redis Lua/Stream handoff, PostgreSQL durable
+  acceptance/expiry, and Kafka outbox publication emit bounded operation/dependency/outcome tags.
+  Timers are histogram-enabled and publish p50/p95/p99 percentiles without emitting IDs, request
+  bodies, idempotency keys, or diagnostics as metric tags.
+- The custom readiness component reports only PostgreSQL and Redis availability. Liveness remains
+  independent, while Kafka and Schema Registry publication failures stay observable as backlog
+  work rather than making the service unready.
+- HTTP observations preserve the existing W3C trace context, MDC trace ID, and response
+  `X-Trace-Id`; Kafka consumer and producer contracts retain their W3C propagation coverage.
+- An initial no-fork (`-DforkCount=0`) clean verification was not accepted as evidence because
+  Surefire did not load generated Avro resources in that runner mode. A first standard run also
+  identified a Clean/Hexagonal architecture violation from Redis probe I/O in the observability
+  package; the probe was moved to configuration. The final standard Maven verification above
+  passes.

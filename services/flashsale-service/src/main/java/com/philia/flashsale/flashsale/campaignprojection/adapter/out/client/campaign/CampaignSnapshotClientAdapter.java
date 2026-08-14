@@ -4,6 +4,7 @@ import com.philia.flashsale.flashsale.campaignprojection.application.exception.C
 import com.philia.flashsale.flashsale.campaignprojection.application.port.out.LoadCampaignSnapshotPort;
 import com.philia.flashsale.flashsale.campaignprojection.domain.model.CampaignSaleProjection;
 import com.philia.flashsale.flashsale.observability.FlashSaleTraceContext;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import com.philia.flashsale.flashsale.security.serviceidentity.FlashSaleServiceTokenException;
 import feign.FeignException;
 import java.time.Duration;
@@ -12,6 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
@@ -21,15 +23,28 @@ import org.springframework.stereotype.Component;
 public final class CampaignSnapshotClientAdapter implements LoadCampaignSnapshotPort {
     private final CampaignSnapshotFeignClient client;
     private final CampaignSnapshotClientMapper mapper;
+    private final FlashSaleObservability observability;
 
     public CampaignSnapshotClientAdapter(CampaignSnapshotFeignClient client,
             CampaignSnapshotClientMapper mapper) {
+        this(client, mapper, FlashSaleObservability.noop());
+    }
+
+    @Autowired
+    public CampaignSnapshotClientAdapter(CampaignSnapshotFeignClient client,
+            CampaignSnapshotClientMapper mapper, FlashSaleObservability observability) {
         this.client = Objects.requireNonNull(client);
         this.mapper = Objects.requireNonNull(mapper);
+        this.observability = Objects.requireNonNull(observability);
     }
 
     @Override
     public Optional<CampaignSaleProjection> load(UUID campaignId) {
+        return observability.observe(FlashSaleObservability.Operation.CAMPAIGN_RECOVERY,
+                () -> loadSnapshot(campaignId));
+    }
+
+    private Optional<CampaignSaleProjection> loadSnapshot(UUID campaignId) {
         Objects.requireNonNull(campaignId, "campaignId");
         String traceparent = FlashSaleTraceContext.currentOrGenerate();
         String traceId = traceparent.substring(3, 35);
