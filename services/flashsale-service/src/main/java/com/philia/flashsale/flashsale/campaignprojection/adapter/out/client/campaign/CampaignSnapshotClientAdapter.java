@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -19,7 +20,7 @@ import org.springframework.stereotype.Component;
 
 /** Recovery-only Campaign HTTP adapter; it is never invoked by the shopper reservation path. */
 @Component
-@ConditionalOnBean(StringRedisTemplate.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public final class CampaignSnapshotClientAdapter implements LoadCampaignSnapshotPort {
     private final CampaignSnapshotFeignClient client;
     private final CampaignSnapshotClientMapper mapper;

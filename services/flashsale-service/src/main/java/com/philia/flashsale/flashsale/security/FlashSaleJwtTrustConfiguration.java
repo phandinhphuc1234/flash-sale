@@ -47,14 +47,21 @@ public class FlashSaleJwtTrustConfiguration {
 
     @Bean
     Converter<Jwt, AbstractAuthenticationToken> flashSaleJwtAuthenticationConverter() {
-        return jwt -> {
+        return new FlashSaleJwtAuthenticationConverter();
+    }
+
+    /** Explicit generic converter type lets Spring Security resolve the token boundary reliably. */
+    static final class FlashSaleJwtAuthenticationConverter
+            implements Converter<Jwt, AbstractAuthenticationToken> {
+        @Override
+        public AbstractAuthenticationToken convert(Jwt jwt) {
             List<GrantedAuthority> authorities = new java.util.ArrayList<>();
             addAuthorities(authorities, jwt.getClaim("authorities"));
             addAuthorities(authorities, jwt.getClaim("roles"));
             addScopes(authorities, jwt.getClaim("scope"));
             addScopes(authorities, jwt.getClaim("scp"));
             return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
-        };
+        }
     }
 
     private static void addAuthorities(List<GrantedAuthority> authorities, Object claim) {

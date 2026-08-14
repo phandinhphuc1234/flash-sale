@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import org.springframework.dao.DataAccessException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 /** Creates the durable-acceptance consumer group without replacing an existing group. */
 @Component
-@ConditionalOnBean(StringRedisTemplate.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public final class ReservationHandoffConsumerGroupInitializer {
     private final StringRedisTemplate redis;
     private final RedisHotPathProperties properties;

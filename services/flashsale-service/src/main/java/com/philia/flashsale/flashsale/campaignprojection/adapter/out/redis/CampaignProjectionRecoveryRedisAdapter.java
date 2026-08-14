@@ -8,12 +8,13 @@ import java.util.UUID;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 /** Stores and scans the Redis sorted-set queue used by the control-plane recovery job. */
 @Component
-@ConditionalOnBean(StringRedisTemplate.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public final class CampaignProjectionRecoveryRedisAdapter
         implements QueueCampaignRecoveryPort, LoadDueCampaignRecoveryPort {
 

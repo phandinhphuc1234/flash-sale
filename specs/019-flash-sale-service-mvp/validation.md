@@ -429,3 +429,133 @@ to `BACKWARD_TRANSITIVE`, then registered and re-read `PurchaseAcceptedV1` at sc
 `auto.register.schemas=false` configuration remains unchanged. The Windows host has no runnable
 Bash/WSL installation, so the source Bash script was executed directly inside the healthy local
 Kafka container.
+
+## G12-final — T074–T080 validation in progress
+
+**Date**: 2026-08-14
+**Scope**: Repeatable real-topology smoke/load artifacts and the mandatory Flash Sale module gate.
+This entry records the current validation state; it is not a completion claim.
+**Commands**:
+
+- PowerShell AST parse of `infra/docker/smoke/feature-019-flashsale.ps1`
+- `node --check load-tests/flashsale-service/reservation.js`
+- `k6` availability check (installed at `C:\ProgramData\chocolatey\bin\k6.exe`)
+- `k6 inspect -e FLASHSALE_CAMPAIGN_ID=<fixture> -e FLASHSALE_VARIANT_ID=<fixture> -e FLASHSALE_SHOPPER_TOKENS_FILE=shopper-tokens.example.json load-tests/flashsale-service/reservation.js`
+- `.\mvnw.cmd -pl services/flashsale-service -am "-Dtest=ReservationRedisFailureIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test`
+- `.\mvnw.cmd -pl services/flashsale-service -am verify`
+
+**Result**: PARTIAL — the PowerShell and JavaScript syntax checks pass. `k6 inspect` loads the
+scenario without issuing traffic and confirms the bounded `per-vu-iterations` configuration and
+correctness-only thresholds. The focused Redis failure
+integration suite passes 3 tests with 0 failures/errors after its direct Testcontainers
+`LettuceConnectionFactory` was configured with the same one-second command timeout as production;
+the stopped-Redis case now fails closed in about 2.1 seconds instead of blocking the verification
+JVM.
+
+The required module reactor currently fails after 7 minutes 20 seconds: `common-web` passed 9
+tests, Kafka Avro contracts passed 6 tests, and Flash Sale ran 98 tests with 0 failures, 4 errors,
+and 1 intentional opt-in skip. All four errors are
+`FlashSaleOutboxConcurrencyIntegrationTests` cases that cannot autowire
+`FlashSaleOutboxPersistenceAdapter`. At the time of this run, that adapter was already modified but
+uncommitted before G12-final began and has
+`@ConditionalOnBean(JdbcTemplate.class)` on its component class; Spring evaluates this condition
+before the `JdbcTemplate` candidate is available, so it suppresses the adapter bean. The unrelated
+working-tree change must be reviewed/resolved before T078, T079, and T080 can be completed.
+
+At the time of this historical entry, the live Compose smoke and k6 execution were pending because
+the local `infra/docker/.env` did not provide `CAMPAIGN_CLIENT_SECRET`. That prerequisite was later
+provided by the owner and the completed evidence is recorded below. No secret was generated,
+copied, printed, or written by this validation work.
+
+## G12-final — T078 and T079 Maven evidence
+
+**Date**: 2026-08-14
+**Scope**: Required Flash Sale module verification and complete Maven reactor validation after the
+operational smoke/load artifacts were added.
+**Commands**:
+
+- `.\mvnw.cmd -pl services/flashsale-service -am verify`
+- `.\mvnw.cmd clean verify`
+
+**Result**: PASS — the module reactor completed in 3 minutes 40 seconds: `common-web`, the Kafka
+Avro contracts, and `flashsale-service` all succeeded; Flash Sale ran 98 tests with 0 failures,
+0 errors, and 1 intentional opt-in Kafka integration skip. The full reactor completed in 22 minutes
+31 seconds with all 13 modules successful.
+
+The first clean-reactor attempt revealed a local-only race: VS Code's Java Language Server wrote an
+Eclipse-compiler placeholder class over Maven's generated `ReservationWebMapperImpl` under
+`target/classes`. The workspace Java auto-build is now disabled, the language server was restarted,
+and a clean focused `FlashsaleServiceApplicationTests` run proved the generated MapStruct bytecode is
+valid before the successful full retry. This is local editor tooling only; no production behavior or
+Maven/CI configuration changed.
+
+T076 is complete: `reservation.js` has passed Node syntax validation and `k6 inspect`; it consumes
+an ignored local token file, creates one idempotency replay for each durable winner, records winner,
+sold-out, pending, unexpected-error, replay, latency, and error-rate measurements, and deliberately
+contains no hardware-independent latency/RPS threshold. T077 remains the separate measured live-run
+task.
+
+This section is superseded by the live operational evidence below; at the time it was written,
+T074, T075, T077, and T080 were awaiting the owner-provided local-only
+`CAMPAIGN_CLIENT_SECRET`. No secret was generated, read, copied, logged, or committed.
+
+## G12-final — live operational evidence (T074, T075, T077, T080)
+
+**Date**: 2026-08-14
+**Commit under test**: `fb3c50b`
+**Environment**: Windows host with Docker Desktop 29.4.0 (Linux containers), one local Compose
+replica per service; PostgreSQL 17, Redis 7.4, Kafka 4.0.0, Schema Registry 8.3.0, and Kafbat
+Kafka UI. This is local correctness evidence, not a production capacity or latency SLA.
+
+### T074 — real-topology smoke
+
+**Command**: `.\infra\docker\smoke\feature-019-flashsale.ps1 -Allocation 8`
+**Result**: PASS — authentication, Gateway, Product/Inventory fixture, Campaign activation and
+projection, Flash Sale admission, Redis hot path, PostgreSQL durable identity/outbox, Kafka
+`PurchaseAcceptedV1`, owner-query authorization, and wrong-audience JWT all completed successfully.
+The script ended with `FEATURE_019_SMOKE=PASS`.
+
+### T075 — failure matrix
+
+**Command**: `.\infra\docker\smoke\feature-019-flashsale.ps1 -Allocation 8 -RunFailureMatrix`
+**Result**: PASS — all required cases completed with bounded recovery and no secret leakage:
+
+- Redis down: HTTP 503 with `FLASH_SALE_PROJECTION_UNAVAILABLE`; no durable write.
+- PostgreSQL after winner and process after Lua: HTTP 503/202 recovery with a stable idempotency key.
+- Process after DB before ACK: durable identity preserved.
+- Kafka down and Schema Registry down: admission remained 202 and the original outbox event ID
+  published after recovery.
+- Wrong-audience JWT and foreign/unknown owner query: rejected without enumeration.
+
+The script ended with `FEATURE_019_FAILURE_MATRIX=PASS`.
+
+### T077 — measured k6 correctness run
+
+**Scenario**: `k6 run load-tests/flashsale-service/reservation.js`, 19 VUs, one iteration per VU,
+19 disposable shopper tokens, 19 unique idempotency keys, and one same-key replay per 202 winner.
+The fixture allocated 20 units; one smoke request consumed the first unit, leaving 19 for k6.
+
+**Result**: PASS — `winners=19`, `replays=19`, `sold_out=0`, `pending=0`,
+`unexpected_errors=0`, `error_rate=0`, and `http_reqs=38`. The run completed in approximately
+0.8 seconds (about 47.5 total HTTP requests/second for this local run), with reservation HTTP
+latency p50 `279.17 ms`, p95 `603.60 ms`, and p99 `633.88 ms`. PostgreSQL reconciliation found
+20 `RESERVED` reservations and 20 corresponding outbox events; Redis stock was 0. No
+hardware-independent threshold is asserted.
+
+### T078/T079/T080 — build and reconciliation
+
+**Commands**:
+
+- `node --check load-tests/flashsale-service/reservation.js`
+- `git diff --check`
+- `.\mvnw.cmd -pl services/flashsale-service -am verify`
+- `.\mvnw.cmd clean verify`
+- `docker compose --env-file infra/docker/.env -f infra/docker/compose.yml ps`
+
+**Result**: PASS — the Flash Sale module reactor passed 98 tests with 0 failures/errors and one
+intentional opt-in Kafka integration skip. The full 13-module reactor completed successfully in
+11 minutes 24 seconds with exit status 0. Compose was healthy after the scenarios (PostgreSQL,
+Redis, Kafka, and Schema Registry healthy; application services running). The active feature
+artifacts, contracts, quickstart, and plan were reconciled; no Kubernetes or Helm manifest was
+introduced by G12-final. `git diff --check` returned exit status 0 (only normal CRLF conversion
+warnings from Git).

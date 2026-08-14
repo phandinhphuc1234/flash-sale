@@ -10,17 +10,23 @@ import com.philia.flashsale.flashsale.reservation.application.usecase.Reservatio
 import com.philia.flashsale.flashsale.reservation.application.usecase.ReserveCampaignQuotaService;
 import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.time.Clock;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 /** Composition root for the public admission and durable acceptance path. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnBean(StringRedisTemplate.class)
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@AutoConfigureAfter(RedisAutoConfiguration.class)
 public class ReservationConfiguration {
 
     @Bean
+    @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
     AtomicReservationRedisAdapter atomicReservationRedisAdapter(StringRedisTemplate redis,
             FlashSaleObservability observability) {
         return new AtomicReservationRedisAdapter(redis, observability);
@@ -42,6 +48,7 @@ public class ReservationConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
     ReserveCampaignQuotaUseCase reserveCampaignQuotaUseCase(
             AtomicReservationRedisAdapter atomicReservation,
             ReservationFingerprintService fingerprints,
@@ -53,6 +60,7 @@ public class ReservationConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
     @ConditionalOnBean(PersistAcceptedPurchasePort.class)
         ReservationSubmissionService reservationSubmissionService(
             ReserveCampaignQuotaUseCase admission,

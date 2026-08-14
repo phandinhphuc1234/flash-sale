@@ -9,13 +9,14 @@ import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxPublicati
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxRetryPolicy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Wires the outbox relay only when durable storage and Kafka publication are available. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnBean(JdbcTemplate.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public class FlashSaleOutboxConfiguration {
 
     @Bean

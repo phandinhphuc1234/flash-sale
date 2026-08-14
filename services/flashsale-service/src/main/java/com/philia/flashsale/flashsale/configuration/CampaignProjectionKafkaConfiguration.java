@@ -8,7 +8,7 @@ import org.apache.avro.specific.SpecificRecord;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -23,7 +23,7 @@ import org.springframework.kafka.KafkaException;
 
 /** Configures the Campaign projection consumer's bounded, manual-acknowledgement policy. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnBean(KafkaProperties.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public class CampaignProjectionKafkaConfiguration {
 
     @Bean(name = "campaignProjectionConsumerFactory")

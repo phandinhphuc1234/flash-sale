@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -28,7 +29,7 @@ import org.springframework.stereotype.Component;
 
 /** Reads new/reclaimed handoff work and atomically acknowledges terminal entries. */
 @Component
-@ConditionalOnBean(StringRedisTemplate.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public final class ReservationHandoffRedisAdapter implements AcknowledgeReservationHandoffPort {
     private final StringRedisTemplate redis;
     private final RedisHotPathProperties properties;
@@ -47,6 +48,11 @@ public final class ReservationHandoffRedisAdapter implements AcknowledgeReservat
     }
 
     @Autowired
+    public ReservationHandoffRedisAdapter(StringRedisTemplate redis, RedisHotPathProperties properties,
+            FlashSaleObservability observability) {
+        this(redis, properties, defaultConsumerName(), observability);
+    }
+
     public ReservationHandoffRedisAdapter(StringRedisTemplate redis, RedisHotPathProperties properties,
             String consumerName, FlashSaleObservability observability) {
         this.redis = Objects.requireNonNull(redis, "redis");

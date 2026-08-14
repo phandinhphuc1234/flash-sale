@@ -4,13 +4,13 @@ import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.re
 import com.philia.flashsale.flashsale.reservation.application.port.in.GetOwnedReservationUseCase;
 import com.philia.flashsale.flashsale.reservation.application.port.out.LoadOwnedReservationPort;
 import com.philia.flashsale.flashsale.reservation.application.usecase.GetOwnedReservationService;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /** Composition root for durable owner-scoped reservation reads. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnBean(FlashSaleReservationJpaRepository.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public class ReservationQueryConfiguration {
 
     @Bean
