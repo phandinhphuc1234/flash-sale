@@ -405,3 +405,27 @@ container waits for healthy PostgreSQL, Redis, Kafka, and Schema Registry; its o
 `flashsale-migration` profile enables Liquibase while preventing Kafka listeners and scheduled
 workers from starting. Redis continues to require a non-committed password and persists AOF data;
 the real `infra/docker/.env` is ignored, while `.env.example` contains placeholders only.
+
+## G12 — Kafka topic and Schema Registry bootstrap (T073)
+
+**Date**: 2026-08-14
+**Scope**: Idempotent provisioning of the Flash Sale purchase topic and controlled, subject-level
+registration/verification of the approved `PurchaseAcceptedV1` Avro schema.
+**Commands**:
+
+- PowerShell AST parse of `infra/docker/schema-registry/register-flashsale-schemas.ps1`
+- `docker cp infra/docker/kafka/init-flashsale-topics.sh <local-kafka-container>:/tmp/init-flashsale-topics.sh`
+- `docker exec <local-kafka-container> bash /tmp/init-flashsale-topics.sh`
+- `.\infra\docker\schema-registry\register-flashsale-schemas.ps1`
+- `.\infra\docker\schema-registry\register-flashsale-schemas.ps1 -CheckOnly`
+- `git diff --check`
+
+**Result**: PASS — live local Kafka provisioning confirmed
+`flashsale.purchase.events.v1` with 3 partitions and replication factor 1. The Schema Registry
+script configured the subject
+`flashsale.purchase.events.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1`
+to `BACKWARD_TRANSITIVE`, then registered and re-read `PurchaseAcceptedV1` at schema ID 8, version
+2. The explicit check-only pass confirms application startup does not own registration; its
+`auto.register.schemas=false` configuration remains unchanged. The Windows host has no runnable
+Bash/WSL installation, so the source Bash script was executed directly inside the healthy local
+Kafka container.
