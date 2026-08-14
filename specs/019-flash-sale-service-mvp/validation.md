@@ -386,3 +386,22 @@ Summary:
   identified a Clean/Hexagonal architecture violation from Redis probe I/O in the observability
   package; the probe was moved to configuration. The final standard Maven verification above
   passes.
+
+## G12 — Local Compose topology (T072)
+
+**Date**: 2026-08-14
+**Scope**: Flash Sale application/migration containers, safe Compose environment wiring, authenticated
+Redis with AOF, and prevention of local secret commits.
+**Commands**:
+
+- `docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml config --quiet`
+- `docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml --profile migrations config --quiet`
+- `docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml -f infra/docker/compose.dev.yml --profile apps config --quiet`
+- `git check-ignore -q infra/docker/.env`
+- `git diff --check`
+
+**Result**: PASS — all three Compose topology variants parse successfully. The normal Flash Sale
+container waits for healthy PostgreSQL, Redis, Kafka, and Schema Registry; its one-off non-web
+`flashsale-migration` profile enables Liquibase while preventing Kafka listeners and scheduled
+workers from starting. Redis continues to require a non-committed password and persists AOF data;
+the real `infra/docker/.env` is ignored, while `.env.example` contains placeholders only.
