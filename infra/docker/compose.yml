@@ -35,6 +35,28 @@ x-backend-common: &backend-common
   environment:
     <<: *backend-environment
 
+x-flashsale-environment: &flashsale-environment
+  <<: *backend-environment
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/flashsale_db
+  SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
+  SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: "6379"
+  SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+  SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL:-http://schema-registry:8081}
+  KAFKA_AUTO_REGISTER_SCHEMAS: ${KAFKA_AUTO_REGISTER_SCHEMAS:-false}
+  JWT_ISSUER_URI: ${JWT_ISSUER_URI:-http://authentication-service:8080}
+  JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
+  FLASHSALE_JWT_ISSUER: ${FLASHSALE_JWT_ISSUER:-http://authentication-service:8080}
+  FLASHSALE_JWT_AUDIENCE: ${FLASHSALE_JWT_AUDIENCE:-flash-sale-api}
+  FLASHSALE_JWT_JWK_SET_URI: ${FLASHSALE_JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
+  OAUTH_TOKEN_URI: ${OAUTH_TOKEN_URI:-http://authentication-service:8080/oauth2/token}
+  FLASHSALE_CLIENT_ID: ${FLASHSALE_CLIENT_ID:-flashsale-service}
+  FLASHSALE_CLIENT_SECRET: ${FLASHSALE_CLIENT_SECRET:?FLASHSALE_CLIENT_SECRET must be set}
+  FLASHSALE_INTERNAL_JWT_AUDIENCE: ${FLASHSALE_INTERNAL_JWT_AUDIENCE:-flash-sale-internal-api}
+  CAMPAIGN_SERVICE_URL: ${CAMPAIGN_SERVICE_URL:-http://campaign-service:8080}
+
 services:
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:17-alpine}
@@ -249,10 +271,44 @@ services:
 
   flashsale-service:
     <<: *backend-common
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
     image: ${FLASHSALE_SERVICE_IMAGE:-flash-sale/flashsale-service:local}
     build:
       context: ../..
       dockerfile: services/flashsale-service/Dockerfile
+    environment:
+      <<: *flashsale-environment
+
+  # One-off, non-web Liquibase process. Start it explicitly with the migrations profile before
+  # starting Flash Sale replicas; its completed changeset is recorded in flashsale_db.
+  flashsale-migration:
+    profiles:
+      - migrations
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flash-sale-net
+    image: ${FLASHSALE_SERVICE_IMAGE:-flash-sale/flashsale-service:local}
+    build:
+      context: ../..
+      dockerfile: services/flashsale-service/Dockerfile
+    environment:
+      <<: *flashsale-environment
+      SPRING_LIQUIBASE_ENABLED: "true"
+      SPRING_MAIN_KEEP_ALIVE: "false"
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP: "false"
+      SPRING_TASK_SCHEDULING_ENABLED: "false"
+    command: ["--spring.main.web-application-type=none"]
 
   order-service:
     <<: *backend-common

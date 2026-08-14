@@ -14,6 +14,8 @@ services:
       - "${CAMPAIGN_SERVICE_PORT:-18083}:8080"
 
   flashsale-service:
+    # The normal runtime keeps Liquibase disabled; use the migrations profile in compose.yml
+    # for the one-off Flash Sale schema process.
     ports:
       - "${FLASHSALE_SERVICE_PORT:-18084}:8080"
 
