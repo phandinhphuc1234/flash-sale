@@ -73,6 +73,7 @@ public class FlashSaleReservationJpaEntity {
     public String getCurrency() { return currency; }
     public long getQuantity() { return quantity; }
     public Instant getExpiresAt() { return expiresAt; }
+    public Instant getCreatedAt() { return createdAt; }
     public Status getStatus() { return status; }
     public enum Status { RESERVED, EXPIRED }
 }

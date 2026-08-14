@@ -2,7 +2,9 @@ package com.philia.flashsale.flashsale.reservation.adapter.in.web.mapper;
 
 import com.philia.flashsale.flashsale.reservation.adapter.in.web.request.ReserveCampaignQuotaRequest;
 import com.philia.flashsale.flashsale.reservation.adapter.in.web.response.ReservationAcceptedResponse;
+import com.philia.flashsale.flashsale.reservation.adapter.in.web.response.ReservationResponse;
 import com.philia.flashsale.flashsale.reservation.application.command.SubmitReservationCommand;
+import com.philia.flashsale.flashsale.reservation.application.result.ReservationDetailsResult;
 import com.philia.flashsale.flashsale.reservation.domain.model.AcceptedReservationSnapshot;
 import java.util.UUID;
 import org.mapstruct.Mapper;
@@ -14,6 +16,9 @@ public interface ReservationWebMapper {
 
     @Mapping(target = "status", constant = "RESERVED")
     ReservationAcceptedResponse toAcceptedResponse(AcceptedReservationSnapshot snapshot);
+
+    @Mapping(target = "sku", source = "skuSnapshot")
+    ReservationResponse toReservationResponse(ReservationDetailsResult result);
 
     default SubmitReservationCommand toCommand(UUID campaignId, ReserveCampaignQuotaRequest request,
             UUID userId, String idempotencyKey, String traceparent, String tracestate) {

@@ -320,3 +320,37 @@ Summary:
 - API Gateway authenticates `/api/v1/flash-sales/**` and forwards Authorization, Idempotency-Key,
   W3C trace headers, X-Trace-Id, path, query, body, and downstream status/body without business
   interpretation.
+
+## G11 — Owner-scoped reservation query
+
+**Date**: 2026-08-14
+**Scope**: T065–T069; durable owner-filtered reservation lookup, public GET contract, and Gateway
+pass-through.
+**Commands**:
+
+- `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-Dtest=FlashSaleReservationSubmitContractTests,FlashSaleReservationQueryContractTests,OwnedReservationQueryIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" "-DforkCount=0" test`
+- `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/api-gateway -am "-Dtest=FlashSaleGatewayRouteTests" "-Dsurefire.failIfNoSpecifiedTests=false" test`
+- `..\..\mvnw.cmd -f ..\..\pom.xml --batch-mode --no-transfer-progress -pl services/flashsale-service -am "-DforkCount=0" verify` (run from `services/flashsale-service`)
+- `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/api-gateway -am -DskipTests verify`
+- `git diff --check`
+
+**Result**: PASS — Flash Sale focused contract/integration suite passed 9 tests; Gateway route
+suite passed 4 tests; full Flash Sale reactor verification passed 93 tests with 1 intentional
+opt-in Kafka integration skip; Gateway packaging verification and diff check passed.
+
+Summary:
+
+- The public authenticated `GET /api/v1/flash-sales/reservations/{reservationId}` returns the
+  shared success envelope with exact durable snapshot data, `X-Trace-Id`, and
+  `Cache-Control: no-store`.
+- JWT `sub` is the only owner identity. The PostgreSQL adapter issues one `id + user_id` query, so
+  it never falls back to loading a foreign row before authorizing it.
+- Missing and foreign-owned reservations both resolve to the same sanitized
+  `404 FLASH_SALE_RESERVATION_NOT_FOUND` envelope. Contract tests compare those responses apart
+  from their generated timestamp.
+- PostgreSQL 16 Testcontainers evidence persisted a reservation, returned it for its owner, and
+  returned empty results for foreign and unknown identities. Gateway evidence confirms the existing
+  authenticated route forwards the owner query without interpreting its business meaning.
+- The local Windows Docker Desktop Surefire fork occasionally stalled before test discovery; the
+  full validation therefore ran in the Maven JVM (`forkCount=0`) from the module directory. This is
+  a local runner workaround only and does not change Maven or CI configuration.

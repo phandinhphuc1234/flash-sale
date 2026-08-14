@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.philia.flashsale.flashsale.reservation.adapter.in.web.FlashSaleReservationController;
 import com.philia.flashsale.flashsale.reservation.adapter.in.web.mapper.ReservationWebMapper;
+import com.philia.flashsale.flashsale.reservation.application.port.in.GetOwnedReservationUseCase;
 import com.philia.flashsale.flashsale.reservation.application.port.in.SubmitReservationUseCase;
 import com.philia.flashsale.flashsale.reservation.application.result.ReservationSubmissionResult;
 import com.philia.flashsale.flashsale.reservation.domain.model.AcceptedReservationSnapshot;
@@ -42,6 +43,9 @@ class FlashSaleReservationSubmitContractTests {
 
     @MockBean
     private SubmitReservationUseCase submitReservation;
+
+    @MockBean
+    private GetOwnedReservationUseCase getOwnedReservation;
 
     @BeforeEach
     void authenticateControllerInvocation() {
