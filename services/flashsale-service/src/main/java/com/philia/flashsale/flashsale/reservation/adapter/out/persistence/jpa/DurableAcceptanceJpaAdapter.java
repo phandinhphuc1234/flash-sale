@@ -18,13 +18,13 @@ import java.time.Instant;
 import java.util.Objects;
 import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /** One transaction owns all four durable acceptance rows; no external adapter is called here. */
 @Component
-@ConditionalOnBean(PurchaseRequestJpaRepository.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public class DurableAcceptanceJpaAdapter implements PersistAcceptedPurchasePort {
     private final PurchaseRequestJpaRepository requests;
     private final FlashSaleReservationJpaRepository reservations;
@@ -42,7 +42,6 @@ public class DurableAcceptanceJpaAdapter implements PersistAcceptedPurchasePort 
                 FlashSaleObservability.noop());
     }
 
-    @Autowired
     public DurableAcceptanceJpaAdapter(PurchaseRequestJpaRepository requests,
             FlashSaleReservationJpaRepository reservations, PurchaseIdempotencyJpaRepository idempotency,
             PurchaseEventOutboxJpaRepository outbox, Clock clock, EntityManager entityManager) {

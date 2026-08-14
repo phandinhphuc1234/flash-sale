@@ -22,8 +22,7 @@ $expectedRecordName = 'com.philia.flashsale.contract.purchase.event.v1.PurchaseA
 $mediaType = 'application/vnd.schemaregistry.v1+json'
 $registry = $SchemaRegistryUrl.TrimEnd('/')
 $schemaFile = (Resolve-Path -LiteralPath $SchemaPath).Path
-$schemaDocument = Get-Content -LiteralPath $schemaFile -Raw
-$schema = $schemaDocument | ConvertFrom-Json -Depth 100
+$schema = (Get-Content -LiteralPath $schemaFile -Raw) | ConvertFrom-Json -Depth 100
 
 if (($schema.type -ne 'record') -or [string]::IsNullOrWhiteSpace($schema.name) -or [string]::IsNullOrWhiteSpace($schema.namespace)) {
     throw 'PurchaseAcceptedV1.avsc must define an Avro record with a namespace and name.'
@@ -33,6 +32,32 @@ $recordName = "$($schema.namespace).$($schema.name)"
 if ($recordName -ne $expectedRecordName) {
     throw "Expected record $expectedRecordName but found $recordName."
 }
+
+function Add-GeneratedStringProperties([object]$Node) {
+    # The contract module generates SpecificRecord schemas with avro.java.string=String for
+    # ordinary string fields. Register that generated form so auto.register.schemas=false
+    # producers can resolve the exact schema identity.
+    if ($Node -is [System.Collections.IList]) {
+        foreach ($item in $Node) {
+            Add-GeneratedStringProperties $item
+        }
+        return
+    }
+    if (-not ($Node -is [pscustomobject])) {
+        return
+    }
+    foreach ($property in @($Node.PSObject.Properties)) {
+        if ($property.Name -eq 'type' -and $property.Value -is [string] -and $property.Value -eq 'string' -and
+                -not ($Node.PSObject.Properties.Name -contains 'logicalType')) {
+            $property.Value = [pscustomobject]@{ type = 'string'; 'avro.java.string' = 'String' }
+            continue
+        }
+        Add-GeneratedStringProperties $property.Value
+    }
+}
+
+Add-GeneratedStringProperties $schema
+$schemaDocument = $schema | ConvertTo-Json -Depth 100 -Compress
 
 # TopicRecordNameStrategy fixes the subject to topic + fully-qualified Avro record name.
 $subject = "$topic-$recordName"

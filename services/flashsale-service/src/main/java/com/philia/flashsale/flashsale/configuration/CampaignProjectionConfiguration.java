@@ -10,7 +10,11 @@ import com.philia.flashsale.flashsale.campaignprojection.application.usecase.Cam
 import com.philia.flashsale.flashsale.security.serviceidentity.FlashSaleServiceTokenManager;
 import com.philia.flashsale.flashsale.security.serviceidentity.FlashSaleServiceTokenProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,21 +27,26 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 /** Composition-root wiring for Campaign projection, recovery, and service identity. */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(FlashSaleServiceTokenProperties.class)
-@ConditionalOnBean(StringRedisTemplate.class)
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@AutoConfigureAfter(RedisAutoConfiguration.class)
 public class CampaignProjectionConfiguration {
 
     @Bean
+    @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
     CampaignProjectionRedisAdapter campaignProjectionRedisAdapter(StringRedisTemplate redis) {
         return new CampaignProjectionRedisAdapter(redis);
     }
 
     @Bean
+    @ConditionalOnBean({StoreCampaignProjectionPort.class, QueueCampaignRecoveryPort.class})
     CampaignProjectionService campaignProjectionService(
             StoreCampaignProjectionPort store, QueueCampaignRecoveryPort recoveryQueue) {
         return new CampaignProjectionService(store, recoveryQueue);
     }
 
     @Bean
+    @ConditionalOnBean({LoadCampaignSnapshotPort.class, StoreCampaignProjectionPort.class,
+            QueueCampaignRecoveryPort.class})
     CampaignProjectionRecoveryService campaignProjectionRecoveryService(
             LoadCampaignSnapshotPort snapshotLoader,
             StoreCampaignProjectionPort store,
@@ -46,12 +55,14 @@ public class CampaignProjectionConfiguration {
     }
 
     @Bean
+    @ConditionalOnBean(ClientRegistrationRepository.class)
     OAuth2AuthorizedClientService flashSaleAuthorizedClientService(
             ClientRegistrationRepository registrations) {
         return new InMemoryOAuth2AuthorizedClientService(registrations);
     }
 
     @Bean
+    @ConditionalOnBean({ClientRegistrationRepository.class, OAuth2AuthorizedClientService.class})
     AuthorizedClientServiceOAuth2AuthorizedClientManager flashSaleAuthorizedClientManager(
             ClientRegistrationRepository registrations,
             OAuth2AuthorizedClientService authorizedClientService) {
@@ -63,6 +74,8 @@ public class CampaignProjectionConfiguration {
     }
 
     @Bean
+    @ConditionalOnBean({AuthorizedClientServiceOAuth2AuthorizedClientManager.class,
+            FlashSaleServiceTokenProperties.class})
     FlashSaleServiceTokenManager flashSaleServiceTokenManager(
             AuthorizedClientServiceOAuth2AuthorizedClientManager manager,
             FlashSaleServiceTokenProperties properties) {

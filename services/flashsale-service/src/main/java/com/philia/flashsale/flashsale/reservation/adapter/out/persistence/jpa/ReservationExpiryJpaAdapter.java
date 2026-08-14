@@ -13,12 +13,12 @@ import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Owns PostgreSQL row locking and the one-way durable expiry transition. */
 @Component
-@ConditionalOnBean(PurchaseRequestJpaRepository.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public class ReservationExpiryJpaAdapter implements FindDueReservationPort, PersistReservationExpiryPort {
     private final FlashSaleReservationJpaRepository reservations;
     private final PurchaseRequestJpaRepository purchaseRequests;

@@ -308,6 +308,7 @@ services:
       SPRING_MAIN_KEEP_ALIVE: "false"
       SPRING_KAFKA_LISTENER_AUTO_STARTUP: "false"
       SPRING_TASK_SCHEDULING_ENABLED: "false"
+      FLASHSALE_RUNTIME_ENABLED: "false"
     command: ["--spring.main.web-application-type=none"]
 
   order-service:

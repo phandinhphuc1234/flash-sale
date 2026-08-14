@@ -8,12 +8,12 @@ import com.philia.flashsale.flashsale.reservation.application.result.Reservation
 import com.philia.flashsale.flashsale.reservation.domain.model.ReservationStatus;
 import java.util.Objects;
 import java.util.Optional;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /** PostgreSQL read adapter that never loads a foreign reservation before filtering its owner. */
 @Component
-@ConditionalOnBean(FlashSaleReservationJpaRepository.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public class OwnedReservationQueryJpaAdapter implements LoadOwnedReservationPort {
     private final FlashSaleReservationJpaRepository reservations;
 

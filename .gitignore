@@ -10,6 +10,10 @@ target/
 !.env.example
 !**/.env.example
 
+# Local k6 credentials and generated measurement evidence may contain access tokens or host details.
+load-tests/flashsale-service/shopper-tokens.json
+load-tests/flashsale-service/reservation-summary.json
+
 # IDEs and editors
 .idea/
 .vscode/

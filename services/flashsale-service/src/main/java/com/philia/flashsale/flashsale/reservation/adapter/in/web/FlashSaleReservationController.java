@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,7 @@ import org.springframework.web.server.ResponseStatusException;
 /** Public reservation boundary; no business rules or persistence types cross this adapter. */
 @RestController
 @RequestMapping("/api/v1/flash-sales")
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class FlashSaleReservationController {
     private final SubmitReservationUseCase submitReservation;
     private final GetOwnedReservationUseCase getOwnedReservation;

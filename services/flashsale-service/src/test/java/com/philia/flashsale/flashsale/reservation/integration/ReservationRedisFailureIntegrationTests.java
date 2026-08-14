@@ -25,6 +25,8 @@ import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.testcontainers.containers.GenericContainer;
@@ -50,7 +52,12 @@ class ReservationRedisFailureIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        connectionFactory = new LettuceConnectionFactory(REDIS.getHost(), REDIS.getMappedPort(6379));
+        // Production config bounds Redis commands to one second. The direct Testcontainers factory
+        // must mirror that setting so a stopped Redis endpoint proves fail-closed behavior instead
+        // of leaving the verification JVM blocked on a client default timeout.
+        connectionFactory = new LettuceConnectionFactory(
+                new RedisStandaloneConfiguration(REDIS.getHost(), REDIS.getMappedPort(6379)),
+                LettuceClientConfiguration.builder().commandTimeout(Duration.ofSeconds(1)).build());
         connectionFactory.afterPropertiesSet();
         redis = new StringRedisTemplate(connectionFactory);
         redis.afterPropertiesSet();

@@ -5,11 +5,11 @@ import com.philia.flashsale.flashsale.reservation.application.port.out.DeleteExp
 import java.time.Instant;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@ConditionalOnBean(PurchaseIdempotencyJpaRepository.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public class IdempotencyCleanupJpaAdapter implements DeleteExpiredIdempotencyPort {
     private final PurchaseIdempotencyJpaRepository records;
 

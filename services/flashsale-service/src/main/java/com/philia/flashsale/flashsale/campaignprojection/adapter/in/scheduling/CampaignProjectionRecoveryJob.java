@@ -8,6 +8,8 @@ import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -17,7 +19,7 @@ import org.springframework.stereotype.Component;
  * path.
  */
 @Component
-@ConditionalOnBean(StringRedisTemplate.class)
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public final class CampaignProjectionRecoveryJob {
     private static final Logger LOG = LoggerFactory.getLogger(CampaignProjectionRecoveryJob.class);
 
@@ -25,6 +27,7 @@ public final class CampaignProjectionRecoveryJob {
     private final RecoverCampaignProjectionUseCase recoveryUseCase;
     private final Clock clock;
 
+    @Autowired
     public CampaignProjectionRecoveryJob(LoadDueCampaignRecoveryPort dueRecoveries,
             RecoverCampaignProjectionUseCase recoveryUseCase) {
         this(dueRecoveries, recoveryUseCase, Clock.systemUTC());

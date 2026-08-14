@@ -4,7 +4,7 @@ import com.philia.flashsale.flashsale.observability.FlashSaleReadinessHealthIndi
 import java.sql.Connection;
 import javax.sql.DataSource;
 import org.springframework.boot.actuate.health.HealthIndicator;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -12,7 +12,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 /** Wires external readiness probes while keeping the indicator free of provider APIs. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnBean({DataSource.class, RedisConnectionFactory.class})
+@ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 class FlashSaleReadinessConfiguration {
 
     @Bean("flashSaleReadiness")
