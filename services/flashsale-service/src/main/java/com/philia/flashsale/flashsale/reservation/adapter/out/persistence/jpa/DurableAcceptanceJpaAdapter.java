@@ -12,6 +12,7 @@ import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.re
 import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.repository.PurchaseRequestJpaRepository;
 import com.philia.flashsale.flashsale.reservation.application.port.out.PersistAcceptedPurchasePort;
 import com.philia.flashsale.flashsale.reservation.domain.model.AcceptedReservationSnapshot;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
@@ -32,17 +33,27 @@ public class DurableAcceptanceJpaAdapter implements PersistAcceptedPurchasePort 
     private final ReservationPersistenceMapper mapper;
     private final Clock clock;
     private final EntityManager entityManager;
+    private final FlashSaleObservability observability;
 
     public DurableAcceptanceJpaAdapter(PurchaseRequestJpaRepository requests,
             FlashSaleReservationJpaRepository reservations, PurchaseIdempotencyJpaRepository idempotency,
             PurchaseEventOutboxJpaRepository outbox) {
-        this(requests, reservations, idempotency, outbox, Clock.systemUTC(), null);
+        this(requests, reservations, idempotency, outbox, Clock.systemUTC(), null,
+                FlashSaleObservability.noop());
     }
 
     @Autowired
     public DurableAcceptanceJpaAdapter(PurchaseRequestJpaRepository requests,
             FlashSaleReservationJpaRepository reservations, PurchaseIdempotencyJpaRepository idempotency,
             PurchaseEventOutboxJpaRepository outbox, Clock clock, EntityManager entityManager) {
+        this(requests, reservations, idempotency, outbox, clock, entityManager, FlashSaleObservability.noop());
+    }
+
+    @Autowired
+    public DurableAcceptanceJpaAdapter(PurchaseRequestJpaRepository requests,
+            FlashSaleReservationJpaRepository reservations, PurchaseIdempotencyJpaRepository idempotency,
+            PurchaseEventOutboxJpaRepository outbox, Clock clock, EntityManager entityManager,
+            FlashSaleObservability observability) {
         this.requests = Objects.requireNonNull(requests, "requests");
         this.reservations = Objects.requireNonNull(reservations, "reservations");
         this.idempotency = Objects.requireNonNull(idempotency, "idempotency");
@@ -50,11 +61,17 @@ public class DurableAcceptanceJpaAdapter implements PersistAcceptedPurchasePort 
         this.mapper = new ReservationPersistenceMapper();
         this.clock = Objects.requireNonNull(clock, "clock");
         this.entityManager = entityManager;
+        this.observability = Objects.requireNonNull(observability, "observability");
     }
 
     @Override
     @Transactional
     public void persist(AcceptedReservationSnapshot snapshot) {
+        observability.observe(FlashSaleObservability.Operation.POSTGRES_ACCEPTANCE,
+                () -> persistDurably(snapshot));
+    }
+
+    private void persistDurably(AcceptedReservationSnapshot snapshot) {
         Objects.requireNonNull(snapshot, "snapshot");
         var key = new PurchaseIdempotencyJpaId(snapshot.userId(), snapshot.campaignId(), snapshot.idempotencyKeyHash());
         lockLogicalRequest(key);

@@ -7,10 +7,12 @@ import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.re
 import com.philia.flashsale.flashsale.reservation.application.port.out.FindDueReservationPort;
 import com.philia.flashsale.flashsale.reservation.application.port.out.PersistReservationExpiryPort;
 import com.philia.flashsale.flashsale.reservation.application.result.ReservationExpiryCandidate;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,15 +22,28 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReservationExpiryJpaAdapter implements FindDueReservationPort, PersistReservationExpiryPort {
     private final FlashSaleReservationJpaRepository reservations;
     private final PurchaseRequestJpaRepository purchaseRequests;
+    private final FlashSaleObservability observability;
 
     public ReservationExpiryJpaAdapter(FlashSaleReservationJpaRepository reservations,
             PurchaseRequestJpaRepository purchaseRequests) {
+        this(reservations, purchaseRequests, FlashSaleObservability.noop());
+    }
+
+    @Autowired
+    public ReservationExpiryJpaAdapter(FlashSaleReservationJpaRepository reservations,
+            PurchaseRequestJpaRepository purchaseRequests, FlashSaleObservability observability) {
         this.reservations = Objects.requireNonNull(reservations, "reservations");
         this.purchaseRequests = Objects.requireNonNull(purchaseRequests, "purchaseRequests");
+        this.observability = Objects.requireNonNull(observability, "observability");
     }
 
     @Override
     public List<ReservationExpiryCandidate> findDue(Instant now, int batchSize) {
+        return observability.observe(FlashSaleObservability.Operation.POSTGRES_EXPIRY,
+                () -> findDuePersisted(now, batchSize));
+    }
+
+    private List<ReservationExpiryCandidate> findDuePersisted(Instant now, int batchSize) {
         if (batchSize < 1 || batchSize > 100) {
             throw new IllegalArgumentException("batchSize must be in 1..100");
         }
@@ -41,6 +56,11 @@ public class ReservationExpiryJpaAdapter implements FindDueReservationPort, Pers
     @Override
     @Transactional
     public boolean persistExpiry(ReservationExpiryCandidate candidate, Instant now) {
+        return observability.observe(FlashSaleObservability.Operation.POSTGRES_EXPIRY,
+                () -> persistDurableExpiry(candidate, now));
+    }
+
+    private boolean persistDurableExpiry(ReservationExpiryCandidate candidate, Instant now) {
         var request = purchaseRequests.findWithLockById(candidate.purchaseRequestId()).orElse(null);
         if (request == null) {
             return false;

@@ -5,6 +5,7 @@ import com.philia.flashsale.contract.campaign.lifecycle.v1.CampaignScheduledV1;
 import com.philia.flashsale.flashsale.campaignprojection.application.port.in.ProjectCampaignActivationUseCase;
 import com.philia.flashsale.flashsale.campaignprojection.application.port.in.ProjectCampaignScheduleUseCase;
 import com.philia.flashsale.flashsale.observability.FlashSaleTraceContext;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import com.philia.flashsale.flashsale.websupport.context.FlashSaleRequestContext;
 import java.nio.charset.StandardCharsets;
 import org.apache.avro.specific.SpecificRecord;
@@ -12,6 +13,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.MDC;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -27,13 +29,23 @@ public final class CampaignLifecycleKafkaConsumer {
     private final CampaignLifecycleAvroMapper mapper;
     private final ProjectCampaignScheduleUseCase scheduleUseCase;
     private final ProjectCampaignActivationUseCase activationUseCase;
+    private final FlashSaleObservability observability;
 
     public CampaignLifecycleKafkaConsumer(CampaignLifecycleAvroMapper mapper,
             ProjectCampaignScheduleUseCase scheduleUseCase,
             ProjectCampaignActivationUseCase activationUseCase) {
+        this(mapper, scheduleUseCase, activationUseCase, FlashSaleObservability.noop());
+    }
+
+    @Autowired
+    public CampaignLifecycleKafkaConsumer(CampaignLifecycleAvroMapper mapper,
+            ProjectCampaignScheduleUseCase scheduleUseCase,
+            ProjectCampaignActivationUseCase activationUseCase,
+            FlashSaleObservability observability) {
         this.mapper = mapper;
         this.scheduleUseCase = scheduleUseCase;
         this.activationUseCase = activationUseCase;
+        this.observability = observability;
     }
 
     @KafkaListener(topics = "${flashsale.campaign-projection.topic}", groupId = "${flashsale.campaign-projection.consumer-group}", containerFactory = "campaignProjectionKafkaListenerContainerFactory")
@@ -46,6 +58,12 @@ public final class CampaignLifecycleKafkaConsumer {
                         FlashSaleRequestContext.isValidTraceparent(traceparent)
                                 ? traceparent
                                 : FlashSaleTraceContext.currentOrGenerate())) {
+            observability.observe(FlashSaleObservability.Operation.CAMPAIGN_PROJECTION,
+                    () -> consume(record, acknowledgment));
+        }
+    }
+
+    private void consume(ConsumerRecord<String, SpecificRecord> record, Acknowledgment acknowledgment) {
             SpecificRecord value = record.value();
             // Throw exception if the record is not a supported Campaign lifecycle fact,
             // so that the Kafka listener can retry.
@@ -59,7 +77,6 @@ public final class CampaignLifecycleKafkaConsumer {
             // Acknowledge only after Redis succeeds to ensure at-least-once delivery
             // semantics.
             acknowledgment.acknowledge();
-        }
     }
 
     private String header(ConsumerRecord<String, SpecificRecord> record, String name) {

@@ -2,6 +2,7 @@ package com.philia.flashsale.flashsale.reservation.adapter.out.redis;
 
 import com.philia.flashsale.flashsale.reservation.application.port.out.ExecuteAtomicReservationPort;
 import com.philia.flashsale.flashsale.reservation.application.result.ReservationDecisionResult;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.core.io.ClassPathResource;
@@ -14,17 +15,24 @@ import org.springframework.scripting.support.ResourceScriptSource;
 public final class AtomicReservationRedisAdapter implements ExecuteAtomicReservationPort {
     private final StringRedisTemplate redis;
     private final RedisScript<List> script;
+    private final FlashSaleObservability observability;
     private final ReservationLuaResultMapper resultMapper = new ReservationLuaResultMapper();
 
     public AtomicReservationRedisAdapter(StringRedisTemplate redis) {
+        this(redis, FlashSaleObservability.noop());
+    }
+
+    public AtomicReservationRedisAdapter(StringRedisTemplate redis, FlashSaleObservability observability) {
         this.redis = Objects.requireNonNull(redis, "redis");
+        this.observability = Objects.requireNonNull(observability, "observability");
         this.script = script("redis/reservation/reserve-campaign-quota.lua");
     }
 
     @Override
     public ReservationDecisionResult execute(AtomicReservationRequest request) {
         var command = request.command();
-        List<?> result = redis.execute(script,
+        return observability.observe(FlashSaleObservability.Operation.REDIS_LUA, () -> {
+            List<?> result = redis.execute(script,
                 List.of(
                         ReservationRedisKeys.meta(command.campaignId()),
                         ReservationRedisKeys.stock(command.campaignId()),
@@ -42,7 +50,8 @@ public final class AtomicReservationRedisAdapter implements ExecuteAtomicReserva
                 Long.toString(request.acceptedAt().toEpochMilli()), Long.toString(request.expiresAt().toEpochMilli()),
                 Long.toString(request.retainedUntil().toEpochMilli()), value(command.traceparent()),
                 value(command.tracestate()));
-        return resultMapper.map(result);
+            return resultMapper.map(result);
+        });
     }
 
     private RedisScript<List> script(String path) {

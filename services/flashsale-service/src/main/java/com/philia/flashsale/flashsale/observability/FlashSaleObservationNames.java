@@ -8,6 +8,7 @@ public final class FlashSaleObservationNames {
     public static final String REDIS_LUA = "flashsale.redis.lua";
     public static final String REDIS_HANDOFF = "flashsale.redis.handoff";
     public static final String POSTGRES_ACCEPTANCE = "flashsale.postgres.acceptance";
+    public static final String POSTGRES_EXPIRY = "flashsale.postgres.expiry";
     public static final String OUTBOX_PUBLICATION = "flashsale.outbox.publication";
 
     private FlashSaleObservationNames() {

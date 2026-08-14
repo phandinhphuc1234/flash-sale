@@ -8,6 +8,7 @@ import com.philia.flashsale.flashsale.reservation.application.usecase.Reservatio
 import com.philia.flashsale.flashsale.reservation.application.usecase.ReservationIdentityFactory;
 import com.philia.flashsale.flashsale.reservation.application.usecase.ReservationSubmissionService;
 import com.philia.flashsale.flashsale.reservation.application.usecase.ReserveCampaignQuotaService;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
@@ -20,8 +21,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 public class ReservationConfiguration {
 
     @Bean
-    AtomicReservationRedisAdapter atomicReservationRedisAdapter(StringRedisTemplate redis) {
-        return new AtomicReservationRedisAdapter(redis);
+    AtomicReservationRedisAdapter atomicReservationRedisAdapter(StringRedisTemplate redis,
+            FlashSaleObservability observability) {
+        return new AtomicReservationRedisAdapter(redis, observability);
     }
 
     @Bean

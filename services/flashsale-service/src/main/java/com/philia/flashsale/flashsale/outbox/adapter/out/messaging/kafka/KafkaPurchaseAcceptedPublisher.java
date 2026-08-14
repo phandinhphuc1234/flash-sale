@@ -2,6 +2,7 @@ package com.philia.flashsale.flashsale.outbox.adapter.out.messaging.kafka;
 
 import com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1;
 import com.philia.flashsale.flashsale.configuration.OutboxProperties;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import com.philia.flashsale.flashsale.outbox.application.model.OutboxEvent;
 import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseAcceptedPort;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +12,7 @@ import java.util.concurrent.ExecutionException;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /** Publishes keyed Avro events and waits for the broker acknowledgement outside PostgreSQL. */
@@ -20,16 +22,30 @@ public final class KafkaPurchaseAcceptedPublisher implements PublishPurchaseAcce
     private final KafkaTemplate<String, PurchaseAcceptedV1> kafka;
     private final PurchaseAcceptedAvroMapper mapper;
     private final OutboxProperties properties;
+    private final FlashSaleObservability observability;
 
     public KafkaPurchaseAcceptedPublisher(KafkaTemplate<String, PurchaseAcceptedV1> kafka,
             PurchaseAcceptedAvroMapper mapper, OutboxProperties properties) {
+        this(kafka, mapper, properties, FlashSaleObservability.noop());
+    }
+
+    @Autowired
+    public KafkaPurchaseAcceptedPublisher(KafkaTemplate<String, PurchaseAcceptedV1> kafka,
+            PurchaseAcceptedAvroMapper mapper, OutboxProperties properties,
+            FlashSaleObservability observability) {
         this.kafka = Objects.requireNonNull(kafka, "kafka");
         this.mapper = Objects.requireNonNull(mapper, "mapper");
         this.properties = Objects.requireNonNull(properties, "properties");
+        this.observability = Objects.requireNonNull(observability, "observability");
     }
 
     @Override
     public void publish(OutboxEvent event) {
+        observability.observe(FlashSaleObservability.Operation.OUTBOX_PUBLICATION,
+                () -> publishToKafka(event));
+    }
+
+    private void publishToKafka(OutboxEvent event) {
         PurchaseAcceptedV1 value = mapper.map(event);
         ProducerRecord<String, PurchaseAcceptedV1> record = new ProducerRecord<>(
                 properties.topic(), event.aggregateId().toString(), value);
