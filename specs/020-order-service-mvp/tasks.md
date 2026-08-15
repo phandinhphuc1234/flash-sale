@@ -1,8 +1,8 @@
 # Tasks: Order Service Core MVP
 
-**Status**: Approved for implementation — G1–G3 / T001–T029
+**Status**: Approved for implementation — G1–G4 / T001–T036
 **Input**: Design documents from `/specs/020-order-service-mvp/`
-**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1–G3; later groups remain
+**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1–G4; later groups remain
 gated by their checkpoints and required project-owner/architecture/security review.
 
 **Tests**: All domain, architecture, PostgreSQL, Kafka/Schema Registry, consumer redelivery/
@@ -105,16 +105,16 @@ reconciliation.
 
 ### Tests for the Kafka Boundary
 
-- [ ] T030 [P] [US1] Add Avro-to-command mapping tests for all fields, decimal/instant normalization, key/envelope mismatch, invalid values, trace headers, and forbidden infrastructure leakage in `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/in/messaging/kafka/PurchaseAcceptedAvroMapperTests.java`
-- [ ] T031 [P] [US1] Add listener behavior tests for created/replayed acknowledgement, conflict classification, retryable storage failure, poison input, safe logging, and no acknowledgement before commit in `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/in/messaging/kafka/PurchaseAcceptedKafkaConsumerTests.java`
-- [ ] T032 [US1] Add real Kafka/Registry integration tests for group/key/header handling, duplicate redelivery, process-after-commit-before-ack recovery, three transient retries, non-retryable/exhausted DLT delivery, and operator replay in `services/order-service/src/test/java/com/philia/flashsale/order/order/integration/PurchaseAcceptedConsumerIntegrationTests.java` and `PurchaseAcceptedRetryDltIntegrationTests.java`
+- [x] T030 [P] [US1] Add Avro-to-command mapping tests for all fields, decimal/instant normalization, key/envelope mismatch, invalid values, trace headers, and forbidden infrastructure leakage in `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/in/messaging/kafka/PurchaseAcceptedAvroMapperTests.java`
+- [x] T031 [P] [US1] Add listener behavior tests for created/replayed acknowledgement, conflict classification, retryable storage failure, poison input, safe logging, and no acknowledgement before commit in `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/in/messaging/kafka/PurchaseAcceptedKafkaConsumerTests.java`
+- [x] T032 [US1] Add real Kafka/Registry integration tests for group/key/header handling, duplicate redelivery, process-after-commit-before-ack recovery, three transient retries, non-retryable/exhausted DLT delivery, and operator replay in `services/order-service/src/test/java/com/philia/flashsale/order/order/integration/PurchaseAcceptedConsumerIntegrationTests.java` and `PurchaseAcceptedRetryDltIntegrationTests.java`
 
 ### Implementation for the Kafka Boundary
 
-- [ ] T033 [P] [US1] Implement the inbound Avro/Kafka boundary mapper and typed record failures in `services/order-service/src/main/java/com/philia/flashsale/order/order/adapter/in/messaging/kafka/PurchaseAcceptedAvroMapper.java`, `PurchaseAcceptedRecordException.java`, and `PurchaseAcceptedConflictException.java`
-- [ ] T034 [US1] Implement `PurchaseAcceptedKafkaConsumer` with key/envelope validation, trace context restoration, use-case invocation, and post-commit manual acknowledgement in `services/order-service/src/main/java/com/philia/flashsale/order/order/adapter/in/messaging/kafka/PurchaseAcceptedKafkaConsumer.java`
-- [ ] T035 [US1] Configure Avro deserialization, `order-purchase-accepted-v1`, manual acknowledgement, classified 1/3/10-second retries, safe DLT recoverer, and disabled-by-property test/runtime controls in `services/order-service/src/main/java/com/philia/flashsale/order/configuration/OrderKafkaConsumerConfiguration.java`
-- [ ] T036 [US1] Run the US1 live Kafka/Registry suite and record topic/group/key, retry/DLT outcomes, Order/inbox/outbox reconciliation, commands, and exit status in `specs/020-order-service-mvp/validation.md`
+- [x] T033 [P] [US1] Implement the inbound Avro/Kafka boundary mapper and typed record failures in `services/order-service/src/main/java/com/philia/flashsale/order/order/adapter/in/messaging/kafka/PurchaseAcceptedAvroMapper.java`, `PurchaseAcceptedRecordException.java`, and `PurchaseAcceptedConflictException.java`
+- [x] T034 [US1] Implement `PurchaseAcceptedKafkaConsumer` with key/envelope validation, trace context restoration, use-case invocation, and post-commit manual acknowledgement in `services/order-service/src/main/java/com/philia/flashsale/order/order/adapter/in/messaging/kafka/PurchaseAcceptedKafkaConsumer.java`
+- [x] T035 [US1] Configure Avro deserialization, `order-purchase-accepted-v1`, manual acknowledgement, classified 1/3/10-second retries, safe DLT recoverer, and disabled-by-property test/runtime controls in `services/order-service/src/main/java/com/philia/flashsale/order/configuration/OrderKafkaConsumerConfiguration.java`
+- [x] T036 [US1] Run the US1 live Kafka/Registry suite and record topic/group/key, retry/DLT outcomes, Order/inbox/outbox reconciliation, commands, and exit status in `specs/020-order-service-mvp/validation.md`
 
 **Checkpoint**: US1 is an independently operational MVP: Feature 019's implemented event creates
 one durable Order under duplicate, crash, and poison-record conditions.
