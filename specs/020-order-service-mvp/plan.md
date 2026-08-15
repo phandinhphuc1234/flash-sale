@@ -156,6 +156,30 @@ service-wide reliable-publication capability with its own application and adapte
 observability, error translation, and configuration remain thin technical support packages. Inbox
 is persisted by the Order-creation capability rather than becoming a framework-like root feature.
 
+### Repository Convention Alignment
+
+Feature 020 follows the folder conventions already implemented in this repository rather than
+inventing a parallel structure:
+
+- `flashsale-service/reservation` is the closest accepted pattern for a core flow: a business
+  feature contains `domain`, `application`, and `adapter/in` plus `adapter/out`, while service-wide
+  `configuration`, `security`, `observability`, `websupport`, and `outbox` remain technical
+  capabilities.
+- `campaign-service/campaign` demonstrates the same feature-first boundaries with separate inbound
+  web capabilities and outbound client/persistence adapters.
+- `inventory-service/stock`, `allocation`, and `movement` show how multiple cohesive capabilities
+  coexist without sharing JPA repositories or domain models.
+- `authentication-service/account` and `session` show the approved service-wide technical package
+  convention for security, cleanup, throttling, observability, and configuration.
+
+Order therefore uses `order/{domain,application,adapter}` with the same `port/in`, `port/out`,
+`adapter/in`, and `adapter/out/persistence/jpa` boundaries. It adds no Redis-specific package,
+admin/internal web split, or provider client because Feature 020 does not need those
+responsibilities. Packages are created on demand with their first real class; the plan tree is a
+navigation contract, not a request to create empty folders. Tests mirror the owning package under
+`src/test/java/.../order`, with `architecture`, `integration`, and `support` as service-level test
+capabilities.
+
 ## Dependency and Boundary Rules
 
 ```text
