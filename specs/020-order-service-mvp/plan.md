@@ -1,6 +1,6 @@
 # Implementation Plan: Order Service Core MVP
 
-**Status**: Draft — pending project owner, architecture, and security review
+**Status**: Approved for implementation — G1 authorized by project owner on 2026-08-15
 **Branch**: `020-order-service-mvp` | **Date**: 2026-08-15 | **Spec**: [spec.md](./spec.md)
 **Input**: Approved Feature 020 specification at `/specs/020-order-service-mvp/spec.md`
 
@@ -155,6 +155,30 @@ capability owns Aggregate, use cases, inbound Kafka/HTTP adapters, and persisten
 service-wide reliable-publication capability with its own application and adapters. Security,
 observability, error translation, and configuration remain thin technical support packages. Inbox
 is persisted by the Order-creation capability rather than becoming a framework-like root feature.
+
+### Repository Convention Alignment
+
+Feature 020 follows the folder conventions already implemented in this repository rather than
+inventing a parallel structure:
+
+- `flashsale-service/reservation` is the closest accepted pattern for a core flow: a business
+  feature contains `domain`, `application`, and `adapter/in` plus `adapter/out`, while service-wide
+  `configuration`, `security`, `observability`, `websupport`, and `outbox` remain technical
+  capabilities.
+- `campaign-service/campaign` demonstrates the same feature-first boundaries with separate inbound
+  web capabilities and outbound client/persistence adapters.
+- `inventory-service/stock`, `allocation`, and `movement` show how multiple cohesive capabilities
+  coexist without sharing JPA repositories or domain models.
+- `authentication-service/account` and `session` show the approved service-wide technical package
+  convention for security, cleanup, throttling, observability, and configuration.
+
+Order therefore uses `order/{domain,application,adapter}` with the same `port/in`, `port/out`,
+`adapter/in`, and `adapter/out/persistence/jpa` boundaries. It adds no Redis-specific package,
+admin/internal web split, or provider client because Feature 020 does not need those
+responsibilities. Packages are created on demand with their first real class; the plan tree is a
+navigation contract, not a request to create empty folders. Tests mirror the owning package under
+`src/test/java/.../order`, with `architecture`, `integration`, and `support` as service-level test
+capabilities.
 
 ## Dependency and Boundary Rules
 
@@ -427,8 +451,14 @@ failure or build checks must pass before a task group is marked complete.
 5. Owner detail/list APIs, JWT security, Gateway route, and error contracts.
 6. Observability/readiness, Compose smoke, concurrency/performance evidence, and full validation.
 
-`tasks.md` may be generated as a draft from this plan. Production implementation starts only after
-the project owner approves this plan and its dependency-ordered tasks.
+`tasks.md` was generated from this plan. The project owner authorized implementation of G1
+(T001–T008) on 2026-08-15; later groups remain gated by their checkpoints and required review.
+
+## Approval History
+
+| Date | Decision | Scope | Approver |
+|------|----------|-------|----------|
+| 2026-08-15 | Approved for implementation | G1 / T001–T008 | Project owner |
 
 ## Complexity Tracking
 

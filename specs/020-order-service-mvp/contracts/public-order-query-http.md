@@ -1,6 +1,6 @@
 # Public Order Query HTTP Contract
 
-**Status**: Proposed by Feature 020; must be approved before implementation
+**Status**: Approved design baseline by project owner on 2026-08-15; implemented in G6
 **Version**: v1
 **Ingress**: Client -> API Gateway -> `order-service`
 **Authentication**: Bearer access token; Gateway and Order independently validate the public trust

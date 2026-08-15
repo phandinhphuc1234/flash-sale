@@ -1,9 +1,9 @@
 # Tasks: Order Service Core MVP
 
-**Status**: Draft — implementation blocked until plan/tasks approval
+**Status**: Approved for implementation — G1 / T001–T008
 **Input**: Design documents from `/specs/020-order-service-mvp/`
-**Prerequisites**: Approved `spec.md`; draft `plan.md`, `research.md`, `data-model.md`, `contracts/`,
-and `quickstart.md` pending project-owner/architecture/security review
+**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1; later groups remain gated
+by their checkpoints and required project-owner/architecture/security review.
 
 **Tests**: All domain, architecture, PostgreSQL, Kafka/Schema Registry, consumer redelivery/
 concurrency, outbox recovery, HTTP/security, failure-matrix, Compose smoke, performance, module, and
@@ -24,14 +24,14 @@ a completion ledger entry only after the required evidence is recorded in `valid
 **Purpose**: Establish approved dependencies, protocol generation, configuration, and architecture
 guards before business implementation.
 
-- [ ] T001 Update `services/order-service/pom.xml` with the plan-approved `common-web`, `kafka-avro-contracts`, Validation, JPA, Security/Resource Server, Spring Kafka, Confluent serializer, OTel tracing bridge, PostgreSQL runtime, Security/Kafka/Testcontainers, and ArchUnit dependencies while adding no Redis, Feign, Payment SDK, MapStruct, or distributed-lock dependency
-- [ ] T002 [P] Add `OrderCreatedV1` schema at `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.order.events.v1/OrderCreatedV1.avsc` exactly matching `contracts/order-created-kafka.md`
-- [ ] T003 Add generated-record, logical-type, forbidden-field, subject-strategy, and backward-compatibility tests at `contracts/kafka-avro-contracts/src/test/java/com/philia/flashsale/contract/order/event/OrderCreatedSchemaTests.java`
-- [ ] T004 Add typed runtime properties for inbound Kafka, outbox relay, JWT trust, and runtime switches in `services/order-service/src/main/java/com/philia/flashsale/order/configuration/OrderKafkaProperties.java`, `OrderOutboxProperties.java`, `OrderJwtProperties.java`, and `OrderRuntimeProperties.java`
-- [ ] T005 Configure PostgreSQL/JPA validation, Kafka Avro consumer/producer settings, retry/DLT names, JWT trust values, Actuator endpoints, bounded percentiles, and feature properties in `services/order-service/src/main/resources/application.yml`
-- [ ] T006 [P] Add shared PostgreSQL/Kafka integration-test support and opt-in Registry conditions in `services/order-service/src/test/java/com/philia/flashsale/order/support/PostgreSqlIntegrationTestSupport.java`, `KafkaIntegrationTestSupport.java`, and `OrderIntegrationTestCondition.java`
-- [ ] T007 Add inward-dependency and boundary-model rules in `services/order-service/src/test/java/com/philia/flashsale/order/architecture/OrderArchitectureTests.java`, including bans on Avro/Kafka/JPA/Spring imports in domain/application and adapter-to-adapter implementation coupling
-- [ ] T008 Create the validation ledger with planned commands and empty evidence slots at `specs/020-order-service-mvp/validation.md`
+- [x] T001 Update `services/order-service/pom.xml` with the plan-approved `common-web`, `kafka-avro-contracts`, Validation, JPA, Security/Resource Server, Spring Kafka, Confluent serializer, OTel tracing bridge, PostgreSQL runtime, Security/Kafka/Testcontainers, and ArchUnit dependencies while adding no Redis, Feign, Payment SDK, MapStruct, or distributed-lock dependency
+- [x] T002 [P] Add `OrderCreatedV1` schema at `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.order.events.v1/OrderCreatedV1.avsc` exactly matching `contracts/order-created-kafka.md`
+- [x] T003 Add generated-record, logical-type, forbidden-field, subject-strategy, and backward-compatibility tests at `contracts/kafka-avro-contracts/src/test/java/com/philia/flashsale/contract/order/event/OrderCreatedSchemaTests.java`
+- [x] T004 Add typed runtime properties for inbound Kafka, outbox relay, JWT trust, and runtime switches in `services/order-service/src/main/java/com/philia/flashsale/order/configuration/OrderKafkaProperties.java`, `OrderOutboxProperties.java`, `OrderJwtProperties.java`, and `OrderRuntimeProperties.java`
+- [x] T005 Configure PostgreSQL/JPA validation, Kafka Avro consumer/producer settings, retry/DLT names, JWT trust values, Actuator endpoints, bounded percentiles, and feature properties in `services/order-service/src/main/resources/application.yml`
+- [x] T006 [P] Add shared PostgreSQL/Kafka integration-test support and opt-in Registry conditions in `services/order-service/src/test/java/com/philia/flashsale/order/support/PostgreSqlIntegrationTestSupport.java`, `KafkaIntegrationTestSupport.java`, and `OrderIntegrationTestCondition.java`
+- [x] T007 Add inward-dependency and boundary-model rules in `services/order-service/src/test/java/com/philia/flashsale/order/architecture/OrderArchitectureTests.java`, including bans on Avro/Kafka/JPA/Spring imports in domain/application and adapter-to-adapter implementation coupling
+- [x] T008 Create the validation ledger with planned commands and empty evidence slots at `specs/020-order-service-mvp/validation.md`
 
 **Checkpoint**: The Order module compiles against generated contracts, typed configuration loads,
 and architecture tests can guard all subsequent groups.
@@ -314,4 +314,5 @@ task and returns to specification review.
   changes into a Feature 020 commit.
 - `[P]` means file/dependency independence, not permission to ignore the group checkpoint.
 - Generated Avro types, HTTP DTOs, JPA entities, and domain/application models remain separate.
-- No production task begins while this task ledger or plan is still awaiting required approval.
+- G1 production tasks are authorized by the project owner; later groups remain blocked until their
+  required approval and preceding checkpoint are complete.

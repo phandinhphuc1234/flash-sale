@@ -1,6 +1,6 @@
 # OrderCreated Kafka Contract
 
-**Status**: Proposed by Feature 020; must be approved before implementation
+**Status**: Approved for G1 schema implementation by project owner on 2026-08-15
 **Producer**: `order-service`
 **Consumers in Feature 020**: Contract verification only; no business consumer is implemented
 **Topic**: `flashsale.order.events.v1`
