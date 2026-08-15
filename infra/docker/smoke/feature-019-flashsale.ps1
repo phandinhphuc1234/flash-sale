@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch] $RunFailureMatrix,
+    [switch] $SkipTopology,
     [int] $Allocation = 20,
     [int] $CampaignLeadSeconds = 20,
     [int] $CampaignDurationMinutes = 10
@@ -109,7 +110,9 @@ function Wait-Until([scriptblock] $Condition, [string] $Description, [int] $Seco
 function Wait-Http([string] $Uri, [int] $Seconds = 90) {
     Wait-Until -Description $Uri -Seconds $Seconds -Condition {
         $response = Invoke-WebRequest -Uri $Uri -UseBasicParsing -TimeoutSec 3 -SkipHttpErrorCheck
-        return $response.StatusCode -eq 200
+        # Cast explicitly: PowerShell can surface the response status as a deserialized
+        # value when this helper is invoked from a nested script process.
+        return ([int]$response.StatusCode -eq 200)
     }
 }
 
@@ -612,7 +615,11 @@ $script:adminId = $null
 $script:shopperIds = [System.Collections.Generic.List[Guid]]::new()
 $restoreServices = $true
 try {
-    Initialize-Topology
+    if ($SkipTopology) {
+        Write-Output 'SKIP topology bootstrap (using the already-running local stack)'
+    } else {
+        Initialize-Topology
+    }
     $admin = New-AdminToken
     $script:adminId = $admin.Id
     $fixture = New-CampaignFixture $admin
