@@ -1,8 +1,8 @@
 # Feature 020 Validation Ledger
 
 **Feature**: Order Service Core MVP
-**Scope for this branch**: G3 / T015-T029
-**Status**: G3 complete
+**Scope for this branch**: G4 / T030-T036
+**Status**: G4 complete
 
 This ledger records commands, scope, exit status, and evidence for each approved task group. A
 checked task is not complete until its evidence is recorded here.
@@ -71,6 +71,24 @@ checked task is not complete until its evidence is recorded here.
   `CONFLICT` without changing the established Order.
 - [x] 100-way equivalent and contradictory concurrency evidence passes against PostgreSQL.
 - [x] No Kafka consumer or HTTP endpoint was activated in G3; those remain G4/G6 work.
+
+## G4 User Story 1 — PurchaseAccepted Kafka Boundary
+
+| Task | Validation command | Scope | Result | Evidence |
+|------|--------------------|-------|--------|----------|
+| T030 | `./mvnw -pl services/order-service -am test -Dtest=PurchaseAcceptedAvroMapperTests -Dsurefire.failIfNoSpecifiedTests=false` | Avro-to-command mapping, envelope/key validation, decimal/instant normalization, W3C header propagation, and adapter boundary | PASS | 4/4 tests passed; no infrastructure types leak into the application command (2026-08-15) |
+| T031 | `./mvnw -pl services/order-service -am test -Dtest=PurchaseAcceptedKafkaConsumerTests -Dsurefire.failIfNoSpecifiedTests=false` | Post-commit acknowledgement, replay outcomes, conflict/retry classification, poison input, trace restoration, and sanitized logging | PASS | 6/6 tests passed (2026-08-15) |
+| T032 | `./mvnw -pl services/order-service -am test -Dtest=PurchaseAcceptedConsumerIntegrationTests,PurchaseAcceptedRetryDltIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | Opt-in live Kafka/Schema Registry integration fixtures | PASS | Default suite skips live tests; opt-in live runs below passed 5/5 tests (2026-08-15) |
+| T033-T035 | `./mvnw -pl services/order-service -am verify` | Mapper, typed failures, listener, manual-immediate ack, Avro consumer factory, 1/3/10-second retry backoff, DLT recoverer, and runtime switch | PASS | Order reactor: 48 tests, 0 failures, 0 errors, 5 opt-in live tests skipped by default; BUILD SUCCESS (2026-08-15) |
+| T036 | `./mvnw -pl services/order-service -am test -Dtest=PurchaseAcceptedConsumerIntegrationTests,PurchaseAcceptedRetryDltIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false -DargLine="-Dorder.schema-registry.enabled=true -DSCHEMA_REGISTRY_URL=http://localhost:8081"` | Real broker/Registry delivery, topic/group/key/header handling, duplicate redelivery, transient retry recovery, exhausted retries, and poison DLT routing | PASS | Consumer integration 2/2 and retry/DLT integration 3/3 passed (5/5 total). The exhausted case invoked the use case 4 times (initial delivery plus 3 retries) before routing to `flashsale.order.purchase-accepted.dlt.v1`. Topic `flashsale.purchase.events.v1`, group `order-purchase-accepted-v1`; records use `purchaseRequestId` keys and trace headers. DLT schema subject is explicitly provisioned by the opt-in fixture; production provisioning remains an infrastructure task for a later group (2026-08-15) |
+
+### G4 Checkpoint
+
+- [x] `PurchaseAcceptedV1` is validated at the Kafka boundary before entering the use case.
+- [x] Manual acknowledgement occurs only after the local use case returns a committed/replayed outcome.
+- [x] Equivalent re-delivery is acknowledged safely; contradictory identity and poison records are classified without mutating Order state.
+- [x] Transient persistence failures use bounded 1/3/10-second retries and non-retryable/exhausted records route to the consumer-specific DLT.
+- [x] Trace context is restored or safely generated and propagated through the command; raw payloads and secrets are not logged.
 
 ## Later Evidence Slots
 
