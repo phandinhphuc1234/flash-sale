@@ -1,8 +1,8 @@
 # Tasks: Order Service Core MVP
 
-**Status**: Approved for implementation — G1–G4 / T001–T036
+**Status**: Approved for implementation — G1–G5 / T001–T046
 **Input**: Design documents from `/specs/020-order-service-mvp/`
-**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1–G4; later groups remain
+**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1–G5; later groups remain
 gated by their checkpoints and required project-owner/architecture/security review.
 
 **Tests**: All domain, architecture, PostgreSQL, Kafka/Schema Registry, consumer redelivery/
@@ -132,19 +132,19 @@ correlation, causation, and trace headers.
 
 ### Tests for User Story 2
 
-- [ ] T037 [P] [US2] Add outbox retry, stable snapshot, lease recovery, and sanitized-error unit tests in `services/order-service/src/test/java/com/philia/flashsale/order/outbox/application/OrderOutboxPublicationServiceTests.java` and `OrderOutboxRetryPolicyTests.java`
-- [ ] T038 [P] [US2] Add outbox-to-`OrderCreatedV1` mapper tests for exact envelope/data/logical types, one item, forbidden fields, key, causation/correlation, and W3C headers in `services/order-service/src/test/java/com/philia/flashsale/order/outbox/adapter/out/messaging/kafka/OrderCreatedAvroMapperTests.java`
-- [ ] T039 [US2] Prove multiple workers claim each row once, expired leases recover, send-before-mark duplicates retain identity, and failures return to due retry against PostgreSQL in `services/order-service/src/test/java/com/philia/flashsale/order/outbox/integration/OrderOutboxConcurrencyIntegrationTests.java`
-- [ ] T040 [US2] Verify live Registry subject compatibility, `auto.register.schemas=false`, Kafka key/headers/record, Kafka-down and Registry-down retry, and duplicate physical publication identity in `services/order-service/src/test/java/com/philia/flashsale/order/outbox/integration/OrderCreatedKafkaIntegrationTests.java`
+- [x] T037 [P] [US2] Add outbox retry, stable snapshot, lease recovery, and sanitized-error unit tests in `services/order-service/src/test/java/com/philia/flashsale/order/outbox/application/OrderOutboxPublicationServiceTests.java` and `OrderOutboxRetryPolicyTests.java`
+- [x] T038 [P] [US2] Add outbox-to-`OrderCreatedV1` mapper tests for exact envelope/data/logical types, one item, forbidden fields, key, causation/correlation, and W3C headers in `services/order-service/src/test/java/com/philia/flashsale/order/outbox/adapter/out/messaging/kafka/OrderCreatedAvroMapperTests.java`
+- [x] T039 [US2] Prove multiple workers claim each row once, expired leases recover, send-before-mark duplicates retain identity, and failures return to due retry against PostgreSQL in `services/order-service/src/test/java/com/philia/flashsale/order/outbox/integration/OrderOutboxConcurrencyIntegrationTests.java`
+- [x] T040 [US2] Verify live Registry subject compatibility, `auto.register.schemas=false`, Kafka key/headers/record, Kafka-down and Registry-down retry, and duplicate physical publication identity in `services/order-service/src/test/java/com/philia/flashsale/order/outbox/integration/OrderCreatedKafkaIntegrationTests.java`
 
 ### Implementation for User Story 2
 
-- [ ] T041 [P] [US2] Define outbox application record, claim/update/publish ports, and capped retry policy in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/model/OrderOutboxEvent.java`, `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/port/ClaimOrderOutboxEventsPort.java`, `UpdateOrderOutboxPublicationPort.java`, `PublishOrderCreatedPort.java`, and `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/usecase/OrderOutboxRetryPolicy.java`
-- [ ] T042 [US2] Implement outbox orchestration that claims due events, publishes sequentially, marks success, and requeues sanitized failures without discarding committed facts in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/usecase/OrderOutboxPublicationService.java`
-- [ ] T043 [P] [US2] Implement leased `FOR UPDATE SKIP LOCKED` claim/update mapping in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/adapter/out/persistence/OrderOutboxPersistenceAdapter.java`
-- [ ] T044 [P] [US2] Implement immutable snapshot-to-Avro mapping and keyed Kafka publication in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/adapter/out/messaging/kafka/OrderCreatedAvroMapper.java` and `KafkaOrderCreatedPublisher.java`
-- [ ] T045 [US2] Implement the scheduled driving adapter and wire 500-ms polling, batch 100, 30-second leases, worker identity, and runtime enablement in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/adapter/in/scheduling/OrderOutboxPublisherJob.java` and `services/order-service/src/main/java/com/philia/flashsale/order/configuration/OrderOutboxConfiguration.java`
-- [ ] T046 [US2] Run the US2 PostgreSQL/Kafka/Registry suite and record event IDs, keys, subject/version, retry/recovery evidence, commands, and exit status in `specs/020-order-service-mvp/validation.md`
+- [x] T041 [P] [US2] Define outbox application record, claim/update/publish ports, and capped retry policy in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/model/OrderOutboxEvent.java`, `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/port/ClaimOrderOutboxEventsPort.java`, `UpdateOrderOutboxPublicationPort.java`, `PublishOrderCreatedPort.java`, and `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/usecase/OrderOutboxRetryPolicy.java`
+- [x] T042 [US2] Implement outbox orchestration that claims due events, publishes sequentially, marks success, and requeues sanitized failures without discarding committed facts in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/usecase/OrderOutboxPublicationService.java`
+- [x] T043 [P] [US2] Implement leased `FOR UPDATE SKIP LOCKED` claim/update mapping in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/adapter/out/persistence/OrderOutboxPersistenceAdapter.java`
+- [x] T044 [P] [US2] Implement immutable snapshot-to-Avro mapping and keyed Kafka publication in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/adapter/out/messaging/kafka/OrderCreatedAvroMapper.java` and `KafkaOrderCreatedPublisher.java`
+- [x] T045 [US2] Implement the scheduled driving adapter and wire 500-ms polling, batch 100, 30-second leases, worker identity, and runtime enablement in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/adapter/in/scheduling/OrderOutboxPublisherJob.java` and `services/order-service/src/main/java/com/philia/flashsale/order/configuration/OrderOutboxConfiguration.java`
+- [x] T046 [US2] Run the US2 PostgreSQL/Kafka/Registry suite and record event IDs, keys, subject/version, retry/recovery evidence, commands, and exit status in `specs/020-order-service-mvp/validation.md`
 
 **Checkpoint**: US2 publishes every committed Order-created fact eventually; Kafka/Registry outage
 does not remove the Order or change its publication identity.
