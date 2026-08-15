@@ -1,8 +1,8 @@
 # Feature 020 Validation Ledger
 
 **Feature**: Order Service Core MVP
-**Scope for this branch**: G1 / T001-T014
-**Status**: G2 complete
+**Scope for this branch**: G3 / T015-T029
+**Status**: G3 complete
 
 This ledger records commands, scope, exit status, and evidence for each approved task group. A
 checked task is not complete until its evidence is recorded here.
@@ -51,6 +51,26 @@ checked task is not complete until its evidence is recorded here.
 - [x] Advisory-lock identity keys are deterministic and collision-domain separated.
 - [x] Typed property constraints and supported defaults are verified.
 - [x] No Kafka consumer or public endpoint was activated in G2.
+
+## G3 User Story 1 — Durable Order creation
+
+| Task | Validation command | Scope | Result | Evidence |
+|------|--------------------|-------|--------|----------|
+| T015-T017 | `./mvnw -pl services/order-service -am test -Dtest=OrderDomainTests,AcceptedPurchaseFingerprintTests,CreateOrderFromAcceptedPurchaseServiceTests -Dsurefire.failIfNoSpecifiedTests=false` | Domain invariants, exact scale-4 money, canonical fingerprint, use-case outcomes, and framework-free application boundary | PASS | 9/9 tests passed; BUILD SUCCESS (2026-08-15) |
+| T018-T022 | `./mvnw -pl services/order-service -am test -Dtest=OrderDomainTests,AcceptedPurchaseFingerprintTests,CreateOrderFromAcceptedPurchaseServiceTests -Dsurefire.failIfNoSpecifiedTests=false` | Domain models, command/result/ports, fingerprinting, and Order creation orchestration | PASS | Production and test compilation succeeded; 9/9 focused tests passed (2026-08-15) |
+| T023-T026 | `./mvnw -pl services/order-service -am test -Dtest=AcceptedPurchasePersistenceIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | JPA entities, repositories, mapper, advisory-lock adapter, identity/clock wiring, and four-row transaction | PASS | PostgreSQL 17 Testcontainers; 5/5 tests passed, including full rollback and Order-number collision recovery (2026-08-15) |
+| T027 | `./mvnw -pl services/order-service -am test -Dtest=AcceptedPurchasePersistenceIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | Exact snapshot, event/business replay, contradiction, rollback, and stable outbox identity | PASS | 5/5 PostgreSQL integration tests passed; one Order, line, inbox, and outbox row on the create path (2026-08-15) |
+| T028 | `./mvnw -pl services/order-service -am test -Dtest=AcceptedPurchaseConcurrencyIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | 100 equivalent deliveries and 100 contradictory concurrent deliveries | PASS | 2/2 tests passed; each scenario leaves exactly one Order/line/outbox fact and conflicting deliveries do not mutate the winner (2026-08-15) |
+| T029 | `./mvnw -pl services/order-service -am verify` | Full G3 module validation and reactor dependencies | PASS | Common Web 9, Kafka contracts 9, Order 31 tests; all reactor projects succeeded and the Order JAR was packaged (2026-08-15) |
+
+## G3 Checkpoint
+
+- [x] A valid accepted purchase creates one `PENDING_PAYMENT` Order, one line, one inbox receipt,
+  and one stable `OrderCreated` outbox identity in one PostgreSQL transaction.
+- [x] Same event and equivalent different-event replays are no-ops; contradictory identities return
+  `CONFLICT` without changing the established Order.
+- [x] 100-way equivalent and contradictory concurrency evidence passes against PostgreSQL.
+- [x] No Kafka consumer or HTTP endpoint was activated in G3; those remain G4/G6 work.
 
 ## Later Evidence Slots
 
