@@ -1,8 +1,8 @@
 # Feature 020 Validation Ledger
 
 **Feature**: Order Service Core MVP
-**Scope for this branch**: G1 / T001-T008
-**Status**: G1 complete
+**Scope for this branch**: G1 / T001-T014
+**Status**: G2 complete
 
 This ledger records commands, scope, exit status, and evidence for each approved task group. A
 checked task is not complete until its evidence is recorded here.
@@ -25,6 +25,16 @@ checked task is not complete until its evidence is recorded here.
 - [x] Architecture guard tests pass with no domain/application framework leakage.
 - [x] Contract and module validation commands have recorded exit status.
 
+## G2 PostgreSQL and Local Transaction Foundation
+
+| Task | Validation command | Scope | Result | Evidence |
+|------|--------------------|-------|--------|----------|
+| T009-T010 | `./mvnw -pl services/order-service -am test -Dtest=OrderSchemaMigrationIntegrationTests` | Liquibase changeset and master include | PASS | PostgreSQL 17 Testcontainers created all four Order tables and one Liquibase changeset; 6/6 tests passed (2026-08-15) |
+| T011 | `./mvnw -pl services/order-service -am test -Dtest=OrderSchemaMigrationIntegrationTests` | Clean migration, exact types, constraints, indexes, rollback | PASS | Exact NUMERIC(19,4), TIMESTAMPTZ, JSONB, identity/status/FK/check/index assertions and reverse rollback passed; 6/6 (2026-08-15) |
+| T012 | `./mvnw -pl services/order-service -am test -Dtest=PostgreSqlOrderIdentityLockKeyTests` | Deterministic, domain-separated advisory-lock keys | PASS | 3/3 tests passed; same identity is stable and purchase/reservation namespaces are separated (2026-08-15) |
+| T013 | `./mvnw -pl services/order-service -am test -Dtest=OrderPropertiesTests` | Property validation and supported defaults | PASS | 3/3 tests passed for required values, bounded batch/page settings, retry defaults, and invalid input (2026-08-15) |
+| T014 | `./mvnw -pl services/order-service -am verify` | Order module, contract, architecture, and G2 foundation suite | PASS | Reactor common-web 9, Kafka contracts 9, Order 15 tests; BUILD SUCCESS (2026-08-15) |
+
 ## Command Results
 
 - `./mvnw -pl services/order-service -am test`: PASS; common-web 9 tests, Kafka contracts 9 tests,
@@ -33,6 +43,14 @@ checked task is not complete until its evidence is recorded here.
 - Production dependency scan: PASS; no Redis, Feign, MapStruct, Payment SDK, or distributed-lock
   dependency introduced.
 - `git diff --check`: PASS; no whitespace errors in the G1 diff.
+
+## G2 Checkpoint
+
+- [x] `order_db` Liquibase migration creates the four service-owned durable tables.
+- [x] PostgreSQL constraints, exact types, indexes, and development rollback are verified.
+- [x] Advisory-lock identity keys are deterministic and collision-domain separated.
+- [x] Typed property constraints and supported defaults are verified.
+- [x] No Kafka consumer or public endpoint was activated in G2.
 
 ## Later Evidence Slots
 

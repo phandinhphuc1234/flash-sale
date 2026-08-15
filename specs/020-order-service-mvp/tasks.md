@@ -1,9 +1,9 @@
 # Tasks: Order Service Core MVP
 
-**Status**: Approved for implementation — G1 / T001–T008
+**Status**: Approved for implementation — G1 / T001–T014
 **Input**: Design documents from `/specs/020-order-service-mvp/`
-**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1; later groups remain gated
-by their checkpoints and required project-owner/architecture/security review.
+**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1 and G2; later groups remain
+gated by their checkpoints and required project-owner/architecture/security review.
 
 **Tests**: All domain, architecture, PostgreSQL, Kafka/Schema Registry, consumer redelivery/
 concurrency, outbox recovery, HTTP/security, failure-matrix, Compose smoke, performance, module, and
@@ -44,12 +44,12 @@ and architecture tests can guard all subsequent groups.
 
 **⚠️ CRITICAL**: User-story persistence work does not begin until this group is complete.
 
-- [ ] T009 Implement the immutable Liquibase SQL changeset for `orders`, `order_lines`, `order_consumer_inbox`, `order_outbox_events`, constraints, indexes, and development rollback in `services/order-service/src/main/resources/db/changelog/changes/001-create-order-core-schema.sql`
-- [ ] T010 Include only the Order Core changeset in `services/order-service/src/main/resources/db/changelog/db.changelog-master.yaml`
-- [ ] T011 Verify clean migration, Hibernate validation, exact numeric/time types, check/unique/FK/index behavior, and development rollback against PostgreSQL in `services/order-service/src/test/java/com/philia/flashsale/order/integration/OrderSchemaMigrationIntegrationTests.java`
-- [ ] T012 [P] Add deterministic PostgreSQL advisory-lock key derivation with collision-domain separation in `services/order-service/src/main/java/com/philia/flashsale/order/order/adapter/out/persistence/jpa/PostgreSqlOrderIdentityLockKey.java` and verify it in `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/out/persistence/jpa/PostgreSqlOrderIdentityLockKeyTests.java`
-- [ ] T013 [P] Verify property constraints, unsupported blank/negative settings, and default values in `services/order-service/src/test/java/com/philia/flashsale/order/configuration/OrderPropertiesTests.java`
-- [ ] T014 Run the contract/module compile plus migration/architecture foundation tests and record command, scope, exit status, and test counts in `specs/020-order-service-mvp/validation.md`
+- [x] T009 Implement the immutable Liquibase SQL changeset for `orders`, `order_lines`, `order_consumer_inbox`, `order_outbox_events`, constraints, indexes, and development rollback in `services/order-service/src/main/resources/db/changelog/changes/001-create-order-core-schema.sql`
+- [x] T010 Include only the Order Core changeset in `services/order-service/src/main/resources/db/changelog/db.changelog-master.yaml`
+- [x] T011 Verify clean migration, Hibernate validation, exact numeric/time types, check/unique/FK/index behavior, and development rollback against PostgreSQL in `services/order-service/src/test/java/com/philia/flashsale/order/integration/OrderSchemaMigrationIntegrationTests.java`
+- [x] T012 [P] Add deterministic PostgreSQL advisory-lock key derivation with collision-domain separation in `services/order-service/src/main/java/com/philia/flashsale/order/order/adapter/out/persistence/jpa/PostgreSqlOrderIdentityLockKey.java` and verify it in `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/out/persistence/jpa/PostgreSqlOrderIdentityLockKeyTests.java`
+- [x] T013 [P] Verify property constraints, unsupported blank/negative settings, and default values in `services/order-service/src/test/java/com/philia/flashsale/order/configuration/OrderPropertiesTests.java`
+- [x] T014 Run the contract/module compile plus migration/architecture foundation tests and record command, scope, exit status, and test counts in `specs/020-order-service-mvp/validation.md`
 
 **Checkpoint**: `order_db` schema and service foundations are independently verifiable; no Kafka
 consumer or public endpoint is active yet.
