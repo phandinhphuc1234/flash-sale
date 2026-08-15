@@ -1,6 +1,6 @@
 # Implementation Plan: Order Service Core MVP
 
-**Status**: Approved for implementation — G1 and G2 authorized by project owner on 2026-08-15
+**Status**: Approved for implementation — G1, G2, and G3 authorized by project owner on 2026-08-15
 **Branch**: `020-order-service-mvp` | **Date**: 2026-08-15 | **Spec**: [spec.md](./spec.md)
 **Input**: Approved Feature 020 specification at `/specs/020-order-service-mvp/spec.md`
 
@@ -452,8 +452,8 @@ failure or build checks must pass before a task group is marked complete.
 6. Observability/readiness, Compose smoke, concurrency/performance evidence, and full validation.
 
 `tasks.md` was generated from this plan. The project owner authorized implementation of G1
-(T001–T008) and G2 (T009–T014) on 2026-08-15; later groups remain gated by their checkpoints and
-required review.
+(T001–T008), G2 (T009–T014), and G3 (T015–T029) on 2026-08-15; later groups remain gated by their
+checkpoints and required review.
 
 ## Approval History
 
@@ -461,6 +461,7 @@ required review.
 |------|----------|-------|----------|
 | 2026-08-15 | Approved for implementation | G1 / T001–T008 | Project owner |
 | 2026-08-15 | Approved for implementation | G2 / T009–T014 | Project owner |
+| 2026-08-15 | Approved for implementation | G3 / T015–T029 | Project owner |
 
 ## Complexity Tracking
 
