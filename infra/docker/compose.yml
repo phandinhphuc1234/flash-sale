@@ -57,6 +57,28 @@ x-flashsale-environment: &flashsale-environment
   FLASHSALE_INTERNAL_JWT_AUDIENCE: ${FLASHSALE_INTERNAL_JWT_AUDIENCE:-flash-sale-internal-api}
   CAMPAIGN_SERVICE_URL: ${CAMPAIGN_SERVICE_URL:-http://campaign-service:8080}
 
+x-order-environment: &order-environment
+  <<: *backend-environment
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order_db
+  SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-flashsale}
+  SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+  SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL:-http://schema-registry:8081}
+  KAFKA_AUTO_REGISTER_SCHEMAS: ${KAFKA_AUTO_REGISTER_SCHEMAS:-false}
+  ORDER_JWT_ISSUER: ${JWT_ISSUER_URI:-http://authentication-service:8080}
+  ORDER_JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://authentication-service:8080/.well-known/jwks.json}
+  ORDER_JWT_AUDIENCE: ${JWT_AUDIENCE:-flash-sale-api}
+  ORDER_JWT_TYPE: ${ORDER_JWT_TYPE:-at+jwt}
+  ORDER_PURCHASE_ACCEPTED_TOPIC: ${ORDER_PURCHASE_ACCEPTED_TOPIC:-flashsale.purchase.events.v1}
+  ORDER_PURCHASE_ACCEPTED_CONSUMER_GROUP: ${ORDER_PURCHASE_ACCEPTED_CONSUMER_GROUP:-order-purchase-accepted-v1}
+  ORDER_PURCHASE_ACCEPTED_DLT_TOPIC: ${ORDER_PURCHASE_ACCEPTED_DLT_TOPIC:-flashsale.order.purchase-accepted.dlt.v1}
+  ORDER_EVENTS_TOPIC: ${ORDER_EVENTS_TOPIC:-flashsale.order.events.v1}
+  ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED: ${ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED:-true}
+  ORDER_OUTBOX_PUBLISHER_ENABLED: ${ORDER_OUTBOX_PUBLISHER_ENABLED:-true}
+  ORDER_OUTBOX_ENABLED: ${ORDER_OUTBOX_ENABLED:-true}
+  ORDER_CREATION_ENABLED: ${ORDER_CREATION_ENABLED:-true}
+  ORDER_QUERY_ENABLED: ${ORDER_QUERY_ENABLED:-true}
+
 services:
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:17-alpine}
@@ -313,10 +335,43 @@ services:
 
   order-service:
     <<: *backend-common
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
     image: ${ORDER_SERVICE_IMAGE:-flash-sale/order-service:local}
     build:
       context: ../..
       dockerfile: services/order-service/Dockerfile
+    environment:
+      <<: *order-environment
+
+  # One-off, non-web Liquibase process for the Order-owned schema.
+  order-migration:
+    profiles:
+      - migrations
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flash-sale-net
+    image: ${ORDER_SERVICE_IMAGE:-flash-sale/order-service:local}
+    build:
+      context: ../..
+      dockerfile: services/order-service/Dockerfile
+    environment:
+      <<: *order-environment
+      SPRING_LIQUIBASE_ENABLED: "true"
+      SPRING_MAIN_KEEP_ALIVE: "false"
+      ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED: "false"
+      ORDER_OUTBOX_PUBLISHER_ENABLED: "false"
+      ORDER_CREATION_ENABLED: "false"
+      ORDER_QUERY_ENABLED: "false"
+    command: ["--spring.main.web-application-type=none"]
 
   payment-service:
     <<: *backend-common

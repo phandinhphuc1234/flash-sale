@@ -4,6 +4,7 @@ import com.philia.flashsale.order.outbox.application.model.OrderOutboxEvent;
 import com.philia.flashsale.order.outbox.application.port.ClaimOrderOutboxEventsPort;
 import com.philia.flashsale.order.outbox.application.port.PublishOrderCreatedPort;
 import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
+import com.philia.flashsale.order.observability.OrderObservability;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -17,10 +18,18 @@ public final class OrderOutboxPublicationService {
     private final OrderOutboxRetryPolicy retryPolicy;
     private final int batchSize;
     private final Duration claimLease;
+    private final OrderObservability observability;
 
     public OrderOutboxPublicationService(ClaimOrderOutboxEventsPort claims,
             PublishOrderCreatedPort publisher, UpdateOrderOutboxPublicationPort updates,
             OrderOutboxRetryPolicy retryPolicy, int batchSize, Duration claimLease) {
+        this(claims, publisher, updates, retryPolicy, batchSize, claimLease, OrderObservability.noop());
+    }
+
+    public OrderOutboxPublicationService(ClaimOrderOutboxEventsPort claims,
+            PublishOrderCreatedPort publisher, UpdateOrderOutboxPublicationPort updates,
+            OrderOutboxRetryPolicy retryPolicy, int batchSize, Duration claimLease,
+            OrderObservability observability) {
         this.claims = Objects.requireNonNull(claims, "claims");
         this.publisher = Objects.requireNonNull(publisher, "publisher");
         this.updates = Objects.requireNonNull(updates, "updates");
@@ -33,6 +42,7 @@ public final class OrderOutboxPublicationService {
         if (claimLease.isZero() || claimLease.isNegative()) {
             throw new IllegalArgumentException("claim lease must be positive");
         }
+        this.observability = Objects.requireNonNull(observability, "observability");
     }
 
     public int publishDue(String workerId, Instant now) {
@@ -46,13 +56,15 @@ public final class OrderOutboxPublicationService {
     }
 
     private void publishOne(OrderOutboxEvent event, String workerId, Instant now) {
-        try {
-            publisher.publish(event);
-            updates.markPublished(event.eventId(), workerId, now);
-        } catch (RuntimeException failure) {
-            Duration delay = retryPolicy.delayForAttempt(event.attemptCount());
-            updates.markFailed(event.eventId(), workerId, now, now.plus(delay), sanitize(failure));
-        }
+        observability.observe(OrderObservability.Operation.OUTBOX_PUBLICATION, () -> {
+            try {
+                publisher.publish(event);
+                updates.markPublished(event.eventId(), workerId, now);
+            } catch (RuntimeException failure) {
+                Duration delay = retryPolicy.delayForAttempt(event.attemptCount());
+                updates.markFailed(event.eventId(), workerId, now, now.plus(delay), sanitize(failure));
+            }
+        });
     }
 
     private String sanitize(RuntimeException failure) {

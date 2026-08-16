@@ -1,8 +1,8 @@
 # Feature 020 Validation Ledger
 
 **Feature**: Order Service Core MVP
-**Scope for this branch**: G6 / T047-T060
-**Status**: G6 complete
+**Scope for this branch**: G7 / T061-T067 (built on G6)
+**Status**: G7 complete
 
 This ledger records commands, scope, exit status, and evidence for each approved task group. A
 checked task is not complete until its evidence is recorded here.
@@ -137,10 +137,31 @@ checked task is not complete until its evidence is recorded here.
   sanitized as `AUTHENTICATION_REQUIRED` without token or SQL disclosure.
 - [x] Gateway exposes only the authenticated `GET /api/v1/orders/**` route to Order Service.
 
+## G7 Observability, Readiness, and Root Infrastructure
+
+| Task | Validation command | Scope | Result | Evidence |
+|------|--------------------|-------|--------|----------|
+| T061-T063 | `./mvnw -pl services/order-service -am test -Dtest=OrderObservabilityTests,OrderReadinessIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | Bounded Micrometer labels/timers/counters/gauges, W3C request/MDC lifecycle, readiness semantics, safe diagnostics, and no manual Prometheus registry | PASS | 5/5 tests passed; metric tags contain only operation/event_type/outcome/dependency/status; Kafka/consumer outage keeps readiness UP while PostgreSQL outage is DOWN (2026-08-16) |
+| T064 | `bash infra/docker/kafka/init-order-topics.sh` | Idempotent Order event/DLT topic provisioning with exact local partition and replication verification | PASS | Local Docker Kafka provisioned `flashsale.order.events.v1` and `flashsale.order.purchase-accepted.dlt.v1`, each 3 partitions and replication factor 1 (2026-08-16) |
+| T065 | `pwsh -NoProfile -File infra/docker/schema-registry/register-order-schemas.ps1 -SchemaRegistryUrl http://localhost:8081` and `-CheckOnly` | Controlled OrderCreatedV1 registration, subject strategy, compatibility, and check-only path | PASS | Subject `flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v1.OrderCreatedV1`, schema id 7/version 1, `BACKWARD_TRANSITIVE`; registration and check-only both passed (2026-08-16) |
+| T066 | `docker compose --env-file infra/docker/.env -f infra/docker/compose.yml build order-service`; `docker compose ... --profile migrations run --rm --no-deps order-migration --spring.main.web-application-type=none`; `docker compose ... up -d order-service` | Order image, order_db Liquibase migration, Kafka/Registry/JWT/runtime wiring, and normal service startup | PASS | Image built; one Liquibase changeset created all Order tables in `order_db`; container started and consumer joined `order-purchase-accepted-v1` with all three partitions (2026-08-16) |
+| T067 | `./mvnw -pl services/order-service -am test -Dtest=OrderInfrastructureContractTests -Dsurefire.failIfNoSpecifiedTests=false` | PowerShell parser, rendered Compose topology, topics/scripts/defaults contract | PASS | 4/4 tests passed; rendered Compose included `apps` and `migrations` profiles, `order-service`, `order-migration`, and `order_db` wiring (2026-08-16) |
+
+### G7 Checkpoint
+
+- [x] Order exposes bounded runtime observations and W3C trace/MDC context without identifiers or
+  secrets in metric labels.
+- [x] PostgreSQL is the readiness dependency; Kafka/Schema Registry and outbox backlog remain
+  separately observable without disabling committed Order queries.
+- [x] Root Compose owns Order runtime/migration wiring, while the service retains its migration.
+- [x] Order topics and the controlled `OrderCreatedV1` Schema Registry subject are provisioned
+  idempotently and verified locally.
+- [x] Compose/parser/module validation evidence is recorded with command scope and exit status.
+
 ## Later Evidence Slots
 
 The following sections will be expanded by the corresponding approved groups:
 
 - G2: Liquibase migration, PostgreSQL schema, constraints, rollback, and persistence foundation.
 - G3-G4: accepted-purchase idempotency, atomic Order creation, Kafka consumer retry/DLT, and replay.
-- G7-G8: readiness, Compose smoke, failure matrix, concurrency, performance, module, and full build.
+- G8: Compose smoke, failure matrix, concurrency, performance, module, and full build.

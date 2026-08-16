@@ -4,12 +4,16 @@ import com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1;
 import com.philia.flashsale.order.order.application.exception.RetryableOrderPersistenceException;
 import com.philia.flashsale.order.order.application.port.in.CreateOrderFromAcceptedPurchaseUseCase;
 import com.philia.flashsale.order.order.application.result.OrderCreationResult;
+import com.philia.flashsale.order.observability.OrderObservability;
+import com.philia.flashsale.order.observability.OrderTraceContext;
+import com.philia.flashsale.order.websupport.context.OrderRequestContext;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
@@ -27,11 +31,19 @@ public final class PurchaseAcceptedKafkaConsumer {
 
     private final PurchaseAcceptedAvroMapper mapper;
     private final CreateOrderFromAcceptedPurchaseUseCase useCase;
+    private final OrderObservability observability;
 
     public PurchaseAcceptedKafkaConsumer(PurchaseAcceptedAvroMapper mapper,
             CreateOrderFromAcceptedPurchaseUseCase useCase) {
+        this(mapper, useCase, OrderObservability.noop());
+    }
+
+    @Autowired
+    public PurchaseAcceptedKafkaConsumer(PurchaseAcceptedAvroMapper mapper,
+            CreateOrderFromAcceptedPurchaseUseCase useCase, OrderObservability observability) {
         this.mapper = mapper;
         this.useCase = useCase;
+        this.observability = observability;
     }
 
     @KafkaListener(topics = "${order.kafka.accepted-purchase-topic}",
@@ -40,12 +52,14 @@ public final class PurchaseAcceptedKafkaConsumer {
             autoStartup = "${order.runtime.accepted-purchase-consumer-enabled:true}")
     public void onMessage(ConsumerRecord<String, PurchaseAcceptedV1> record, Acknowledgment acknowledgment) {
         String traceparent = header(record, TRACEPARENT);
-        String effectiveTraceparent = isValidTraceparent(traceparent) ? traceparent : newTraceparent();
+        String effectiveTraceparent = OrderRequestContext.isValidTraceparent(traceparent)
+                ? traceparent : OrderTraceContext.generate();
         String traceId = effectiveTraceparent.substring(3, 35);
         try (MDC.MDCCloseable trace = MDC.putCloseable(TRACE_ID, traceId);
                 MDC.MDCCloseable parent = MDC.putCloseable(TRACEPARENT, effectiveTraceparent);
                 MDC.MDCCloseable state = MDC.putCloseable(TRACESTATE, header(record, TRACESTATE))) {
-            consume(record, acknowledgment);
+            observability.observe(OrderObservability.Operation.INBOUND_PROCESSING,
+                    () -> consume(record, acknowledgment));
         } catch (PurchaseAcceptedRecordException | PurchaseAcceptedConflictException exception) {
             LOGGER.warn("Rejected PurchaseAccepted record eventId={} key={} reason={}", safeEventId(record),
                     record == null ? null : record.key(), exception.getMessage());
@@ -85,18 +99,11 @@ public final class PurchaseAcceptedKafkaConsumer {
     }
 
     static boolean isValidTraceparent(String value) {
-        if (value == null || !value.matches("^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$")) {
-            return false;
-        }
-        return !value.substring(3, 35).equals("00000000000000000000000000000000")
-                && !value.substring(36, 52).equals("0000000000000000");
+        return OrderRequestContext.isValidTraceparent(value);
     }
 
     private String newTraceparent() {
-        return "00-" + hexUuid(UUID.randomUUID()) + "-" + hexUuid(UUID.randomUUID()).substring(0, 16) + "-01";
+        return OrderTraceContext.generate();
     }
 
-    private String hexUuid(UUID value) {
-        return value.toString().replace("-", "");
-    }
 }

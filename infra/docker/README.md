@@ -11,7 +11,10 @@ infra/docker/
 ├── compose.dev.yml             # Optional local debugging override
 ├── .env.example                # Safe placeholder defaults
 ├── kafka/
-│   └── init-campaign-topics.sh  # Approved Feature 017 topic provisioning
+│   ├── init-campaign-topics.sh  # Approved Feature 017 topic provisioning
+│   └── init-order-topics.sh     # Approved Feature 020 topic provisioning
+├── schema-registry/
+│   └── register-order-schemas.ps1 # Controlled OrderCreatedV1 registration
 └── postgres/
     └── init/
         └── 01-create-databases.sql
@@ -304,6 +307,34 @@ bash infra/docker/kafka/init-campaign-topics.sh
 The script is idempotent and verifies three partitions with replication factor one. Schema
 registration is deliberately controlled by the contract-module/Registry rollout process; the
 Campaign producer keeps `auto.register.schemas=false` outside explicitly managed experiments.
+
+## Order database and Kafka topics
+
+`order-service` owns `order_db` and its Liquibase changelog under
+`services/order-service/src/main/resources/db/changelog/`. The normal Order container keeps
+Liquibase disabled; apply the schema once from the shared Compose topology:
+
+```powershell
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml build order-service
+docker compose --env-file infra/docker/.env -f infra/docker/compose.yml --profile migrations run --rm --no-deps `
+  -e SPRING_LIQUIBASE_ENABLED=true `
+  -e SPRING_MAIN_KEEP_ALIVE=false `
+  order-migration --spring.main.web-application-type=none
+```
+
+Provision the approved Order topics after Kafka is healthy:
+
+```bash
+bash infra/docker/kafka/init-order-topics.sh
+```
+
+The script is idempotent and verifies three partitions with replication factor one for
+`flashsale.order.events.v1` and `flashsale.order.purchase-accepted.dlt.v1`. Register or check the
+controlled `OrderCreatedV1` subject with:
+
+```powershell
+pwsh -File infra/docker/schema-registry/register-order-schemas.ps1 -CheckOnly
+```
 
 ## Stop containers
 

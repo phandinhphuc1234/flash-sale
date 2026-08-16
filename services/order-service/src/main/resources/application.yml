@@ -57,11 +57,23 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        liveness:
+          include:
+            - livenessState
+        readiness:
+          include:
+            - readinessState
+            - orderReadiness
+      validate-group-membership: false
   health:
     livenessstate:
       enabled: true
     readinessstate:
       enabled: true
+  tracing:
+    propagation:
+      type: w3c
 
 info:
   app:

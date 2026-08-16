@@ -4,6 +4,7 @@ import com.philia.flashsale.order.order.adapter.out.persistence.jpa.OwnedOrderQu
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OrderLineJpaRepository;
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OwnedOrderQueryJpaRepository;
 import com.philia.flashsale.order.order.application.usecase.OrderQueryService;
+import com.philia.flashsale.order.observability.OrderObservability;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,8 +22,9 @@ public class OrderQueryConfiguration {
 
     @Bean
     public OrderQueryService orderQueryService(
-            OwnedOrderQueryJpaAdapter adapter, OrderRuntimeProperties runtimeProperties) {
-        return new OrderQueryService(adapter, adapter, runtimeProperties.queryPageSizeMax());
+            OwnedOrderQueryJpaAdapter adapter, OrderRuntimeProperties runtimeProperties,
+            OrderObservability observability) {
+        return new OrderQueryService(adapter, adapter, runtimeProperties.queryPageSizeMax(), observability);
     }
 
 }

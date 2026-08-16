@@ -11,6 +11,7 @@ import com.philia.flashsale.order.outbox.application.port.PublishOrderCreatedPor
 import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
 import com.philia.flashsale.order.outbox.application.usecase.OrderOutboxPublicationService;
 import com.philia.flashsale.order.outbox.application.usecase.OrderOutboxRetryPolicy;
+import com.philia.flashsale.order.observability.OrderObservability;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -50,9 +51,9 @@ public class OrderOutboxConfiguration {
     OrderOutboxPublicationService orderOutboxPublicationService(
             ClaimOrderOutboxEventsPort claims, PublishOrderCreatedPort publisher,
             UpdateOrderOutboxPublicationPort updates, OrderOutboxRetryPolicy retryPolicy,
-            OrderOutboxProperties properties) {
+            OrderOutboxProperties properties, OrderObservability observability) {
         return new OrderOutboxPublicationService(claims, publisher, updates, retryPolicy,
-                properties.batchSize(), properties.claimLease());
+                properties.batchSize(), properties.claimLease(), observability);
     }
 
     @Bean
