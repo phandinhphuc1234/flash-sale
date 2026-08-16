@@ -10,6 +10,7 @@ import com.philia.flashsale.order.order.application.port.out.GenerateOrderIdenti
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderNumberPort;
 import com.philia.flashsale.order.order.application.usecase.AcceptedPurchaseFingerprintService;
 import com.philia.flashsale.order.order.application.usecase.CreateOrderFromAcceptedPurchaseService;
+import com.philia.flashsale.order.observability.OrderObservability;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -29,8 +30,8 @@ public class OrderCreationConfiguration {
     @Bean
     public OrderCreationJpaAdapter orderCreationJpaAdapter(OrderJpaRepository orders,
             OrderConsumerInboxJpaRepository inbox, OrderCreationOutboxJpaRepository outbox,
-            EntityManager entityManager) {
-        return new OrderCreationJpaAdapter(orders, inbox, outbox, entityManager);
+            EntityManager entityManager, OrderObservability observability) {
+        return new OrderCreationJpaAdapter(orders, inbox, outbox, entityManager, observability);
     }
 
     @Bean

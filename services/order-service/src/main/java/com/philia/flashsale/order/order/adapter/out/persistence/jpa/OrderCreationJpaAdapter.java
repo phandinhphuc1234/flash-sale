@@ -10,6 +10,7 @@ import com.philia.flashsale.order.order.application.exception.RetryableOrderPers
 import com.philia.flashsale.order.order.application.model.OrderCreationCandidate;
 import com.philia.flashsale.order.order.application.port.out.PersistOrderCreationPort;
 import com.philia.flashsale.order.order.application.result.OrderCreationResult;
+import com.philia.flashsale.order.observability.OrderObservability;
 import jakarta.persistence.EntityManager;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -27,13 +28,21 @@ public class OrderCreationJpaAdapter implements PersistOrderCreationPort {
     private final OrderCreationOutboxJpaRepository outbox;
     private final OrderPersistenceMapper mapper;
     private final EntityManager entityManager;
+    private final OrderObservability observability;
 
     public OrderCreationJpaAdapter(OrderJpaRepository orders, OrderConsumerInboxJpaRepository inbox,
             OrderCreationOutboxJpaRepository outbox, EntityManager entityManager) {
+        this(orders, inbox, outbox, entityManager, OrderObservability.noop());
+    }
+
+    public OrderCreationJpaAdapter(OrderJpaRepository orders, OrderConsumerInboxJpaRepository inbox,
+            OrderCreationOutboxJpaRepository outbox, EntityManager entityManager,
+            OrderObservability observability) {
         this.orders = Objects.requireNonNull(orders, "orders");
         this.inbox = Objects.requireNonNull(inbox, "inbox");
         this.outbox = Objects.requireNonNull(outbox, "outbox");
         this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
+        this.observability = Objects.requireNonNull(observability, "observability");
         this.mapper = new OrderPersistenceMapper();
     }
 
@@ -41,6 +50,11 @@ public class OrderCreationJpaAdapter implements PersistOrderCreationPort {
     @Transactional
     public OrderCreationResult persist(OrderCreationCandidate candidate) {
         Objects.requireNonNull(candidate, "candidate");
+        return observability.observe(OrderObservability.Operation.DURABLE_CREATION,
+                () -> persistInternal(candidate));
+    }
+
+    private OrderCreationResult persistInternal(OrderCreationCandidate candidate) {
         lockIdentities(candidate.order().purchaseRequestId(), candidate.order().reservationId());
 
         Optional<OrderConsumerInboxJpaEntity> event = inbox.findById(candidate.eventId());

@@ -1,8 +1,8 @@
 # Tasks: Order Service Core MVP
 
-**Status**: Approved for implementation — G1–G6 / T001–T060
+**Status**: Approved for implementation — G1–G7 / T001–T067
 **Input**: Design documents from `/specs/020-order-service-mvp/`
-**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1–G6; later groups remain
+**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1–G7; later groups remain
 gated by their checkpoints and required project-owner/architecture/security review.
 
 **Tests**: All domain, architecture, PostgreSQL, Kafka/Schema Registry, consumer redelivery/
@@ -190,13 +190,13 @@ or Schema Registry is unavailable.
 **Purpose**: Make the three stories diagnosable and runnable in the shared local topology without
 moving service-owned artifacts into root infrastructure.
 
-- [ ] T061 [P] Implement bounded observation names, counters/timers/gauges, W3C consumer/request context, and structured-log helpers in `services/order-service/src/main/java/com/philia/flashsale/order/observability/OrderObservationNames.java`, `OrderObservability.java`, `OrderTraceContext.java`, `OrderTraceHeaderFilter.java`, and `services/order-service/src/main/java/com/philia/flashsale/order/websupport/context/OrderRequestContext.java`
-- [ ] T062 [P] Implement PostgreSQL readiness plus consumer/outbox health signals that keep broker outages from disabling committed queries in `services/order-service/src/main/java/com/philia/flashsale/order/observability/OrderReadinessHealthIndicator.java` and `services/order-service/src/main/java/com/philia/flashsale/order/configuration/OrderReadinessConfiguration.java`
-- [ ] T063 Verify bounded labels, trace/MDC lifecycle, Kafka-to-outbox propagation, liveness/readiness semantics, query availability during Kafka outage, and absence of a manual Prometheus registry in `services/order-service/src/test/java/com/philia/flashsale/order/observability/OrderObservabilityTests.java` and `OrderReadinessIntegrationTests.java`
-- [ ] T064 Add idempotent provisioning for `flashsale.order.events.v1` and `flashsale.order.purchase-accepted.dlt.v1` in `infra/docker/kafka/init-order-topics.sh`, including exact local partition/replication verification
-- [ ] T065 Add controlled `OrderCreatedV1` subject compatibility/registration/check-only workflow in `infra/docker/schema-registry/register-order-schemas.ps1`
-- [ ] T066 Add `order_db`, Kafka/Registry, JWT, runtime, health, migration, and dependency wiring for `order-service` plus one-off `order-migration` in `infra/docker/compose.yml`, developer port wiring in `infra/docker/compose.dev.yml`, and documented non-secret defaults in `infra/docker/.env.example`
-- [ ] T067 Add PowerShell parser and rendered Compose configuration tests for the new scripts/topology in `services/order-service/src/test/java/com/philia/flashsale/order/integration/OrderInfrastructureContractTests.java`
+- [x] T061 [P] Implement bounded observation names, counters/timers/gauges, W3C consumer/request context, and structured-log helpers in `services/order-service/src/main/java/com/philia/flashsale/order/observability/OrderObservationNames.java`, `OrderObservability.java`, `OrderTraceContext.java`, `OrderTraceHeaderFilter.java`, and `services/order-service/src/main/java/com/philia/flashsale/order/websupport/context/OrderRequestContext.java`
+- [x] T062 [P] Implement PostgreSQL readiness plus consumer/outbox health signals that keep broker outages from disabling committed queries in `services/order-service/src/main/java/com/philia/flashsale/order/observability/OrderReadinessHealthIndicator.java` and `services/order-service/src/main/java/com/philia/flashsale/order/configuration/OrderReadinessConfiguration.java`
+- [x] T063 Verify bounded labels, trace/MDC lifecycle, Kafka-to-outbox propagation, liveness/readiness semantics, query availability during Kafka outage, and absence of a manual Prometheus registry in `services/order-service/src/test/java/com/philia/flashsale/order/observability/OrderObservabilityTests.java` and `OrderReadinessIntegrationTests.java`
+- [x] T064 Add idempotent provisioning for `flashsale.order.events.v1` and `flashsale.order.purchase-accepted.dlt.v1` in `infra/docker/kafka/init-order-topics.sh`, including exact local partition/replication verification
+- [x] T065 Add controlled `OrderCreatedV1` subject compatibility/registration/check-only workflow in `infra/docker/schema-registry/register-order-schemas.ps1`
+- [x] T066 Add `order_db`, Kafka/Registry, JWT, runtime, health, migration, and dependency wiring for `order-service` plus one-off `order-migration` in `infra/docker/compose.yml`, developer port wiring in `infra/docker/compose.dev.yml`, and documented non-secret defaults in `infra/docker/.env.example`
+- [x] T067 Add PowerShell parser and rendered Compose configuration tests for the new scripts/topology in `services/order-service/src/test/java/com/philia/flashsale/order/integration/OrderInfrastructureContractTests.java`
 
 **Checkpoint**: Order exposes bounded runtime signals and the shared Compose topology can migrate,
 start, provision, and diagnose it reproducibly.
