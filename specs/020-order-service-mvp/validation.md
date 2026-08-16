@@ -1,8 +1,8 @@
 # Feature 020 Validation Ledger
 
 **Feature**: Order Service Core MVP
-**Scope for this branch**: G5 / T037-T046
-**Status**: G5 complete
+**Scope for this branch**: G6 / T047-T060
+**Status**: G6 complete
 
 This ledger records commands, scope, exit status, and evidence for each approved task group. A
 checked task is not complete until its evidence is recorded here.
@@ -112,11 +112,35 @@ checked task is not complete until its evidence is recorded here.
 - [x] Kafka/Registry publication failures are retryable application failures; they do not delete or
   roll back the committed Order/outbox fact.
 
+## G6 User Story 3 — Query Only My Orders
+
+| Task | Validation command | Scope | Result | Evidence |
+|------|--------------------|-------|--------|----------|
+| T047 | `./mvnw -pl services/order-service -am test -Dtest=OrderQueryServiceTests -Dsurefire.failIfNoSpecifiedTests=false` | Owner detail/list orchestration, foreign/unknown equivalence, bounded page size, and Kafka-independent application ports | PASS | 3/3 unit tests passed; no Kafka or persistence framework type enters the application use case (2026-08-16) |
+| T048 | `./mvnw -pl services/order-service -am test -Dtest=OwnedOrderQueryPersistenceIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | PostgreSQL owner predicate, line snapshot mapping, owner-only list, deterministic `createdAt DESC, id DESC` ordering | PASS | PostgreSQL 17 Testcontainers; 2/2 integration tests passed; foreign owner returns empty and inbox/outbox tables are not queried (2026-08-16) |
+| T049 | `./mvnw -pl services/order-service -am test -Dtest=OrderQueryControllerTests -Dsurefire.failIfNoSpecifiedTests=false` | Shared success/page/error envelopes, validation, forbidden `userId`, malformed UUID, no-store and `X-Trace-Id` | PASS | MVC MockMvc contract suite: 3/3 tests passed (2026-08-16) |
+| T050 | `./mvnw -pl services/order-service -am test -Dtest=OrderJwtTrustConfigurationTests,OrderPublicSecurityTests -Dsurefire.failIfNoSpecifiedTests=false` | Issuer, audience, `typ`, nonblank subject, expiry, authentication failure sanitization, bearer challenge, and route security boundary | PASS | JWT validator tests 2/2 and public security tests 2/2 passed (2026-08-16) |
+| T051-T053 | `./mvnw -pl services/order-service -am verify` | Application ports/results, owner-scoped JPA repositories/adapter, not-found semantics and deterministic pagination | PASS | Order module full reactor verification passed; JPA context started against PostgreSQL and query integration passed (2026-08-16) |
+| T054-T058 | `./mvnw -pl services/order-service -am verify` | HTTP mapper/responses, GET endpoints, error/advice/security handlers, JWT decoder, configuration wiring, and architecture boundaries | PASS | Order reactor: 76 tests, 0 failures, 0 errors, 7 opt-in live tests skipped; JAR packaged; BUILD SUCCESS (2026-08-16) |
+| T059 | `./mvnw -pl services/api-gateway -am verify` | `order-public` route, GET predicate, target URL, gateway security registration, and existing gateway regression suite | PASS | Gateway reactor: 188 tests, 0 failures, 0 errors; route configuration test found `order-public` targeting `http://order-service:8080`; BUILD SUCCESS (2026-08-16) |
+| T060 | `git diff --check` plus all focused/module/Gateway commands above | Evidence integrity and completion checkpoint | PASS | Whitespace check passed; owner/foreign/unknown, pagination metadata, trace/no-store, JWT failures, and Gateway route evidence recorded (2026-08-16) |
+
+### G6 Checkpoint
+
+- [x] An authenticated shopper can retrieve only their committed Orders; unknown and foreign Orders
+  return the same `ORDER_NOT_FOUND` outcome.
+- [x] PostgreSQL is the durable source for owner queries; Kafka, Schema Registry, inbox, and outbox
+  are not dependencies of the read path.
+- [x] Detail/list responses use the approved shared envelopes, bounded pagination, deterministic
+  ordering, `Cache-Control: no-store`, and an `X-Trace-Id` response header.
+- [x] JWT trust is independently enforced at Order Service and Gateway; invalid credentials are
+  sanitized as `AUTHENTICATION_REQUIRED` without token or SQL disclosure.
+- [x] Gateway exposes only the authenticated `GET /api/v1/orders/**` route to Order Service.
+
 ## Later Evidence Slots
 
 The following sections will be expanded by the corresponding approved groups:
 
 - G2: Liquibase migration, PostgreSQL schema, constraints, rollback, and persistence foundation.
 - G3-G4: accepted-purchase idempotency, atomic Order creation, Kafka consumer retry/DLT, and replay.
-- G6: owner-only HTTP query, JWT trust, Gateway route, and non-enumerating errors.
 - G7-G8: readiness, Compose smoke, failure matrix, concurrency, performance, module, and full build.

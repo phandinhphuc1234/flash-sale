@@ -93,3 +93,5 @@ order:
     query-page-size-max: ${ORDER_QUERY_PAGE_SIZE_MAX:100}
   creation:
     enabled: ${ORDER_CREATION_ENABLED:true}
+  query:
+    enabled: ${ORDER_QUERY_ENABLED:true}
