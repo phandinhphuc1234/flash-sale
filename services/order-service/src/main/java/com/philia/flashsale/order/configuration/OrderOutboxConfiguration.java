@@ -1,0 +1,62 @@
+package com.philia.flashsale.order.configuration;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.philia.flashsale.contract.order.event.v1.OrderCreatedV1;
+import com.philia.flashsale.order.outbox.adapter.in.scheduling.OrderOutboxPublisherJob;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderCreatedPublisher;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedAvroMapper;
+import com.philia.flashsale.order.outbox.adapter.out.persistence.OrderOutboxPersistenceAdapter;
+import com.philia.flashsale.order.outbox.application.port.ClaimOrderOutboxEventsPort;
+import com.philia.flashsale.order.outbox.application.port.PublishOrderCreatedPort;
+import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
+import com.philia.flashsale.order.outbox.application.usecase.OrderOutboxPublicationService;
+import com.philia.flashsale.order.outbox.application.usecase.OrderOutboxRetryPolicy;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+/** Wires the Order outbox relay only when the runtime relay switches are enabled. */
+@Configuration(proxyBeanMethods = false)
+@EnableScheduling
+@ConditionalOnExpression("'${order.runtime.outbox-publisher-enabled:true}' == 'true' && '${order.outbox.enabled:true}' == 'true'")
+public class OrderOutboxConfiguration {
+
+    @Bean
+    OrderOutboxPersistenceAdapter orderOutboxPersistenceAdapter(JdbcTemplate jdbc) {
+        return new OrderOutboxPersistenceAdapter(jdbc);
+    }
+
+    @Bean
+    OrderOutboxRetryPolicy orderOutboxRetryPolicy(OrderOutboxProperties properties) {
+        return new OrderOutboxRetryPolicy(properties.retryBackoffCap());
+    }
+
+    @Bean
+    OrderCreatedAvroMapper orderCreatedAvroMapper(ObjectMapper objectMapper) {
+        return new OrderCreatedAvroMapper(objectMapper);
+    }
+
+    @Bean
+    KafkaOrderCreatedPublisher kafkaOrderCreatedPublisher(
+            KafkaTemplate<String, OrderCreatedV1> kafka, OrderCreatedAvroMapper mapper,
+            OrderKafkaProperties properties) {
+        return new KafkaOrderCreatedPublisher(kafka, mapper, properties);
+    }
+
+    @Bean
+    OrderOutboxPublicationService orderOutboxPublicationService(
+            ClaimOrderOutboxEventsPort claims, PublishOrderCreatedPort publisher,
+            UpdateOrderOutboxPublicationPort updates, OrderOutboxRetryPolicy retryPolicy,
+            OrderOutboxProperties properties) {
+        return new OrderOutboxPublicationService(claims, publisher, updates, retryPolicy,
+                properties.batchSize(), properties.claimLease());
+    }
+
+    @Bean
+    OrderOutboxPublisherJob orderOutboxPublisherJob(OrderOutboxPublicationService publication) {
+        return new OrderOutboxPublisherJob(publication);
+    }
+}

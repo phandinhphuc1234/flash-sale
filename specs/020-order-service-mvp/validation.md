@@ -1,8 +1,8 @@
 # Feature 020 Validation Ledger
 
 **Feature**: Order Service Core MVP
-**Scope for this branch**: G4 / T030-T036
-**Status**: G4 complete
+**Scope for this branch**: G5 / T037-T046
+**Status**: G5 complete
 
 This ledger records commands, scope, exit status, and evidence for each approved task group. A
 checked task is not complete until its evidence is recorded here.
@@ -90,12 +90,33 @@ checked task is not complete until its evidence is recorded here.
 - [x] Transient persistence failures use bounded 1/3/10-second retries and non-retryable/exhausted records route to the consumer-specific DLT.
 - [x] Trace context is restored or safely generated and propagated through the command; raw payloads and secrets are not logged.
 
+## G5 User Story 2 — Durable Order-created outbox publication
+
+| Task | Validation command | Scope | Result | Evidence |
+|------|--------------------|-------|--------|----------|
+| T037 | `./mvnw -pl services/order-service -am test -Dtest=OrderOutboxRetryPolicyTests,OrderOutboxPublicationServiceTests,OrderOutboxPublisherJobTests -Dsurefire.failIfNoSpecifiedTests=false` | Capped exponential retry, sequential publication, worker ownership, sanitized failure, and scheduled UTC invocation | PASS | 6/6 tests passed; failure stores only exception class, requeues the same event for a bounded delay, and a recovered dependency republishes the same identity (2026-08-15) |
+| T038 | `./mvnw -pl services/order-service -am test -Dtest=OrderCreatedAvroMapperTests -Dsurefire.failIfNoSpecifiedTests=false` | Immutable snapshot-to-Avro envelope/data mapping, UUID/decimal/time validation, one-item rule, aggregate/key identity, and infrastructure-field exclusion | PASS | 4/4 tests passed; generated `OrderCreatedV1` remains outside the application model (2026-08-15) |
+| T039 | `./mvnw -pl services/order-service -am test -Dtest=OrderOutboxConcurrencyIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | PostgreSQL lease claim, `FOR UPDATE SKIP LOCKED`, expired-lease recovery, stale-worker fencing, failed-publication requeue, and stable event identity | PASS | PostgreSQL 17 Testcontainers: 4/4 tests passed. Two workers claim one due row once; a recovered worker increments the attempt; stale workers are fenced; failures return the same identity to `PENDING` with a due retry time (2026-08-15) |
+| T040 | `./mvnw -pl services/order-service -am test -Dtest=OrderCreatedKafkaIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false -DargLine="-Dorder.schema-registry.enabled=true -DSCHEMA_REGISTRY_URL=http://localhost:8081"` | Live Kafka/Registry publication with controlled subject, `TopicRecordNameStrategy`, `auto.register.schemas=false`, key, record identity, trace headers, and duplicate delivery | PASS | 2/2 live tests passed. Subject `flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v1.OrderCreatedV1` was pre-registered with `BACKWARD_TRANSITIVE`; the same event ID/key/payload was observed twice. Publisher failures are requeued by the T037 application test (2026-08-15) |
+| T041-T045 | `./mvnw -pl services/order-service -am verify` | Outbox record/ports, retry policy, orchestration, PostgreSQL adapter, Avro/Kafka adapter, scheduler, configuration, and architecture boundaries | PASS | Order reactor: 64 tests, 0 failures, 0 errors, 7 opt-in live tests skipped by default; JAR packaged and all four reactor projects succeeded (2026-08-15) |
+| T046 | `git diff --check` plus the focused PostgreSQL and live Kafka/Registry commands above | Recorded commands, identity/key/subject/recovery evidence, and clean patch formatting | PASS | `git diff --check` passed; G5 evidence is captured in this ledger with command scope and exit status (2026-08-15) |
+
+### G5 Checkpoint
+
+- [x] A committed outbox row is leased by one worker at a time with PostgreSQL row locking and
+  expires/re-enters the retry path after a worker interruption.
+- [x] Kafka publication uses the stable event identity and `orderId` key, preserves trace headers,
+  and can produce duplicate physical records without changing the logical fact.
+- [x] Schema registration is controlled outside bootstrap; live publication uses the approved
+  record-name subject and `BACKWARD_TRANSITIVE` compatibility.
+- [x] Kafka/Registry publication failures are retryable application failures; they do not delete or
+  roll back the committed Order/outbox fact.
+
 ## Later Evidence Slots
 
 The following sections will be expanded by the corresponding approved groups:
 
 - G2: Liquibase migration, PostgreSQL schema, constraints, rollback, and persistence foundation.
 - G3-G4: accepted-purchase idempotency, atomic Order creation, Kafka consumer retry/DLT, and replay.
-- G5: outbox lease/retry, Kafka publication, Schema Registry compatibility, and recovery.
 - G6: owner-only HTTP query, JWT trust, Gateway route, and non-enumerating errors.
 - G7-G8: readiness, Compose smoke, failure matrix, concurrency, performance, module, and full build.
