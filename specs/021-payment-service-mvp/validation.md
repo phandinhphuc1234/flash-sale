@@ -1,9 +1,9 @@
 # Feature 021 Validation Evidence
 
-**Feature**: Payment Service Stripe Checkout MVP  
-**Group**: G1 — Module, Versioned Contracts, and Build Foundation  
-**Branch**: `codex/payment-g1-contracts`  
-**Validated**: 2026-08-17  
+**Feature**: Payment Service Stripe Checkout MVP
+**Group**: G1–G2 — Contracts, Domain, and PostgreSQL Foundation
+**Branch**: `codex/payment-g2-domain-persistence`
+**Validated**: 2026-08-17
 **Secret handling**: `infra/docker/.env` was not opened, read, rendered, edited, staged, or committed.
 
 ## Approved baselines
@@ -43,3 +43,25 @@ validation in CI/infrastructure verification (T104).
 
 G1 intentionally does not enable Kafka consumers, outbox publishers, recovery workers, Stripe calls,
 HTTP routes, migrations, or Gateway routes. Those behaviors remain in G2–G10 as ordered by `tasks.md`.
+
+## G2 implementation evidence
+
+| Task | Evidence | Result |
+|---|---|---|
+| T009–T011 | Pure domain/value-object tests and `PaymentArchitectureTests` | PASS; Money/identity/deadline validation, six Payment states, seven attempt states, success-dominant transitions, attempt limit, and dependency rules verified |
+| T012 | Liquibase `001-create-payment-core-schema.sql` applied to PostgreSQL 16 Testcontainers | PASS; seven Payment-owned tables, checks, unique/partial indexes, claim indexes, safe-data comments, and explicit empty-schema rollback |
+| T013–T018 | Hibernate validation plus repository/adapter compilation and wiring | PASS; JPA mappings agree with Liquibase; aggregate, inbox, idempotency, provider receipt, recovery, and outbox ports remain framework-free |
+| T019 | `PaymentSchemaMigrationIntegrationTests` and `PaymentJpaSchemaAgreementIntegrationTests` | PASS; schema shape, NUMERIC(19,4), prohibited columns, transaction rollback, Liquibase rollback, and Hibernate `ddl-auto=validate` |
+| T020 | `PaymentPersistenceConcurrencyIntegrationTests` | PASS; partial unresolved-attempt uniqueness, `FOR UPDATE SKIP LOCKED`, stale lease reclaim, and outbox claims |
+| T021 | `PaymentFoundationConfiguration` and architecture tests | PASS; clock/identity/transaction capabilities are composition-wired without business component scanning |
+
+### G2 commands and results
+
+1. `./mvnw -pl services/payment-service -am test` — exit `0`; Payment module 25 tests, 0 failures, 0 errors; contract module 13 tests, 0 failures, 0 errors.
+2. `./mvnw -pl services/payment-service -am -Dtest=PaymentSchemaMigrationIntegrationTests,PaymentPersistenceConcurrencyIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test` — exit `0`; 5 PostgreSQL Testcontainers tests pass.
+3. `./mvnw -pl services/payment-service -am -Dtest=PaymentJpaSchemaAgreementIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test` — exit `0`; Hibernate validates the Liquibase schema.
+4. `./mvnw -pl services/payment-service -am verify` — exit `0`; common-web, Avro contracts, and Payment Service reactor build succeeds with 25 Payment tests and 13 contract tests passing.
+5. `git diff --check` — exit `0` for tracked changes; `.worktrees/` remains untracked and excluded.
+
+G2 does not enable the Kafka consumer, Checkout provider, HTTP routes, webhook processing, or
+recovery scheduler. Those behaviors remain gated by G3–G10.
