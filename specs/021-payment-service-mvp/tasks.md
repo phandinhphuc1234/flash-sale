@@ -76,17 +76,17 @@ and 100 concurrent commands and reconcile one Payment/inbox/terminal outbox resu
 
 ### Tests for User Story 1
 
-- [ ] T022 [P] [US1] Add application tests for new/equivalent/expired/conflicting commands, immutable snapshot mapping, stable identity, no provider port, and deadline-failure outbox behavior in `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/application/AcceptPaymentRequestServiceTests.java` (FR-004–FR-007)
-- [ ] T023 [US1] Add PostgreSQL tests for atomic Payment+inbox commit, different-event equivalent replay, contradictory fingerprint visibility, rollback, and exact expired-command result in `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/integration/PaymentCommandAcceptanceIntegrationTests.java`
-- [ ] T024 [US1] Prove 100 concurrent same/different-event-ID equivalent commands create one logical Payment and contradictory races never mutate it in `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/integration/PaymentCommandConcurrencyIntegrationTests.java` (SC-001)
+- [X] T022 [P] [US1] Add application tests for new/equivalent/expired/conflicting commands, immutable snapshot mapping, stable identity, no provider port, and deadline-failure outbox behavior in `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/application/AcceptPaymentRequestServiceTests.java` (FR-004–FR-007)
+- [X] T023 [US1] Add PostgreSQL tests for atomic Payment+inbox commit, different-event equivalent replay, contradictory fingerprint visibility, rollback, and exact expired-command result in `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/integration/PaymentCommandAcceptanceIntegrationTests.java`
+- [X] T024 [US1] Prove 100 concurrent same/different-event-ID equivalent commands create one logical Payment and contradictory races never mutate it in `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/integration/PaymentCommandConcurrencyIntegrationTests.java` (SC-001)
 
 ### Implementation for User Story 1
 
-- [ ] T025 [P] [US1] Define `AcceptPaymentRequestCommand`, semantic result, conflict details, and `AcceptPaymentRequestUseCase` in `services/payment-service/src/main/java/com/philia/flashsale/payment/payment/application/model/AcceptPaymentRequestCommand.java`, `AcceptPaymentRequestResult.java`, and `application/port/in/AcceptPaymentRequestUseCase.java`
-- [ ] T026 [US1] Implement canonical command fingerprinting and atomic inbox/Payment/expired-outbox orchestration in `services/payment-service/src/main/java/com/philia/flashsale/payment/payment/application/service/AcceptPaymentRequestService.java`
-- [ ] T027 [US1] Implement inbox conflict persistence and same-Order equivalence lookup without exposing JPA types in `services/payment-service/src/main/java/com/philia/flashsale/payment/payment/adapter/out/persistence/jpa/PaymentCommandInboxPersistenceAdapter.java`
-- [ ] T028 [US1] Wire command acceptance and disabled-by-default Kafka-facing capability in `services/payment-service/src/main/java/com/philia/flashsale/payment/configuration/PaymentAcceptanceConfiguration.java`
-- [ ] T029 [US1] Run G3 domain/application/PostgreSQL tests and record row identities/counts, 100-delivery convergence, rollback, expired result, commands, and exit status in `specs/021-payment-service-mvp/validation.md`
+- [X] T025 [P] [US1] Define `AcceptPaymentRequestCommand`, semantic result, conflict details, and `AcceptPaymentRequestUseCase` in `services/payment-service/src/main/java/com/philia/flashsale/payment/payment/application/model/AcceptPaymentRequestCommand.java`, `AcceptPaymentRequestResult.java`, and `application/port/in/AcceptPaymentRequestUseCase.java`
+- [X] T026 [US1] Implement canonical command fingerprinting and atomic inbox/Payment/expired-outbox orchestration in `services/payment-service/src/main/java/com/philia/flashsale/payment/payment/application/service/AcceptPaymentRequestService.java`
+- [X] T027 [US1] Implement inbox conflict persistence and same-Order equivalence lookup without exposing JPA types in `services/payment-service/src/main/java/com/philia/flashsale/payment/payment/adapter/out/persistence/jpa/PaymentCommandInboxPersistenceAdapter.java`
+- [X] T028 [US1] Wire command acceptance and disabled-by-default Kafka-facing capability in `services/payment-service/src/main/java/com/philia/flashsale/payment/configuration/PaymentAcceptanceConfiguration.java`
+- [X] T029 [US1] Run G3 domain/application/PostgreSQL tests and record row identities/counts, 100-delivery convergence, rollback, expired result, commands, and exit status in `specs/021-payment-service-mvp/validation.md`
 
 **Checkpoint**: US1 works through its application port with one durable Payment and zero Stripe
 calls; first-processing-after-deadline creates the one approved terminal fact.
