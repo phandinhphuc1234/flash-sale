@@ -1,6 +1,6 @@
 # Stripe Webhook HTTP Contract
 
-**Status**: Draft — ready for approval with Feature 021 plan
+**Status**: Approved with Feature 021 plan by the project owner on 2026-08-17
 **Ingress**: API Gateway only
 **Endpoint**: `POST /webhooks/v1/payments/stripe`
 **Authentication**: no user JWT; Stripe signature verification is mandatory in Payment Service

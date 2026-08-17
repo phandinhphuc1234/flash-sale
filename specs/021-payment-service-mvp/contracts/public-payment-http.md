@@ -1,6 +1,6 @@
 # Public Payment HTTP Contract
 
-**Status**: Draft — ready for approval with Feature 021 plan
+**Status**: Approved with Feature 021 plan by the project owner on 2026-08-17
 **Ingress**: API Gateway only
 **Authentication**: Bearer JWT for every endpoint in this document
 **Content type**: `application/json`

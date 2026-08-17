@@ -1,6 +1,6 @@
 # PaymentSucceeded Kafka Contract
 
-**Status**: Draft — ready for approval with Feature 021 plan
+**Status**: Approved with Feature 021 plan by the project owner on 2026-08-17
 **Producer**: `payment-service`
 **Consumer**: `order-service` (future Purchase Saga implementation)
 **Topic**: `flashsale.payment.events.v1`
