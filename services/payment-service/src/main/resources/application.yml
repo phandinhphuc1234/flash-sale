@@ -1,16 +1,55 @@
 spring:
   application:
     name: payment-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/payment_db}
+    username: ${SPRING_DATASOURCE_USERNAME:flashsale}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    hikari:
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:2000}
+      validation-timeout: ${SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT:1000}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
   liquibase:
     enabled: ${LIQUIBASE_ENABLED:true}
     change-log: classpath:/db/changelog/db.changelog-master.yaml
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        enable.idempotence: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        auto.register.schemas: ${KAFKA_AUTO_REGISTER_SCHEMAS:false}
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+    consumer:
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        specific.avro.reader: true
+    listener:
+      ack-mode: manual_immediate
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${PAYMENT_JWT_ISSUER:http://authentication-service:8080}
+          jwk-set-uri: ${PAYMENT_JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
 
 server:
   port: ${SERVER_PORT:8080}
-
-info:
-  app:
-    name: ${spring.application.name}
 
 management:
   info:
@@ -27,8 +66,70 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        liveness:
+          include:
+            - livenessState
+        readiness:
+          include:
+            - readinessState
+            - db
+      validate-group-membership: false
   health:
     livenessstate:
       enabled: true
     readinessstate:
       enabled: true
+  tracing:
+    propagation:
+      type: w3c
+
+info:
+  app:
+    name: ${spring.application.name}
+
+payment:
+  provider: ${PAYMENT_PROVIDER:STRIPE}
+  public-api-prefix: ${PAYMENT_PUBLIC_API_PREFIX:/api/v1/payments}
+  webhook-path: ${PAYMENT_WEBHOOK_PATH:/webhooks/v1/payments/stripe}
+  jwt-issuer: ${PAYMENT_JWT_ISSUER:http://authentication-service:8080}
+  jwt-jwk-set-uri: ${PAYMENT_JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+  jwt-audience: ${PAYMENT_JWT_AUDIENCE:flash-sale-api}
+  jwt-type: ${PAYMENT_JWT_TYPE:at+jwt}
+  stripe:
+    enabled: ${STRIPE_ENABLED:false}
+    mode: ${STRIPE_MODE:test}
+    api-base-url: ${STRIPE_API_BASE_URL:https://api.stripe.com}
+    secret-key: ${STRIPE_SECRET_KEY:}
+    publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    expected-api-version: ${STRIPE_API_VERSION:2026-07-29.dahlia}
+    webhook-tolerance: ${STRIPE_WEBHOOK_TOLERANCE:5m}
+    connect-timeout: ${STRIPE_CONNECT_TIMEOUT:5s}
+    read-timeout: ${STRIPE_READ_TIMEOUT:20s}
+    max-network-retries: ${STRIPE_MAX_NETWORK_RETRIES:2}
+    success-url: ${PAYMENT_CHECKOUT_SUCCESS_URL:http://localhost:3000/payments/success}
+    cancel-url: ${PAYMENT_CHECKOUT_CANCEL_URL:http://localhost:3000/payments/cancel}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    schema-registry-url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+    command-topic: ${PAYMENT_REQUESTED_TOPIC:flashsale.payment.commands.v1}
+    event-topic: ${PAYMENT_EVENTS_TOPIC:flashsale.payment.events.v1}
+    command-dlt-topic: ${PAYMENT_REQUESTED_DLT_TOPIC:flashsale.payment.payment-requested.dlt.v1}
+    consumer-group: ${PAYMENT_CONSUMER_GROUP:payment-service-v1}
+    consumer-enabled: ${PAYMENT_CONSUMER_ENABLED:false}
+    outbox-publisher-enabled: ${PAYMENT_OUTBOX_PUBLISHER_ENABLED:false}
+    auto-register-schemas: ${KAFKA_AUTO_REGISTER_SCHEMAS:false}
+    retry-delays: ${PAYMENT_KAFKA_RETRY_DELAYS:1s,3s,10s}
+    outbox-poll-interval: ${PAYMENT_OUTBOX_POLL_INTERVAL:500ms}
+    outbox-batch-size: ${PAYMENT_OUTBOX_BATCH_SIZE:100}
+    outbox-claim-lease: ${PAYMENT_OUTBOX_CLAIM_LEASE:30s}
+    outbox-retry-backoff-cap: ${PAYMENT_OUTBOX_RETRY_BACKOFF_CAP:60s}
+  recovery:
+    enabled: ${PAYMENT_RECOVERY_ENABLED:false}
+    poll-interval: ${PAYMENT_RECOVERY_POLL_INTERVAL:1s}
+    batch-size: ${PAYMENT_RECOVERY_BATCH_SIZE:100}
+    claim-lease: ${PAYMENT_RECOVERY_CLAIM_LEASE:30s}
+    max-attempts: ${PAYMENT_RECOVERY_MAX_ATTEMPTS:10}
+    retry-backoff: ${PAYMENT_RECOVERY_RETRY_BACKOFF:1s,3s,10s,30s,60s}
+    safe-replay-window: ${PAYMENT_RECOVERY_SAFE_REPLAY_WINDOW:23h}

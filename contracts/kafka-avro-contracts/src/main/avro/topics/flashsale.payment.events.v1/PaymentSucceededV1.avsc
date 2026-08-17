@@ -1,0 +1,35 @@
+{
+  "type": "record",
+  "name": "PaymentSucceededV1",
+  "namespace": "com.philia.flashsale.contract.payment.event.v1",
+  "doc": "Durable fact that Payment Service verified a successful Stripe payment.",
+  "fields": [
+    {"name": "eventId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "eventType", "type": "string", "doc": "PaymentSucceeded"},
+    {"name": "eventVersion", "type": "int", "doc": "1"},
+    {"name": "producer", "type": "string", "doc": "payment-service"},
+    {"name": "aggregateType", "type": "string", "doc": "PAYMENT"},
+    {"name": "aggregateId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "aggregateVersion", "type": "long"},
+    {"name": "correlationId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "causationId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "occurredAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {
+      "name": "data",
+      "type": {
+        "type": "record",
+        "name": "PaymentSucceededDataV1",
+        "fields": [
+          {"name": "paymentId", "type": {"type": "string", "logicalType": "uuid"}},
+          {"name": "orderId", "type": {"type": "string", "logicalType": "uuid"}},
+          {"name": "amount", "type": {"type": "bytes", "logicalType": "decimal", "precision": 19, "scale": 4}},
+          {"name": "currency", "type": "string"},
+          {"name": "paidAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+          {"name": "provider", "type": "string"},
+          {"name": "providerSessionId", "type": "string"},
+          {"name": "providerPaymentIntentId", "type": ["null", "string"], "default": null}
+        ]
+      }
+    }
+  ]
+}
