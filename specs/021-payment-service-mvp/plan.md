@@ -341,15 +341,19 @@ No business model, JPA entity, provider DTO, or repository is shared.
 `speckit-tasks` must convert this into dependency-ordered, independently verifiable groups. The
 expected order is:
 
-1. Contract schemas, compatibility tests, topic provisioning, and Gateway route/security tests.
-2. Domain model and pure invariant tests.
-3. Liquibase model, JPA adapters, locking/idempotency/outbox integration tests.
-4. `PaymentRequested.v1` consumer with inbox semantics and DLT tests.
-5. Stripe port/adapter, durable Checkout orchestration, owner HTTP APIs, and redaction tests.
-6. Webhook receipt/verification/processing and duplicate/out-of-order tests.
-7. Reconciliation, deadline expiry, ambiguous outcome recovery, and manual-review alerts.
-8. Outbox publisher, Payment facts, Order-facing contract verification, observability, smoke,
-   failure matrix, load test, module verify, and full monorepo verify.
+1. Contract schemas, compatibility tests, topic/subject provisioning, and module configuration.
+2. Domain model, Liquibase/JPA foundation, durable identities/queues, and concurrency tests.
+3. Atomic Payment command acceptance, followed by the `PaymentRequested.v1` Kafka/DLT boundary.
+4. Stripe port/adapter, durable Checkout orchestration, owner start/resume HTTP API, and redaction.
+5. Webhook Gateway route, durable receipt, verification, provider-truth convergence, and
+   duplicate/out-of-order tests.
+6. Payment-result outbox publication and Kafka/Schema Registry recovery.
+7. Reconciliation, internal deadline expiry, ambiguous-outcome recovery, recovery metrics, and
+   manual-review state.
+8. Owner query application/persistence/MVC, then its shared Gateway YAML change after the webhook
+   route is established.
+9. Service-wide observability/readiness, API-version and DNS runtime contracts, alert/runbook,
+   shared Compose wiring, smoke/failure/load evidence, module verify, and full monorepo verify.
 
 No task may mark downstream Order/reservation Saga behavior complete unless its own approved feature
 implements and validates that behavior.
