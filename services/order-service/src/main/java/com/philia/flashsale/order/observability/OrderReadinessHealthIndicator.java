@@ -50,20 +50,29 @@ public final class OrderReadinessHealthIndicator implements HealthIndicator {
     public Health health() {
         boolean postgres = available(postgresAvailable);
         boolean consumer = available(consumerAvailable);
-        long backlog = safeBacklog();
-        Duration age = safeAge();
-        observability.recordOutboxBacklog(backlog, age);
 
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("requiredDependencies", List.of("postgres"));
         details.put("postgres", postgres ? "up" : "down");
         details.put("consumer", consumer ? "up" : "down");
-        details.put("outboxBacklog", backlog);
-        details.put("outboxOldestPendingAgeSeconds", age.toMillis() / 1000d);
+
+        // Do not issue additional JDBC queries after the primary dependency check fails. During a
+        // database restart those queries would wait on the same exhausted pool and make readiness
+        // itself block for the datasource connection timeout.
         if (!postgres) {
+            Duration age = Duration.ZERO;
+            observability.recordOutboxBacklog(0L, age);
+            details.put("outboxBacklog", 0L);
+            details.put("outboxOldestPendingAgeSeconds", 0.0d);
             details.put("unavailableDependencies", List.of("postgres"));
             return Health.down().withDetails(details).build();
         }
+
+        long backlog = safeBacklog();
+        Duration age = safeAge();
+        observability.recordOutboxBacklog(backlog, age);
+        details.put("outboxBacklog", backlog);
+        details.put("outboxOldestPendingAgeSeconds", age.toMillis() / 1000d);
         return Health.up().withDetails(details).build();
     }
 

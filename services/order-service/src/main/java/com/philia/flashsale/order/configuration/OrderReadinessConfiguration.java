@@ -30,9 +30,13 @@ public class OrderReadinessConfiguration {
                 observability);
     }
 
-    private static boolean postgresAvailable(DataSource dataSource) {
-        try (Connection connection = dataSource.getConnection()) {
-            return connection.isValid(1);
+    static boolean postgresAvailable(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                var statement = connection.createStatement()) {
+            statement.setQueryTimeout(1);
+            try (var result = statement.executeQuery("select 1")) {
+                return result.next() && result.getInt(1) == 1;
+            }
         } catch (Exception ignored) {
             return false;
         }

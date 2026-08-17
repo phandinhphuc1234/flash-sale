@@ -5,6 +5,11 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/order_db}
     username: ${SPRING_DATASOURCE_USERNAME:flashsale}
     password: ${SPRING_DATASOURCE_PASSWORD:}
+    hikari:
+      # Keep readiness responsive while PostgreSQL is restarting; values remain overridable in
+      # deployments that require a different connection acquisition policy.
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:2000}
+      validation-timeout: ${SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT:1000}
   jpa:
     open-in-view: false
     hibernate:
@@ -64,6 +69,7 @@ management:
         readiness:
           include:
             - readinessState
+            - db
             - orderReadiness
       validate-group-membership: false
   health:

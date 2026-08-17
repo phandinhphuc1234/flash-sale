@@ -26,6 +26,14 @@ function Get-DotEnvValue([string] $name, [string] $fallback = "") {
     return ($line -split "=", 2)[1]
 }
 
+function New-OAuthBasicHeader([string] $clientId, [string] $clientSecret) {
+    # RFC 6749 requires URL-encoding client credentials before Base64 encoding.
+    $encodedId = [Uri]::EscapeDataString($clientId)
+    $encodedSecret = [Uri]::EscapeDataString($clientSecret)
+    return [Convert]::ToBase64String(
+        [Text.Encoding]::UTF8.GetBytes("$encodedId`:$encodedSecret"))
+}
+
 $postgresUser = Get-DotEnvValue "POSTGRES_USER" "flashsale"
 $postgresPassword = Get-DotEnvValue "POSTGRES_PASSWORD"
 $postgresPort = Get-DotEnvValue "POSTGRES_HOST_PORT" "15432"
@@ -401,8 +409,7 @@ try {
         -SkipHttpErrorCheck
     Require-Status $conflict @(409) "Schedule idempotency conflict"
 
-    $basic = [Convert]::ToBase64String(
-        [Text.Encoding]::UTF8.GetBytes("flashsale-service:$script:flashsaleClientSecret"))
+    $basic = New-OAuthBasicHeader 'flashsale-service' $script:flashsaleClientSecret
     $serviceTokenResponse = Invoke-WebRequest -Uri "$authBase/oauth2/token" -Method Post `
         -ContentType "application/x-www-form-urlencoded" `
         -Headers @{ Authorization = "Basic $basic" } `

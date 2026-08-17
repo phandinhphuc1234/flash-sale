@@ -26,10 +26,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.authentication.ClientSecretAuthenticationProvider;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
@@ -65,8 +69,31 @@ public class ServiceClientAuthorizationConfiguration {
     @Order(1)
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     @Conditional(JwtPrivateKeyConfiguredCondition.class)
-    SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http, PasswordEncoder passwordEncoder)
+            throws Exception {
+        http.objectPostProcessor(new ObjectPostProcessor<Object>() {
+            @Override
+            public <O> O postProcess(O object) {
+                if (object instanceof ClientSecretAuthenticationProvider provider) {
+                    provider.setPasswordEncoder(passwordEncoder);
+                }
+                return object;
+            }
+        });
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+        OAuth2AuthorizationServerConfigurer authorizationServer =
+                http.getConfigurer(OAuth2AuthorizationServerConfigurer.class);
+        authorizationServer.clientAuthentication(clientAuthentication ->
+                clientAuthentication.authenticationProviders(providers -> {
+                    providers.removeIf(ClientSecretAuthenticationProvider.class::isInstance);
+                    RegisteredClientRepository clients = http.getSharedObject(RegisteredClientRepository.class);
+                    OAuth2AuthorizationService authorizationService =
+                            http.getSharedObject(OAuth2AuthorizationService.class);
+                    ClientSecretAuthenticationProvider provider =
+                            new ClientSecretAuthenticationProvider(clients, authorizationService);
+                    provider.setPasswordEncoder(passwordEncoder);
+                    providers.add(provider);
+                }));
         return http.build();
     }
 

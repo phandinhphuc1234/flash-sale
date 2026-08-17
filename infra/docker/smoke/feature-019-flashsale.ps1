@@ -2,6 +2,8 @@
 param(
     [switch] $RunFailureMatrix,
     [switch] $SkipTopology,
+    [switch] $PreserveFixtureUsers,
+    [string] $FixtureOutputPath = '',
     [int] $Allocation = 20,
     [int] $CampaignLeadSeconds = 20,
     [int] $CampaignDurationMinutes = 10
@@ -41,6 +43,15 @@ function Get-DotEnvValue([string] $Name, [string] $Fallback = '') {
         return $Fallback
     }
     return ($line -split '=', 2)[1]
+}
+
+function New-OAuthBasicHeader([string] $ClientId, [string] $ClientSecret) {
+    # RFC 6749 requires URL-encoding client credentials before Base64 encoding.
+    # This preserves '+' and '/' in generated local secrets.
+    $encodedId = [Uri]::EscapeDataString($ClientId)
+    $encodedSecret = [Uri]::EscapeDataString($ClientSecret)
+    return [Convert]::ToBase64String(
+        [Text.Encoding]::UTF8.GetBytes("$encodedId`:$encodedSecret"))
 }
 
 $gatewayBase = "http://127.0.0.1:$(Get-DotEnvValue 'GATEWAY_PORT' '18080')"
@@ -599,7 +610,7 @@ function Invoke-OutboxOutageCase($Fixture, [string] $Dependency, [string] $Label
 
 function Invoke-WrongAudienceCase([Guid] $ReservationId) {
     $secret = Get-ContainerEnvironmentValue 'authentication-service' 'FLASHSALE_CLIENT_SECRET'
-    $basic = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("flashsale-service:$secret"))
+    $basic = New-OAuthBasicHeader 'flashsale-service' $secret
     $tokenResponse = Invoke-WebRequest -Uri "$authBase/oauth2/token" -Method Post `
         -ContentType 'application/x-www-form-urlencoded' -Headers @{ Authorization = "Basic $basic" } `
         -Body @{ grant_type = 'client_credentials'; scope = 'campaign.snapshot.read' } -SkipHttpErrorCheck
@@ -632,6 +643,20 @@ try {
     Assert-OwnedQuery $owner $foreign $accepted.ReservationId
     Assert-KafkaPublication $accepted.PurchaseRequestId
     Invoke-WrongAudienceCase $accepted.ReservationId
+    if (-not [string]::IsNullOrWhiteSpace($FixtureOutputPath)) {
+        [pscustomobject]@{
+            adminId = [string]$admin.Id
+            ownerId = [string]$owner.Id
+            ownerToken = [string]$owner.Token
+            foreignId = [string]$foreign.Id
+            foreignToken = [string]$foreign.Token
+            campaignId = [string]$fixture.CampaignId
+            variantId = [string]$fixture.VariantId
+            reservationId = [string]$accepted.ReservationId
+            purchaseRequestId = [string]$accepted.PurchaseRequestId
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $FixtureOutputPath -Encoding UTF8
+        Write-Output "FIXTURE_METADATA=$FixtureOutputPath"
+    }
     Write-Output 'FEATURE_019_SMOKE=PASS'
 
     if ($RunFailureMatrix) {
@@ -647,10 +672,12 @@ try {
     if ($restoreServices) {
         try { Invoke-Compose @('start', 'postgres', 'redis', 'kafka', 'schema-registry', 'flashsale-service') } catch { }
     }
-    foreach ($shopperId in $script:shopperIds) {
-        try { Invoke-Database 'auth_db' "DELETE FROM users WHERE id='$shopperId'::uuid;" | Out-Null } catch { }
-    }
-    if ($script:adminId) {
-        try { Invoke-Database 'auth_db' "DELETE FROM users WHERE id='$script:adminId'::uuid;" | Out-Null } catch { }
+    if (-not $PreserveFixtureUsers) {
+        foreach ($shopperId in $script:shopperIds) {
+            try { Invoke-Database 'auth_db' "DELETE FROM users WHERE id='$shopperId'::uuid;" | Out-Null } catch { }
+        }
+        if ($script:adminId) {
+            try { Invoke-Database 'auth_db' "DELETE FROM users WHERE id='$script:adminId'::uuid;" | Out-Null } catch { }
+        }
     }
 }

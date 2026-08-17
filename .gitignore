@@ -14,6 +14,8 @@ target/
 load-tests/flashsale-service/shopper-tokens.json
 load-tests/flashsale-service/reservation-summary.json
 load-tests/flashsale-service/results/
+load-tests/order-service/*.json
+load-tests/order-service/results/
 
 # IDEs and editors
 .idea/

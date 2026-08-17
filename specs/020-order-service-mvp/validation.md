@@ -1,8 +1,8 @@
 # Feature 020 Validation Ledger
 
 **Feature**: Order Service Core MVP
-**Scope for this branch**: G7 / T061-T067 (built on G6)
-**Status**: G7 complete
+**Scope for this branch**: G1-G8 / T001-T076
+**Status**: G8 complete — Feature 020 verified
 
 This ledger records commands, scope, exit status, and evidence for each approved task group. A
 checked task is not complete until its evidence is recorded here.
@@ -141,7 +141,7 @@ checked task is not complete until its evidence is recorded here.
 
 | Task | Validation command | Scope | Result | Evidence |
 |------|--------------------|-------|--------|----------|
-| T061-T063 | `./mvnw -pl services/order-service -am test -Dtest=OrderObservabilityTests,OrderReadinessIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | Bounded Micrometer labels/timers/counters/gauges, W3C request/MDC lifecycle, readiness semantics, safe diagnostics, and no manual Prometheus registry | PASS | 5/5 tests passed; metric tags contain only operation/event_type/outcome/dependency/status; Kafka/consumer outage keeps readiness UP while PostgreSQL outage is DOWN (2026-08-16) |
+| T061-T063 | `./mvnw -pl services/order-service -am test -Dtest=OrderReadinessConfigurationTests,OrderObservabilityTests,OrderReadinessIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false` | Bounded Micrometer labels/timers/counters/gauges, W3C request/MDC lifecycle, readiness semantics, safe diagnostics, and no manual Prometheus registry | PASS | 8/8 focused tests passed; readiness validates PostgreSQL with a bounded `select 1`, skips outbox queries when PostgreSQL is unavailable, and Kafka/consumer outage keeps readiness UP (2026-08-17) |
 | T064 | `bash infra/docker/kafka/init-order-topics.sh` | Idempotent Order event/DLT topic provisioning with exact local partition and replication verification | PASS | Local Docker Kafka provisioned `flashsale.order.events.v1` and `flashsale.order.purchase-accepted.dlt.v1`, each 3 partitions and replication factor 1 (2026-08-16) |
 | T065 | `pwsh -NoProfile -File infra/docker/schema-registry/register-order-schemas.ps1 -SchemaRegistryUrl http://localhost:8081` and `-CheckOnly` | Controlled OrderCreatedV1 registration, subject strategy, compatibility, and check-only path | PASS | Subject `flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v1.OrderCreatedV1`, schema id 7/version 1, `BACKWARD_TRANSITIVE`; registration and check-only both passed (2026-08-16) |
 | T066 | `docker compose --env-file infra/docker/.env -f infra/docker/compose.yml build order-service`; `docker compose ... --profile migrations run --rm --no-deps order-migration --spring.main.web-application-type=none`; `docker compose ... up -d order-service` | Order image, order_db Liquibase migration, Kafka/Registry/JWT/runtime wiring, and normal service startup | PASS | Image built; one Liquibase changeset created all Order tables in `order_db`; container started and consumer joined `order-purchase-accepted-v1` with all three partitions (2026-08-16) |
@@ -158,10 +158,38 @@ checked task is not complete until its evidence is recorded here.
   idempotently and verified locally.
 - [x] Compose/parser/module validation evidence is recorded with command scope and exit status.
 
-## Later Evidence Slots
+## Evidence Cross-References
 
-The following sections will be expanded by the corresponding approved groups:
+The earlier group ledgers below remain the source of detailed evidence for their approved scopes;
+the final G8 completion ledger follows them:
 
 - G2: Liquibase migration, PostgreSQL schema, constraints, rollback, and persistence foundation.
 - G3-G4: accepted-purchase idempotency, atomic Order creation, Kafka consumer retry/DLT, and replay.
 - G8: Compose smoke, failure matrix, concurrency, performance, module, and full build.
+
+## G8 Completion Evidence — Complete
+
+The final evidence was run against the already-running local Docker topology on 2026-08-17.
+Temporary OAuth access-token files were kept outside the repository and deleted after the load
+profile. The nominal Gateway profile used `GATEWAY_RATE_LIMIT_ENABLED=false`, matching the
+repository `.env.example` default; the rate limiter remains an independently configurable runtime
+feature and was not changed in production code.
+
+| Task | Validation command | Scope | Result | Evidence |
+|------|--------------------|-------|--------|----------|
+| T070 | `k6 run -e ORDER_BASE_URL=http://127.0.0.1:18080 -e ORDER_VUS=25 -e ORDER_ITERATIONS=40 -e ORDER_P95_THRESHOLD_MS=200 load-tests/order-service/order-query.js` | 1,000 owner detail requests (25 VUs × 40 iterations), token-file hygiene, p50/p95/p99, p95 threshold, zero unexpected errors, and foreign/unknown non-enumeration | PASS | 1,000 owner requests plus 2 expected setup 404s; all 4,002 checks passed; owner p50 107.78 ms, p95 194.93 ms, p99 241.28 ms; unexpected errors 0; foreign/unknown checks 100% pass (2026-08-17) |
+| T071 | `./mvnw -pl services/order-service -am test -Dtest=OrderConsumerPerformanceIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false -Dorder.event-to-commit.enabled=true` | Delivered `PurchaseAcceptedV1` to durable commit boundary with four-row reconciliation and post-commit acknowledgement | PASS | 1/1 opt-in PostgreSQL Testcontainers sample passed; `ORDER_EVENT_TO_COMMIT_MS=611`; Order, line, inbox, and outbox rows reconciled and acknowledgement was true (2026-08-17) |
+| T072 | `pwsh -NoProfile -File infra/docker/smoke/feature-020-order.ps1 -SkipTopology -RunFailureMatrix`; T028 concurrency suite; T070 k6; T071 opt-in profile | Reconciled smoke, duplicate/replay/conflict, 100-way equivalent/contradictory concurrency, query performance, event-to-commit, and recovery evidence | PASS | Smoke and failure markers both passed; final Order identity remained one Order/line/inbox/outbox fact; T028 had 2/2 concurrency tests pass; T070/T071 performance evidence passed (2026-08-17) |
+| T073 | `./mvnw -pl services/order-service -am verify`; `./mvnw -pl services/api-gateway,contracts/kafka-avro-contracts -am verify` | Order module plus affected Gateway and Kafka-contract modules | PASS | Order: 89 tests passed, 0 failures, 0 errors, 8 intentional opt-in skips; Gateway: 188 tests passed; Kafka contracts: 9 tests passed; all commands BUILD SUCCESS (2026-08-17) |
+| T068-T069 | `pwsh -NoProfile -File infra/docker/smoke/feature-020-order.ps1 -SkipTopology -RunFailureMatrix` | Feature 019 -> Order smoke and bounded failure matrix | PASS | `FEATURE_020_SMOKE=PASS` and `FEATURE_020_FAILURE_MATRIX=PASS`; PostgreSQL recovery reported readiness `503/200`, durable Order preserved, Kafka/Registry outage remained query-available, and duplicate/replay/conflict identities remained bounded (2026-08-17) |
+| T074 | `./mvnw.cmd --batch-mode --no-transfer-progress clean verify` | Full Maven reactor | PASS | All 13 reactor modules completed `SUCCESS`; no required test failure; Order's intentional opt-in integration skips remained guarded by their explicit system properties (2026-08-17) |
+| T075 | `git diff --check`; PowerShell parser checks for Feature 019/020 scripts; `.specify/feature.json` target and Markdown-relative-link scan | Patch formatting, script syntax, feature targeting, links, and infrastructure ownership review | PASS | Whitespace, script parsing, feature targeting, relative links, and root/service infrastructure ownership checks passed (2026-08-17) |
+| T076 | Spec/plan/tasks/validation reconciliation | Every UC/AC, FR, NFR, and SC mapped to implementation, contract, test, or recorded evidence; deferred Payment/Saga behavior remains explicitly out of scope | PASS | Feature status advanced to `Verified`; all T001-T076 are checked and the approval/history records were updated (2026-08-17) |
+
+### G8 Environment Note
+
+The earlier local OAuth client mismatch was resolved locally without committing or exposing the
+secret. A diagnostic k6 run with the local `.env` rate limiter enabled measured p95 above the
+threshold because every request also paid the Redis rate-limit path; the required nominal profile
+uses the repository's default-disabled limiter and passed. This is an environment distinction,
+not a relaxation of the Order query threshold or a removal of PostgreSQL durability.
