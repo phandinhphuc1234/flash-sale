@@ -23,6 +23,8 @@
 - [x] Success criteria are technology-agnostic except for approved provider/repository constraints
 - [x] Acceptance scenarios cover primary flows
 - [x] Edge cases include duplicates, concurrency, ambiguity, expiry, provider ordering, and outages
+- [x] Missing local secret/configuration values have an owner-notification and validation-pause flow
+      without agent access to `infra/docker/.env`
 - [x] Scope is clearly bounded
 - [x] Dependencies and assumptions are identified
 
@@ -46,6 +48,8 @@
 - [x] Reconciliation is retained as an MVP correctness capability but settlement/ledger
       reconciliation is excluded
 - [x] PCI-DSS-aware hosted-Checkout boundaries are required without claiming formal compliance
+- [x] `infra/docker/.env` remains project-owner-managed; agents may update only non-secret examples
+      and may consume the file after confirmation without inspecting or rendering resolved values
 - [x] PostgreSQL remains durable truth; Redis is not required
 - [x] Outbox, idempotent consumers, versioned contracts, trace propagation, and Gateway ingress are
       explicit
@@ -60,5 +64,7 @@
   transferring the merchant's compliance responsibility.
 - Iteration 3 incorporated the project owner's capture, late-payment, and attempt-limit decisions;
   architecture/security review also resolved Checkout URL disclosure versus PCI-aware redaction.
+- Iteration 4 incorporated the project owner's local-secret handoff rule and added measurable
+  notification, non-access, Git-safety, and redacted-validation outcomes.
 - The specification is Approved for planning. Production implementation remains gated by approved
   plan/tasks/contracts and an Accepted Purchase Saga ADR.

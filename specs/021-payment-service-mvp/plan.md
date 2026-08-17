@@ -1,8 +1,8 @@
 # Implementation Plan: Payment Service MVP with Stripe Checkout
 
 **Branch**: `codex/payment-service-spec` | **Date**: 2026-08-17 | **Spec**: [spec.md](./spec.md)
-**Status**: Draft — ready for technical review; implementation is not approved until this plan,
-the contracts, the task ledger, and ADR 0018 are accepted.
+**Status**: Approved for task generation by the project owner on 2026-08-17; production
+implementation remains gated by a complete analyzed task ledger.
 
 **Input**: Approved feature specification from `specs/021-payment-service-mvp/spec.md`.
 
@@ -214,12 +214,18 @@ metrics. Production values can be tuned without changing business semantics.
 - Secrets are environment/secret-store inputs, never repository values. Test and production modes
   are explicitly separated, and live-mode webhook events are rejected in a test environment (and
   vice versa).
+- `infra/docker/.env` is project-owner-managed. Agents may update only `.env.example` placeholders
+  and documentation; they do not directly open/read, create, mutate, print, stage, commit, copy, or
+  delete the actual file. Before a secret-gated validation, the agent reports the exact variable names,
+  purpose, expected non-secret format, and safe source, waits for owner confirmation, then may run
+  approved commands that consume the file without rendering its resolved contents.
 
 ## Observability
 
 - Actuator exposes liveness, readiness, and Prometheus declaratively.
-- Readiness includes database, Kafka/Schema Registry, and configuration validity. Stripe transient
-  health does not make the process unready; it is reported through provider/recovery metrics.
+- Readiness gates on PostgreSQL and mandatory configuration validity. Kafka, Schema Registry, and
+  Stripe outages are reported as non-gating component health/metrics so durable owner queries remain
+  available while messaging/provider recovery continues.
 - W3C trace context propagates from Gateway and Kafka. Stripe calls receive a correlation context,
   but no credential or Checkout URL enters spans.
 - Low-cardinality metrics cover command outcomes, active/unknown payments, checkout create/retrieve
@@ -383,5 +389,6 @@ outbox reliability; they stay inside a single service and aggregate boundary.
 - [ADR 0018](../../docs/adr/0018-order-owned-purchase-saga-payment-contracts.md): accepted Saga
   ownership and Payment command/fact decision.
 
-The next gated step is human review/approval of these artifacts, followed by `speckit-tasks`. No
-production implementation is authorized by this draft alone.
+The project owner approved these artifacts on 2026-08-17. The next gated step is `speckit-tasks`
+followed by read-only `speckit-analyze`; no production implementation begins until that analyzed
+ledger has no blocking issue.

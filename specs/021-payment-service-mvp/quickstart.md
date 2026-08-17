@@ -15,6 +15,13 @@ scope, date/environment, exit status, counts, percentiles, and CI/PR link in fut
 - `infra/docker/.env` copied from `.env.example`; it is ignored by Git.
 - Valid local JWT key/OAuth configuration required by the existing stack.
 
+`infra/docker/.env` is owned and populated only by the project owner. Implementation agents must
+not directly open/read, create, edit, overwrite, copy, print, delete, stage, or commit it. An agent may add a
+placeholder to `.env.example`; when a real value is required, it must report the exact variable
+name, purpose, expected non-secret format, and where the owner can obtain it, then pause that
+validation. After the owner confirms the value was added, the agent may run the documented command
+that consumes `.env`, but must not render resolved configuration or secret values.
+
 Set only test values in ignored `infra/docker/.env`:
 
 ```dotenv
@@ -25,9 +32,9 @@ STRIPE_PUBLISHABLE_KEY=pk_test_REPLACE_LOCALLY
 STRIPE_WEBHOOK_SECRET=whsec_REPLACE_FROM_STRIPE_CLI
 ```
 
-The webhook secret is emitted by `stripe listen`; it is different from `STRIPE_SECRET_KEY`. Never
-paste real values into a command transcript, source file, test report, PR, screenshot, or this guide.
-Do not use live-mode keys/cards.
+The webhook secret is emitted by `stripe listen`; it is different from `STRIPE_SECRET_KEY`. The
+project owner performs the edit. Never paste real values into chat, command transcripts, source
+files, test reports, PRs, screenshots, or this guide. Do not use live-mode keys/cards.
 
 ## 2. Verify affected modules
 

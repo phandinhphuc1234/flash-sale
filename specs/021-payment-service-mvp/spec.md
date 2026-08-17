@@ -58,6 +58,9 @@ Order fact.
 - Publish required Payment outcomes reliably after local durable state commits.
 - Expose owner-scoped Payment query endpoints through API Gateway.
 - Define the no-card-data and secret-handling boundary for Stripe-hosted Checkout.
+- Keep the local secret-bearing `infra/docker/.env` under project-owner control: implementation
+  agents document placeholders and notify the owner when values are required, but do not inspect or
+  mutate that file directly.
 - Add the Payment-owned service configuration, schema migrations, tests, and the shared local
   infrastructure changes required to validate this slice.
 
@@ -502,6 +505,9 @@ and verify stable envelopes and indistinguishable foreign/absent behavior.
 - Gateway or another filter mutates the webhook body or removes `Stripe-Signature`.
 - PostgreSQL is unavailable before a provider attempt is durably claimed.
 - Provider success is established after Order has already advanced its expiry/release workflow.
+- A required local secret/configuration value is absent or still a placeholder when an external
+  validation begins; the affected validation pauses without reading or modifying the owner's
+  `.env`, and the owner receives the exact variable names and safe setup instructions.
 
 ## Requirements
 
@@ -605,6 +611,13 @@ and verify stable envelopes and indistinguishable foreign/absent behavior.
   deletion job until a later approved retention policy exists.
 - **FR-042**: Payment Service MUST expose liveness, readiness, Prometheus metrics, and trace-linked
   structured diagnostics without coupling business code to a concrete metrics registry.
+- **FR-043**: `infra/docker/.env` MUST remain a project-owner-managed local secret file. An
+  implementation agent MUST NOT directly open/read, create, edit, overwrite, copy, print, delete,
+  stage, or commit it. When implementation or validation requires a new or changed value, the agent MUST update only
+  non-secret placeholders/documentation such as `.env.example`, notify the owner of the exact
+  variable name, purpose, expected non-secret format, and safe source, and pause only the affected
+  validation until the owner confirms the value was added. After confirmation, approved runtime
+  commands MAY consume the file without displaying its resolved contents.
 
 ### Non-Functional Requirements
 
@@ -627,6 +640,9 @@ and verify stable envelopes and indistinguishable foreign/absent behavior.
   protection, never user JWT or a caller-supplied producer field.
 - **NFR-SEC-003**: The feature MAY be described as a PCI-DSS-aware hosted-Checkout boundary but MUST
   NOT claim PCI-DSS compliance without formal assessment and required attestation.
+- **NFR-SEC-004**: No automation transcript, command output, test evidence, Git diff, or CI artifact
+  MAY expose values resolved from the owner-managed local `.env`; agents MUST NOT ask the owner to
+  paste secret values into chat.
 - **NFR-OBS-001**: Logs, metrics, and traces MUST allow an operator to correlate command ID, Saga
   correlation ID, Order ID, Payment ID, attempt ID, provider Session/request/event IDs, outbox ID,
   state transition, and safe failure class without high-cardinality IDs as metric labels.
@@ -746,6 +762,10 @@ Core invariants:
 - **SC-009**: Payment module verification, cross-module contract tests, Gateway route/security
   tests, provider-adapter tests, failure matrix, and one Stripe test-mode/CLI E2E complete with no
   required failure before the feature is marked Verified.
+- **SC-010**: Repository status/history and validation evidence show that `infra/docker/.env` was
+  never directly inspected, changed, staged, committed, or printed by an implementation agent;
+  every secret-gated validation records the requested variable names, owner confirmation, and result
+  without recording their values.
 
 ## Dependencies and Compatibility
 
@@ -780,6 +800,9 @@ Core invariants:
 - No automated Payment evidence retention/cleanup runs in MVP; a later approved policy may add it.
 - High-volume tests use a deterministic fake provider; the Stripe test API is used only for bounded
   contract/E2E validation.
+- The project owner alone populates `infra/docker/.env`. Agents may maintain `.env.example` using
+  placeholders and, after owner confirmation, run approved tools that consume `.env` without
+  inspecting or rendering its resolved values.
 
 ## Constitutional Constraints
 
@@ -825,3 +848,6 @@ Core invariants:
   claim boundary.
 - 2026-08-17 — Project owner authorized completion of the clarified specification and progression
   to `/speckit-plan`.
+- 2026-08-17 — Project owner established the local-secret handoff rule: agents never inspect or
+  modify `infra/docker/.env`; they document required placeholders, notify the owner, and wait for
+  owner confirmation before secret-gated validation.
