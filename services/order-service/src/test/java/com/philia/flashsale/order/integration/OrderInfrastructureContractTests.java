@@ -17,12 +17,16 @@ class OrderInfrastructureContractTests {
         Path root = repositoryRoot();
         String compose = Files.readString(root.resolve("infra/docker/compose.yml"));
         String defaults = Files.readString(root.resolve("infra/docker/.env.example"));
+        String application = Files.readString(root.resolve(
+                "services/order-service/src/main/resources/application.yml"));
 
         assertThat(compose).contains("order-service:", "order-migration:", "order_db",
                 "ORDER_EVENTS_TOPIC", "schema-registry:", "condition: service_healthy");
         assertThat(defaults).contains("ORDER_SERVICE_URL=http://order-service:8080",
                 "ORDER_EVENTS_TOPIC=flashsale.order.events.v1",
                 "ORDER_PURCHASE_ACCEPTED_DLT_TOPIC=flashsale.order.purchase-accepted.dlt.v1");
+        assertThat(application).contains("- db", "- orderReadiness", "connection-timeout:",
+                "validation-timeout:");
     }
 
     @Test

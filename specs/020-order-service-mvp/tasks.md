@@ -1,9 +1,9 @@
 # Tasks: Order Service Core MVP
 
-**Status**: Approved for implementation — G1–G7 / T001–T067
+**Status**: Verified complete — G1–G8 / T001–T076
 **Input**: Design documents from `/specs/020-order-service-mvp/`
-**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1–G7; later groups remain
-gated by their checkpoints and required project-owner/architecture/security review.
+**Prerequisites**: Approved `spec.md`, plan, tasks, and contracts for G1–G8. G8 is the final
+completion-evidence group and does not introduce a new business contract.
 
 **Tests**: All domain, architecture, PostgreSQL, Kafka/Schema Registry, consumer redelivery/
 concurrency, outbox recovery, HTTP/security, failure-matrix, Compose smoke, performance, module, and
@@ -208,15 +208,15 @@ start, provision, and diagnose it reproducibly.
 **Purpose**: Prove the complete Feature 019 -> Order -> query/event flow and close every required
 verification gate.
 
-- [ ] T068 Implement the end-to-end owner/foreign/wrong-audience fixture and PostgreSQL/Kafka reconciliation in `infra/docker/smoke/feature-020-order.ps1`, ending only with `FEATURE_020_SMOKE=PASS` after OrderCreated and owner-query evidence pass
-- [ ] T069 Extend `infra/docker/smoke/feature-020-order.ps1` with bounded PostgreSQL/process/Kafka/Registry/publisher/poison/conflict recovery scenarios and the `FEATURE_020_FAILURE_MATRIX=PASS` marker
-- [ ] T070 [P] Add the owner detail-query k6 profile with token-file hygiene, p50/p95/p99, p95-under-200-ms threshold, zero unexpected errors, and owner/non-enumeration checks in `load-tests/order-service/order-query.js`
-- [ ] T071 [P] Add the opt-in delivered-event-to-commit nominal profile and database reconciliation in `services/order-service/src/test/java/com/philia/flashsale/order/order/integration/OrderConsumerPerformanceIntegrationTests.java`
-- [ ] T072 Execute the Feature 020 Compose smoke, failure matrix, duplicate/concurrency profile, query k6 profile, and event-to-commit profile, then record environment, commands, exit statuses, row/event identities, counts, p50/p95/p99, and recovery results in `specs/020-order-service-mvp/validation.md`
-- [ ] T073 Run `./mvnw -pl services/order-service -am verify` and affected Gateway/contract module checks, then record module/test counts and exit status in `specs/020-order-service-mvp/validation.md`
-- [ ] T074 Run `./mvnw clean verify` for the full reactor and record all-module result plus any intentional opt-in skip in `specs/020-order-service-mvp/validation.md`
-- [ ] T075 Run `git diff --check`, validate Markdown relative links, verify `.specify/feature.json` still targets Feature 020, audit root/service infrastructure ownership, and record results in `specs/020-order-service-mvp/validation.md`
-- [ ] T076 Reconcile every UC/AC, FR, NFR, and SC against tests/contracts/evidence; update Feature 020 status/history only after all required gates pass in `specs/020-order-service-mvp/spec.md`, `plan.md`, `tasks.md`, and `validation.md`
+- [x] T068 Implement the end-to-end owner/foreign/wrong-audience fixture and PostgreSQL/Kafka reconciliation in `infra/docker/smoke/feature-020-order.ps1`, ending only with `FEATURE_020_SMOKE=PASS` after OrderCreated and owner-query evidence pass
+- [x] T069 Extend `infra/docker/smoke/feature-020-order.ps1` with bounded PostgreSQL/process/Kafka/Registry/publisher/poison/conflict recovery scenarios and the `FEATURE_020_FAILURE_MATRIX=PASS` marker
+- [x] T070 [P] Add the owner detail-query k6 profile with token-file hygiene, p50/p95/p99, p95-under-200-ms threshold, zero unexpected errors, and owner/non-enumeration checks in `load-tests/order-service/order-query.js`
+- [x] T071 [P] Add the opt-in delivered-event-to-commit nominal profile and database reconciliation in `services/order-service/src/test/java/com/philia/flashsale/order/order/integration/OrderConsumerPerformanceIntegrationTests.java`
+- [x] T072 Execute the Feature 020 Compose smoke, failure matrix, duplicate/concurrency profile, query k6 profile, and event-to-commit profile, then record environment, commands, exit statuses, row/event identities, counts, p50/p95/p99, and recovery results in `specs/020-order-service-mvp/validation.md`
+- [x] T073 Run `./mvnw -pl services/order-service -am verify` and affected Gateway/contract module checks, then record module/test counts and exit status in `specs/020-order-service-mvp/validation.md`
+- [x] T074 Run `./mvnw clean verify` for the full reactor and record all-module result plus any intentional opt-in skip in `specs/020-order-service-mvp/validation.md`
+- [x] T075 Run `git diff --check`, validate Markdown relative links, verify `.specify/feature.json` still targets Feature 020, audit root/service infrastructure ownership, and record results in `specs/020-order-service-mvp/validation.md`
+- [x] T076 Reconcile every UC/AC, FR, NFR, and SC against tests/contracts/evidence; update Feature 020 status/history only after all required gates pass in `specs/020-order-service-mvp/spec.md`, `plan.md`, `tasks.md`, and `validation.md`
 
 **Checkpoint**: Feature 020 is complete only when smoke, failure, performance, module, and full
 reactor evidence pass; a checked task without evidence does not satisfy this checkpoint.

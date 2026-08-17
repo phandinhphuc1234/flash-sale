@@ -2,7 +2,7 @@
 
 **Feature Branch**: `020-order-service-mvp`
 **Created**: 2026-08-15
-**Status**: Approved
+**Status**: Verified
 **Input**: Align the supplied Order Service development draft with the repository's approved Flash
 Sale contracts, service boundaries, HTTP conventions, and Spec Kit workflow.
 **Linked Business Requirements**: Convert each durably accepted Flash Sale purchase into one
@@ -475,3 +475,4 @@ The detailed schema and compatibility tests belong to this feature's contract ar
 |------|--------|--------|----------|--------|
 | 2026-08-15 | Imported and aligned the supplied Order draft with Feature 019, the implemented Avro contract, repository topic catalog, HTTP conventions, and scoped Order Core MVP | Codex | Pending project owner | Draft — ready for human review |
 | 2026-08-15 | Project owner approved the scoped Order Core MVP and authorized preparation for implementation | Project owner | Project owner | Approved for planning |
+| 2026-08-17 | G1-G8 implementation, failure recovery, query performance, event-to-commit, module, and full-reactor evidence reconciled | Codex | Project owner | Verified |

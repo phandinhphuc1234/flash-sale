@@ -3,6 +3,7 @@ package com.philia.flashsale.order.observability;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.health.Status;
 
@@ -33,6 +34,31 @@ class OrderReadinessIntegrationTests {
 
         assertThat(indicator.health().getStatus()).isEqualTo(Status.UP);
         assertThat(indicator.health().getDetails()).containsEntry("outboxBacklog", 0L)
+                .containsEntry("outboxOldestPendingAgeSeconds", 0.0d);
+    }
+
+    @Test
+    void doesNotQueryOutboxWhenPostgresIsUnavailable() {
+        AtomicBoolean backlogQueried = new AtomicBoolean();
+        AtomicBoolean ageQueried = new AtomicBoolean();
+        OrderReadinessHealthIndicator indicator = new OrderReadinessHealthIndicator(
+                () -> false,
+                () -> true,
+                () -> {
+                    backlogQueried.set(true);
+                    return 9L;
+                },
+                () -> {
+                    ageQueried.set(true);
+                    return Duration.ofMinutes(2);
+                });
+
+        var health = indicator.health();
+
+        assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+        assertThat(backlogQueried).isFalse();
+        assertThat(ageQueried).isFalse();
+        assertThat(health.getDetails()).containsEntry("outboxBacklog", 0L)
                 .containsEntry("outboxOldestPendingAgeSeconds", 0.0d);
     }
 }
