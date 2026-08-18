@@ -109,3 +109,27 @@ HTTP routes, and Gateway wiring remain disabled and are implemented by G4–G10.
 G4 code is now present but the live broker/registry and DLT evidence (T032, T036, and T037) remains
 intentionally open until the project owner starts the approved runtime. No Kafka or Schema Registry
 secret was read or changed.
+
+## G5 implementation evidence
+
+| Task | Evidence | Result |
+|---|---|---|
+| T038 | `HostedCheckoutProviderContractTests` | PASS; exact VND zero-decimal conversion rejects fractional values and metadata is limited to server-owned identifiers |
+| T039, T045–T046 | `StripeHostedCheckoutAdapterTests` | PASS; Stripe Java `33.2.0` mapping uses hosted `payment` mode, card-only payment methods, automatic capture, trusted amount/URLs/metadata, earliest valid provider expiry, configured timeouts/retries/API version, and normalized timeout classification |
+| T040, T044, T047–T048 | `StartCheckoutServiceTests` | PASS; Transaction A persists the CREATING attempt before provider invocation, replay retrieves by persisted Session identity, client-key conflicts are rejected, and ambiguous provider results converge to durable UNKNOWN/202 semantics |
+| T041 | `CheckoutAttemptConcurrencyIntegrationTests` with PostgreSQL 16 Testcontainers | PASS; partial unresolved-attempt uniqueness, no raw client-key column, 100 distinct client-key rows, rollback, and stable response-loss recovery work are verified |
+| T042, T049–T051 | `CheckoutControllerTests` | PASS; 201/202 outcomes, no-body rejection, Location, Retry-After, X-Trace-Id, and Cache-Control no-store are verified; error handlers expose only stable codes |
+| T043, T052 | `PaymentJwtTrustConfigurationTests`, `PaymentPublicSecurityTests` | PASS; issuer-backed decoder composition plus JWT type/audience/subject/expiry boundary and printable idempotency-key checks are covered |
+| T053 | `PaymentCheckoutConfiguration`, `PaymentCheckoutProperties`, `PAYMENT_CHECKOUT_ENABLED` | PASS; Checkout composition is disabled by default and requires acceptance, Checkout, and Stripe flags; provider secrets remain configuration-only |
+
+### G5 commands and results
+
+1. `./mvnw -pl services/payment-service -am '-Dtest=HostedCheckoutProviderContractTests,StripeHostedCheckoutAdapterTests,StartCheckoutServiceTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 11 tests, 0 failures, 0 errors.
+2. `./mvnw -pl services/payment-service -am '-Dtest=CheckoutControllerTests,PaymentJwtTrustConfigurationTests,PaymentPublicSecurityTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 6 tests, 0 failures, 0 errors.
+3. `./mvnw -pl services/payment-service -am '-Dtest=CheckoutAttemptConcurrencyIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 3 PostgreSQL Testcontainers tests, including 100 different-key inserts, 0 failures, 0 errors.
+4. `./mvnw -pl services/payment-service -am verify` — exit `0`; Payment module 70 tests, 0 failures, 0 errors; contract module 13 tests, 0 failures, 0 errors; packaged service artifact produced.
+5. `git diff --check` — PASS for tracked edits; `.worktrees/` remains untracked and excluded.
+
+G5 uses deterministic provider fakes and Stripe SDK mapping tests; no live Stripe secret, Checkout URL,
+or `infra/docker/.env` content was read or changed. Live Stripe test-mode smoke remains an operational
+follow-up before enabling the feature flags in a shared environment.

@@ -259,12 +259,21 @@ depend on the complete deployed business environment.
 failure matrix, plus bounded Stripe test-mode/Stripe CLI smoke for real request/signature compatibility.
 Do not make `stripe-mock` a required correctness gate.
 
+For interactive Stripe smoke, use only test API keys and Stripe's documented test cards: `4242 4242
+4242 4242` for an immediate success, `4000 0000 0000 0002` for a generic decline, `4000 0000 0000
+9995` for insufficient funds, and `4000 0000 0000 3220` / `4000 0084 0000 1629` for successful or
+declined 3DS challenge paths. Any future expiry date and three-digit CVC are acceptable in test mode.
+These cards exercise synchronous card-only Checkout; delayed-payment events are outside the MVP
+allowlist and require a contract decision before adoption.
+
 **Rationale**: A port fake can model response loss, delayed success, duplicates, out-of-order events,
 and deadline races deterministically. Stripe test mode catches integration drift. Stripe's own mock
 server is useful for request shape but is intentionally stateless/hardcoded and does not prove these
 failure semantics.
 
-**Primary source**: [stripe-mock repository](https://github.com/stripe/stripe-mock).
+**Primary sources**: [stripe-mock repository](https://github.com/stripe/stripe-mock),
+[Stripe test card numbers](https://docs.stripe.com/testing), and
+[Stripe 3DS test flows](https://docs.stripe.com/payments/3d-secure/authentication-flow?api-integration=checkout-session-api).
 
 ## R15. Feature placement and architecture
 
