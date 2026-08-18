@@ -56,6 +56,7 @@ class PaymentConfigurationPropertiesTests {
                             .hasSize(3);
                     assertThat(context.getBean(PaymentRecoveryProperties.class).safeReplayWindow())
                             .hasHours(23);
+                    assertThat(context.getBean(PaymentCheckoutProperties.class).enabled()).isFalse();
                     assertThat(context.getBean(StripeCheckoutProperties.class).enabled())
                             .isFalse();
                 });
@@ -105,7 +106,8 @@ class PaymentConfigurationPropertiesTests {
             PaymentProperties.class,
             StripeCheckoutProperties.class,
             PaymentKafkaProperties.class,
-            PaymentRecoveryProperties.class
+            PaymentRecoveryProperties.class,
+            PaymentCheckoutProperties.class
     })
     static class BindingConfiguration {
     }

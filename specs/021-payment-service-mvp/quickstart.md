@@ -165,6 +165,27 @@ Verify:
 - duplicate delivery creates no duplicate fact;
 - Checkout URL appears only in the authenticated create/resume response with `no-store`.
 
+### Stripe test-mode card matrix
+
+Use only Stripe test API keys and enter these numbers on the Stripe-hosted Checkout page. Use any
+future expiry date, any three-digit CVC, and arbitrary test billing details. Never use a real card
+number, even in test mode.
+
+| Scenario | Test card | Expected result |
+|---|---|---|
+| Successful card payment | `4242 4242 4242 4242` | Payment succeeds immediately. |
+| Generic decline | `4000 0000 0000 0002` | Payment is declined with `card_declined`. |
+| Insufficient funds | `4000 0000 0000 9995` | Payment is declined with `insufficient_funds`. |
+| 3DS challenge succeeds | `4000 0000 0000 3220` | Complete the simulated authentication, then payment succeeds. |
+| 3DS challenge fails | `4000 0084 0000 1629` | Authentication completes with a declined payment. |
+
+The card-only MVP does not enable delayed payment methods. Therefore the webhook allowlist remains
+`checkout.session.completed` and `checkout.session.expired`; the asynchronous payment events are
+not required unless the payment-method scope is expanded and the webhook contract is updated.
+
+Reference: [Stripe test card numbers](https://docs.stripe.com/testing) and
+[Stripe 3DS test flows](https://docs.stripe.com/payments/3d-secure/authentication-flow?api-integration=checkout-session-api).
+
 ## 8. Feature 021 smoke
 
 After implementation:
