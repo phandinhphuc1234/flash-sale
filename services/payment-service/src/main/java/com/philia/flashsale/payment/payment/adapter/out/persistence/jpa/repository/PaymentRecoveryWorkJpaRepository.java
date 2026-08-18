@@ -22,5 +22,11 @@ public interface PaymentRecoveryWorkJpaRepository extends JpaRepository<PaymentR
     List<PaymentRecoveryWorkJpaEntity> claimCandidates(
             @Param("now") Instant now, @Param("batchSize") int batchSize);
 
+    List<PaymentRecoveryWorkJpaEntity> findByAttempt_IdAndWorkTypeAndStatusIn(
+            UUID attemptId, String workType, List<String> statuses);
+
+    List<PaymentRecoveryWorkJpaEntity> findByPayment_IdAndWorkTypeAndStatusIn(
+            UUID paymentId, String workType, List<String> statuses);
+
     List<PaymentRecoveryWorkJpaEntity> findByPayment_IdOrderByCreatedAtAsc(UUID paymentId);
 }

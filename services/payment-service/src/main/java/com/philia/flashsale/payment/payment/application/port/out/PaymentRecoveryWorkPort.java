@@ -13,6 +13,17 @@ public interface PaymentRecoveryWorkPort {
 
     void complete(UUID workId, Instant completedAt);
 
+    /**
+     * Returns a claimed item to the durable queue after a bounded provider/storage retry.
+     *
+     * <p>The default keeps existing in-memory adapters source-compatible; the PostgreSQL adapter
+     * overrides it to persist the lease release, error class, and next eligible time.</p>
+     */
+    default void reschedule(UUID workId, String errorCode, Instant nextAttemptAt,
+            Instant observedAt) {
+        // Optional for lightweight test adapters; durable adapters must override this method.
+    }
+
     void markManualReview(UUID workId, String errorCode, Instant observedAt);
 
     record Work(UUID id, UUID paymentId, UUID attemptId, String workType, String status,

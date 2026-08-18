@@ -189,3 +189,29 @@ registering a schema that differs from the generated Avro SpecificRecord schema.
 
 G7 enables no publisher flag by default. The relay requires both `PAYMENT_ACCEPTANCE_ENABLED=true` and
 `PAYMENT_OUTBOX_PUBLISHER_ENABLED=true`; no new secret or `.env` value is required by this branch.
+
+---
+
+## G8 implementation evidence
+
+| Task | Evidence | Result |
+|---|---|---|
+| T075 | `PaymentRecoveryPolicyTests` | PASS; deterministic 1/3/10/30/60-second capped backoff, 23-hour replay boundary, bounded attempts, unknown-state deferral, and manual-review escalation are covered |
+| T076 | `ReconcilePaymentServiceTests` | PASS; same-key create recovery, provider Session refresh, deadline expiry after verified provider expiry, late success dominance, and unknown-state deferral are covered |
+| T077 | `CheckoutRecoveryIntegrationTests` with PostgreSQL 16 Testcontainers | PASS; response-loss/process-interruption state preserves one attempt, one recovery work item, and one provider idempotency identity; duplicate active work is rejected |
+| T078 | `PaymentLateSuccessIntegrationTests` with PostgreSQL 16 Testcontainers | PASS; late verified success is monotonic at a higher aggregate version, produces one stable result fact, and creates no refund boundary |
+| T079 | `PaymentRecoveryWorkIntegrationTests` with PostgreSQL 16 Testcontainers | PASS; stale lease reclaim, provider-outage manual-review visibility, and no-attempt deadline-work uniqueness are verified |
+| T080–T083 | Recovery models/ports/policy, claim-call-converge service, JPA persistence adapter, Liquibase index, and disabled-by-property scheduled jobs | PASS; provider calls remain outside the local Payment/outbox transaction; defaults are batch 100, poll 1 second, lease 30 seconds, recovery disabled unless all capability flags are enabled |
+| T084 | `PaymentRecoveryObservabilityTests` | PASS; queue, outcome, attempt, and age metrics use bounded work-type/outcome labels only |
+| T085 | Commands below | PASS; focused and full Payment module suites completed with no failures |
+
+### G8 commands and results
+
+1. `./mvnw -pl services/payment-service -am '-Dtest=PaymentRecoveryPolicyTests,ReconcilePaymentServiceTests,PaymentRecoveryObservabilityTests,CheckoutRecoveryIntegrationTests,PaymentLateSuccessIntegrationTests,PaymentRecoveryWorkIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 13 tests, 0 failures, 0 errors.
+2. `./mvnw -pl services/payment-service -am '-Dtest=PaymentSchemaMigrationIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 3 PostgreSQL/Liquibase migration and rollback tests pass with the new active deadline-work uniqueness index.
+3. `./mvnw -pl services/payment-service -am verify '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0`; Payment module 114 tests, 0 failures, 0 errors, 2 intentionally skipped live-gated tests; common-web 9 tests and Kafka contract module 13 tests also pass; packaged Payment artifact produced.
+4. `git diff --check` — exit `0`; `infra/docker/.env` was not opened, read, rendered, edited, staged, or committed.
+
+G8 does not enable recovery or deadline workers by default and requires no new secret. Live Stripe
+provider outage and process-crash smoke can be run later with the existing test-mode configuration;
+this branch keeps all provider credentials in configuration and does not inspect the ignored `.env` file.
