@@ -1,9 +1,9 @@
 # Feature 021 Validation Evidence
 
 **Feature**: Payment Service Stripe Checkout MVP
-**Group**: G1–G3 — Contracts, Domain, PostgreSQL Foundation, and Atomic Payment Acceptance
-**Branch**: `codex/payment-g3-acceptance`
-**Validated**: 2026-08-17
+**Group**: G1–G4 — Contracts, Domain, PostgreSQL Foundation, Atomic Acceptance, and Kafka Ingress
+**Branch**: `codex/payment-g4-kafka-boundary`
+**Validated**: 2026-08-18
 **Secret handling**: `infra/docker/.env` was not opened, read, rendered, edited, staged, or committed.
 
 ## Approved baselines
@@ -89,3 +89,23 @@ recovery scheduler. Those behaviors remain gated by G3–G10.
 G3 intentionally stops at the application acceptance port. The Kafka `PaymentRequested.v1`
 consumer, retry/DLT behavior, Stripe Checkout, webhook processing, publication, recovery jobs,
 HTTP routes, and Gateway wiring remain disabled and are implemented by G4–G10.
+
+## G4 implementation evidence
+
+| Task | Evidence | Result |
+|---|---|---|
+| T030 | `PaymentRequestedAvroMapperTests` | PASS; 4 tests cover envelope/logical fields, key and aggregate alignment, money/currency validation, W3C headers, and malformed trace input |
+| T031 | `PaymentRequestedKafkaConsumerTests` | PASS; 4 tests cover successful acknowledgement, conflict/poison classification, storage retry propagation, and no acknowledgement before use-case return |
+| T033–T034 | `PaymentRequestedAvroMapper`, typed exceptions, and `PaymentRequestedKafkaConsumer` | PASS; Kafka/Avro types stop at the inbound adapter, trace context is restored to MDC, and the application use case is acknowledged only after it returns |
+| T035 | `PaymentKafkaConsumerConfiguration` | PASS; SpecificRecord deserialization, manual-immediate acknowledgement, delivery-attempt headers, 1/3/10-second backoff, typed non-retryable classification, and command-specific DLT routing are wired behind `PAYMENT_KAFKA_CONSUMER_ENABLED` |
+| T036 | `README-payment-dlt.md` | PARTIAL; operator replay and safe-diagnostic rules are documented; live DLT header assertion remains part of the pending integration suite |
+| T032/T037 | Live Kafka + Schema Registry suite | PENDING; requires the project-owned Kafka/Schema Registry runtime and will be run without opening or rendering `infra/docker/.env` |
+
+### G4 commands and results
+
+1. `./mvnw -pl services/payment-service -am test` — exit `0`; Payment module 46 tests, 0 failures, 0 errors; contract module 13 tests, 0 failures, 0 errors.
+2. `git diff --check` — exit `0` for tracked G4 changes.
+
+G4 code is now present but the live broker/registry and DLT evidence (T032, T036, and T037) remains
+intentionally open until the project owner starts the approved runtime. No Kafka or Schema Registry
+secret was read or changed.

@@ -16,9 +16,9 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Composition wiring for atomic PaymentRequested acceptance.
  *
- * <p>No Kafka listener is enabled here. The future G4 listener remains disabled by the existing
- * {@code payment.kafka.consumer-enabled=false} default and will invoke this application port only
- * after its own envelope, key, retry, and acknowledgement policy is implemented.
+ * <p>The Kafka adapter is composed separately and remains disabled by the existing
+ * {@code payment.kafka.consumer-enabled=false} default. When enabled, it invokes this application
+ * port only after its own envelope, key, retry, and acknowledgement policy has completed.
  */
 @Configuration
 @ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
