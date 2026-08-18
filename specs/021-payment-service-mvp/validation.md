@@ -133,3 +133,31 @@ secret was read or changed.
 G5 uses deterministic provider fakes and Stripe SDK mapping tests; no live Stripe secret, Checkout URL,
 or `infra/docker/.env` content was read or changed. Live Stripe test-mode smoke remains an operational
 follow-up before enabling the feature flags in a shared environment.
+
+## G6 implementation evidence
+
+| Task | Evidence | Result |
+|---|---|---|
+| T054, T060 | `StripeWebhookVerifierTests` | PASS; official Stripe signature verification covers exact body bytes, wrong secret, stale timestamp, test/live mode, API-version mismatch, malformed payload, unsupported event, allowlisted metadata, and redaction-safe failures |
+| T055, T061 | `StripeWebhookControllerTests` | PASS; durable/duplicate/ignored paths return empty `204`, invalid verification returns empty `400`, storage failure returns empty `503`, and no shared API envelope is emitted |
+| T056 | `StripeWebhookReceiptIntegrationTests` with PostgreSQL 16 Testcontainers | PASS; 3 tests verify unique provider event identity, receipt-before-processing, raw-body/URL/signature column absence, lease reclaim, processed completion, and transaction rollback |
+| T057, T062 | `ApplyProviderOutcomeServiceTests` and `ProcessProviderEventService` | PASS; paid/processing/unknown/expiry policies, duplicate paid no-op, retry-before-deadline, late success dominance, stable outbox fact, and redacted causation payload are covered |
+| T058 | `StripeProviderOutcomeIntegrationTests` | PASS; out-of-order/duplicate provider observations converge to `SUCCEEDED` with one semantic outbox fact and no regression |
+| T059 | Webhook application models and `AcceptProviderEventUseCase`/`ProcessProviderEventUseCase` | PASS; verified provider metadata, receipt acceptance result, and processing result remain framework/provider neutral |
+| T063 | `ProviderEventProcessingConfiguration` and `ProviderEventProcessingJob` | PASS; receipt claims use a bounded lease/batch/backoff policy and the scheduler is disabled by default behind typed configuration |
+| T064 | `PaymentWebhookGatewayRouteTests` | PASS; exact POST-only route, unauthenticated webhook access, signed-body/trace pass-through, bounded request size, and default-deny behavior are verified |
+| T065 | Commands below | PASS; G6 focused and module/Gateway suites recorded with zero failures |
+
+### G6 commands and results
+
+1. `./mvnw -pl services/payment-service -am '-Dtest=StripeWebhookVerifierTests,StripeWebhookControllerTests,ApplyProviderOutcomeServiceTests,StripeProviderOutcomeIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; focused verifier/controller/outcome tests pass.
+2. `./mvnw -pl services/payment-service -am '-Dtest=StripeWebhookReceiptIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 3 PostgreSQL Testcontainers tests pass.
+3. `./mvnw -pl services/api-gateway -am '-Dtest=PaymentWebhookGatewayRouteTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 2 Gateway route/security tests pass.
+4. `./mvnw -pl services/payment-service -am verify '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0`; Payment module 83 tests, 0 failures, 0 errors; Kafka contract module 13 tests, 0 failures, 0 errors; packaged service artifact produced.
+5. `./mvnw -pl services/api-gateway -am test '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0`; Gateway module 190 tests, 0 failures, 0 errors.
+6. `git diff --check` — exit `0`; the project-owned `infra/docker/.env` was not opened, read, rendered, edited, staged, or committed.
+
+G6 does not enable live Stripe webhooks or the receipt scheduler by default. To run the local Stripe
+CLI smoke later, the owner must supply `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and
+`STRIPE_WEBHOOK_SECRET` in the ignored `infra/docker/.env`; no secret value is required for this
+branch's automated tests.

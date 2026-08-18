@@ -58,23 +58,59 @@ public class PaymentProviderEventReceiptJpaEntity {
     }
 
     public static PaymentProviderEventReceiptJpaEntity received(UUID id, String providerEventId,
-            String providerEventType, boolean liveMode, Instant providerCreatedAt, Instant verifiedAt) {
+            String providerEventType, String providerApiVersion, boolean liveMode,
+            String providerObjectId, UUID orderId, Instant providerCreatedAt, Instant verifiedAt,
+            String processingStatus) {
         PaymentProviderEventReceiptJpaEntity entity = new PaymentProviderEventReceiptJpaEntity();
         entity.id = id;
         entity.providerEventId = providerEventId;
         entity.providerEventType = providerEventType;
+        entity.providerApiVersion = providerApiVersion;
         entity.liveMode = liveMode;
+        entity.providerObjectId = providerObjectId;
+        entity.orderId = orderId;
         entity.providerCreatedAt = providerCreatedAt;
         entity.verifiedAt = verifiedAt;
-        entity.processingStatus = "PENDING";
+        entity.processingStatus = processingStatus;
         entity.attemptCount = 0;
         entity.nextAttemptAt = verifiedAt;
         return entity;
     }
 
+    public void attachPayment(PaymentJpaEntity payment) {
+        this.payment = payment;
+    }
+
+    public void attachAttempt(PaymentAttemptJpaEntity attempt) {
+        this.attempt = attempt;
+    }
+
     public void markProcessed(Instant processedAt) {
         this.processingStatus = "PROCESSED";
         this.processedAt = processedAt;
+        this.leaseOwner = null;
+        this.leaseUntil = null;
+    }
+
+    public void markIgnored(Instant processedAt) {
+        this.processingStatus = "IGNORED";
+        this.processedAt = processedAt;
+        this.leaseOwner = null;
+        this.leaseUntil = null;
+    }
+
+    public void reschedule(String errorCode, Instant nextAttemptAt) {
+        this.processingStatus = "PENDING";
+        this.lastErrorCode = errorCode;
+        this.nextAttemptAt = nextAttemptAt;
+        this.leaseOwner = null;
+        this.leaseUntil = null;
+    }
+
+    public void manualReview(String errorCode, Instant observedAt) {
+        this.processingStatus = "MANUAL_REVIEW";
+        this.lastErrorCode = errorCode;
+        this.processedAt = observedAt;
         this.leaseOwner = null;
         this.leaseUntil = null;
     }

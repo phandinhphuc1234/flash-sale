@@ -4,6 +4,7 @@ import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.entity.P
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.entity.PaymentJpaEntity;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.mapper.PaymentPersistenceMapper;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.repository.PaymentJpaRepository;
+import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.repository.PaymentAttemptJpaRepository;
 import com.philia.flashsale.payment.payment.application.port.out.LoadPaymentPort;
 import com.philia.flashsale.payment.payment.application.port.out.SavePaymentPort;
 import com.philia.flashsale.payment.payment.domain.model.Payment;
@@ -21,10 +22,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentPersistenceAdapter implements LoadPaymentPort, SavePaymentPort {
 
     private final PaymentJpaRepository repository;
+    private final PaymentAttemptJpaRepository attemptRepository;
     private final PaymentPersistenceMapper mapper;
 
-    public PaymentPersistenceAdapter(PaymentJpaRepository repository, PaymentPersistenceMapper mapper) {
+    public PaymentPersistenceAdapter(PaymentJpaRepository repository,
+            PaymentAttemptJpaRepository attemptRepository, PaymentPersistenceMapper mapper) {
         this.repository = repository;
+        this.attemptRepository = attemptRepository;
         this.mapper = mapper;
     }
 
@@ -44,6 +48,14 @@ public class PaymentPersistenceAdapter implements LoadPaymentPort, SavePaymentPo
     @Transactional
     public Optional<Payment> findLockedById(UUID paymentId) {
         return repository.findLockedById(paymentId).map(mapper::toDomain);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Payment> findByProviderSessionId(String providerSessionId) {
+        return attemptRepository.findByProviderSessionId(providerSessionId)
+                .map(PaymentAttemptJpaEntity::getPayment)
+                .map(mapper::toDomain);
     }
 
     @Override

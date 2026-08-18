@@ -114,6 +114,14 @@ payment:
     max-network-retries: ${STRIPE_MAX_NETWORK_RETRIES:2}
     success-url: ${PAYMENT_CHECKOUT_SUCCESS_URL:http://localhost:3000/payments/success}
     cancel-url: ${PAYMENT_CHECKOUT_CANCEL_URL:http://localhost:3000/payments/cancel}
+  webhook:
+    processing:
+      enabled: ${PAYMENT_WEBHOOK_PROCESSING_ENABLED:false}
+      poll-interval: ${PAYMENT_WEBHOOK_PROCESSING_POLL_INTERVAL:1s}
+      batch-size: ${PAYMENT_WEBHOOK_PROCESSING_BATCH_SIZE:100}
+      claim-lease: ${PAYMENT_WEBHOOK_PROCESSING_CLAIM_LEASE:30s}
+      max-attempts: ${PAYMENT_WEBHOOK_PROCESSING_MAX_ATTEMPTS:10}
+      retry-backoff: ${PAYMENT_WEBHOOK_PROCESSING_RETRY_BACKOFF:10s}
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
     schema-registry-url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}

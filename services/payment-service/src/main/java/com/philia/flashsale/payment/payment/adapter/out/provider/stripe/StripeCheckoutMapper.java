@@ -68,7 +68,8 @@ public final class StripeCheckoutMapper {
 
     public HostedCheckoutResult toResult(Session session, Instant observedAt) {
         ProviderCheckoutState state = switch (safe(session.getStatus())) {
-            case "complete" -> ProviderCheckoutState.PAID;
+            case "complete" -> "paid".equalsIgnoreCase(safe(session.getPaymentStatus()))
+                    ? ProviderCheckoutState.PAID : ProviderCheckoutState.PROCESSING;
             case "open" -> "paid".equalsIgnoreCase(safe(session.getPaymentStatus()))
                     ? ProviderCheckoutState.PAID : ProviderCheckoutState.OPEN;
             case "expired" -> ProviderCheckoutState.EXPIRED;

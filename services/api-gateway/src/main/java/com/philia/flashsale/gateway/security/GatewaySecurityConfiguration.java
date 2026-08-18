@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
@@ -46,6 +47,8 @@ public class GatewaySecurityConfiguration {
                         .pathMatchers("/api/v1/admin/campaigns/**").hasAuthority("SCOPE_CAMPAIGN_ADMIN")
                         .pathMatchers("/api/v1/orders/**").authenticated()
                         .pathMatchers("/api/v1/flash-sales/**").authenticated()
+                        .pathMatchers(HttpMethod.POST, "/webhooks/v1/payments/stripe").permitAll()
+                        .pathMatchers("/api/v1/payments/**").authenticated()
                         .anyExchange().denyAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(securityErrorHandler)
