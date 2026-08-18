@@ -15,6 +15,8 @@ public interface PaymentAttemptJpaRepository extends JpaRepository<PaymentAttemp
 
     List<PaymentAttemptJpaEntity> findByPayment_IdOrderByAttemptNumberAsc(UUID paymentId);
 
+    long countByPayment_Id(UUID paymentId);
+
     Optional<PaymentAttemptJpaEntity> findByProviderIdempotencyKey(String providerIdempotencyKey);
 
     Optional<PaymentAttemptJpaEntity> findByProviderSessionId(String providerSessionId);

@@ -24,8 +24,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 /** Local Payment JWT trust boundary with issuer, audience, type, subject, and expiry checks. */
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(name = {"payment.checkout.enabled", "payment.acceptance.enabled",
-        "payment.stripe.enabled"}, havingValue = "true")
+@ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
 public class PaymentJwtTrustConfiguration {
 
     @Bean("paymentJwtDecoder")
@@ -41,7 +40,16 @@ public class PaymentJwtTrustConfiguration {
 
     @Bean
     Converter<Jwt, AbstractAuthenticationToken> paymentJwtAuthenticationConverter() {
-        return jwt -> new JwtAuthenticationToken(jwt, authorities(jwt), jwt.getSubject());
+        return new PaymentJwtAuthenticationConverter();
+    }
+
+    /** Named generic converter keeps Spring's conversion service type metadata intact. */
+    static final class PaymentJwtAuthenticationConverter
+            implements Converter<Jwt, AbstractAuthenticationToken> {
+        @Override
+        public AbstractAuthenticationToken convert(Jwt jwt) {
+            return new JwtAuthenticationToken(jwt, authorities(jwt), jwt.getSubject());
+        }
     }
 
     private static List<GrantedAuthority> authorities(Jwt jwt) {
