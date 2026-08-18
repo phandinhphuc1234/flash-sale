@@ -48,6 +48,17 @@ spring:
               uri: ${FLASHSALE_SERVICE_URL:http://flashsale-service:8080}
               predicates:
                 - Path=/api/v1/flash-sales/**
+            - id: payment-webhook
+              uri: ${PAYMENT_SERVICE_URL:http://payment-service:8080}
+              predicates:
+                - Path=/webhooks/v1/payments/stripe
+                - Method=POST
+              filters:
+                - RequestSize=1024KB
+            - id: payment-api
+              uri: ${PAYMENT_SERVICE_URL:http://payment-service:8080}
+              predicates:
+                - Path=/api/v1/payments/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:

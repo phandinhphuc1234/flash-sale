@@ -79,8 +79,23 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
     @Transactional
     public PaymentProviderReceiptPort.Receipt receive(PaymentProviderReceiptPort.Receipt receipt) {
         var entity = PaymentProviderEventReceiptJpaEntity.received(receipt.id(), receipt.providerEventId(),
-                receipt.providerEventType(), receipt.liveMode(), receipt.providerCreatedAt(), receipt.verifiedAt());
-        return providerReceipt(receiptRepository.save(entity));
+                receipt.providerEventType(), receipt.providerApiVersion(), receipt.liveMode(),
+                receipt.providerObjectId(), receipt.orderId(), receipt.providerCreatedAt(),
+                receipt.verifiedAt(), receipt.processingStatus());
+        if (receipt.paymentId() != null) {
+            paymentRepository.findById(receipt.paymentId()).ifPresent(entity::attachPayment);
+        }
+        if (receipt.attemptId() != null) {
+            attemptRepository.findById(receipt.attemptId()).ifPresent(entity::attachAttempt);
+        }
+        receiptRepository.insertIfAbsent(entity.getId(), entity.getProviderEventId(),
+                entity.getProviderEventType(), entity.getProviderApiVersion(), entity.isLiveMode(),
+                entity.getProviderObjectId(), entity.getPayment() == null ? null : entity.getPayment().getId(),
+                entity.getAttempt() == null ? null : entity.getAttempt().getId(), entity.getOrderId(),
+                entity.getProviderCreatedAt(), entity.getVerifiedAt(), entity.getProcessingStatus());
+        return receiptRepository.findByProviderEventId(receipt.providerEventId())
+                .map(this::providerReceipt)
+                .orElseThrow(() -> new IllegalStateException("provider receipt insert was not observable"));
     }
 
     @Override
@@ -100,6 +115,33 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
     public void markProcessed(UUID receiptId, Instant processedAt) {
         receiptRepository.findById(receiptId).ifPresent(row -> {
             row.markProcessed(processedAt);
+            receiptRepository.save(row);
+        });
+    }
+
+    @Override
+    @Transactional
+    public void markIgnored(UUID receiptId, Instant processedAt) {
+        receiptRepository.findById(receiptId).ifPresent(row -> {
+            row.markIgnored(processedAt);
+            receiptRepository.save(row);
+        });
+    }
+
+    @Override
+    @Transactional
+    public void reschedule(UUID receiptId, String errorCode, Instant nextAttemptAt) {
+        receiptRepository.findById(receiptId).ifPresent(row -> {
+            row.reschedule(errorCode, nextAttemptAt);
+            receiptRepository.save(row);
+        });
+    }
+
+    @Override
+    @Transactional
+    public void markReceiptManualReview(UUID receiptId, String errorCode, Instant observedAt) {
+        receiptRepository.findById(receiptId).ifPresent(row -> {
+            row.manualReview(errorCode, observedAt);
             receiptRepository.save(row);
         });
     }
@@ -153,7 +195,8 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
 
     private PaymentProviderReceiptPort.Receipt providerReceipt(PaymentProviderEventReceiptJpaEntity entity) {
         return new PaymentProviderReceiptPort.Receipt(entity.getId(), entity.getProviderEventId(),
-                entity.getProviderEventType(), entity.isLiveMode(), entity.getProviderObjectId(),
+                entity.getProviderEventType(), entity.isLiveMode(), entity.getProviderApiVersion(),
+                entity.getProviderObjectId(),
                 entity.getPayment() == null ? null : entity.getPayment().getId(),
                 entity.getAttempt() == null ? null : entity.getAttempt().getId(), entity.getOrderId(),
                 entity.getProviderCreatedAt(), entity.getVerifiedAt(), entity.getProcessingStatus(),

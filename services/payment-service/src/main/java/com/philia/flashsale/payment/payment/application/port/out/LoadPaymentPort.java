@@ -12,4 +12,9 @@ public interface LoadPaymentPort {
     Optional<Payment> findByOrderId(UUID orderId);
 
     Optional<Payment> findLockedById(UUID paymentId);
+
+    /** Resolves a hosted Session identity without exposing the attempt repository inward. */
+    default Optional<Payment> findByProviderSessionId(String providerSessionId) {
+        return Optional.empty();
+    }
 }

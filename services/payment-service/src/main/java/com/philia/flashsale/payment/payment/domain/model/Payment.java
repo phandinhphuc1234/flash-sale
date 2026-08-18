@@ -115,9 +115,22 @@ public final class Payment {
         touch(now);
     }
 
+    public void markAttemptProcessing(UUID attemptId, String providerState, Instant now) {
+        PaymentAttempt attempt = attempt(attemptId);
+        if (attempt.status() == PaymentAttemptStatus.SUCCEEDED || status == PaymentStatus.SUCCEEDED) {
+            return;
+        }
+        attempt.markProcessing(providerState, now);
+        status = PaymentStatus.PROCESSING;
+        touch(now);
+    }
+
     public void markProviderPaid(UUID attemptId, String sessionId, String paymentIntentId,
             Instant paidAt) {
         PaymentAttempt attempt = attempt(attemptId);
+        if (status == PaymentStatus.SUCCEEDED) {
+            return;
+        }
         attempt.markSucceeded(sessionId, paymentIntentId, paidAt);
         status = PaymentStatus.SUCCEEDED;
         failureReason = null;
@@ -128,6 +141,10 @@ public final class Payment {
     public void markProviderTerminalFailure(UUID attemptId, Instant now) {
         PaymentAttempt attempt = attempt(attemptId);
         if (attempt.status() == PaymentAttemptStatus.SUCCEEDED || status == PaymentStatus.SUCCEEDED) {
+            return;
+        }
+        if (attempt.status() == PaymentAttemptStatus.FAILED
+                && (status == PaymentStatus.PENDING || status == PaymentStatus.FAILED)) {
             return;
         }
         attempt.markFailed(FailureReason.PROVIDER_TERMINAL_FAILURE, now);
@@ -142,6 +159,31 @@ public final class Payment {
             return;
         }
         touch(now);
+    }
+
+    /** Applies a verified unpaid Session expiry while preserving the retry-before-deadline rule. */
+    public void markProviderExpired(UUID attemptId, Instant now) {
+        PaymentAttempt attempt = attempt(attemptId);
+        if (attempt.status() == PaymentAttemptStatus.SUCCEEDED || status == PaymentStatus.SUCCEEDED) {
+            return;
+        }
+        if (attempt.status() == PaymentAttemptStatus.EXPIRED
+                && (status == PaymentStatus.PENDING || status == PaymentStatus.EXPIRED)) {
+            return;
+        }
+        attempt.markExpired(now);
+        if (!now.isBefore(paymentDeadline)) {
+            status = PaymentStatus.EXPIRED;
+            failureReason = FailureReason.PAYMENT_DEADLINE_EXPIRED;
+            incrementVersion(now);
+        } else if (attempts.size() >= MAX_ATTEMPTS) {
+            status = PaymentStatus.FAILED;
+            failureReason = FailureReason.CHECKOUT_ATTEMPT_LIMIT_REACHED;
+            incrementVersion(now);
+        } else {
+            status = PaymentStatus.PENDING;
+            touch(now);
+        }
     }
 
     public void expire(Instant now) {
