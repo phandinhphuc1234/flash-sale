@@ -119,7 +119,7 @@ class PaymentSchemaMigrationIntegrationTests {
     void emptyFeatureSchemaSupportsExplicitLiquibaseRollback() throws Exception {
         try (Connection connection = connection()) {
             Liquibase liquibase = runLiquibase(connection);
-            liquibase.rollback(1, new Contexts(), new LabelExpression());
+            liquibase.rollback(2, new Contexts(), new LabelExpression());
             try (var statement = connection.createStatement();
                     ResultSet result = statement.executeQuery("""
                             select count(*) from information_schema.tables

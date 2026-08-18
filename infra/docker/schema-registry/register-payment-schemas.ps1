@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$SchemaRegistryUrl,
-    [string]$SchemaDirectory = (Join-Path $PSScriptRoot '..\..\..\contracts\kafka-avro-contracts\src\main\avro\topics'),
+    [string]$SchemaDirectory,
     [switch]$CheckOnly
 )
 
@@ -10,6 +10,9 @@ $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($SchemaRegistryUrl)) {
     $SchemaRegistryUrl = if ($env:SCHEMA_REGISTRY_URL) { $env:SCHEMA_REGISTRY_URL } else { 'http://localhost:8081' }
+}
+if ([string]::IsNullOrWhiteSpace($SchemaDirectory)) {
+    $SchemaDirectory = Join-Path $PSScriptRoot '..\..\..\contracts\kafka-avro-contracts\src\main\avro\topics'
 }
 
 $registry = $SchemaRegistryUrl.TrimEnd('/')
@@ -36,7 +39,13 @@ $schemas = @(
 
 function Add-GeneratedStringProperties([object]$Node) {
     if ($Node -is [System.Collections.IList]) {
-        foreach ($item in $Node) { Add-GeneratedStringProperties $item }
+        for ($index = 0; $index -lt $Node.Count; $index++) {
+            if ($Node[$index] -is [string] -and $Node[$index] -eq 'string') {
+                $Node[$index] = [pscustomobject]@{ type = 'string'; 'avro.java.string' = 'String' }
+            } else {
+                Add-GeneratedStringProperties $Node[$index]
+            }
+        }
         return
     }
     if (-not ($Node -is [pscustomobject])) { return }

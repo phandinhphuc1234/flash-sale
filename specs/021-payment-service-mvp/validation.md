@@ -161,3 +161,31 @@ G6 does not enable live Stripe webhooks or the receipt scheduler by default. To 
 CLI smoke later, the owner must supply `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and
 `STRIPE_WEBHOOK_SECRET` in the ignored `infra/docker/.env`; no secret value is required for this
 branch's automated tests.
+
+---
+
+## G7 implementation evidence
+
+| Task | Evidence | Result |
+|---|---|---|
+| T066 | `PaymentOutboxPublicationServiceTests` | PASS; 6 unit tests cover claim failure, sequential publish-before-mark, stable retry identity, capped backoff, lease loss, and sanitized broker error persistence |
+| T067 | `PaymentResultAvroMapperTests` and `PaymentResultKafkaPublisherTests` | PASS; 7 tests cover both generated v1 records, exact envelope/data/decimal/nullable fields, order key, versions, correlation/causation, W3C headers, topic mismatch, and forbidden fields |
+| T068 | `PaymentOutboxConcurrencyIntegrationTests` with PostgreSQL 16 Testcontainers | PASS; 2 tests prove one worker claim, wrong-owner acknowledgement rejection, expired lease reclaim, same event identity, retry requeue, and attempt increment |
+| T069 | `PaymentResultKafkaIntegrationTests` against local Kafka/Schema Registry | PASS; 2 live tests prove `auto.register.schemas=false`, TopicRecordNameStrategy subjects, `BACKWARD_TRANSITIVE` subject compatibility, both result records, `orderId` key, event/type/version/content/trace headers, physical duplicate identity, and retry after Registry outage |
+| T070–T073 | Immutable outbox model/ports, retry policy, JPA claim/update adapter, mapper/publisher, scheduler, and producer configuration | PASS; Kafka I/O is outside Payment truth transactions, producer uses `acks=all`, idempotence, explicit schemas, and the relay is disabled by default |
+| T074 | Commands below | PASS; Payment module verify and live Kafka/Registry evidence recorded with no secret access |
+
+### G7 commands and results
+
+1. `./mvnw -pl services/payment-service -am '-Dtest=PaymentOutboxPublicationServiceTests,PaymentResultAvroMapperTests,PaymentResultKafkaPublisherTests,PaymentOutboxConfigurationTests,PaymentOutboxConcurrencyIntegrationTests,PaymentSchemaMigrationIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 19 tests, 0 failures, 0 errors.
+2. `pwsh -NoProfile -File infra/docker/schema-registry/register-payment-schemas.ps1 -SchemaRegistryUrl http://localhost:8081` — exit `0`; command, success, and failure subjects registered/verified with `BACKWARD_TRANSITIVE` (Payment result schema IDs 8/9 in the local runtime).
+3. `./mvnw -pl services/payment-service -am '-Dtest=PaymentResultKafkaIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dpayment.kafka.integration=true' test` — exit `0`; 2 live tests, 0 failures, 0 errors; topic `flashsale.payment.events.v1`, key `orderId`, both records and duplicate event identity observed.
+4. `./mvnw -pl services/payment-service -am verify '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0`; Payment module 101 tests, 0 failures, 0 errors, 2 intentionally skipped live-gated tests; Kafka contract module 13 tests passed and the Payment artifact was packaged.
+5. `git diff --check` — exit `0`; `infra/docker/.env` was not opened, read, rendered, edited, staged, or committed.
+
+The registry script was hardened to transform string members inside Avro nullable unions and to resolve
+its default schema directory inside the script body. This prevents a Windows PowerShell invocation from
+registering a schema that differs from the generated Avro SpecificRecord schema.
+
+G7 enables no publisher flag by default. The relay requires both `PAYMENT_ACCEPTANCE_ENABLED=true` and
+`PAYMENT_OUTBOX_PUBLISHER_ENABLED=true`; no new secret or `.env` value is required by this branch.
