@@ -16,11 +16,10 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-/** Protects Checkout owner APIs and keeps the service deny-by-default. */
+/** Protects Payment owner APIs and keeps the service deny-by-default. */
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(name = {"payment.checkout.enabled", "payment.acceptance.enabled",
-        "payment.stripe.enabled"}, havingValue = "true")
+@ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
 public class PaymentSecurityConfiguration {
 
     @Bean

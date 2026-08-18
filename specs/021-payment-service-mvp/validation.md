@@ -215,3 +215,29 @@ G7 enables no publisher flag by default. The relay requires both `PAYMENT_ACCEPT
 G8 does not enable recovery or deadline workers by default and requires no new secret. Live Stripe
 provider outage and process-crash smoke can be run later with the existing test-mode configuration;
 this branch keeps all provider credentials in configuration and does not inspect the ignored `.env` file.
+
+---
+
+## G9 implementation evidence
+
+| Task | Evidence | Result |
+|---|---|---|
+| T086, T090–T091 | `PaymentQueryServiceTests` and query models/ports/service | PASS; Payment and Order lookups derive owner identity from the application query, preserve all six public statuses, and map absent/foreign rows to the same `PaymentNotFoundException` without Stripe/Kafka ports. |
+| T087, T092 | `OwnedPaymentQueryIntegrationTests` with PostgreSQL 16 Testcontainers | PASS; `(payment_id,user_id)` and `(order_id,user_id)` predicates, attempt count, and safe closed projection fields are verified; provider session/idempotency data is not selected. |
+| T088, T093–T094 | `PaymentQueryControllerTests`, `PaymentDetailsResponse`, `PaymentQueryWebMapper`, and `PaymentQueryController` | PASS; both GET routes return `ApiResponse`, `X-Trace-Id`, `Cache-Control: no-store`, stable 404/400 errors, owner masking, all public statuses, and no Checkout URL/provider/secrets. |
+| T089, T095 | `PaymentGatewayRouteConfigurationTests`, existing `PaymentWebhookGatewayRouteTests`, and Gateway YAML | PASS; authenticated Payment API forwards path/query/trace, rejects anonymous and unsupported methods, and exact POST-only webhook routes target Payment Service; API route is limited to GET/POST and webhook remains the only unauthenticated exception. |
+| T096 | `PaymentQueryConfiguration`, acceptance-only JWT/security conditions | PASS; query capability is wired only with durable Payment acceptance enabled and remains available when Stripe/Checkout flags are disabled. |
+| T097 | Commands below | PASS; focused application/MVC tests, PostgreSQL projection tests, Gateway route test, selected existing Payment integration tests, full Payment verify, and `git diff --check` completed with no failures. |
+
+### G9 commands and results
+
+1. `./mvnw -pl services/payment-service -am '-Dtest=PaymentQueryServiceTests,PaymentQueryControllerTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 8 tests, 0 failures, 0 errors.
+2. `./mvnw -pl services/payment-service -am '-Dtest=OwnedPaymentQueryIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 2 PostgreSQL 16 Testcontainers tests, 0 failures, 0 errors.
+3. `./mvnw -pl services/api-gateway -am '-Dtest=PaymentGatewayRouteConfigurationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 4 Gateway route/authentication/forwarding tests, 0 failures, 0 errors.
+4. `./mvnw -pl services/payment-service -am '-Dtest=PaymentServiceApplicationTests,PaymentOutboxConcurrencyIntegrationTests,PaymentCommandConcurrencyIntegrationTests,StripeWebhookReceiptIntegrationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 9 selected existing integration/application tests, 0 failures, 0 errors.
+5. `./mvnw -pl services/payment-service -am verify '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0`; Payment module 124 tests, 0 failures, 0 errors, 2 intentionally skipped live-gated tests; common-web 9 tests and Kafka contract module 13 tests pass; Payment artifact packaged.
+6. `./mvnw -pl services/api-gateway -am test '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0`; Gateway module 194 tests, 0 failures, 0 errors.
+7. `git diff --check` — exit `0`; `infra/docker/.env` was not opened, read, rendered, edited, staged, or committed.
+
+G9 adds no secret or `.env` requirement. Owner queries read only Payment PostgreSQL state; Stripe,
+Kafka, Checkout sessions, and provider outage status cannot alter or leak the query result.

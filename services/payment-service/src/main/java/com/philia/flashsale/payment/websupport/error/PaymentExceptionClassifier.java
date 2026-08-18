@@ -2,12 +2,19 @@ package com.philia.flashsale.payment.websupport.error;
 
 import com.philia.flashsale.payment.payment.application.exception.HostedCheckoutProviderException;
 import com.philia.flashsale.payment.payment.application.exception.PaymentCheckoutException;
+import com.philia.flashsale.payment.payment.application.exception.PaymentNotFoundException;
 
 /** Converts application/provider failures into stable client-safe codes. */
 public final class PaymentExceptionClassifier {
     private PaymentExceptionClassifier() { }
 
     public static PaymentErrorCode classify(Throwable throwable) {
+        if (throwable instanceof PaymentNotFoundException) {
+            return PaymentErrorCode.PAYMENT_NOT_FOUND;
+        }
+        if (throwable instanceof PaymentAuthenticationException) {
+            return PaymentErrorCode.AUTHENTICATION_REQUIRED;
+        }
         if (throwable instanceof PaymentCheckoutException exception) {
             return switch (exception.outcome()) {
                 case NOT_FOUND -> PaymentErrorCode.PAYMENT_NOT_FOUND;
