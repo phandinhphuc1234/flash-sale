@@ -7,6 +7,9 @@ import java.util.UUID;
 /** Durable command receipt capability for idempotent PaymentRequested processing. */
 public interface PaymentCommandInboxPort {
 
+    /** Serializes command acceptance for one logical Order inside the current transaction. */
+    void lockOrder(UUID orderId);
+
     Optional<Receipt> findByEventId(UUID eventId);
 
     Optional<Receipt> findByOrderId(UUID orderId);

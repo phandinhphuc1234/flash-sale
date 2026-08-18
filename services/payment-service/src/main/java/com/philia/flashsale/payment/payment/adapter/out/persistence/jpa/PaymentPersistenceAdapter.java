@@ -11,13 +11,13 @@ import com.philia.flashsale.payment.payment.domain.model.PaymentAttempt;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /** JPA adapter translating the Payment aggregate without leaking entities inward. */
 @Component
-@ConditionalOnBean(PaymentJpaRepository.class)
+@ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
 public class PaymentPersistenceAdapter implements LoadPaymentPort, SavePaymentPort {
 
     private final PaymentJpaRepository repository;

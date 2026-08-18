@@ -6,7 +6,7 @@ import com.philia.flashsale.payment.payment.application.port.out.PaymentIdentity
 import com.philia.flashsale.payment.payment.application.port.out.PaymentTransactionPort;
 import java.time.Clock;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,7 +33,7 @@ public class PaymentFoundationConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean(PlatformTransactionManager.class)
+    @ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
     PaymentTransactionPort paymentTransactionPort(PlatformTransactionManager transactionManager) {
         TransactionTemplate template = new TransactionTemplate(transactionManager);
         return new PaymentTransactionPort() {

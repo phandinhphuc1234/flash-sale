@@ -1,17 +1,14 @@
 package com.philia.flashsale.payment.payment.adapter.out.persistence.jpa;
 
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.entity.PaymentClientIdempotencyJpaEntity;
-import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.entity.PaymentCommandInboxJpaEntity;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.entity.PaymentProviderEventReceiptJpaEntity;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.entity.PaymentRecoveryWorkJpaEntity;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.repository.PaymentAttemptJpaRepository;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.repository.PaymentClientIdempotencyJpaRepository;
-import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.repository.PaymentCommandInboxJpaRepository;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.repository.PaymentJpaRepository;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.repository.PaymentProviderEventReceiptJpaRepository;
 import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.repository.PaymentRecoveryWorkJpaRepository;
 import com.philia.flashsale.payment.payment.application.port.out.PaymentClientIdempotencyPort;
-import com.philia.flashsale.payment.payment.application.port.out.PaymentCommandInboxPort;
 import com.philia.flashsale.payment.payment.application.port.out.PaymentProviderReceiptPort;
 import com.philia.flashsale.payment.payment.application.port.out.PaymentRecoveryWorkPort;
 import java.util.ArrayList;
@@ -19,73 +16,31 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Adapter for durable identities and worker queues other than the aggregate itself. */
 @Component
-@ConditionalOnBean(PaymentJpaRepository.class)
-public class PaymentSupportingPersistenceAdapter implements PaymentCommandInboxPort,
-        PaymentClientIdempotencyPort, PaymentProviderReceiptPort, PaymentRecoveryWorkPort {
+@ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
+public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempotencyPort,
+        PaymentProviderReceiptPort, PaymentRecoveryWorkPort {
 
-    private final PaymentCommandInboxJpaRepository inboxRepository;
     private final PaymentClientIdempotencyJpaRepository idempotencyRepository;
     private final PaymentProviderEventReceiptJpaRepository receiptRepository;
     private final PaymentRecoveryWorkJpaRepository recoveryRepository;
     private final PaymentJpaRepository paymentRepository;
     private final PaymentAttemptJpaRepository attemptRepository;
 
-    public PaymentSupportingPersistenceAdapter(PaymentCommandInboxJpaRepository inboxRepository,
-            PaymentClientIdempotencyJpaRepository idempotencyRepository,
+    public PaymentSupportingPersistenceAdapter(PaymentClientIdempotencyJpaRepository idempotencyRepository,
             PaymentProviderEventReceiptJpaRepository receiptRepository,
             PaymentRecoveryWorkJpaRepository recoveryRepository, PaymentJpaRepository paymentRepository,
             PaymentAttemptJpaRepository attemptRepository) {
-        this.inboxRepository = inboxRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.receiptRepository = receiptRepository;
         this.recoveryRepository = recoveryRepository;
         this.paymentRepository = paymentRepository;
         this.attemptRepository = attemptRepository;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<PaymentCommandInboxPort.Receipt> findByEventId(UUID eventId) {
-        return inboxRepository.findById(eventId).map(this::receipt);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<PaymentCommandInboxPort.Receipt> findByOrderId(UUID orderId) {
-        return inboxRepository.findByOrderId(orderId).map(this::receipt);
-    }
-
-    @Override
-    @Transactional
-    public PaymentCommandInboxPort.Receipt receive(UUID eventId, String eventType, int eventVersion,
-            UUID orderId, String payloadFingerprint, Instant receivedAt) {
-        return receipt(inboxRepository.save(PaymentCommandInboxJpaEntity.received(eventId, eventType,
-                eventVersion, orderId, payloadFingerprint, receivedAt)));
-    }
-
-    @Override
-    @Transactional
-    public void markProcessed(UUID eventId, UUID paymentId, Instant processedAt) {
-        inboxRepository.findById(eventId).ifPresent(inbox -> paymentRepository.findById(paymentId)
-                .ifPresent(payment -> {
-                    inbox.markProcessed(payment, processedAt);
-                    inboxRepository.save(inbox);
-                }));
-    }
-
-    @Override
-    @Transactional
-    public void markConflicted(UUID eventId, Instant observedAt) {
-        inboxRepository.findById(eventId).ifPresent(inbox -> {
-            inbox.markConflicted(observedAt);
-            inboxRepository.save(inbox);
-        });
     }
 
     @Override
@@ -187,13 +142,6 @@ public class PaymentSupportingPersistenceAdapter implements PaymentCommandInboxP
             row.manualReview(errorCode, observedAt);
             recoveryRepository.save(row);
         });
-    }
-
-    private PaymentCommandInboxPort.Receipt receipt(PaymentCommandInboxJpaEntity entity) {
-        return new PaymentCommandInboxPort.Receipt(entity.getEventId(), entity.getEventType(),
-                entity.getEventVersion(), entity.getOrderId(), entity.getPayloadFingerprint(),
-                entity.getPayment() == null ? null : entity.getPayment().getId(), entity.getProcessingStatus(),
-                entity.getReceivedAt(), entity.getProcessedAt());
     }
 
     private PaymentClientIdempotencyPort.Record toIdempotencyRecord(PaymentClientIdempotencyJpaEntity entity) {

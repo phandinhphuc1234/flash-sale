@@ -1,8 +1,8 @@
 # Feature 021 Validation Evidence
 
 **Feature**: Payment Service Stripe Checkout MVP
-**Group**: G1–G2 — Contracts, Domain, and PostgreSQL Foundation
-**Branch**: `codex/payment-g2-domain-persistence`
+**Group**: G1–G3 — Contracts, Domain, PostgreSQL Foundation, and Atomic Payment Acceptance
+**Branch**: `codex/payment-g3-acceptance`
 **Validated**: 2026-08-17
 **Secret handling**: `infra/docker/.env` was not opened, read, rendered, edited, staged, or committed.
 
@@ -65,3 +65,27 @@ HTTP routes, migrations, or Gateway routes. Those behaviors remain in G2–G10 a
 
 G2 does not enable the Kafka consumer, Checkout provider, HTTP routes, webhook processing, or
 recovery scheduler. Those behaviors remain gated by G3–G10.
+
+## G3 implementation evidence
+
+| Task | Evidence | Result |
+|---|---|---|
+| T022 | `AcceptPaymentRequestServiceTests` | PASS; 5 application tests cover immutable snapshots, same-event and equivalent-event replay, contradictory conflict visibility, no provider call, and the expired `PaymentFailed` outbox fact |
+| T023 | `PaymentCommandAcceptanceIntegrationTests` with PostgreSQL 16 Testcontainers | PASS; 5 tests prove atomic Payment/inbox persistence, equivalent replay, contradictory fingerprint handling, rollback, and one stable deadline-failure outbox row |
+| T024 | `PaymentCommandConcurrencyIntegrationTests` with 100 deliveries per scenario | PASS; 3 tests prove one Payment/inbox for same-event copies and equivalent event IDs, and no mutation of the winning snapshot during contradictory races |
+| T025–T026 | Application command/result models and `AcceptPaymentRequestService` | PASS; canonical SHA-256 business fingerprint excludes transport IDs, validates the v1 envelope, and performs inbox/Payment/outbox work through the transaction port |
+| T027 | `PaymentCommandInboxPersistenceAdapter` | PASS; JPA types remain in the adapter, advisory transaction locks serialize first acceptance for an Order, and repository uniqueness handles durable identity |
+| T028 | `PaymentAcceptanceConfiguration` and `PAYMENT_ACCEPTANCE_ENABLED` | PASS; application capability is composition-wired only when explicitly enabled; no Kafka listener or Stripe/provider call is enabled in G3 |
+| T029 | Commands and results below | PASS; evidence recorded on the G3 branch |
+
+### G3 commands and results
+
+1. `./mvnw -pl services/payment-service -am -Dtest=AcceptPaymentRequestServiceTests -Dsurefire.failIfNoSpecifiedTests=false test` — exit `0`; 5 application tests, 0 failures, 0 errors.
+2. `./mvnw -pl services/payment-service -am -Dtest=PaymentCommandAcceptanceIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test` — exit `0`; 5 PostgreSQL Testcontainers tests, 0 failures, 0 errors.
+3. `./mvnw -pl services/payment-service -am -Dtest=PaymentCommandConcurrencyIntegrationTests -Dsurefire.failIfNoSpecifiedTests=false test` — exit `0`; 3 PostgreSQL Testcontainers tests with 100 deliveries per scenario, 0 failures, 0 errors.
+4. Each acceptance test truncates Payment-owned tables before execution and verifies one Payment/inbox identity; expired acceptance verifies exactly one stable `PaymentFailed` outbox identity and replay does not add another row.
+5. `git diff --check` — PASS after G3 implementation changes.
+
+G3 intentionally stops at the application acceptance port. The Kafka `PaymentRequested.v1`
+consumer, retry/DLT behavior, Stripe Checkout, webhook processing, publication, recovery jobs,
+HTTP routes, and Gateway wiring remain disabled and are implemented by G4–G10.

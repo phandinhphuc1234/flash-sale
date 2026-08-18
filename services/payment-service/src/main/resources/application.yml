@@ -90,6 +90,8 @@ info:
 
 payment:
   provider: ${PAYMENT_PROVIDER:STRIPE}
+  acceptance:
+    enabled: ${PAYMENT_ACCEPTANCE_ENABLED:false}
   public-api-prefix: ${PAYMENT_PUBLIC_API_PREFIX:/api/v1/payments}
   webhook-path: ${PAYMENT_WEBHOOK_PATH:/webhooks/v1/payments/stripe}
   jwt-issuer: ${PAYMENT_JWT_ISSUER:http://authentication-service:8080}

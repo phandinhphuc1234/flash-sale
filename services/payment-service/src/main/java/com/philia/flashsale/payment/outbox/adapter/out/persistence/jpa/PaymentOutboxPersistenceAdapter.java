@@ -6,13 +6,13 @@ import com.philia.flashsale.payment.outbox.application.port.SavePaymentOutboxPor
 import java.util.ArrayList;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /** JPA adapter for stable Payment fact rows and PostgreSQL lease claims. */
 @Component
-@ConditionalOnBean(PaymentOutboxEventJpaRepository.class)
+@ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
 public class PaymentOutboxPersistenceAdapter implements SavePaymentOutboxPort, ClaimPaymentOutboxPort {
 
     private final PaymentOutboxEventJpaRepository repository;
