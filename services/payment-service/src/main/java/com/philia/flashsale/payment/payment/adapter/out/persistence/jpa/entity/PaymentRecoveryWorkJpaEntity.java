@@ -90,6 +90,15 @@ public class PaymentRecoveryWorkJpaEntity {
         this.updatedAt = now;
     }
 
+    public void reschedule(String errorCode, Instant nextAttemptAt, Instant now) {
+        this.status = "PENDING";
+        this.lastErrorCode = errorCode;
+        this.nextAttemptAt = nextAttemptAt;
+        this.leaseOwner = null;
+        this.leaseUntil = null;
+        this.updatedAt = now;
+    }
+
     public UUID getId() { return id; }
     public PaymentJpaEntity getPayment() { return payment; }
     public PaymentAttemptJpaEntity getAttempt() { return attempt; }
