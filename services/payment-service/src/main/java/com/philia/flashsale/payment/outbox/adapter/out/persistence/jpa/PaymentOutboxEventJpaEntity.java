@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -48,6 +49,8 @@ public class PaymentOutboxEventJpaEntity {
     private Instant leaseUntil;
     @Column(name = "published_at")
     private Instant publishedAt;
+    @Column(name = "last_error_code", length = 128)
+    private String lastErrorCode;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -85,6 +88,22 @@ public class PaymentOutboxEventJpaEntity {
     public void markPublished(Instant publishedAt) {
         this.status = "PUBLISHED";
         this.publishedAt = publishedAt;
+        this.lastErrorCode = null;
+        this.leaseOwner = null;
+        this.leaseUntil = null;
+    }
+
+    public boolean isOwnedBy(String owner) {
+        return "IN_PROGRESS".equals(status) && Objects.equals(owner, leaseOwner);
+    }
+
+    public void markRetry(String owner, String errorCode, Instant nextAttemptAt) {
+        if (!isOwnedBy(owner)) {
+            return;
+        }
+        this.status = "PENDING";
+        this.lastErrorCode = errorCode;
+        this.nextAttemptAt = nextAttemptAt;
         this.leaseOwner = null;
         this.leaseUntil = null;
     }
@@ -105,5 +124,6 @@ public class PaymentOutboxEventJpaEntity {
     public String getLeaseOwner() { return leaseOwner; }
     public Instant getLeaseUntil() { return leaseUntil; }
     public Instant getPublishedAt() { return publishedAt; }
+    public String getLastErrorCode() { return lastErrorCode; }
     public Instant getCreatedAt() { return createdAt; }
 }

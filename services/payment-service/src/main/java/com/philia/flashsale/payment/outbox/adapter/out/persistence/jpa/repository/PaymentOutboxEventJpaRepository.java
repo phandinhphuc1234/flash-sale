@@ -1,15 +1,22 @@
 package com.philia.flashsale.payment.outbox.adapter.out.persistence.jpa.repository;
 
 import com.philia.flashsale.payment.outbox.adapter.out.persistence.jpa.PaymentOutboxEventJpaEntity;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** Durable outbox rows and adapter-local lease claim query. */
 public interface PaymentOutboxEventJpaRepository extends JpaRepository<PaymentOutboxEventJpaEntity, UUID> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from PaymentOutboxEventJpaEntity e where e.eventId = :eventId")
+    java.util.Optional<PaymentOutboxEventJpaEntity> findLockedByEventId(
+            @Param("eventId") UUID eventId);
 
     @Query(value = """
             select * from payment_outbox_events
