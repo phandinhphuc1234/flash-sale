@@ -103,7 +103,7 @@ HTTP routes, and Gateway wiring remain disabled and are implemented by G4–G10.
 
 ### G4 commands and results
 
-1. `./mvnw -pl services/payment-service -am test` — exit `0`; Payment module 46 tests, 0 failures, 0 errors; contract module 13 tests, 0 failures, 0 errors.
+1. `./mvnw -pl services/payment-service -am test` — exit `0`; Payment module 48 tests, 0 failures, 0 errors; contract module 13 tests, 0 failures, 0 errors.
 2. `git diff --check` — exit `0` for tracked G4 changes.
 
 G4 code is now present but the live broker/registry and DLT evidence (T032, T036, and T037) remains
