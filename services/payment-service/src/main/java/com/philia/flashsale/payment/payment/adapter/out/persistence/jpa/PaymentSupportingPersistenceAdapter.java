@@ -11,6 +11,7 @@ import com.philia.flashsale.payment.payment.adapter.out.persistence.jpa.reposito
 import com.philia.flashsale.payment.payment.application.port.out.PaymentClientIdempotencyPort;
 import com.philia.flashsale.payment.payment.application.port.out.PaymentProviderReceiptPort;
 import com.philia.flashsale.payment.payment.application.port.out.PaymentRecoveryWorkPort;
+import java.util.ArrayList;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -46,7 +47,7 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
     @Transactional
     public Optional<PaymentClientIdempotencyPort.Record> findLocked(String operation, String keyDigest) {
         return idempotencyRepository.findLockedByOperationAndKeyDigest(operation, keyDigest)
-                .map(this::record);
+                .map(this::toIdempotencyRecord);
     }
 
     @Override
@@ -54,7 +55,7 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
     public PaymentClientIdempotencyPort.Record create(UUID id, String operation, String keyDigest,
             UUID userId, UUID paymentId, String requestFingerprint, Instant createdAt) {
         var payment = paymentRepository.getReferenceById(paymentId);
-        return record(idempotencyRepository.save(PaymentClientIdempotencyJpaEntity.create(id, operation,
+        return toIdempotencyRecord(idempotencyRepository.save(PaymentClientIdempotencyJpaEntity.create(id, operation,
                 keyDigest, userId, payment, requestFingerprint, createdAt)));
     }
 
@@ -64,7 +65,7 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
             String outcomeStatus, Instant updatedAt) {
         return idempotencyRepository.findById(id).map(entity -> {
             entity.attachAttempt(attemptRepository.getReferenceById(attemptId), outcomeStatus, updatedAt);
-            return record(idempotencyRepository.save(entity));
+            return toIdempotencyRecord(idempotencyRepository.save(entity));
         }).orElseThrow(() -> new IllegalArgumentException("unknown payment idempotency record"));
     }
 
@@ -86,8 +87,12 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
     @Transactional
     public List<PaymentProviderReceiptPort.Receipt> claimReceiptBatch(Instant now, int batchSize,
             String leaseOwner, Instant leaseUntil) {
-        return receiptRepository.claimCandidates(now, batchSize).stream().peek(row -> row.claim(leaseOwner, leaseUntil))
-                .map(row -> providerReceipt(receiptRepository.save(row))).toList();
+        List<PaymentProviderReceiptPort.Receipt> claimed = new ArrayList<>();
+        for (var receiptEntity : receiptRepository.claimCandidates(now, batchSize)) {
+            receiptEntity.claim(leaseOwner, leaseUntil);
+            claimed.add(providerReceipt(receiptRepository.save(receiptEntity)));
+        }
+        return claimed;
     }
 
     @Override
@@ -113,8 +118,12 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
     @Transactional
     public List<PaymentRecoveryWorkPort.Work> claimWorkBatch(Instant now, int batchSize, String leaseOwner,
             Instant leaseUntil) {
-        return recoveryRepository.claimCandidates(now, batchSize).stream().peek(row -> row.claim(leaseOwner,
-                leaseUntil, now)).map(row -> recoveryWork(recoveryRepository.save(row))).toList();
+        List<PaymentRecoveryWorkPort.Work> claimed = new ArrayList<>();
+        for (var workEntity : recoveryRepository.claimCandidates(now, batchSize)) {
+            workEntity.claim(leaseOwner, leaseUntil, now);
+            claimed.add(recoveryWork(recoveryRepository.save(workEntity)));
+        }
+        return claimed;
     }
 
     @Override
@@ -135,7 +144,7 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
         });
     }
 
-    private PaymentClientIdempotencyPort.Record record(PaymentClientIdempotencyJpaEntity entity) {
+    private PaymentClientIdempotencyPort.Record toIdempotencyRecord(PaymentClientIdempotencyJpaEntity entity) {
         return new PaymentClientIdempotencyPort.Record(entity.getId(), entity.getOperation(), entity.getKeyDigest(),
                 entity.getUserId(), entity.getPayment().getId(), entity.getRequestFingerprint(),
                 entity.getAttempt() == null ? null : entity.getAttempt().getId(), entity.getOutcomeStatus(),
