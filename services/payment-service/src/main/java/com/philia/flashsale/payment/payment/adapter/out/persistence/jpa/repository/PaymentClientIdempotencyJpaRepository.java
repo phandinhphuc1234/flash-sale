@@ -16,4 +16,8 @@ public interface PaymentClientIdempotencyJpaRepository extends JpaRepository<Pay
     @Query("select i from PaymentClientIdempotencyJpaEntity i where i.operation = :operation and i.keyDigest = :keyDigest")
     Optional<PaymentClientIdempotencyJpaEntity> findLockedByOperationAndKeyDigest(
             @Param("operation") String operation, @Param("keyDigest") String keyDigest);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from PaymentClientIdempotencyJpaEntity i where i.id = :id")
+    Optional<PaymentClientIdempotencyJpaEntity> findLockedById(@Param("id") UUID id);
 }

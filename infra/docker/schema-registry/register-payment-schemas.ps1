@@ -22,16 +22,25 @@ $headers = @{ Accept = $mediaType; 'Content-Type' = $mediaType }
 $schemas = @(
     [pscustomobject]@{
         Topic = 'flashsale.payment.commands.v1'
+        SchemaTopic = 'flashsale.payment.commands.v1'
+        File = 'PaymentRequestedV1.avsc'
+        Record = 'com.philia.flashsale.contract.payment.command.v1.PaymentRequestedV1'
+    },
+    [pscustomobject]@{
+        Topic = 'flashsale.payment.payment-requested.dlt.v1'
+        SchemaTopic = 'flashsale.payment.commands.v1'
         File = 'PaymentRequestedV1.avsc'
         Record = 'com.philia.flashsale.contract.payment.command.v1.PaymentRequestedV1'
     },
     [pscustomobject]@{
         Topic = 'flashsale.payment.events.v1'
+        SchemaTopic = 'flashsale.payment.events.v1'
         File = 'PaymentSucceededV1.avsc'
         Record = 'com.philia.flashsale.contract.payment.event.v1.PaymentSucceededV1'
     },
     [pscustomobject]@{
         Topic = 'flashsale.payment.events.v1'
+        SchemaTopic = 'flashsale.payment.events.v1'
         File = 'PaymentFailedV1.avsc'
         Record = 'com.philia.flashsale.contract.payment.event.v1.PaymentFailedV1'
     }
@@ -80,7 +89,7 @@ function Invoke-SchemaRegistryRequest {
 }
 
 foreach ($definition in $schemas) {
-    $topicDirectory = Join-Path $SchemaDirectory ($definition.Topic -replace '/', '\')
+    $topicDirectory = Join-Path $SchemaDirectory ($definition.SchemaTopic -replace '/', '\')
     $schemaFile = (Resolve-Path -LiteralPath (Join-Path $topicDirectory $definition.File)).Path
     $schema = (Get-Content -LiteralPath $schemaFile -Raw) | ConvertFrom-Json -Depth 100
     $recordName = "$($schema.namespace).$($schema.name)"

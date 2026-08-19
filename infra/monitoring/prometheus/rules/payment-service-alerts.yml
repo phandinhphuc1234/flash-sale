@@ -1,0 +1,36 @@
+groups:
+  - name: payment-service
+    interval: 30s
+    rules:
+      - alert: PaymentManualReviewPresent
+        expr: payment_recovery_manual_review_count > 0
+        for: 5m
+        labels:
+          severity: critical
+          service: payment-service
+        annotations:
+          summary: Payment work requires manual review
+          description: One or more provider outcomes could not be established safely.
+          runbook: docs/runbooks/payment-service-recovery.md
+
+      - alert: PaymentRecoveryWorkAgeHigh
+        expr: payment_recovery_work_age_seconds_max > 300
+        for: 5m
+        labels:
+          severity: warning
+          service: payment-service
+        annotations:
+          summary: Payment recovery work is aging
+          description: Recovery work has remained eligible for more than five minutes.
+          runbook: docs/runbooks/payment-service-recovery.md
+
+      - alert: PaymentOutboxLagHigh
+        expr: payment_outbox_lag_seconds > 120
+        for: 5m
+        labels:
+          severity: warning
+          service: payment-service
+        annotations:
+          summary: Payment result outbox is behind
+          description: A durable Payment fact has waited too long for publication acknowledgement.
+          runbook: docs/runbooks/payment-service-recovery.md

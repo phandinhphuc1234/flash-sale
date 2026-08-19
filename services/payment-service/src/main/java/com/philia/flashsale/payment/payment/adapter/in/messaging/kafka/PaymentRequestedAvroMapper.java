@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -31,6 +32,7 @@ public final class PaymentRequestedAvroMapper {
 
     private final String expectedTopic;
 
+    @Autowired
     public PaymentRequestedAvroMapper(PaymentKafkaProperties properties) {
         this(properties.commandTopic());
     }

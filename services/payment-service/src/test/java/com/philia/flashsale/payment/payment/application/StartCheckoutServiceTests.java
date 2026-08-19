@@ -123,6 +123,9 @@ class StartCheckoutServiceTests {
         @Override public Optional<Record> findLocked(String operation, String keyDigest) {
             return Optional.ofNullable(records.get(operation + ":" + keyDigest));
         }
+        @Override public Optional<Record> findLockedById(UUID id) {
+            return records.values().stream().filter(record -> record.id().equals(id)).findFirst();
+        }
         @Override public Record create(UUID id, String operation, String keyDigest, UUID userId, UUID paymentId,
                 String fingerprint, Instant createdAt) {
             Record record = new Record(id, operation, keyDigest, userId, paymentId, fingerprint, null,

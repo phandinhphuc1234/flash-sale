@@ -1,10 +1,11 @@
 # Feature 021 Validation Evidence
 
 **Feature**: Payment Service Stripe Checkout MVP
-**Group**: G1–G4 — Contracts, Domain, PostgreSQL Foundation, Atomic Acceptance, and Kafka Ingress
-**Branch**: `codex/payment-g4-kafka-boundary`
-**Validated**: 2026-08-18
-**Secret handling**: `infra/docker/.env` was not opened, read, rendered, edited, staged, or committed.
+**Group**: G1–G10 — complete Payment Service Stripe Checkout MVP
+**Branch**: `codex/payment-g10-operational-evidence`
+**Validated**: 2026-08-19
+**Secret handling**: `infra/docker/.env` remained ignored, untracked, unedited, unstaged, and
+uncommitted; runtime commands consumed it without rendering, copying, or recording secret values.
 
 ## Approved baselines
 
@@ -98,17 +99,18 @@ HTTP routes, and Gateway wiring remain disabled and are implemented by G4–G10.
 | T031 | `PaymentRequestedKafkaConsumerTests` | PASS; 4 tests cover successful acknowledgement, conflict/poison classification, storage retry propagation, and no acknowledgement before use-case return |
 | T033–T034 | `PaymentRequestedAvroMapper`, typed exceptions, and `PaymentRequestedKafkaConsumer` | PASS; Kafka/Avro types stop at the inbound adapter, trace context is restored to MDC, and the application use case is acknowledged only after it returns |
 | T035 | `PaymentKafkaConsumerConfiguration` | PASS; SpecificRecord deserialization, manual-immediate acknowledgement, delivery-attempt headers, 1/3/10-second backoff, typed non-retryable classification, and command-specific DLT routing are wired behind `PAYMENT_KAFKA_CONSUMER_ENABLED` |
-| T036 | `README-payment-dlt.md` | PARTIAL; operator replay and safe-diagnostic rules are documented; live DLT header assertion remains part of the pending integration suite |
-| T032/T037 | Live Kafka + Schema Registry suite | PENDING; requires the project-owned Kafka/Schema Registry runtime and will be run without opening or rendering `infra/docker/.env` |
+| T036 | `README-payment-dlt.md` and `PaymentRequestedDltIntegrationTests` | PASS; operator replay and safe-diagnostic rules are documented, poison records carry original-topic/cause headers without secret/card data, and corrected replay converges. |
+| T032/T037 | `PaymentRequestedConsumerIntegrationTests` and `PaymentRequestedDltIntegrationTests` against local Kafka/Schema Registry | PASS; 3 live tests cover 100 physical duplicates, stable `orderId` key and trace headers, 1/3/10-second retry, commit-before-ack convergence, command DLT, and corrected operator replay. |
 
 ### G4 commands and results
 
 1. `./mvnw -pl services/payment-service -am test` — exit `0`; Payment module 48 tests, 0 failures, 0 errors; contract module 13 tests, 0 failures, 0 errors.
 2. `git diff --check` — exit `0` for tracked G4 changes.
+3. `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/payment-service -am '-Dtest=PaymentRequestedConsumerIntegrationTests' '-Dpayment.kafka.integration=true' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 2 live Kafka/Registry/PostgreSQL tests, 0 failures, 0 errors; 100 duplicates produce exactly 1 Payment and 1 inbox row, while transient attempts observe the configured 1/3/10-second lower bounds.
+4. `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/payment-service -am '-Dtest=PaymentRequestedDltIntegrationTests' '-Dpayment.kafka.integration=true' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 1 live DLT/replay test, 0 failures, 0 errors; poison input produces no Payment/inbox, and corrected replay produces exactly 1 Payment and 1 inbox row.
 
-G4 code is now present but the live broker/registry and DLT evidence (T032, T036, and T037) remains
-intentionally open until the project owner starts the approved runtime. No Kafka or Schema Registry
-secret was read or changed.
+G4 live broker/registry and DLT evidence is complete. No Kafka or Schema Registry secret was read or
+changed, and the Payment consumer remains disabled by default.
 
 ## G5 implementation evidence
 
@@ -241,3 +243,76 @@ this branch keeps all provider credentials in configuration and does not inspect
 
 G9 adds no secret or `.env` requirement. Owner queries read only Payment PostgreSQL state; Stripe,
 Kafka, Checkout sessions, and provider outage status cannot alter or leak the query result.
+
+---
+
+## G10 implementation evidence (local, non-secret gates)
+
+| Task | Evidence | Result |
+|---|---|---|
+| T098 | `PaymentObservabilityTests`, `PaymentTelemetryRedactionTests`, `PaymentTraceContext`, `PaymentRequestContext`, and `PaymentRecoveryObservabilityTests` | PASS; observation names/outcomes are bounded, W3C/MDC scope is restored, safe identifiers are bounded, sensitive keys are redacted, recovery/manual-review/outbox gauges are registered without business IDs. |
+| T099 | `PaymentReadinessIntegrationTests` and `PaymentReadinessHealthIndicator` | PASS; PostgreSQL is the only readiness gate; Kafka, Schema Registry, Stripe, recovery, and outbox appear as non-gating component details. |
+| T100 | `PaymentObservabilityTests`, `PaymentReadinessIntegrationTests`, `PaymentTelemetryRedactionTests`, `PaymentServiceApplicationTests` | PASS; 13 focused tests, then Spring context startup, with no manually constructed Prometheus registry and no sensitive telemetry assertions. |
+| T101 | `infra/monitoring/prometheus/rules/payment-service-alerts.yml`, `docs/runbooks/payment-service-recovery.md` | PASS static review; rules cover manual review, recovery age, and outbox lag and runbook actions forbid direct financial edits or secret/raw-body handling. |
+| T102 | `StripeRuntimePlatformContractTests` | PASS; configured SDK-compatible Stripe API version is `2026-07-29.dahlia` and Payment container DNS cache TTL is 60 seconds. |
+| T103 | Payment runtime `application.yml`, Compose payment environment/migration service, and `.env.example` | PASS static/Compose render; Payment DB, Kafka/Registry, JWT, Stripe placeholders, worker flags, health, port, migration, and JVM DNS wiring are declared. No secret value was rendered, copied, or changed. |
+| T104 | `PaymentInfrastructureContractTests`, PowerShell parser, `docker compose config --quiet` | PASS; tracked topic/schema/smoke scripts, root infrastructure ownership, exact webhook security boundary, PowerShell syntax, and rendered Compose are verified. |
+| T105 | `infra/docker/smoke/feature-021-payment.ps1` | PASS live; `FEATURE_021_SMOKE=PASS` and `FEATURE_021_FAILURE_MATRIX=PASS` were emitted only after owner/foreign access, command/inbox durability, signed webhook receipt, process restart, Redis/Kafka/PostgreSQL outage, bounded recovery, and identity assertions succeeded. |
+| T106 | `load-tests/payment-service/feature-021-payment.js`, `k6 inspect`, staged local execution | PASS; warm-up plus staged profiles completed with zero unexpected failures. Owner query p95 was 78.14 ms in the recorded 20-VU run; the final 5-VU Stripe replay profile completed 1,138 iterations with owner-query p95 63 ms and Checkout p95 408 ms. The deterministic service-local PostgreSQL profile measured Checkout p95 67 ms against the 150 ms budget. |
+| T107 | names-only secret/flag validation, local Stripe CLI, failure matrix, k6, and PostgreSQL concurrency suites | PASS; configured test keys and webhook secret were validated without rendering values; listener API-version mismatch was rejected as designed, then `--latest` matched pinned `2026-07-29.dahlia`; `FEATURE_021_STRIPE_CLI=PASS` and `FEATURE_021_CONCURRENT_IDENTITIES=PASS count=100` were emitted. |
+| T109 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl contracts/kafka-avro-contracts,services/payment-service,services/api-gateway -am verify '-Dsurefire.failIfNoSpecifiedTests=false'` | PASS; common-web 9 tests, contracts 13 tests, Gateway 194 tests, and Payment 146 tests (0 failures/errors; 6 intentional live-gated skips); exit `0`. |
+| T108 | `git check-ignore`, `git ls-files`, tracked secret-pattern scan, `git diff --check` | PASS; `infra/docker/.env` is ignored and untracked, no secret-like token pattern was found in tracked files, and no diff whitespace errors were found. Expected Checkout/webhook contract names remain documented and are not telemetry findings. |
+| T110 | full Maven reactor plus repository validation gates | PASS; all 13 modules built, 782 Surefire tests reported 0 failures and 0 errors (16 intentional skips), Compose/parser/k6/link/pointer/ignore/ownership/secret/whitespace checks passed, and every task is reconciled. |
+
+### G10 commands and results
+
+1. `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/payment-service -am '-Dtest=PaymentObservabilityTests,PaymentReadinessIntegrationTests,PaymentTelemetryRedactionTests,StripeRuntimePlatformContractTests,PaymentInfrastructureContractTests,PaymentServiceApplicationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` — exit `0`; 13 tests, 0 failures, 0 errors.
+2. `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/payment-service -am verify '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0`; Payment module 146 tests, 0 failures, 0 errors, 6 intentional live-gated skips; common-web 9 and Kafka contract 13 tests pass.
+3. `./mvnw.cmd --batch-mode --no-transfer-progress -pl contracts/kafka-avro-contracts,services/payment-service,services/api-gateway -am verify '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0`; common-web 9, contracts 13, Gateway 194, and Payment 146 tests pass.
+4. `docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml -f infra/docker/compose.dev.yml config --quiet` — exit `0`; Compose rendered successfully using tracked placeholders only.
+5. PowerShell AST parsing of `infra/docker/smoke/feature-021-payment.ps1` and `infra/docker/schema-registry/register-payment-schemas.ps1` — exit `0`; `k6 inspect load-tests/payment-service/feature-021-payment.js` — exit `0`.
+6. `git diff --check` — exit `0`; `.env` remained ignored/untracked and no value was rendered, edited, staged, committed, or copied.
+7. `./mvnw.cmd --batch-mode --no-transfer-progress clean verify '-Dsurefire.failIfNoSpecifiedTests=false'` — exit `0` in 16m25s; all 13 reactor modules passed. Fresh Surefire reports outside unrelated `.worktrees/` contain 782 tests, 0 failures, 0 errors, and 16 intentional/gated skips.
+8. Markdown-link validation, feature-pointer validation, ignored/untracked `.env` validation, and root/service infrastructure ownership audit — PASS; local links resolve, `.specify/feature.json` points to Feature 021, `infra/docker/.env` remains ignored/untracked without rendering values, and no service-owned infrastructure path was found.
+9. `./infra/docker/smoke/feature-021-payment.ps1 -SkipTopology -RunFailureMatrix` — exit `0`; emitted `FEATURE_021_SMOKE=PASS` and `FEATURE_021_FAILURE_MATRIX=PASS`; Redis and Kafka outages did not make PostgreSQL-backed owner queries unavailable, PostgreSQL outage changed readiness to 503, and each component recovered within the script bounds.
+10. `./infra/docker/smoke/feature-021-payment.ps1 -SkipTopology -RunK6` — exit `0`; zero unexpected errors, final Stripe-backed replay Checkout p95 408 ms, owner-query p95 63 ms, 1,138 iterations, and `FEATURE_021_CONCURRENT_IDENTITIES=PASS count=100`.
+11. `CheckoutReplayConcurrencyIntegrationTests` — exit `0`; 3 PostgreSQL tests prove 20 same-key replays converge without deadlock, 100 distinct-key callers create exactly one provider attempt, and 200 deterministic-provider replays measure service-local p95 67 ms (<150 ms).
+12. `./infra/docker/smoke/feature-021-payment.ps1 -SkipTopology -RunStripeCli` — exit `0`; Stripe test event travelled through CLI listener and Gateway to a durable PostgreSQL receipt and emitted `FEATURE_021_STRIPE_CLI=PASS`; the ephemeral listener secret and diagnostics were redacted and deleted.
+
+### G10 completion and local runtime note
+
+Feature 021 is Verified. The ignored local `.env` supplied valid Stripe test secret, publishable, and
+webhook-secret formats without their values being recorded. The smoke runner temporarily enables all
+Payment workers and restores caller configuration afterward. For an ordinary always-on local stack,
+the project owner should explicitly add `PAYMENT_WEBHOOK_PROCESSING_ENABLED=true`,
+`PAYMENT_CONSUMER_ENABLED=true`, and `PAYMENT_OUTBOX_PUBLISHER_ENABLED=true`; these are non-secret
+feature flags, while the tracked default remains fail-closed. `STRIPE_API_VERSION` may be explicit or
+inherit the tracked `2026-07-29.dahlia` default, but a deployed Stripe webhook destination must use the
+same version.
+
+The later Order-owned Saga integration that produces `PaymentRequested.v1` and consumes Payment
+results is outside this feature's completion boundary and remains separate follow-up work.
+
+### Final requirement reconciliation
+
+| Approved requirement set | Implementation/evidence owner | Final result |
+|---|---|---|
+| `UC-PAY-001/AC-01..04` | G3 atomic acceptance plus G4 live Kafka duplicate/retry/DLT tests | PASS |
+| `UC-PAY-002/AC-01..07` | G5 Checkout/idempotency tests plus G10 20-replay/100-concurrent PostgreSQL tests and k6 | PASS |
+| `UC-PAY-003/AC-01..06` | G6 signed raw-body receipt/convergence plus G7 live result-outbox publication and Stripe CLI | PASS |
+| `UC-PAY-004/AC-01..06` | G8 deadline/reconciliation/manual-review tests plus G10 provider/process/Kafka/PostgreSQL failure matrix | PASS |
+| `UC-PAY-005/AC-01..04` | G9 owner/foreign/absent Gateway tests plus Redis/Kafka/provider-unavailable runtime checks | PASS |
+| `FR-001..007` | G1 contracts/ADR and G3–G4 durable command acceptance | PASS |
+| `FR-008..017` | G5 owner-scoped, idempotent, card-only hosted Checkout boundary | PASS |
+| `FR-018..023`, `FR-037` | G6 exact Gateway webhook exception, signature/API-version/mode verification, and durable receipt-before-204 | PASS |
+| `FR-024..034` | G6 success-dominant convergence, G7 transactional outbox, and G8 bounded reconciliation/deadline policy | PASS |
+| `FR-035..036` | G9 owner-only safe `ApiResponse` query contracts | PASS |
+| `FR-038..043` | G10 PCI-aware scans, PostgreSQL/Redis correctness boundary, retention decision, observability/readiness, and local-secret ownership | PASS |
+| `NFR-REL-001..003` | Duplicate, retry, lease, restart, outage, and multi-instance/concurrency suites | PASS |
+| `NFR-PERF-001..003` | Owner p95 78.14 ms (<200 ms), service-local Checkout p95 67 ms (<150 ms), and 100-way identity test | PASS |
+| `NFR-SEC-001..004` | Gateway/JWT/signature tests, hosted card-data boundary, telemetry redaction, and zero secret-pattern findings | PASS |
+| `NFR-OBS-001`, `NFR-COMPAT-001` | bounded metrics/traces/runbook plus generated Avro/TopicRecordNameStrategy compatibility tests | PASS |
+| `SC-001..010` | G3–G10 automated and live evidence above, module/full builds, and repository validation gates | PASS |
+
+No unresolved clarification, unchecked implementation task, or failed required gate remains in
+Feature 021.
