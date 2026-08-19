@@ -27,5 +27,7 @@ class PaymentRecoveryObservabilityTests {
         assertThat(registry.get("payment.recovery.attempts.total").tag("work_type", "refresh_session")
                 .counter().count()).isEqualTo(2);
         assertThat(registry.get("payment.recovery.queue.size").gauge().value()).isEqualTo(4);
+        assertThat(registry.get("payment.recovery.manual.review.count").gauge().value()).isEqualTo(1);
+        assertThat(registry.get("payment.recovery.work.age.seconds.max").gauge().value()).isEqualTo(3);
     }
 }

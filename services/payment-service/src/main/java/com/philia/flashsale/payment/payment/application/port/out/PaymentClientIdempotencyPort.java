@@ -9,6 +9,8 @@ public interface PaymentClientIdempotencyPort {
 
     Optional<Record> findLocked(String operation, String keyDigest);
 
+    Optional<Record> findLockedById(UUID id);
+
     Record create(UUID id, String operation, String keyDigest, UUID userId, UUID paymentId,
             String requestFingerprint, Instant createdAt);
 

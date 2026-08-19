@@ -15,6 +15,11 @@ replay must use the original `PaymentRequested.v1` value and the original `order
 underlying contract or data problem has been corrected. Replaying is idempotent: the Payment inbox
 and Payment aggregate converge to the existing identity rather than creating a second Payment.
 
+Because Payment uses `TopicRecordNameStrategy` with schema auto-registration disabled, the
+provisioning script registers `PaymentRequestedV1` for both the command topic and the command DLT
+topic. Run `infra/docker/schema-registry/register-payment-schemas.ps1` before enabling the consumer;
+otherwise a poison record cannot be serialized safely into the DLT.
+
 Example local inspection (the project owner supplies the broker environment):
 
 ```bash

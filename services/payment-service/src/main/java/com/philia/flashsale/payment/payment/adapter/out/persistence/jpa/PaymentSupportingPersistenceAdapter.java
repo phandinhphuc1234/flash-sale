@@ -47,6 +47,12 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
 
     @Override
     @Transactional
+    public Optional<PaymentClientIdempotencyPort.Record> findLockedById(UUID id) {
+        return idempotencyRepository.findLockedById(id).map(this::toIdempotencyRecord);
+    }
+
+    @Override
+    @Transactional
     public PaymentClientIdempotencyPort.Record create(UUID id, String operation, String keyDigest,
             UUID userId, UUID paymentId, String requestFingerprint, Instant createdAt) {
         var payment = paymentRepository.getReferenceById(paymentId);
@@ -58,7 +64,7 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
     @Transactional
     public PaymentClientIdempotencyPort.Record attachAttempt(UUID id, UUID attemptId,
             String outcomeStatus, Instant updatedAt) {
-        return idempotencyRepository.findById(id).map(entity -> {
+        return idempotencyRepository.findLockedById(id).map(entity -> {
             entity.attachAttempt(attemptRepository.getReferenceById(attemptId), outcomeStatus, updatedAt);
             return toIdempotencyRecord(idempotencyRepository.save(entity));
         }).orElseThrow(() -> new IllegalArgumentException("unknown payment idempotency record"));

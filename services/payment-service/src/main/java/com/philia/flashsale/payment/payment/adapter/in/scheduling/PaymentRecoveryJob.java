@@ -4,6 +4,7 @@ import com.philia.flashsale.payment.observability.PaymentRecoveryObservability;
 import com.philia.flashsale.payment.payment.application.model.recovery.ReconcilePaymentResult;
 import com.philia.flashsale.payment.payment.application.model.recovery.RecoveryBatchResult;
 import com.philia.flashsale.payment.payment.application.port.in.ReconcilePaymentUseCase;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ public final class PaymentRecoveryJob {
         this(reconciliation, PaymentRecoveryObservability.noop());
     }
 
+    @Autowired
     public PaymentRecoveryJob(ReconcilePaymentUseCase reconciliation,
             PaymentRecoveryObservability observability) {
         this.reconciliation = reconciliation;

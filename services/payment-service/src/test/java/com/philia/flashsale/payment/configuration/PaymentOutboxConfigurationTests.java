@@ -10,7 +10,7 @@ class PaymentOutboxConfigurationTests {
 
     @Test
     void enforcesIdempotentProducerAndDisablesSchemaAutoRegistration() {
-        var properties = new PaymentOutboxConfiguration()
+        var properties = new PaymentKafkaProducerConfiguration()
                 .paymentProducerProperties(new KafkaProperties());
 
         assertThat(properties).containsEntry("acks", "all");

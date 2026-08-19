@@ -143,6 +143,12 @@ public final class CheckoutPersistenceService {
 
     private StartCheckoutSnapshot convergeInTransaction(Allocation allocation, HostedCheckoutResult result) {
         Instant now = clock.now();
+        // Keep the same lock order as allocateInTransaction: idempotency identity first,
+        // then the Payment aggregate. Reversing these locks deadlocks concurrent replays.
+        if (allocation.idempotencyId() != null) {
+            clientIdempotency.findLockedById(allocation.idempotencyId())
+                    .orElseThrow(() -> new IllegalArgumentException("unknown payment idempotency record"));
+        }
         Payment payment = payments.findLockedById(allocation.paymentId())
                 .orElseThrow(PaymentCheckoutNotFoundException::new);
         PaymentAttempt attempt = findAttempt(payment, allocation.attemptId());

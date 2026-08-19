@@ -7,11 +7,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.philia.flashsale.contract.payment.command.v1.PaymentRequestedV1;
+import org.apache.avro.specific.SpecificRecord;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -52,7 +54,8 @@ public class PaymentKafkaConsumerConfiguration {
     }
 
     @Bean
-    DefaultErrorHandler paymentRequestedErrorHandler(KafkaOperations<Object, Object> kafkaOperations,
+    DefaultErrorHandler paymentRequestedErrorHandler(
+            @Qualifier("paymentKafkaTemplate") KafkaOperations<String, SpecificRecord> kafkaOperations,
             PaymentKafkaProperties properties) {
         var recoverer = new DeadLetterPublishingRecoverer(kafkaOperations,
                 (record, exception) -> new TopicPartition(properties.commandDltTopic(), record.partition()));

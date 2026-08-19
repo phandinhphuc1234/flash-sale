@@ -4,8 +4,8 @@
 
 **Created**: 2026-08-17
 
-**Status**: Approved — ready for planning; production implementation remains gated by approved
-plan/tasks/contracts and an Accepted Purchase Saga ADR
+**Status**: Verified — implementation and required G1–G10 evidence completed on 2026-08-19;
+later Order Saga producer/result-consumer integration remains a separate feature
 
 **Input**: User description: "Align the supplied Payment Service Stripe Checkout draft with the
 Flash Sale repository, canonical topic/event names, Order-owned Saga orchestration, Clean/Hexagonal

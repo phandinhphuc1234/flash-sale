@@ -74,6 +74,7 @@ management:
           include:
             - readinessState
             - db
+            - paymentReadiness
       validate-group-membership: false
   health:
     livenessstate:
@@ -89,6 +90,10 @@ info:
     name: ${spring.application.name}
 
 payment:
+  runtime:
+    # The container also pins this value through JAVA_TOOL_OPTIONS so provider DNS changes are
+    # observed without disabling JVM DNS caching altogether.
+    dns-cache-ttl: ${PAYMENT_DNS_CACHE_TTL:60s}
   provider: ${PAYMENT_PROVIDER:STRIPE}
   acceptance:
     enabled: ${PAYMENT_ACCEPTANCE_ENABLED:false}
