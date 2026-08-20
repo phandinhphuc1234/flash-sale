@@ -10,6 +10,18 @@ target/
 !.env.example
 !**/.env.example
 
+# Terraform local cache, state, and sensitive variable files
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+*.tfplan
+tfplan
+
 # Local k6 credentials and generated measurement evidence may contain access tokens or host details.
 load-tests/flashsale-service/shopper-tokens.json
 load-tests/flashsale-service/reservation-summary.json
