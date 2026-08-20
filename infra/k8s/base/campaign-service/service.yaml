@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: campaign-service
+  labels:
+    app.kubernetes.io/name: campaign-service
+    app.kubernetes.io/part-of: flash-sale
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: campaign-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

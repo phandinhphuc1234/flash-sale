@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: campaign-service
+  labels:
+    app.kubernetes.io/name: campaign-service
+    app.kubernetes.io/part-of: flash-sale
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: campaign-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: campaign-service
+        app.kubernetes.io/part-of: flash-sale
+    spec:
+      containers:
+        - name: campaign-service
+          image: campaign-service
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: flash-sale-runtime-config
+            - secretRef:
+                name: flash-sale-secrets
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
