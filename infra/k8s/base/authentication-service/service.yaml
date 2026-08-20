@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentication-service
+  labels:
+    app.kubernetes.io/name: authentication-service
+    app.kubernetes.io/part-of: flash-sale
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: authentication-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
