@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-runtime-config
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/order_db"
+  LIQUIBASE_ENABLED: "false"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+  KAFKA_AUTO_REGISTER_SCHEMAS: "false"
+  ORDER_PURCHASE_ACCEPTED_TOPIC: "flashsale.purchase.events.v1"
+  ORDER_PURCHASE_ACCEPTED_CONSUMER_GROUP: "order-purchase-accepted-v1"
+  ORDER_PURCHASE_ACCEPTED_DLT_TOPIC: "flashsale.order.purchase-accepted.dlt.v1"
+  ORDER_EVENTS_TOPIC: "flashsale.order.events.v1"
+  ORDER_JWT_ISSUER: "http://authentication-service:8080"
+  ORDER_JWT_JWK_SET_URI: "http://authentication-service:8080/.well-known/jwks.json"
+  ORDER_JWT_AUDIENCE: "flash-sale-api"
+  ORDER_JWT_TYPE: "at+jwt"
+  ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED: "true"
+  ORDER_OUTBOX_PUBLISHER_ENABLED: "true"
+  ORDER_OUTBOX_ENABLED: "true"
+  ORDER_CREATION_ENABLED: "true"
+  ORDER_QUERY_ENABLED: "true"

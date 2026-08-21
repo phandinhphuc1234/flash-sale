@@ -6,7 +6,58 @@ namespace: flash-sale
 resources:
   - ../../base
   - flash-sale-config.yaml
+  - config
   - platform
+
+patches:
+  - path: patches/api-gateway-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: api-gateway
+  - path: patches/authentication-service-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: authentication-service
+  - path: patches/product-service-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: product-service
+  - path: patches/campaign-service-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: campaign-service
+  - path: patches/flash-sale-service-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: flash-sale-service
+  - path: patches/inventory-service-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: inventory-service
+  - path: patches/order-service-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: order-service
+  - path: patches/payment-service-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: payment-service
 
 # Phase 13 intentionally keeps the existing bootstrap tag. Later image-promotion
 # workflows will update only this overlay with immutable ECR tags.

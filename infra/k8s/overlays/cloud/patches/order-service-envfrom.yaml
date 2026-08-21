@@ -1,0 +1,9 @@
+- op: replace
+  path: /spec/template/spec/containers/0/envFrom
+  value:
+    - configMapRef:
+        name: flash-sale-runtime-config
+    - configMapRef:
+        name: order-service-runtime-config
+    - secretRef:
+        name: order-secrets
