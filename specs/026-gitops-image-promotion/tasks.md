@@ -27,7 +27,7 @@
 
 - [x] T010 [US2] Add single-file overlay update and no-empty-diff guard to `.github/workflows/product-pilot-delivery.yml`.
 - [x] T011 [US2] Add automation branch push, pull-request creation, and explicit `ci.yml` dispatch to `.github/workflows/product-pilot-delivery.yml`.
-- [ ] T012 [US2] Verify the workflow PR keeps `develop` protected and lets Argo reconcile `infra/k8s/overlays/dev-pilot` after merge.
+- [x] T012 [US2] Verify the workflow PR keeps `develop` protected and lets Argo reconcile `infra/k8s/overlays/dev-pilot` after merge.
 
 ## Phase 5: User Story 3 — Reproduce the flow locally (P2)
 
@@ -38,7 +38,7 @@
 
 - [x] T015 Run PowerShell parser, `git diff --check`, and a secret-value scan for changed files.
 - [x] T016 Run `./mvnw --batch-mode --no-transfer-progress -pl services/product-service -am verify`.
-- [ ] T017 Record local validation, hosted workflow, ECR, PR, and Argo evidence in
+- [x] T017 Record local validation, hosted workflow, ECR, PR, and Argo evidence in
   `specs/026-gitops-image-promotion/validation.md`.
 - [x] T018 Update `infra/scripts/gitops/README.md` with the Phase 11 command and safety behavior.
 
