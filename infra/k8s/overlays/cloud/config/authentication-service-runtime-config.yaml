@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentication-service-runtime-config
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/auth_db"
+  SPRING_DATA_REDIS_HOST: "redis"
+  SPRING_DATA_REDIS_PORT: "6379"
+  LIQUIBASE_ENABLED: "false"
+  JWT_ISSUER: "http://authentication-service:8080"
+  JWT_AUDIENCE: "flash-sale-api"
+  JWT_KEY_ID: "cloud-dev-1"
+  JWT_PUBLIC_KEY_LOCATION: "file:/run/secrets/auth-jwt/jwt-public.pem"
+  JWT_PRIVATE_KEY_LOCATION: "file:/run/secrets/auth-jwt/jwt-private.pem"
+  INTERNAL_JWT_AUDIENCE: "flash-sale-internal-api"
+  CAMPAIGN_CLIENT_ID: "campaign-service"
+  FLASHSALE_CLIENT_ID: "flashsale-service"
+  AUTH_RUNTIME_ENABLED: "true"
+  AUTH_COOKIE_SECURE: "false"
+  AUTH_COOKIE_SAME_SITE: "Lax"
+  AUTH_COOKIE_PATH: "/api/v1/auth"
+  AUTH_TRUSTED_ORIGINS: "http://localhost:3000"

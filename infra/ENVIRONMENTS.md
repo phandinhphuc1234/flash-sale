@@ -27,22 +27,23 @@ targets for this internship project.
 - `dev-pilot` is retained only as historical Product-pilot and rollback evidence. It is not a third
   supported environment.
 
-## Required secret inventory for later phases
+## Phase 15 secret and configuration inventory
 
 The following names are documented now so later provisioning can be complete. This file intentionally
 contains names only, not values:
 
 | Owner | Secret keys / material | First needed |
 |---|---|---|
-| Platform | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD` | Phase 14/15 |
-| Gateway | `RATE_LIMIT_KEY_HMAC_SECRET`, CORS allow-list | Phase 15 |
-| Authentication | `AUTH_THROTTLE_HMAC_SECRET`, `JWT_PUBLIC_KEY_PEM`, `JWT_PRIVATE_KEY_PEM` | Phase 15 |
+| Platform | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD` | Phase 15 |
+| Gateway | `RATE_LIMIT_KEY_HMAC_SECRET` | Phase 15 |
+| Authentication | `AUTH_THROTTLE_HMAC_SECRET`, JWT PEM files under `AUTH_JWT_KEY_DIR` | Phase 15 |
 | OAuth clients | `CAMPAIGN_CLIENT_SECRET`, `FLASHSALE_CLIENT_SECRET` | Phase 15 |
-| Payment | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Phase 15 |
-| Messaging | Kafka and Schema Registry credentials, if cloud auth is enabled | Phase 14/15 |
+| Payment | Stripe keys | Deferred; only with explicit `-EnableStripe` |
+| Messaging | None currently; Kafka and Schema Registry are internal plaintext | ADR 0019 |
 
-Values remain in local ignored files or an operator-controlled secret manager. The validator only
-prints these names.
+Values remain in local ignored files or an operator-controlled secret manager. The Phase 15
+validator only prints names and file paths, never values. See `infra/CONFIGURATION.md` for the
+per-service Secret boundaries and ConfigMap matrix.
 
 ## Promotion boundary
 

@@ -1,0 +1,22 @@
+- op: replace
+  path: /spec/template/spec/containers/0/envFrom
+  value:
+    - configMapRef:
+        name: flash-sale-runtime-config
+    - configMapRef:
+        name: authentication-service-runtime-config
+    - secretRef:
+        name: authentication-secrets
+- op: add
+  path: /spec/template/spec/volumes
+  value:
+    - name: auth-jwt
+      secret:
+        secretName: auth-jwt
+        defaultMode: 0400
+- op: add
+  path: /spec/template/spec/containers/0/volumeMounts
+  value:
+    - name: auth-jwt
+      mountPath: /run/secrets/auth-jwt
+      readOnly: true
