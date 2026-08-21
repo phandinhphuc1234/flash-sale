@@ -8,6 +8,9 @@ module "eks" {
   cluster_endpoint_public_access       = true
   cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
 
+  # The EBS CSI OIDC provider is used by the separately managed add-on below.
+  enable_irsa = true
+
   # Worker nodes stay private; the public subnets remain available to future load balancers.
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -27,4 +30,17 @@ module "eks" {
       desired_size   = 3
     }
   }
+}
+
+# Manage the add-on outside the EKS module so its service-account role can depend on
+# the module-created OIDC provider without creating a Terraform dependency cycle.
+resource "aws_eks_addon" "ebs_csi" {
+  cluster_name             = module.eks.cluster_name
+  addon_name               = "aws-ebs-csi-driver"
+  service_account_role_arn = aws_iam_role.ebs_csi.arn
+
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+
+  depends_on = [aws_iam_role_policy_attachment.ebs_csi]
 }
