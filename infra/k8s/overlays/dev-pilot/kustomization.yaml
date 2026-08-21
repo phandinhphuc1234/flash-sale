@@ -12,4 +12,4 @@ resources:
 images:
   - name: product-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/product-service
-    newTag: pilot-11cdf76ace24e6402eae0dbc1082d077766e3c72
+    newTag: pilot-f5fa7cb
