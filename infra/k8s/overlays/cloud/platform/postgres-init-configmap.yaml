@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-databases
+data:
+  01-create-databases.sql: |
+    CREATE DATABASE auth_db;
+    CREATE DATABASE product_db;
+    CREATE DATABASE campaign_db;
+    CREATE DATABASE flashsale_db;
+    CREATE DATABASE inventory_db;
+    CREATE DATABASE order_db;
+    CREATE DATABASE payment_db;

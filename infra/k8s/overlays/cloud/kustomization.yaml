@@ -6,6 +6,7 @@ namespace: flash-sale
 resources:
   - ../../base
   - flash-sale-config.yaml
+  - platform
 
 # Phase 13 intentionally keeps the existing bootstrap tag. Later image-promotion
 # workflows will update only this overlay with immutable ECR tags.
