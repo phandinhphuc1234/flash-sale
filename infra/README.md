@@ -24,6 +24,18 @@ remain service-owned.
 
 See [ADR 0001](../docs/adr/0001-root-infrastructure-ownership.md) for the governing decision.
 
+## Supported environments
+
+The project intentionally has only two deployment environments:
+
+- `local`: Docker Compose under `infra/docker/`.
+- `cloud`: AWS EKS/Kustomize under `infra/k8s/overlays/cloud/`, reconciled by Argo CD in the later
+  GitOps phases.
+
+`dev-pilot` is historical Product-pilot evidence, not a third environment. See
+[ENVIRONMENTS.md](ENVIRONMENTS.md) and validate the contract with
+`infra/scripts/gitops/phase13-environment-contract.ps1`.
+
 ## Prometheus boundary
 
 Each Spring Boot 3.x service exposes `/actuator/prometheus` through Actuator auto-configuration, a
