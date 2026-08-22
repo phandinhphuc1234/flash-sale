@@ -1,7 +1,23 @@
-# GitOps Phase 5–20 helper scripts
+# GitOps Phase 5–23 helper scripts
 
 These PowerShell scripts preserve the manual workflow used for the AWS EKS GitOps exercise.
 Run them from any directory. They resolve the repository root from their own location.
+
+## Canonical roadmap and hosted delivery
+
+The canonical roadmap is documented in [`docs/deployment/gitops-roadmap-status.md`](../../docs/deployment/gitops-roadmap-status.md).
+The hosted **Eight-Service GitOps Delivery** workflow is the implementation of canonical roadmap
+21. It owns cloud image promotion for these eight deployed services:
+
+`api-gateway`, `authentication-service`, `product-service`, `campaign-service`,
+`flash-sale-service`, `inventory-service`, `order-service`, and `payment-service`.
+
+It detects affected services, verifies each Maven reactor, publishes immutable ECR images through
+GitHub OIDC, and opens one PR that changes only selected tags in
+`infra/k8s/overlays/cloud/kustomization.yaml`. It never runs `kubectl`, reads Secret values, pushes
+directly to `develop`, or auto-merges. The old Product-only hosted trigger was retired to avoid
+duplicate Product promotions; the historical `dev-pilot` helper and evidence remain available for
+rollback/rehearsal.
 
 ## Safety rules
 
@@ -43,6 +59,9 @@ Run them from any directory. They resolve the repository root from their own loc
   and classifies Terraform detailed exit code 0 versus 2. It never runs apply, destroy, import, state
   mutation, or writes tfvars. Pass `-AutoDetectPublicIp` to derive the current public IPv4 `/32`
   locally when the variable is not already set.
+- Canonical roadmap 21 is hosted by `.github/workflows/service-delivery.yml`; it is separate from
+  the read-only Phase 21 cloud release verification helper above. Manual dispatch accepts `all` or
+  one deployed service. Review the generated PR before Argo CD reconciles `flash-sale-cloud`.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 
@@ -108,6 +127,9 @@ From the repository root:
     $env:AWS_PROFILE = "flash-sale-terraform"
     pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase23-terraform-gate.ps1 -AutoDetectPublicIp
 
+    # Canonical roadmap 21 is hosted. Push a service change to develop, or use:
+    # GitHub Actions -> Eight-Service GitOps Delivery -> Run workflow -> all/one service.
+
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally
 a manual pilot and is not yet the GitOps desired-state source for Argo CD.
@@ -143,11 +165,13 @@ topics stop the run for human review. The helper uses a temporary localhost-only
 port-forward and terminates only the child process it created. Payment runtime and Stripe flags
 remain disabled throughout this phase.
 
-Phase 21 treats the cloud EKS environment as the staging-equivalent release target because this
-project has no separate staging or production environment. It does not rebuild or publish images;
-it resolves the image tags already selected by the cloud Deployment in ECR, compares those manifest
-digests with running Pod image IDs, checks Argo Synced/Healthy and the seven disabled Payment flags,
-then runs the existing Phase 18 Gateway smoke.
+The canonical roadmap 21 delivery workflow treats the cloud EKS environment as the staging-equivalent
+release target because this project has no separate staging or production environment. It builds and
+publishes only affected service images (or all eight for shared changes), proposes one reviewed cloud
+overlay PR, and leaves reconciliation to `flash-sale-cloud`. After that PR is merged, the read-only
+Phase 21 cloud release verification helper resolves the selected ECR tags, compares manifest digests
+with running Pod image IDs, checks Argo Synced/Healthy and the seven disabled Payment flags, then
+runs the existing Phase 18 Gateway smoke.
 
 ## Required local tools
 
