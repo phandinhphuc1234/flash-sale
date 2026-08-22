@@ -8,6 +8,10 @@
 
 **Input**: User request to continue the local-plus-cloud GitOps roadmap after the Phase 22 cloud guard.
 
+**Roadmap alignment**: This feature is a Terraform safety gate supporting the canonical roadmap in
+[`docs/deployment/gitops-roadmap-status.md`](../../docs/deployment/gitops-roadmap-status.md). It is
+not the canonical roadmap's public Gateway phase.
+
 ## Problem and Scope
 
 The EKS environment is already provisioned, but a later operator could run Terraform with a missing
