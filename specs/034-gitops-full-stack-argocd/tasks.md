@@ -37,8 +37,8 @@ uses the committed historical manifest.
 
 ## Phase 5: Verification and evidence
 
-- [ ] T011 Run the live Phase 19 ownership transition and verify Argo, eight Deployments, Product image identity, and Phase 18 Gateway smoke
-- [ ] T012 Record commands and results in specs/034-gitops-full-stack-argocd/validation.md
+- [x] T011 Run the live Phase 19 ownership transition and verify Argo, eight Deployments, Product image identity, and Phase 18 Gateway smoke
+- [x] T012 Record commands and results in specs/034-gitops-full-stack-argocd/validation.md
 
 ## Dependencies and execution order
 

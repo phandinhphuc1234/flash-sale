@@ -38,8 +38,12 @@ function Add-GeneratedStringProperties([object]$Node) {
     # ordinary string fields. Register that generated form so auto.register.schemas=false
     # producers can resolve the exact schema identity.
     if ($Node -is [System.Collections.IList]) {
-        foreach ($item in $Node) {
-            Add-GeneratedStringProperties $item
+        for ($index = 0; $index -lt $Node.Count; $index++) {
+            if ($Node[$index] -is [string] -and $Node[$index] -eq 'string') {
+                $Node[$index] = [pscustomobject]@{ type = 'string'; 'avro.java.string' = 'String' }
+            } else {
+                Add-GeneratedStringProperties $Node[$index]
+            }
         }
         return
     }
@@ -75,6 +79,7 @@ function Invoke-SchemaRegistryRequest {
         Method = $Method
         Uri = "$registry$Path"
         Headers = $headers
+        TimeoutSec = 10
         ErrorAction = 'Stop'
     }
     if ($null -ne $Body) {
@@ -95,10 +100,23 @@ function Assert-SubjectConfiguration {
     }
 }
 
-function Assert-LatestSchema {
+function Assert-SubjectState {
+    param(
+        [Parameter(Mandatory = $true)] [string]$LookupPayload
+    )
+
+    Assert-SubjectConfiguration
+
+    # POST /subjects/{subject} is Schema Registry's read-only exact-schema lookup. Supplying the
+    # transformed Git schema proves exact presence without registering a version in CheckOnly mode.
+    $exact = Invoke-SchemaRegistryRequest -Method Post -Path "/subjects/$subjectPath" -Body $LookupPayload
+    if ($exact.subject -ne $subject) {
+        throw "Schema Registry returned an unexpected subject for $expectedRecordName."
+    }
+
     $latest = Invoke-SchemaRegistryRequest -Method Get -Path "/subjects/$subjectPath/versions/latest"
     if ($latest.subject -ne $subject) {
-        throw "Schema Registry returned an unexpected subject for $expectedRecordName."
+        throw "Schema Registry returned an unexpected latest subject for $expectedRecordName."
     }
 
     $registeredSchema = $latest.schema | ConvertFrom-Json -Depth 100
@@ -106,13 +124,17 @@ function Assert-LatestSchema {
     if ($registeredSchema.type -ne 'record' -or $registeredRecordName -ne $expectedRecordName) {
         throw "The latest schema for $subject is not $expectedRecordName."
     }
+    if ([int]$exact.id -ne [int]$latest.id -or [int]$exact.version -ne [int]$latest.version) {
+        throw "The transformed Git schema exists for $subject but is not its latest version."
+    }
 
     return $latest
 }
 
+$schemaPayload = @{ schema = $schemaDocument; schemaType = 'AVRO' } | ConvertTo-Json -Compress
+
 if ($CheckOnly) {
-    Assert-SubjectConfiguration
-    $latest = Assert-LatestSchema
+    $latest = Assert-SubjectState -LookupPayload $schemaPayload
     Write-Output "Verified $subject at schema id $($latest.id), version $($latest.version), compatibility $compatibility."
     exit 0
 }
@@ -122,12 +144,10 @@ Invoke-SchemaRegistryRequest -Method Put -Path "/config/$subjectPath" -Body $com
 
 # Registration is idempotent: Schema Registry returns the existing ID when this exact schema is
 # already present and rejects an incompatible evolution under the subject-level policy above.
-$registrationPayload = @{ schema = $schemaDocument; schemaType = 'AVRO' } | ConvertTo-Json -Compress
-$registration = Invoke-SchemaRegistryRequest -Method Post -Path "/subjects/$subjectPath/versions" -Body $registrationPayload
+$registration = Invoke-SchemaRegistryRequest -Method Post -Path "/subjects/$subjectPath/versions" -Body $schemaPayload
 
-Assert-SubjectConfiguration
-$latest = Assert-LatestSchema
-if ($latest.id -ne $registration.id) {
+$latest = Assert-SubjectState -LookupPayload $schemaPayload
+if ([int]$latest.id -ne [int]$registration.id) {
     throw "Schema Registry did not retain the registered PurchaseAcceptedV1 schema identity."
 }
 
