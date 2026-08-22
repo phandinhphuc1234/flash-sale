@@ -38,6 +38,11 @@ Run them from any directory. They resolve the repository root from their own loc
   overlay, Argo source/policy, application ConfigMap/Secret references, platform Secret references,
   private Services, Kafka safety settings, and disabled Payment flags. It is read-only and queries
   Secret names only; it never reads Secret values, `.env` values, or JWT contents.
+- Phase 23 runs the Terraform safety gate. It requires an explicit local
+  `TF_VAR_cluster_endpoint_public_access_cidrs`, verifies the AWS caller, runs format/validate/plan,
+  and classifies Terraform detailed exit code 0 versus 2. It never runs apply, destroy, import, state
+  mutation, or writes tfvars. Pass `-AutoDetectPublicIp` to derive the current public IPv4 `/32`
+  locally when the variable is not already set.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 
@@ -98,6 +103,10 @@ From the repository root:
 
     # Phase 22: verify cloud ownership/configuration boundaries without mutation.
     pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase22-cloud-guard.ps1
+
+    # Phase 23: preview Terraform safely; set the real public IPv4 CIDR locally first.
+    $env:AWS_PROFILE = "flash-sale-terraform"
+    pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase23-terraform-gate.ps1 -AutoDetectPublicIp
 
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally
