@@ -34,6 +34,10 @@ Run them from any directory. They resolve the repository root from their own loc
   Argo Application, all eight Deployment/ECR/Pod image digests, disabled Payment flags, and reuses the
   localhost-only Gateway smoke. It is read-only: it does not build, push, reconcile, update images, or
   read Kubernetes Secrets.
+- Phase 22 verifies cloud ownership and configuration boundaries. It checks the EKS context, cloud
+  overlay, Argo source/policy, application ConfigMap/Secret references, platform Secret references,
+  private Services, Kafka safety settings, and disabled Payment flags. It is read-only and queries
+  Secret names only; it never reads Secret values, `.env` values, or JWT contents.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 
@@ -91,6 +95,9 @@ From the repository root:
 
     # Phase 21: verify the cloud release artifact without mutation.
     pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase21-cloud-release-verify.ps1
+
+    # Phase 22: verify cloud ownership/configuration boundaries without mutation.
+    pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase22-cloud-guard.ps1
 
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally
