@@ -65,6 +65,18 @@ function Get-BoundedDiagnostic {
   return $Text.Substring(0, 2000) + "... [truncated]"
 }
 
+function ConvertTo-WindowsProcessArgument {
+  param([AllowNull()][string]$Argument)
+  if ($null -eq $Argument -or $Argument.Length -eq 0) { return '""' }
+  if ($Argument -notmatch '[\s"]') { return $Argument }
+
+  # ProcessStartInfo.Arguments is the compatibility path for Windows PowerShell/.NET Framework.
+  # Escape embedded quotes and trailing backslashes according to Windows command-line parsing.
+  $escaped = $Argument -replace '(\\*)"', '$1$1\"'
+  $escaped = $escaped -replace '(\\+)$', '$1$1'
+  return '"' + $escaped + '"'
+}
+
 function Invoke-BoundedNativeProcess {
   param(
     [Parameter(Mandatory)][string]$Command,
@@ -76,8 +88,14 @@ function Invoke-BoundedNativeProcess {
   $startInfo.CreateNoWindow = $true
   $startInfo.RedirectStandardOutput = $true
   $startInfo.RedirectStandardError = $true
-  foreach ($argument in $Arguments) {
-    $null = $startInfo.ArgumentList.Add([string]$argument)
+  if ($null -ne $startInfo.GetType().GetProperty("ArgumentList")) {
+    foreach ($argument in $Arguments) {
+      $null = $startInfo.ArgumentList.Add([string]$argument)
+    }
+  } else {
+    $startInfo.Arguments = (($Arguments | ForEach-Object {
+        ConvertTo-WindowsProcessArgument -Argument ([string]$_)
+      }) -join " ")
   }
   $process = [System.Diagnostics.Process]::new()
   $process.StartInfo = $startInfo
@@ -136,7 +154,9 @@ function Get-NativeJson {
     throw "$Description returned empty JSON."
   }
   try {
-    return $text | ConvertFrom-Json -Depth 100
+    # Windows PowerShell 5.1 does not support ConvertFrom-Json -Depth. JSON parsing is
+    # recursive by default, so the compatibility-safe invocation is sufficient here.
+    return $text | ConvertFrom-Json
   } catch {
     throw "$Description returned invalid JSON: $($_.Exception.Message)"
   }
