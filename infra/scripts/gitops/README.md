@@ -1,4 +1,4 @@
-# GitOps Phase 5–17 helper scripts
+# GitOps Phase 5–18 helper scripts
 
 These PowerShell scripts preserve the manual workflow used for the AWS EKS GitOps exercise.
 Run them from any directory. They resolve the repository root from their own location.
@@ -17,6 +17,8 @@ Run them from any directory. They resolve the repository root from their own loc
   Job creation requires -Apply. Existing Jobs require -ForceRerun, preserving failure evidence.
 - Phase 17 validates the cloud application prerequisites and eight Deployments by default; application
   rollout requires -Apply. A failed rollout preserves Pods for inspection.
+- Phase 18 validates the internal API Gateway by default; -Run creates only a temporary local
+  port-forward and checks readiness, public catalog routing, and protected admin routing.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 
@@ -48,6 +50,9 @@ From the repository root:
     .\infra\scripts\gitops\phase17-application-rollout.ps1
     .\infra\scripts\gitops\phase17-application-rollout.ps1 -Apply
 
+    .\infra\scripts\gitops\phase18-gateway-smoke.ps1
+    .\infra\scripts\gitops\phase18-gateway-smoke.ps1 -Run
+
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally
 a manual pilot and is not yet the GitOps desired-state source for Argo CD.
@@ -60,6 +65,11 @@ Phase 17 rolls out the eight cloud application Deployments after the platform, s
 ConfigMaps, and seven migration Jobs are complete. Payment acceptance and Stripe remain disabled.
 Its health endpoints are still probeable without a bearer token, while Payment business paths remain
 protected until a later enablement phase.
+
+Phase 18 keeps the Gateway Service internal (ClusterIP). The smoke helper temporarily forwards the
+Service to localhost, verifies readiness and public catalog routing, and confirms an admin route
+still rejects unauthenticated access. It does not create an ingress, DNS record, TLS certificate, or
+public AWS endpoint.
 
 ## Required local tools
 
