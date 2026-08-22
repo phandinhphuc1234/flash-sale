@@ -12,7 +12,7 @@ or public exposure by itself.
 | 19 | Move the complete cloud overlay to Argo CD | **Complete** | `flash-sale-cloud` owns `infra/k8s/overlays/cloud` and is `Synced/Healthy`. |
 | 20 | Provision Kafka topics and Avro schemas on EKS | **Complete** | Seven approved topics and nine Schema Registry subjects; Payment remains disabled. |
 | 21 | CI/CD for all eight services | **Partial** | Selective Maven CI covers affected services; hosted ECR/PR promotion is currently proven for Product Service. Full eight-service image promotion is still required. |
-| 22 | Internal end-to-end smoke | **Partial** | Gateway readiness/catalog/admin smoke is proven (`200/200/401`); a real Auth → Product → Campaign → Flash Sale → Order journey is still required. |
+| 22 | Internal end-to-end smoke | **In implementation** | `specs/040-gitops-internal-e2e/` defines the approved authenticated runner: existing `ROLE_ADMIN`, Inventory-owned fixture Job, reservation replay, and Order identity convergence. Live evidence is pending an Inventory image promotion. |
 | 23 | Public Gateway on AWS | **Pending** | Gateway remains `ClusterIP` and is tested through localhost port-forward. No public LoadBalancer/Ingress/DNS/TLS is enabled. |
 | 24 | Stripe cloud enablement | **Pending** | Payment and Stripe runtime flags remain disabled; no cloud checkout/webhook flow is enabled. |
 | 25 | Observability | **Pending** | Services expose Actuator/Prometheus endpoints; cloud Prometheus, Grafana, dashboards, and alerts are not yet deployed. |
