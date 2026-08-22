@@ -67,7 +67,7 @@ images:
     newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: authentication-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/authentication-service
-    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
+    newTag: release-c717b7ac9bb7a50ef2c7f919b3fae4fdb2695094
   - name: campaign-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/campaign-service
     newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
