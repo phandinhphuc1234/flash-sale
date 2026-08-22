@@ -30,6 +30,10 @@ Run them from any directory. They resolve the repository root from their own loc
   nine exact Git-owned Avro subjects with BACKWARD_TRANSITIVE compatibility. It never deletes or
   recreates a topic or subject, and it expands a one-partition topic only while its total end offset
   is still zero.
+- Phase 21 verifies the cloud release artifact as the staging-equivalent gate. It checks the canonical
+  Argo Application, all eight Deployment/ECR/Pod image digests, disabled Payment flags, and reuses the
+  localhost-only Gateway smoke. It is read-only: it does not build, push, reconcile, update images, or
+  read Kubernetes Secrets.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 
@@ -85,6 +89,9 @@ From the repository root:
     .\infra\scripts\gitops\phase20-kafka-contracts.ps1
     .\infra\scripts\gitops\phase20-kafka-contracts.ps1 -Apply
 
+    # Phase 21: verify the cloud release artifact without mutation.
+    pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase21-cloud-release-verify.ps1
+
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally
 a manual pilot and is not yet the GitOps desired-state source for Argo CD.
@@ -119,6 +126,12 @@ partition routing. Unexpected topics, subjects, replication factors, or non-empt
 topics stop the run for human review. The helper uses a temporary localhost-only Schema Registry
 port-forward and terminates only the child process it created. Payment runtime and Stripe flags
 remain disabled throughout this phase.
+
+Phase 21 treats the cloud EKS environment as the staging-equivalent release target because this
+project has no separate staging or production environment. It does not rebuild or publish images;
+it resolves the image tags already selected by the cloud Deployment in ECR, compares those manifest
+digests with running Pod image IDs, checks Argo Synced/Healthy and the seven disabled Payment flags,
+then runs the existing Phase 18 Gateway smoke.
 
 ## Required local tools
 
