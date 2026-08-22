@@ -7,4 +7,5 @@ Run from the repository root while kubectl points at flash-sale-dev:
 
 The first command is validation-only. The second creates only a temporary local port-forward and
 prints status codes; it does not apply manifests, create an ingress, or expose the Gateway
-publicly. Use -LocalPort 18081 if the default local port is busy.
+publicly. The default is port 28080 because local Docker Compose owns ports 18080–18089. The script
+refuses to run if the selected port is already occupied; use another value with -LocalPort.

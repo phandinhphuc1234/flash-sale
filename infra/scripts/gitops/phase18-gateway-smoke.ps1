@@ -11,7 +11,7 @@
 param(
   [switch]$Run,
   [ValidateRange(1024, 65535)]
-  [int]$LocalPort = 18080,
+  [int]$LocalPort = 28080,
   [ValidateRange(10, 600)]
   [int]$TimeoutSeconds = 120
 )
@@ -46,8 +46,28 @@ function Get-HttpStatus {
   $statusText = & curl.exe --silent --show-error --output NUL --write-out "%{http_code}" --max-time 5 --url $Uri 2>$null
   if ($LASTEXITCODE -ne 0) { return 0 }
   $status = 0
-  if ([int]::TryParse(($statusText -join "").Trim(), [ref]$status)) { return $status }
+  if ([int]::TryParse(($statusText -join "").Trim(), [ref]$status)) {
+    Write-Verbose "HTTP probe $Uri returned $status."
+    return $status
+  }
   return 0
+}
+
+function Assert-LocalPortAvailable {
+  param([Parameter(Mandatory)][int]$Port)
+  $existingListener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+  if ($null -ne $existingListener) {
+    throw "Local port $Port is already in use. Choose an unused port with -LocalPort."
+  }
+  $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
+  try {
+    $listener.Start()
+  } catch {
+    throw "Local port $Port is already in use. Choose an unused port with -LocalPort."
+  } finally {
+    $listener.Stop()
+  }
 }
 
 if (-not (Test-Path $OverlayPath)) {
@@ -69,38 +89,48 @@ if (-not $Run) {
   exit 0
 }
 
+Assert-LocalPortAvailable $LocalPort
+
 $TempBase = Join-Path ([IO.Path]::GetTempPath()) ("flash-sale-gateway-" + [guid]::NewGuid().ToString("N"))
 $StdoutPath = "$TempBase.out.log"
 $StderrPath = "$TempBase.err.log"
 $PortForward = $null
 
 try {
-  $PortForward = Start-Process -FilePath "kubectl" -ArgumentList @("-n", $Namespace, "port-forward", "service/$ServiceName", ("{0}:8080" -f $LocalPort)) -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath -WindowStyle Hidden -PassThru
+  $PortForward = Start-Process -FilePath "kubectl" -ArgumentList @("-n", $Namespace, "port-forward", "--address", "127.0.0.1", "service/$ServiceName", ("{0}:8080" -f $LocalPort)) -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath -WindowStyle Hidden -PassThru
 
   $Deadline = (Get-Date).AddSeconds($TimeoutSeconds)
   $BaseUri = "http://127.0.0.1:$LocalPort"
   $ReadinessStatus = 0
   do {
     Start-Sleep -Milliseconds 500
-    $ReadinessStatus = Get-HttpStatus "$BaseUri/actuator/health/readiness"
-    if ($ReadinessStatus -eq 200) {
-      break
-    }
     if ($PortForward.HasExited) {
       throw "Gateway port-forward exited before readiness became available."
     }
+    $ReadinessStatus = Get-HttpStatus "$BaseUri/actuator/health/readiness"
+    if ($ReadinessStatus -eq 200) { break }
   } while ((Get-Date) -lt $Deadline)
 
   if ($ReadinessStatus -ne 200) {
     throw "Gateway readiness expected HTTP 200, got HTTP $ReadinessStatus."
   }
 
-  $CatalogStatus = Get-HttpStatus "$BaseUri/api/v1/catalog/products?page=0&size=1"
-  $AdminStatus = Get-HttpStatus "$BaseUri/api/v1/admin/catalog/products?page=0&size=1"
+  $PortOwner = Get-NetTCPConnection -LocalAddress "127.0.0.1" -LocalPort $LocalPort -State Listen -ErrorAction SilentlyContinue |
+    Where-Object { $_.OwningProcess -eq $PortForward.Id } |
+    Select-Object -First 1
+  if ($null -eq $PortOwner) {
+    throw "Local port $LocalPort is not owned by the kubectl port-forward process started by this script."
+  }
+  Write-Verbose "Verified kubectl process $($PortForward.Id) owns 127.0.0.1:$LocalPort."
 
+  $CatalogStatus = Get-HttpStatus "$BaseUri/api/v1/catalog/products?page=0&size=1"
+  Write-Output "Gateway catalog status: $CatalogStatus"
   if ($CatalogStatus -ne 200) {
     throw "Gateway catalog route expected HTTP 200, got HTTP $CatalogStatus."
   }
+
+  $AdminStatus = Get-HttpStatus "$BaseUri/api/v1/admin/catalog/products?page=0&size=1"
+  Write-Output "Gateway admin status: $AdminStatus"
   if ($AdminStatus -notin @(401, 403)) {
     throw "Gateway admin route expected HTTP 401/403 without credentials, got HTTP $AdminStatus."
   }

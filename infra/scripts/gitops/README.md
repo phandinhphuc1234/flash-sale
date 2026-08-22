@@ -18,7 +18,8 @@ Run them from any directory. They resolve the repository root from their own loc
 - Phase 17 validates the cloud application prerequisites and eight Deployments by default; application
   rollout requires -Apply. A failed rollout preserves Pods for inspection.
 - Phase 18 validates the internal API Gateway by default; -Run creates only a temporary local
-  port-forward and checks readiness, public catalog routing, and protected admin routing.
+  port-forward and checks readiness, public catalog routing, and protected admin routing. It rejects
+  occupied local ports and verifies the listener belongs to its kubectl child process.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 

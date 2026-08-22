@@ -14,8 +14,8 @@ application or Kubernetes Service behavior changes.
 1. Resolve the repository root and use the active kubectl context.
 2. Run Kustomize render and client-side dry-run, then assert namespace, Service, and Deployment
    readiness.
-3. In -Run mode, start kubectl port-forward service/api-gateway local:8080 as a hidden child
-   process with temporary stdout/stderr files.
+3. In -Run mode, reject an occupied local port, then start kubectl port-forward bound explicitly
+   to 127.0.0.1 as a hidden child process with temporary stdout/stderr files.
 4. Poll /actuator/health/readiness, call /api/v1/catalog/products?page=0&size=1, and call
    /api/v1/admin/catalog/products?page=0&size=1 without credentials.
 5. Accept only readiness/catalog 200 and admin 401 or 403; stop the child process in cleanup.

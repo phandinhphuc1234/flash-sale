@@ -42,6 +42,8 @@ public catalog route return HTTP 200, while an unauthenticated admin route retur
 - FR-004: Verify Gateway readiness, public catalog success, and protected admin behavior using
   bounded HTTP calls.
 - FR-005: Stop the port-forward in cleanup and never read or print Kubernetes Secret values.
+- FR-006: Reject an occupied local port before making HTTP assertions, so a local Docker endpoint
+  cannot be mistaken for the EKS Gateway.
 
 ## Success Criteria
 
