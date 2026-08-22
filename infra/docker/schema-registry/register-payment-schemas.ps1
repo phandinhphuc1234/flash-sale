@@ -78,6 +78,7 @@ function Invoke-SchemaRegistryRequest {
         Method = $Method
         Uri = "$registry$Path"
         Headers = $headers
+        TimeoutSec = 10
         ErrorAction = 'Stop'
     }
     if ($null -ne $Body) { $parameters.Body = $Body }
@@ -101,28 +102,50 @@ foreach ($definition in $schemas) {
     $schemaDocument = $schema | ConvertTo-Json -Depth 100 -Compress
     $subject = "$($definition.Topic)-$recordName"
     $subjectPath = [Uri]::EscapeDataString($subject)
+    # This payload is the canonical producer-facing schema derived from the accepted Git AVSC.
+    # POST /subjects/{subject} is a read-only exact-schema lookup; it does not register a version.
+    $schemaIdentityPayload = @{ schema = $schemaDocument; schemaType = 'AVRO' } | ConvertTo-Json -Compress
 
     function Assert-Subject {
         $configuration = Invoke-SchemaRegistryRequest -Method Get -Path "/config/$subjectPath"
         if ($configuration.compatibilityLevel -ne $compatibility) {
             throw "Subject $subject must use $compatibility compatibility."
         }
+
+        $exact = Invoke-SchemaRegistryRequest -Method Post -Path "/subjects/$subjectPath" `
+            -Body $schemaIdentityPayload
+        if ($exact.subject -ne $subject) {
+            throw "Schema Registry returned an unexpected exact-schema subject for $subject."
+        }
+
         $latest = Invoke-SchemaRegistryRequest -Method Get -Path "/subjects/$subjectPath/versions/latest"
         if ($latest.subject -ne $subject) { throw "Schema Registry returned an unexpected subject for $subject." }
+        if ([int]$exact.id -ne [int]$latest.id -or [int]$exact.version -ne [int]$latest.version) {
+            throw "The exact Git schema for $subject exists at id $($exact.id), version $($exact.version), but is not latest."
+        }
+
         $registeredSchema = $latest.schema | ConvertFrom-Json -Depth 100
         $registeredRecord = "$($registeredSchema.namespace).$($registeredSchema.name)"
-        if ($registeredRecord -ne $definition.Record) { throw "Subject $subject has an unexpected record." }
+        if ($registeredSchema.type -ne 'record' -or $registeredRecord -ne $definition.Record) {
+            throw "Subject $subject has an unexpected latest record."
+        }
         return $latest
     }
 
+    $registration = $null
     if (-not $CheckOnly) {
         $compatibilityPayload = @{ compatibility = $compatibility } | ConvertTo-Json -Compress
         Invoke-SchemaRegistryRequest -Method Put -Path "/config/$subjectPath" -Body $compatibilityPayload | Out-Null
-        $registrationPayload = @{ schema = $schemaDocument; schemaType = 'AVRO' } | ConvertTo-Json -Compress
-        Invoke-SchemaRegistryRequest -Method Post -Path "/subjects/$subjectPath/versions" -Body $registrationPayload | Out-Null
+        # Registration is idempotent: an already registered exact schema resolves to its existing
+        # identity rather than creating another version.
+        $registration = Invoke-SchemaRegistryRequest -Method Post -Path "/subjects/$subjectPath/versions" `
+            -Body $schemaIdentityPayload
     }
 
     $latest = Assert-Subject
+    if (-not $CheckOnly -and [int]$registration.id -ne [int]$latest.id) {
+        throw "Schema Registry did not retain the registered exact Git schema identity for $subject."
+    }
     $action = if ($CheckOnly) { 'Verified' } else { 'Registered and verified' }
     Write-Output "$action $subject at schema id $($latest.id), version $($latest.version), compatibility $compatibility."
 }

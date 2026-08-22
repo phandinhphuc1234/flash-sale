@@ -4,7 +4,7 @@
 
 **Environment**: AWS EKS `flash-sale-dev`
 
-**Status**: Pre-merge validation passed; live ownership transition pending merge into `develop`
+**Status**: PASS; live ownership transition and post-cutover Gateway smoke completed
 
 ## Static and client-side validation
 
@@ -38,15 +38,26 @@ Expected and observed result: exit code 1 with
 confirmed the pilot remained `Synced/Healthy`, its automated policy remained unchanged, the new
 Application remained absent, and the Product image remained unchanged.
 
-## Pending live evidence
+## Live ownership-transition evidence
 
-T011 and final T012 closure require this reviewed branch to be merged into `develop`. After merge:
+The reviewed Phase 19 branch was merged into `develop` as merge commit `7831ce6`. Commands:
 
-    git fetch origin develop
     git switch develop
     git pull --ff-only origin develop
     .\infra\scripts\gitops\phase19-argocd-cloud.ps1 -Apply -TimeoutSeconds 600
     .\infra\scripts\gitops\phase18-gateway-smoke.ps1 -Run
 
-Record the final Argo status, eight Deployment rollouts, Product image identity, retired pilot
-Application, and Gateway `200/200/401` evidence here before marking T011 and T012 complete.
+Observed results:
+
+- `flash-sale-cloud` reached `Synced|Healthy` within the 600-second gate.
+- `api-gateway`, `authentication-service`, `product-service`, `campaign-service`,
+  `flash-sale-service`, `inventory-service`, `order-service`, and `payment-service` each completed
+  rollout with one available replica.
+- Exactly one Argo CD Application remains: `flash-sale-cloud`.
+- `dev-pilot` was removed only after successful verification and without cascading resource
+  deletion.
+- Cloud ownership points to `infra/k8s/overlays/cloud`, with `selfHeal=true` and `prune=false`.
+- Product preserved the approved immutable image
+  `090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/product-service:pilot-11cdf76ace24e6402eae0dbc1082d077766e3c72`.
+- Gateway smoke passed with readiness `200`, public catalog `200`, and anonymous admin `401`.
+- No migration rerun, Secret value read/print, workload deletion, or PVC deletion occurred.

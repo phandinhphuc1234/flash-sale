@@ -1,4 +1,4 @@
-# GitOps Phase 5–19 helper scripts
+# GitOps Phase 5–20 helper scripts
 
 These PowerShell scripts preserve the manual workflow used for the AWS EKS GitOps exercise.
 Run them from any directory. They resolve the repository root from their own location.
@@ -24,6 +24,12 @@ Run them from any directory. They resolve the repository root from their own loc
   after the reviewed Phase 19 desired state exists on origin/develop. It suspends the Product pilot,
   waits for the full-cloud owner to become Synced/Healthy, verifies eight Deployments and the Product
   image, and then removes only the finalizer-free historical Application object.
+- Phase 20 validates the exact cloud Kafka contract inventory by default. -Apply is accepted only
+  after the reviewed Phase 20 implementation exists on origin/develop. It disables implicit topic
+  creation, provisions seven topics with three partitions and replication factor one, and registers
+  nine exact Git-owned Avro subjects with BACKWARD_TRANSITIVE compatibility. It never deletes or
+  recreates a topic or subject, and it expands a one-partition topic only while its total end offset
+  is still zero.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 
@@ -66,6 +72,19 @@ From the repository root:
     git pull --ff-only origin develop
     .\infra\scripts\gitops\phase19-argocd-cloud.ps1 -Apply
 
+    # Before merge: inventory only. Exit code 2 means the approved desired state is still pending.
+    .\infra\scripts\gitops\phase20-kafka-contracts.ps1
+
+    # After the Phase 20 pull request is reviewed and merged into develop:
+    git fetch origin develop
+    git switch develop
+    git pull --ff-only origin develop
+    .\infra\scripts\gitops\phase20-kafka-contracts.ps1 -Apply
+
+    # Prove the resulting state and a second idempotent reconciliation.
+    .\infra\scripts\gitops\phase20-kafka-contracts.ps1
+    .\infra\scripts\gitops\phase20-kafka-contracts.ps1 -Apply
+
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally
 a manual pilot and is not yet the GitOps desired-state source for Argo CD.
@@ -91,11 +110,18 @@ the migration Jobs, Secret provisioning, platform PVC cleanup, ingress, and publ
 part of this phase. If cutover fails, the helper removes the new finalizer-free Application object
 and restores the committed Product pilot Application.
 
+Phase 20 materializes only the approved runtime contract set: seven Kafka topics and nine
+TopicRecordNameStrategy Schema Registry subjects. The choice of three partitions and replication
+factor one is deliberate for this single-environment internship deployment; it is not presented as
+a production high-availability topology. Existing one-partition topics are expanded only when their
+combined end offset is zero, because changing partitions after records exist can change key-to-
+partition routing. Unexpected topics, subjects, replication factors, or non-empty one-partition
+topics stop the run for human review. The helper uses a temporary localhost-only Schema Registry
+port-forward and terminates only the child process it created. Payment runtime and Stripe flags
+remain disabled throughout this phase.
+
 ## Required local tools
 
 AWS CLI, Terraform, kubectl, Docker Desktop, Maven wrapper, and an AWS profile with the EKS/ECR
 permissions must be available in PATH. The default profile is flash-sale-terraform and the default
 region is ap-southeast-2.
-
-The existing local deletion of infra/k8s/README.md is unrelated to these scripts and is never staged
-by the scripts.
