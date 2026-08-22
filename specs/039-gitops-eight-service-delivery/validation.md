@@ -8,6 +8,7 @@
 | Target mapping | Python inventory of `infra/k8s/overlays/cloud/kustomization.yaml` | PASS — eight image keys, including `flash-sale-service` |
 | Maven verification | `./mvnw.cmd --batch-mode --no-transfer-progress clean verify` | PASS — 13 modules, BUILD SUCCESS; Order reported 89 tests/8 intentional skips |
 | Cloud Kustomize render | `kubectl kustomize infra/k8s/overlays/cloud` and `kubectl apply --dry-run=client -k infra/k8s/overlays/cloud` | PASS — client-side dry-run, no live mutation |
+| Phase 21 verifier on Windows PowerShell | `powershell.exe -NoLogo -NoProfile -File infra/scripts/gitops/phase21-cloud-release-verify.ps1 -TimeoutSeconds 180` | PASS — compatibility fallback exercised; Argo Synced/Healthy, eight ECR/Pod digests matched, Payment flags 7/7 disabled, Gateway 200/200/401 |
 | Hosted service-local run | GitHub Actions run/PR reference | PENDING |
 | Hosted shared-change run | GitHub Actions run/PR reference | PENDING |
 | Phase 21 release evidence | `phase21-cloud-release-verify.ps1` | PENDING |
