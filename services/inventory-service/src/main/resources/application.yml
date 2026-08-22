@@ -33,6 +33,9 @@ springdoc:
 
 flashsale:
   inventory:
+    fixture:
+      # The fixture adapter is disabled for normal Deployments; the Phase 22 Job opts in explicitly.
+      enabled: ${INVENTORY_FIXTURE_ENABLED:false}
     security:
       # Public/admin requests keep the existing flash-sale-api audience.
       jwt:
