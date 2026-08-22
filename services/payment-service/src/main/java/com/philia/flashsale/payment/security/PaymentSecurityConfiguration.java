@@ -19,11 +19,11 @@ import org.springframework.security.web.SecurityFilterChain;
 /** Protects Payment owner APIs and keeps the service deny-by-default. */
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
 public class PaymentSecurityConfiguration {
 
     @Bean
     @Order(1)
+    @ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
     SecurityFilterChain paymentApiSecurityChain(HttpSecurity http,
             @Qualifier("paymentJwtDecoder") JwtDecoder decoder,
             @Qualifier("paymentJwtAuthenticationConverter") Converter<Jwt, AbstractAuthenticationToken> converter,
@@ -52,6 +52,8 @@ public class PaymentSecurityConfiguration {
     @Bean
     @Order(3)
     SecurityFilterChain paymentDenyByDefaultSecurityChain(HttpSecurity http) throws Exception {
+        // This chain must remain active while acceptance is disabled so Kubernetes can probe the
+        // process without accidentally exposing any Payment business endpoint.
         return http.authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus")
                 .permitAll().anyRequest().denyAll()).build();
