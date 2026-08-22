@@ -45,6 +45,17 @@ public final class Account {
                 encodedPassword, AccountRole.ROLE_USER, AccountStatus.ACTIVE, null, null, now, now);
     }
 
+    /**
+     * Creates the privileged account used by the explicit operator bootstrap path.
+     * Public registration must continue to call {@link #register} and remain ROLE_USER-only.
+     */
+    public static Account bootstrapAdmin(String email, String username, String encodedPassword, Instant now) {
+        String normalizedEmail = normalizeRequired(email, "email");
+        String normalizedUsername = normalizeRequired(username, "username");
+        return new Account(UUID.randomUUID(), email.trim(), normalizedEmail, username.trim(), normalizedUsername,
+                encodedPassword, AccountRole.ROLE_ADMIN, AccountStatus.ACTIVE, null, null, now, now);
+    }
+
     public static Account restore(UUID id, String email, String emailNormalized, String username,
                                   String usernameNormalized, String passwordHash, AccountRole role,
                                   AccountStatus status, Instant lockedUntil, Instant lastLoginAt,

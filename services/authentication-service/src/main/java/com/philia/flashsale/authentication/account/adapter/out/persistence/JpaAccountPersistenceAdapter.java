@@ -3,6 +3,7 @@ package com.philia.flashsale.authentication.account.adapter.out.persistence;
 import java.util.Optional;
 
 import com.philia.flashsale.authentication.account.application.registration.RegisterAccountPort;
+import com.philia.flashsale.authentication.account.application.bootstrap.AdminBootstrapAccountPort;
 import com.philia.flashsale.authentication.account.domain.Account;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
@@ -11,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 @Component
 @ConditionalOnProperty(prefix = "flashsale.authentication", name = "runtime-enabled", havingValue = "true", matchIfMissing = true)
 /** Implements registration persistence while keeping repository details outside application code. */
-public class JpaAccountPersistenceAdapter implements RegisterAccountPort {
+public class JpaAccountPersistenceAdapter implements RegisterAccountPort, AdminBootstrapAccountPort {
     private final AccountJpaRepository repository;
 
     public JpaAccountPersistenceAdapter(AccountJpaRepository repository) {

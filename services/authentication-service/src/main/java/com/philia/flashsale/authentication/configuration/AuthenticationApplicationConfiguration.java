@@ -6,6 +6,9 @@ import com.philia.flashsale.authentication.account.application.registration.Regi
 import com.philia.flashsale.authentication.account.application.registration.RegisterAccountService;
 import com.philia.flashsale.authentication.account.application.registration.RegisterAccountUseCase;
 import com.philia.flashsale.authentication.account.application.registration.EncodePasswordPort;
+import com.philia.flashsale.authentication.account.application.bootstrap.AdminBootstrapAccountPort;
+import com.philia.flashsale.authentication.account.application.bootstrap.BootstrapAdminAccountService;
+import com.philia.flashsale.authentication.account.application.bootstrap.BootstrapAdminAccountUseCase;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -43,6 +46,14 @@ public class AuthenticationApplicationConfiguration {
                                                    EncodePasswordPort passwordPort,
                                                    Clock authenticationClock) {
         return new RegisterAccountService(accountPort, passwordPort, authenticationClock);
+    }
+
+    @Bean
+    @ConditionalOnBean({AdminBootstrapAccountPort.class, EncodePasswordPort.class})
+    BootstrapAdminAccountUseCase bootstrapAdminAccountUseCase(AdminBootstrapAccountPort accountPort,
+                                                               EncodePasswordPort passwordPort,
+                                                               Clock authenticationClock) {
+        return new BootstrapAdminAccountService(accountPort, passwordPort, authenticationClock);
     }
 
     @Bean
