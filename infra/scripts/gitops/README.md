@@ -1,4 +1,4 @@
-# GitOps Phase 5–18 helper scripts
+# GitOps Phase 5–19 helper scripts
 
 These PowerShell scripts preserve the manual workflow used for the AWS EKS GitOps exercise.
 Run them from any directory. They resolve the repository root from their own location.
@@ -20,6 +20,10 @@ Run them from any directory. They resolve the repository root from their own loc
 - Phase 18 validates the internal API Gateway by default; -Run creates only a temporary local
   port-forward and checks readiness, public catalog routing, and protected admin routing. It rejects
   occupied local ports and verifies the listener belongs to its kubectl child process.
+- Phase 19 validates the full-cloud Argo CD ownership handoff by default. -Apply is accepted only
+  after the reviewed Phase 19 desired state exists on origin/develop. It suspends the Product pilot,
+  waits for the full-cloud owner to become Synced/Healthy, verifies eight Deployments and the Product
+  image, and then removes only the finalizer-free historical Application object.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 
@@ -54,6 +58,14 @@ From the repository root:
     .\infra\scripts\gitops\phase18-gateway-smoke.ps1
     .\infra\scripts\gitops\phase18-gateway-smoke.ps1 -Run
 
+    .\infra\scripts\gitops\phase19-argocd-cloud.ps1
+
+    # Run only after the Phase 18 and Phase 19 pull requests are merged into develop.
+    git fetch origin develop
+    git switch develop
+    git pull --ff-only origin develop
+    .\infra\scripts\gitops\phase19-argocd-cloud.ps1 -Apply
+
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally
 a manual pilot and is not yet the GitOps desired-state source for Argo CD.
@@ -71,6 +83,13 @@ Phase 18 keeps the Gateway Service internal (ClusterIP). The smoke helper tempor
 Service to localhost, verifies readiness and public catalog routing, and confirms an admin route
 still rejects unauthenticated access. It does not create an ingress, DNS record, TLS certificate, or
 public AWS endpoint.
+
+Phase 19 transfers desired-state ownership from the Product-only `dev-pilot` Application to the
+canonical `flash-sale-cloud` Application. The new owner tracks `develop` and
+`infra/k8s/overlays/cloud`, so the merge must happen before `-Apply`. Automatic pruning remains off;
+the migration Jobs, Secret provisioning, platform PVC cleanup, ingress, and public exposure are not
+part of this phase. If cutover fails, the helper removes the new finalizer-free Application object
+and restores the committed Product pilot Application.
 
 ## Required local tools
 
