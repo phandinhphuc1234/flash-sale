@@ -8,12 +8,20 @@
     - secretRef:
         name: authentication-secrets
 - op: add
+  path: /spec/template/spec/securityContext
+  value:
+    runAsUser: 999
+    runAsGroup: 999
+    runAsNonRoot: true
+    fsGroup: 999
+    fsGroupChangePolicy: OnRootMismatch
+- op: add
   path: /spec/template/spec/volumes
   value:
     - name: auth-jwt
       secret:
         secretName: auth-jwt
-        defaultMode: 0400
+        defaultMode: 0440
 - op: add
   path: /spec/template/spec/containers/0/volumeMounts
   value:

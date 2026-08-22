@@ -1,4 +1,4 @@
-# GitOps Phase 5–11 helper scripts
+# GitOps Phase 5–16 helper scripts
 
 These PowerShell scripts preserve the manual workflow used for the AWS EKS GitOps exercise.
 Run them from any directory. They resolve the repository root from their own location.
@@ -11,6 +11,10 @@ Run them from any directory. They resolve the repository root from their own loc
 - Phase 8 pilot deployment requires -Apply and prompts for a PostgreSQL password at runtime.
 - Phase 11 Product delivery builds locally by default; ECR publishing requires -Push and desired-state
   editing requires -UpdateOverlay. The helper never commits or pushes Git changes.
+- Phase 15 validates local ignored inputs by default; Secret creation requires -Apply and never prints
+  values. Stripe remains deferred unless explicitly enabled in a later phase.
+- Phase 16 validates the platform, ConfigMaps, Secrets, and seven migration Jobs by default; migration
+  Job creation requires -Apply. Existing Jobs require -ForceRerun, preserving failure evidence.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
 - Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
 
@@ -32,6 +36,13 @@ From the repository root:
     .\infra\scripts\gitops\phase11-product-delivery.ps1
     .\infra\scripts\gitops\phase11-product-delivery.ps1 -Push -UpdateOverlay
     kubectl kustomize infra/k8s/overlays/dev-pilot
+
+    .\infra\scripts\gitops\phase13-environment-contract.ps1
+    .\infra\scripts\gitops\phase14-stateful-preflight.ps1
+    .\infra\scripts\gitops\phase15-secrets.ps1
+    .\infra\scripts\gitops\phase15-secrets.ps1 -Apply
+    .\infra\scripts\gitops\phase16-migrations.ps1
+    .\infra\scripts\gitops\phase16-migrations.ps1 -Apply
 
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally

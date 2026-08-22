@@ -17,6 +17,22 @@ spec:
         app.kubernetes.io/name: kafka
         app.kubernetes.io/part-of: flash-sale
     spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+        - name: fix-data-permissions
+          image: apache/kafka:4.0.0
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command:
+            - sh
+            - -c
+            - chown -R 1000:1000 /var/lib/kafka/data
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
       containers:
         - name: kafka
           image: apache/kafka:4.0.0
@@ -51,7 +67,7 @@ spec:
             - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
               value: "0"
             - name: KAFKA_LOG_DIRS
-              value: /var/lib/kafka/data
+              value: /var/lib/kafka/data/kafka-logs
           startupProbe:
             exec:
               command:
@@ -59,6 +75,7 @@ spec:
                 - -c
                 - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
             periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 36
           readinessProbe:
             exec:

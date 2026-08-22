@@ -24,6 +24,9 @@ targets for this internship project.
 - ECR image tags are promoted into the cloud overlay by CI/CD in a later phase.
 - Secrets are created by an operator-only flow in a later phase. Secret values must never be committed
   to this repository.
+- Database migrations are applied separately through `infra/k8s/overlays/cloud-migrations/` after the
+  Phase 14 platform is ready and Phase 15 Secrets exist. The application overlay is not applied until
+  those seven service-owned migration Jobs complete.
 - `dev-pilot` is retained only as historical Product-pilot and rollback evidence. It is not a third
   supported environment.
 
