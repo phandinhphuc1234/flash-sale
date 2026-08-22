@@ -15,15 +15,16 @@ Branch: `codex/gitops-phase17-cloud-application-rollout`
 
 ## Rollout evidence
 
-The live rollout is executed after this desired-state tag is pushed. The operator must run:
+Command executed:
 
 ```powershell
 .\infra\scripts\gitops\phase17-application-rollout.ps1 -Apply -TimeoutSeconds 600
 ```
 
-Expected result: all eight application Deployments reach one available replica, Payment liveness
-and readiness return a non-401 health response, and unauthenticated Payment business APIs remain
-protected while acceptance is disabled.
+Result: PASS — all eight application Deployments reached `1/1` available. The Payment pod ran
+image `payment-service:phase17-5b4fc91`; direct in-pod probes returned `200` for both
+`/actuator/health/liveness` and `/actuator/health/readiness`. An unauthenticated request to
+`/api/v1/payments` returned `403`, confirming the disabled Payment business API remains protected.
 
 ## Safety notes
 
