@@ -82,7 +82,7 @@ images:
     newTag: initial
   - name: payment-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/payment-service
-    newTag: initial
+    newTag: phase17-5b4fc91
   - name: product-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/product-service
     newTag: initial
