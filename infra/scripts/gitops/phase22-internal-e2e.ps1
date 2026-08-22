@@ -166,6 +166,12 @@ function Invoke-Api {
     $parameters.ContentType = "application/json"
     $parameters.Body = ($Body | ConvertTo-Json -Depth 30 -Compress)
   }
+  if ($requestHeaders.ContainsKey("If-Match")) {
+    # Product's approved admin contract carries the expected version as a bare number
+    # (for example, If-Match: 1). PowerShell's HTTP client enforces RFC-style quoted
+    # entity tags before sending the request, so bypass only this local header check.
+    $parameters.SkipHeaderValidation = $true
+  }
   try {
     $response = Invoke-WebRequest @parameters
   } catch {

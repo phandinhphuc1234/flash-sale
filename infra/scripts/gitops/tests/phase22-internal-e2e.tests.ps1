@@ -27,6 +27,7 @@ if ($errors.Count -gt 0) {
 $content = Get-Content -LiteralPath $runner -Raw
 $requiredMarkers = @(
   'Read-Host "Existing ROLE_ADMIN password" -AsSecureString',
+  'SkipHeaderValidation',
   'deployment/inventory-service',
   'INVENTORY_FIXTURE_ENABLED',
   'api/v1/orders?page=0&size=100',
