@@ -185,7 +185,13 @@ try {
   $securePassword = Read-Host "Admin bootstrap password" -AsSecureString
   $passwordPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
   $plainPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordPointer)
-  $passwordLength = if ($null -eq $plainPassword) { 0 } else { $plainPassword.CodePointCount(0, $plainPassword.Length) }
+  # PowerShell/.NET strings expose UTF-16 code units, while the application policy
+  # is expressed in Unicode code points. UTF-32 encodes one code point per 4 bytes.
+  $passwordLength = if ($null -eq $plainPassword) {
+    0
+  } else {
+    [int]([Text.Encoding]::UTF32.GetByteCount($plainPassword) / 4)
+  }
   if ($passwordLength -lt 12 -or $passwordLength -gt 128) {
     throw "Admin bootstrap password must contain 12 to 128 code points."
   }

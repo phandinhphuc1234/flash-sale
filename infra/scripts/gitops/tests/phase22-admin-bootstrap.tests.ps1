@@ -22,6 +22,7 @@ if ($errors.Count -gt 0) {
 $content = Get-Content -LiteralPath $runner -Raw
 foreach ($marker in @(
     'Read-Host "Admin bootstrap password" -AsSecureString',
+    'Text.Encoding]::UTF32.GetByteCount',
     'AUTH_ADMIN_BOOTSTRAP_ENABLED',
     'SPRING_MAIN_WEB_APPLICATION_TYPE',
     'authentication-admin-bootstrap',
