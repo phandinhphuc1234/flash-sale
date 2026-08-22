@@ -64,25 +64,25 @@ patches:
 images:
   - name: api-gateway
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/api-gateway
-    newTag: initial
+    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: authentication-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/authentication-service
-    newTag: initial
+    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: campaign-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/campaign-service
-    newTag: initial
+    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: flash-sale-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/flash-sale-service
-    newTag: initial
+    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: inventory-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/inventory-service
-    newTag: initial
+    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: order-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/order-service
-    newTag: initial
+    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: payment-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/payment-service
-    newTag: phase17-5b4fc91
+    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: product-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/product-service
-    newTag: pilot-11cdf76ace24e6402eae0dbc1082d077766e3c72
+    newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
