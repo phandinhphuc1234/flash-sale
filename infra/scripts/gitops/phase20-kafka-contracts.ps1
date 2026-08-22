@@ -465,12 +465,14 @@ function Invoke-SchemaScript {
       Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue
       throw "Schema script '$([IO.Path]::GetFileName($ScriptPath))' exceeded the Phase 20 execution budget."
     }
-    $stdout = if (Test-Path -LiteralPath $childOut) {
-      (Get-Content -LiteralPath $childOut -Raw).Trim()
-    } else { "" }
-    $stderr = if (Test-Path -LiteralPath $childErr) {
-      (Get-Content -LiteralPath $childErr -Raw).Trim()
-    } else { "" }
+    $stdoutContent = if (Test-Path -LiteralPath $childOut) {
+      Get-Content -LiteralPath $childOut -Raw
+    } else { $null }
+    $stderrContent = if (Test-Path -LiteralPath $childErr) {
+      Get-Content -LiteralPath $childErr -Raw
+    } else { $null }
+    $stdout = if ($null -eq $stdoutContent) { "" } else { $stdoutContent.Trim() }
+    $stderr = if ($null -eq $stderrContent) { "" } else { $stderrContent.Trim() }
     if (-not [string]::IsNullOrWhiteSpace($stdout)) { Write-Output $stdout }
     if ($child.ExitCode -ne 0) {
       $diagnostic = if ($stderr.Length -gt 2000) { $stderr.Substring(0, 2000) } else { $stderr }
