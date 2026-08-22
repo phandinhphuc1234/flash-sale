@@ -1,5 +1,12 @@
 # GitOps Phase 5–23 helper scripts
 
+## Canonical roadmap numbering
+
+The full roadmap is documented in [`docs/deployment/gitops-roadmap-status.md`](../../docs/deployment/gitops-roadmap-status.md).
+Its phases 19–26 are the product roadmap. Repository safety gates named Phase 21–23 verify release
+artifacts, cloud configuration, and Terraform respectively; they are supporting gates and do not
+replace canonical roadmap 22 (internal E2E), 23 (public Gateway), or 24 (Stripe cloud enablement).
+
 These PowerShell scripts preserve the manual workflow used for the AWS EKS GitOps exercise.
 Run them from any directory. They resolve the repository root from their own location.
 
