@@ -16,6 +16,9 @@ spec:
         app.kubernetes.io/name: schema-registry
         app.kubernetes.io/part-of: flash-sale
     spec:
+      # Prevent Kubernetes Service-Link variables (SCHEMA_REGISTRY_PORT) from
+      # colliding with Confluent's deprecated configuration check.
+      enableServiceLinks: false
       containers:
         - name: schema-registry
           image: confluentinc/cp-schema-registry:8.3.0

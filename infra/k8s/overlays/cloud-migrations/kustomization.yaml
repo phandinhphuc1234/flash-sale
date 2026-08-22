@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: flash-sale
+
+resources:
+  - authentication-migration-job.yaml
+  - product-migration-job.yaml
+  - campaign-migration-job.yaml
+  - flash-sale-migration-job.yaml
+  - inventory-migration-job.yaml
+  - order-migration-job.yaml
+  - payment-migration-job.yaml
+
+images:
+  - name: authentication-service
+    newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/authentication-service
+    newTag: initial
+  - name: product-service
+    newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/product-service
+    newTag: initial
+  - name: campaign-service
+    newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/campaign-service
+    newTag: initial
+  - name: flash-sale-service
+    newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/flash-sale-service
+    newTag: initial
+  - name: inventory-service
+    newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/inventory-service
+    newTag: initial
+  - name: order-service
+    newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/order-service
+    newTag: initial
+  - name: payment-service
+    newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/payment-service
+    newTag: initial
