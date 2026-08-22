@@ -4,7 +4,7 @@
 
 **Cluster**: `flash-sale-dev` (`ap-southeast-2`)
 
-**Feature revision**: `c079fdcc76bda967c7f509542bf4dea466f6757d`
+**Feature revision**: `da71f670ea59384d41c7b701cccdc6e47c1b6c1b`
 
 ## Static validation
 
@@ -26,7 +26,7 @@ pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase21-cloud-release-verif
 Observed:
 
 - Argo `flash-sale-cloud`: `Synced`, `Healthy`, target `develop`, revision
-  `c079fdcc76bda967c7f509542bf4dea466f6757d`.
+  `da71f670ea59384d41c7b701cccdc6e47c1b6c1b` (post-merge verification).
 - Eight Deployments were available at `1/1`, and every Pod image ID matched the ECR manifest digest:
 
 | Service | Tag | Manifest digest |
