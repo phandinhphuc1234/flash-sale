@@ -34,7 +34,7 @@ $requiredMarkers = @(
   'INVENTORY_FIXTURE_ENABLED',
   'Inventory fixture status',
   'Inventory fixture Job failed',
-  'Get-BoundedText $logs 2000',
+  'Get-BoundedText $logs 5000',
   'api/v1/orders?page=0&size=100',
   'purchaseRequestId',
   'reservationId',

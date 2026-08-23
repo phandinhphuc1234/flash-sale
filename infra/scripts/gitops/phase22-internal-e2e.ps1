@@ -491,14 +491,14 @@ spec:
       if ($failed -ge 1) {
         $logs = (& kubectl -n $Namespace logs "job/$($script:FixtureJobName)" --all-containers=true --tail=100 2>&1 | Out-String).Trim()
         if ([string]::IsNullOrWhiteSpace($logs)) { $logs = "no logs available" }
-        throw "Inventory fixture Job failed (failedAttempts=$failed): $(Get-BoundedText $logs 2000)"
+        throw "Inventory fixture Job failed (failedAttempts=$failed): $(Get-BoundedText $logs 5000)"
       }
       Start-Sleep -Seconds ([Math]::Min(3, (Get-RemainingSeconds)))
     } while ((Get-Date) -lt $waitDeadline)
     if (-not $completed) {
       $logs = (& kubectl -n $Namespace logs "job/$($script:FixtureJobName)" --all-containers=true --tail=100 2>&1 | Out-String).Trim()
       if ([string]::IsNullOrWhiteSpace($logs)) { $logs = "no logs available" }
-      throw "Inventory fixture completion timed out: $(Get-BoundedText $logs 2000)"
+      throw "Inventory fixture completion timed out: $(Get-BoundedText $logs 5000)"
     }
     Write-Output "Inventory fixture Job: PASS (variantId=$($Product.VariantId) quantity=$InventoryQuantity)"
   } finally {
