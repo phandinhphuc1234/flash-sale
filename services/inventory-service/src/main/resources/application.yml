@@ -36,6 +36,12 @@ flashsale:
     fixture:
       # The fixture adapter is disabled for normal Deployments; the Phase 22 Job opts in explicitly.
       enabled: ${INVENTORY_FIXTURE_ENABLED:false}
+      # The one-shot Job supplies these values as environment variables. Keep the short names
+      # aligned with the Job manifest while binding them to the prefixed configuration properties.
+      variant-id: ${INVENTORY_FIXTURE_VARIANT_ID:}
+      sku-snapshot: ${INVENTORY_FIXTURE_SKU_SNAPSHOT:}
+      quantity: ${INVENTORY_FIXTURE_QUANTITY:0}
+      reason: ${INVENTORY_FIXTURE_REASON:}
     security:
       # Public/admin requests keep the existing flash-sale-api audience.
       jwt:
