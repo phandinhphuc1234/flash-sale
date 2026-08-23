@@ -7,7 +7,7 @@ never included in evidence.
 |---|---|---|
 | Auth admin | `POST /api/v1/auth/login` | 200 and admin authorities |
 | Auth shopper | `POST /api/v1/auth/register`, then `/login` | 201/200 and shopper subject |
-| Product | `/api/v1/admin/catalog/products*` | draft, composition, and ACTIVE publication |
+| Product | `/api/v1/admin/catalog/products*` | draft, server-owned Variant composition, detail read-back, and ACTIVE publication |
 | Inventory | Inventory-owned Job/CLI | one initialized item with positive quantity |
 | Campaign | `/api/v1/admin/campaigns*` | create, item, schedule, activate |
 | Reservation | `POST /api/v1/flash-sales/{campaignId}/reservations` | 202, then same-key identity replay |
