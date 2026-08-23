@@ -47,6 +47,10 @@ pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase22-internal-e2e-memory
 The wrapper still prompts interactively once per run; it intentionally does not persist or reuse
 the password between runs.
 
+The disposable Product fixture uses a base price of `199000 VND` and the Campaign item uses
+`179000 VND`. Campaign validation requires the promotional price to be strictly lower than the
+Product base price; do not change these values to equal amounts.
+
 ## Verification commands
 
 ```powershell

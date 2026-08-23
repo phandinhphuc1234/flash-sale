@@ -35,6 +35,11 @@ $ArgoNamespace = "argocd"
 $ArgoApplication = "flash-sale-cloud"
 $ExpectedClusterName = "flash-sale-dev"
 $ExpectedRepositoryUrl = "https://github.com/phandinhphuc1234/flash-sale.git"
+$ProductBasePrice = 199000
+$CampaignPrice = 179000
+if ($CampaignPrice -ge $ProductBasePrice) {
+  throw "Phase 22 fixture campaign price must be lower than the Product base price."
+}
 $RunDeadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $script:PortForward = $null
 $script:PortForwardOut = $null
@@ -410,7 +415,7 @@ function Invoke-ProductFixture {
     name = "Phase 22 Smoke $suffix"; shortDescription = "Disposable internal smoke fixture"; description = "Phase 22 internal E2E fixture"
     # Product owns Variant identity. A new composition must omit id; supplying a
     # runner-generated id is treated as an update to a non-owned Variant (409).
-    variants = @(@{ id = $null; sku = $sku; barcode = $null; name = "Smoke Variant"; basePrice = 199000; currency = "VND"; status = "ACTIVE"; sortOrder = 0 })
+    variants = @(@{ id = $null; sku = $sku; barcode = $null; name = "Smoke Variant"; basePrice = $ProductBasePrice; currency = "VND"; status = "ACTIVE"; sortOrder = 0 })
     categories = @(); media = @()
   }
   Assert-ApiStatus $composition @(200) "Product composition"
@@ -536,7 +541,7 @@ function Invoke-CampaignFixture {
   $itemHeaders = New-OperationHeaders $AdminToken (New-TraceId)
   $itemHeaders["If-Match"] = ('"{0}"' -f $version)
   $item = Invoke-Api -Method PUT -Uri "$BaseUri/api/v1/admin/campaigns/$campaignId/item" -Headers $itemHeaders -Body @{
-    variantId = $Product.VariantId; campaignPrice = 199000; requestedQuantity = $InventoryQuantity; purchaseLimitPerUser = 1
+    variantId = $Product.VariantId; campaignPrice = $CampaignPrice; requestedQuantity = $InventoryQuantity; purchaseLimitPerUser = 1
   }
   Assert-ApiStatus $item @(200) "Campaign item"
   $version = Get-Version $item (Get-ApiData $item.Body)
