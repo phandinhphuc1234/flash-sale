@@ -113,9 +113,9 @@ if ([string]::IsNullOrWhiteSpace($externalHost)) {
   throw "AWS endpoint was not assigned within $TimeoutSeconds seconds."
 }
 Assert-PrivateServiceInventory
-Write-Output "Public Gateway endpoint: http://$externalHost"
+Write-Output "Public Gateway endpoint: http://${externalHost}:8080"
 
-$baseUri = "http://$externalHost"
+$baseUri = "http://${externalHost}:8080"
 $readiness = 0
 do {
   $readiness = Get-HttpStatus "$baseUri/actuator/health/readiness"
