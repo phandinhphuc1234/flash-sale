@@ -31,13 +31,12 @@ numbers above:
 
 ## Required order from here
 
-After the Phase 23 PR is merged:
+After the Phase 22 PR is merged:
 
-1. Complete canonical roadmap **22** with an internal, authenticated end-to-end smoke.
-2. Design and review canonical roadmap **23** before adding any public AWS endpoint.
-3. Enable canonical roadmap **24** only with approved Stripe test secrets and explicit Payment flags.
-4. Deploy canonical roadmap **25** monitoring and alerting.
-5. Execute canonical roadmap **26** final validation, rollback evidence, documentation, and cleanup.
+1. Merge and reconcile the canonical roadmap **23** public Gateway change, then run its bounded smoke.
+2. Enable canonical roadmap **24** only with approved Stripe test secrets and explicit Payment flags.
+3. Deploy canonical roadmap **25** monitoring and alerting.
+4. Execute canonical roadmap **26** final validation, rollback evidence, documentation, and cleanup.
 
 Do not skip canonical roadmap 22 to expose the Gateway publicly. Do not enable Stripe merely because
 the cloud infrastructure is healthy.

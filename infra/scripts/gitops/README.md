@@ -130,9 +130,14 @@ From the repository root:
     # Phase 22: verify cloud ownership/configuration boundaries without mutation.
     pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase22-cloud-guard.ps1
 
-    # Phase 23: preview Terraform safely; set the real public IPv4 CIDR locally first.
+    # Technical Phase 23 gate: preview Terraform safely; set the real public IPv4 CIDR locally first.
     $env:AWS_PROFILE = "flash-sale-terraform"
     pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase23-terraform-gate.ps1 -AutoDetectPublicIp
+
+    # Canonical roadmap Phase 23: validate the reviewed public Gateway overlay.
+    pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase23-public-gateway.ps1
+    # After the public-edge PR is merged and Argo reports Synced/Healthy:
+    pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase23-public-gateway.ps1 -Run
 
     # Canonical roadmap 21 is hosted. Push a service change to develop, or use:
     # GitHub Actions -> Eight-Service GitOps Delivery -> Run workflow -> all/one service.
