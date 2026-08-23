@@ -1,3 +1,7 @@
 # Copy this file to terraform.tfvars and replace the documentation-only address with your current
 # public IPv4 address. terraform.tfvars is ignored and must not be committed.
 cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]
+
+# Optional Phase 24 HTTPS Gateway certificate. Keep disabled until a real DNS name is available.
+# gateway_acm_enabled = true
+# gateway_domain_name = "api-dev.example.com"

@@ -1,6 +1,6 @@
 # ADR-0027: Stripe cloud webhook transport
 
-- **Status**: Proposed — awaiting project-owner decision PAY-TRANSPORT-001
+- **Status**: Accepted — option A selected; concrete domain is an operator input
 - **Date**: 2026-08-23
 - **Decision owners**: Project owner, architecture reviewer, security reviewer
 - **Scope**: Canonical roadmap Phase 24, development EKS environment only
@@ -25,8 +25,10 @@ reliable provider callback.
 
 ## Decision
 
-Pending owner selection. Until option 1 is accepted (or option 2 is explicitly recorded as a partial
-test), all seven Payment runtime switches remain `false` in the cloud desired state.
+Select option 1: a domain-backed ACM certificate and HTTPS Gateway edge. The actual domain, DNS
+hosted-zone ownership, and certificate validation records are supplied by the project owner. Until
+those inputs are validated and the edge is healthy, all seven Payment runtime switches remain
+`false` in the cloud desired state.
 
 ## Consequences
 
@@ -42,4 +44,3 @@ test), all seven Payment runtime switches remain `false` in the cloud desired st
 - Stripe Test mode and `card` only are mandatory.
 - Payment result publication remains the existing Kafka outbox flow; Order remains Saga owner.
 - Rollback is a Git change that disables all seven switches and does not delete durable state.
-

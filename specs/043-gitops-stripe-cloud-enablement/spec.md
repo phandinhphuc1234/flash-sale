@@ -2,7 +2,7 @@
 
 **Feature Branch**: `codex/gitops-phase24-stripe-cloud`
 **Created**: 2026-08-23
-**Status**: Draft — planning complete; live enablement is gated by the webhook transport decision
+**Status**: Approved for implementation — option A selected; domain/DNS inputs remain operator-supplied
 **Input**: Enable the already-implemented Payment Service Stripe Checkout slice in the single AWS
 development environment, without exposing card data or committing secrets.
 
@@ -45,9 +45,11 @@ HTTP-only and has now been rolled back to private `ClusterIP` Services.
 
 ## Human decision required
 
-**[NEEDS CLARIFICATION: PAY-TRANSPORT-001] Choose the cloud webhook transport before enabling flags.**
+**Decision PAY-TRANSPORT-001: Option A selected.** The cloud webhook transport is a domain-backed
+HTTPS Gateway edge. The concrete domain and DNS owner are operator-supplied implementation inputs;
+they must be present before Terraform apply or Stripe registration.
 
-- **A — Recommended canonical cloud path**: attach a real domain to the Gateway, issue an ACM
+- **A — Selected canonical cloud path**: attach a real domain to the Gateway, issue an ACM
   certificate, expose HTTPS through an AWS-managed LoadBalancer/Ingress, and register
   `https://<domain>/webhooks/v1/payments/stripe` in Stripe Test mode. This makes Phase 24 a real
   cloud flow and keeps external ingress at the Gateway.
@@ -55,8 +57,8 @@ HTTP-only and has now been rolled back to private `ClusterIP` Services.
   port-forward. This validates provider handling but is not a completed cloud webhook deployment;
   Phase 24 would remain partially complete until A is implemented.
 
-**Owner**: project owner. **Decision point**: before changing the cloud ConfigMap from disabled to
-enabled. No live Payment flags are changed while this decision is unresolved.
+**Owner**: project owner. No live Payment flags are changed until the domain is validated, the HTTPS
+edge is healthy, and the Stripe Test-mode webhook secret is provisioned.
 
 ## Functional requirements
 
@@ -136,4 +138,3 @@ enabled. No live Payment flags are changed while this decision is unresolved.
 - A reviewed ADR for the HTTPS webhook edge if decision A is selected.
 - Owner-provided Stripe Test-mode values: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and
   `STRIPE_WEBHOOK_SECRET`; values remain only in ignored `infra/docker/.env`.
-

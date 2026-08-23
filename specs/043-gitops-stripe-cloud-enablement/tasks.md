@@ -2,10 +2,10 @@
 
 ## Planning and approval gate
 
-- [ ] T001 Confirm PAY-TRANSPORT-001: domain + ACM HTTPS edge (recommended) or temporary Stripe CLI
-  relay; document owner decision and boundary.
-- [ ] T002 Accept ADR 0027 for the selected webhook transport and update the public Gateway
-  contract if the HTTPS edge changes.
+- [x] T001 Confirm PAY-TRANSPORT-001: domain + ACM HTTPS edge selected; concrete domain remains an
+  operator-supplied input.
+- [x] T002 Accept ADR 0027 for the selected HTTPS webhook transport and preserve the Gateway-only
+  ingress boundary.
 - [x] T003 Align this spec, plan, research, data model, contract, and quickstart with the existing
   Payment Service and Phase 15/21/22 controls.
 
@@ -32,4 +32,3 @@
   database resources.
 - [ ] T012 Record sanitized validation evidence, update the roadmap, and mark Phase 24 complete only
   when option A's HTTPS webhook has actually delivered a test event.
-
