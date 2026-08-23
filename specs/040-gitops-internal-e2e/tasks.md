@@ -41,7 +41,7 @@ initializes its Inventory item through the Job, and schedules/activates a Campai
 
 - [x] T012 [US2] Implement secure admin login and authority checks in `infra/scripts/gitops/phase22-internal-e2e.ps1` using `Read-Host -AsSecureString`; never accept or print a raw password.
 - [x] T013 [US2] Implement unique shopper registration/login and in-memory token handling in `infra/scripts/gitops/phase22-internal-e2e.ps1`.
-- [x] T014 [US2] Implement Product draft, explicit Variant composition, ETag/version extraction, and publication calls in `infra/scripts/gitops/phase22-internal-e2e.ps1`.
+- [x] T014 [US2] Implement Product draft, server-owned Variant composition/read-back, ETag/version extraction, and publication calls in `infra/scripts/gitops/phase22-internal-e2e.ps1`.
 - [x] T015 [US2] Implement temporary Inventory fixture Job manifest rendering, apply, bounded wait, sanitized diagnostics, and default deletion in `infra/scripts/gitops/phase22-internal-e2e.ps1`.
 - [x] T016 [US2] Implement Campaign create/item/schedule/activate calls with required If-Match, idempotency, and trace headers in `infra/scripts/gitops/phase22-internal-e2e.ps1`.
 - [x] T017 [P] [US2] Add contract/static tests for fixture Job activation and no-secret output in `infra/scripts/gitops/tests/phase22-internal-e2e.tests.ps1`.

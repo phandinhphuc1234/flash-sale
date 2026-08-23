@@ -25,7 +25,7 @@ In scope:
 - an operator-supplied admin login used only in memory to obtain a JWT with the existing
   `ROLE_ADMIN` authorities;
 - an automatically registered disposable shopper account and a shopper JWT;
-- Product draft creation, composition, publication, and Inventory stock adjustment through the
+- Product draft creation, server-owned Variant composition, publication, and Inventory stock adjustment through the
   documented Gateway APIs, after an approved Inventory initialization path is available;
 - Campaign creation, item replacement, scheduling, and activation through the documented Gateway
   APIs;
@@ -53,9 +53,11 @@ Out of scope:
 
 2. **Business fixture and Inventory initialization**: add an explicitly approved, Inventory-owned,
    one-off fixture Job/CLI that calls the Inventory application use case for the disposable Product
-   Variant before the Gateway smoke. The smoke never executes SQL or touches another service
-   database. Product/Campaign fixtures use unique identifiers and remain inactive/archived after the
-   run because Campaign has no delete endpoint; IDs are reported for manual cleanup.
+   Variant before the Gateway smoke. Product owns Variant identity: the composition request omits
+   `Variant.id` for a new Variant, then the runner reads the server-assigned id from Product detail
+   before initializing Inventory. The smoke never executes SQL or touches another service database.
+   Product/Campaign fixtures use unique identifiers and remain inactive/archived after the run because
+   Campaign has no delete endpoint; IDs are reported for manual cleanup.
 
 3. **Order assertion**: poll `GET /api/v1/orders?page=0&size=100` as the shopper to discover a new
    owned Order, then query `GET /api/v1/orders/{orderId}` and require its `purchaseRequestId`,
@@ -99,9 +101,9 @@ Gateway and verify each response, version/ETag transition, and inventory quantit
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid admin JWT, **when** the script creates a Product draft, composition, stock, and
-   publication, **then** the variant ID and active catalog state are captured without exposing the
-   JWT.
+1. **Given** a valid admin JWT, **when** the script creates a Product draft, submits a composition
+   with a new Variant without an id, reads the server-assigned Variant id, initializes stock, and
+   publishes, **then** the variant ID and active catalog state are captured without exposing the JWT.
 2. **Given** the published variant, **when** the script creates, populates, schedules, and activates
    a Campaign, **then** the campaign response is active and the requested quantity is positive.
 3. **Given** any admin call returns an authentication/authorization or validation error, **when** the

@@ -379,7 +379,6 @@ function Invoke-ShopperRegistration {
 function Invoke-ProductFixture {
   param([Parameter(Mandatory)][string]$BaseUri, [Parameter(Mandatory)][string]$AdminToken)
   $suffix = [guid]::NewGuid().ToString("N").Substring(0, 12)
-  $variantId = [guid]::NewGuid()
   $trace = New-TraceId
   $sku = "PHASE22-SKU-$suffix"
   $headers = New-OperationHeaders $AdminToken $trace
@@ -396,11 +395,22 @@ function Invoke-ProductFixture {
   $compositionHeaders["If-Match"] = [string]$version
   $composition = Invoke-Api -Method PUT -Uri "$BaseUri/api/v1/admin/catalog/products/$productId/composition" -Headers $compositionHeaders -Body @{
     name = "Phase 22 Smoke $suffix"; shortDescription = "Disposable internal smoke fixture"; description = "Phase 22 internal E2E fixture"
-    variants = @(@{ id = $variantId; sku = $sku; barcode = $null; name = "Smoke Variant"; basePrice = 199000; currency = "VND"; status = "ACTIVE"; sortOrder = 0 })
+    # Product owns Variant identity. A new composition must omit id; supplying a
+    # runner-generated id is treated as an update to a non-owned Variant (409).
+    variants = @(@{ id = $null; sku = $sku; barcode = $null; name = "Smoke Variant"; basePrice = 199000; currency = "VND"; status = "ACTIVE"; sortOrder = 0 })
     categories = @(); media = @()
   }
   Assert-ApiStatus $composition @(200) "Product composition"
   $version = [long](Get-PropertyValue (Get-ApiData $composition.Body) "version")
+  $detailHeaders = New-OperationHeaders $AdminToken (New-TraceId)
+  $detail = Invoke-Api -Method GET -Uri "$BaseUri/api/v1/admin/catalog/products/$productId" -Headers $detailHeaders
+  Assert-ApiStatus $detail @(200) "Product composition detail"
+  $variant = @(Get-PropertyValue (Get-ApiData $detail.Body) "variants") |
+    Where-Object { [string](Get-PropertyValue $_ "sku") -eq $sku } |
+    Select-Object -First 1
+  if ($null -eq $variant) { throw "Product composition detail did not contain the created SKU." }
+  $variantId = [guid](Get-PropertyValue $variant "id")
+  if ($variantId -eq [guid]::Empty) { throw "Product composition detail returned an empty Variant id." }
   $publishHeaders = New-OperationHeaders $AdminToken (New-TraceId)
   $publishHeaders["If-Match"] = [string]$version
   $publishHeaders["Idempotency-Key"] = "phase22-product-publish-$suffix"

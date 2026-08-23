@@ -94,8 +94,9 @@ currently deployed Inventory image, applies it, waits for completion, and delete
    and anonymous Gateway admin rejection.
 2. **Gateway session**: start a loopback-only port-forward; prompt for admin login/password; login;
    register/login a unique shopper; never print bearer values.
-3. **Product**: create a unique draft, send a composition with an explicit Variant UUID, and publish
-   using ETags/versions and required trace/idempotency headers.
+3. **Product**: create a unique draft, send a composition with a new Variant whose id is omitted so
+   Product assigns ownership, read the admin detail to capture the server-assigned Variant UUID, and
+   publish using ETags/versions and required trace/idempotency headers.
 4. **Inventory**: render the Job with the Variant UUID/SKU/positive quantity/reason, use the current
    Inventory image and `inventory-secrets`, wait for one successful completion, and delete the Job.
 5. **Campaign**: create a unique campaign window, replace its item with the Variant UUID and quantity,
