@@ -14,6 +14,6 @@
 ## Verification and evidence
 
 - [x] T006 Run Kustomize client-side dry-run for the cloud overlay and Phase 23 static checks.
-- [ ] T007 Verify Argo `Synced/Healthy`, exactly one public Service, endpoint readiness/catalog/admin boundary.
+- [x] T007 Verify Argo `Synced/Healthy`, exactly one public Service, endpoint readiness/catalog/admin boundary.
 - [ ] T008 Verify rollback restores `ClusterIP` and does not delete PVCs, Secrets, topics, or data.
-- [ ] T009 Record sanitized evidence in `specs/042-gitops-public-gateway/validation.md` and update the roadmap.
+- [x] T009 Record sanitized public smoke evidence in `specs/042-gitops-public-gateway/validation.md` and update the roadmap.
