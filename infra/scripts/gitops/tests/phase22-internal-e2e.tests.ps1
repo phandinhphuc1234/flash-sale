@@ -35,6 +35,7 @@ $requiredMarkers = @(
   'variants = @(@{ id = $null',
   '$CampaignPrice -ge $ProductBasePrice',
   'campaignPrice = $CampaignPrice',
+  'Write-Host "Campaign fixture: PASS',
   'Product composition detail',
   'deployment/inventory-service',
   'INVENTORY_FIXTURE_ENABLED',

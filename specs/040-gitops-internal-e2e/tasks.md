@@ -63,7 +63,7 @@ owner query mismatches, or no matching Order appears before the bounded deadline
 
 - [x] T022 [P] Add the Phase 22 operator quickstart and troubleshooting notes to `specs/040-gitops-internal-e2e/quickstart.md` and `docs/deployment/gitops-roadmap-status.md`.
 - [x] T023 Run `kubectl apply --dry-run=client -k infra/k8s/overlays/cloud`, PowerShell parser/static checks, and full `./mvnw.cmd clean verify`; record all results in `specs/040-gitops-internal-e2e/validation.md`. The default reactor run exposed a local concurrency timeout in an existing Order integration test; the complete reactor passed with a test-only Hikari wait override, with no production configuration change.
-- [ ] T024 Run the live authenticated smoke with an operator-supplied admin account, record sanitized IDs and Argo revision in `specs/040-gitops-internal-e2e/validation.md`, and verify no secrets appear in logs.
+- [x] T024 Run the live authenticated smoke with an operator-supplied admin account, record sanitized IDs and Argo revision in `specs/040-gitops-internal-e2e/validation.md`, and verify no secrets appear in logs. Evidence: 2026-08-23 live run passed in 73s with matching Order identities and no secret output.
 - [x] T025 Run `speckit-analyze` prerequisites and resolve all CRITICAL/HIGH consistency findings before marking Phase 22 complete. No unresolved findings remain.
 
 ## Dependencies and Execution Order

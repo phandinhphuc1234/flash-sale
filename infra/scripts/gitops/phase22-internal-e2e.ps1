@@ -573,7 +573,8 @@ function Invoke-CampaignFixture {
     }
   }
   if ([string](Get-PropertyValue $active "status") -ne "ACTIVE") { throw "Campaign activation did not return ACTIVE." }
-  Write-Output "Campaign fixture: PASS (campaignId=$campaignId status=ACTIVE)"
+  # Keep operator progress out of the pipeline so callers receive only the fixture object.
+  Write-Host "Campaign fixture: PASS (campaignId=$campaignId status=ACTIVE)"
   return [pscustomobject]@{ CampaignId = $campaignId; StartAt = $startAt; EndAt = $endAt }
 }
 
