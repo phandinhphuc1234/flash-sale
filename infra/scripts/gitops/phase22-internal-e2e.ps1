@@ -474,8 +474,29 @@ spec:
   try {
     Get-NativeText -Command "kubectl" -Arguments @("apply", "--dry-run=client", "-f", $script:FixtureManifest) -Description "Inventory fixture dry-run" | Out-Null
     Get-NativeText -Command "kubectl" -Arguments @("apply", "-f", $script:FixtureManifest) -Description "Inventory fixture Job" | Out-Null
-    $waitSeconds = [Math]::Min(180, (Get-RemainingSeconds))
-    Get-NativeText -Command "kubectl" -Arguments @("-n", $Namespace, "wait", "--for=condition=complete", "job/$($script:FixtureJobName)", "--timeout=${waitSeconds}s") -Description "Inventory fixture completion" | Out-Null
+    $waitDeadline = (Get-Date).AddSeconds([Math]::Min(180, (Get-RemainingSeconds)))
+    $completed = $false
+    do {
+      $job = Get-NativeJson -Command "kubectl" -Arguments @(
+        "-n", $Namespace, "get", "job/$($script:FixtureJobName)", "-o", "json") -Description "Inventory fixture status"
+      $succeeded = [int](Get-PropertyValue (Get-PropertyValue $job "status") "succeeded")
+      $failed = [int](Get-PropertyValue (Get-PropertyValue $job "status") "failed")
+      if ($succeeded -ge 1) {
+        $completed = $true
+        break
+      }
+      if ($failed -ge 1) {
+        $logs = (& kubectl -n $Namespace logs "job/$($script:FixtureJobName)" --all-containers=true --tail=100 2>&1 | Out-String).Trim()
+        if ([string]::IsNullOrWhiteSpace($logs)) { $logs = "no logs available" }
+        throw "Inventory fixture Job failed (failedAttempts=$failed): $(Get-BoundedText $logs)"
+      }
+      Start-Sleep -Seconds ([Math]::Min(3, (Get-RemainingSeconds)))
+    } while ((Get-Date) -lt $waitDeadline)
+    if (-not $completed) {
+      $logs = (& kubectl -n $Namespace logs "job/$($script:FixtureJobName)" --all-containers=true --tail=100 2>&1 | Out-String).Trim()
+      if ([string]::IsNullOrWhiteSpace($logs)) { $logs = "no logs available" }
+      throw "Inventory fixture completion timed out: $(Get-BoundedText $logs)"
+    }
     Write-Output "Inventory fixture Job: PASS (variantId=$($Product.VariantId) quantity=$InventoryQuantity)"
   } finally {
     if ($null -ne $script:FixtureJobName) {

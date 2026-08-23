@@ -32,6 +32,8 @@ $requiredMarkers = @(
   'Product composition detail',
   'deployment/inventory-service',
   'INVENTORY_FIXTURE_ENABLED',
+  'Inventory fixture status',
+  'Inventory fixture Job failed',
   'api/v1/orders?page=0&size=100',
   'purchaseRequestId',
   'reservationId',
