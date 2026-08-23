@@ -2,8 +2,8 @@
 
 ## Planning gate
 
-- [ ] T001 Confirm the exposure mechanism and HTTP-only development boundary.
-- [ ] T002 Accept `docs/adr/0026-public-gateway-development-exposure.md` and update this plan if the mechanism changes.
+- [x] T001 Confirm the exposure mechanism and HTTP-only development boundary: EKS Service LoadBalancer/NLB with AWS-generated HTTP hostname.
+- [x] T002 Accept `docs/adr/0026-public-gateway-development-exposure.md` for the development-only boundary.
 
 ## Implementation
 

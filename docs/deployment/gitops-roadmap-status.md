@@ -12,8 +12,8 @@ or public exposure by itself.
 | 19 | Move the complete cloud overlay to Argo CD | **Complete** | `flash-sale-cloud` owns `infra/k8s/overlays/cloud` and is `Synced/Healthy`. |
 | 20 | Provision Kafka topics and Avro schemas on EKS | **Complete** | Seven approved topics and nine Schema Registry subjects; Payment remains disabled. |
 | 21 | CI/CD for all eight services | **Partial** | Selective Maven CI covers affected services; hosted ECR/PR promotion is currently proven for Product Service. Full eight-service image promotion is still required. |
-| 22 | Internal end-to-end smoke | **In implementation** | `specs/040-gitops-internal-e2e/` defines the approved authenticated runner: existing `ROLE_ADMIN`, Inventory-owned fixture Job, reservation replay, and Order identity convergence. Live evidence is pending an Inventory image promotion. |
-| 23 | Public Gateway on AWS | **Pending** | Gateway remains `ClusterIP` and is tested through localhost port-forward. No public LoadBalancer/Ingress/DNS/TLS is enabled. |
+| 22 | Internal end-to-end smoke | **Complete** | Live authenticated smoke passed on 2026-08-23: Product → Inventory → Campaign → Flash Sale reservation/replay → Order identity convergence. Evidence is recorded in `specs/040-gitops-internal-e2e/validation.md`; Payment remains disabled by design. |
+| 23 | Public Gateway on AWS | **In implementation** | Approved development boundary: only `api-gateway` becomes an AWS NLB-backed `LoadBalancer` with an AWS-generated HTTP hostname; backend/platform Services remain private. |
 | 24 | Stripe cloud enablement | **Pending** | Payment and Stripe runtime flags remain disabled; no cloud checkout/webhook flow is enabled. |
 | 25 | Observability | **Pending** | Services expose Actuator/Prometheus endpoints; cloud Prometheus, Grafana, dashboards, and alerts are not yet deployed. |
 | 26 | Final validation and cleanup | **Pending** | Final cloud E2E, load, full rollback, runbooks, and pilot cleanup remain. |
@@ -31,13 +31,12 @@ numbers above:
 
 ## Required order from here
 
-After the Phase 23 PR is merged:
+After the Phase 22 PR is merged:
 
-1. Complete canonical roadmap **22** with an internal, authenticated end-to-end smoke.
-2. Design and review canonical roadmap **23** before adding any public AWS endpoint.
-3. Enable canonical roadmap **24** only with approved Stripe test secrets and explicit Payment flags.
-4. Deploy canonical roadmap **25** monitoring and alerting.
-5. Execute canonical roadmap **26** final validation, rollback evidence, documentation, and cleanup.
+1. Merge and reconcile the canonical roadmap **23** public Gateway change, then run its bounded smoke.
+2. Enable canonical roadmap **24** only with approved Stripe test secrets and explicit Payment flags.
+3. Deploy canonical roadmap **25** monitoring and alerting.
+4. Execute canonical roadmap **26** final validation, rollback evidence, documentation, and cleanup.
 
 Do not skip canonical roadmap 22 to expose the Gateway publicly. Do not enable Stripe merely because
 the cloud infrastructure is healthy.

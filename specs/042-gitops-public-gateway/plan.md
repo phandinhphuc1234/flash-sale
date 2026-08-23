@@ -7,7 +7,7 @@
 Expose only the cloud `api-gateway` Service through one AWS-managed development endpoint, keep all
 backend/platform Services private, verify the existing Gateway behavior through the discovered
 hostname, and make rollback a normal GitOps change. The recommended implementation is a
-`LoadBalancer` Service with AWS NLB annotations, pending ADR/operator confirmation. No application
+`LoadBalancer` Service with AWS NLB annotations, approved by ADR/operator decision. No application
 source, database, Kafka, Redis, Secret, or Payment behavior changes.
 
 ## Technical Context
@@ -40,8 +40,8 @@ restore `ClusterIP` without data deletion.
 
 ## Constitution Check
 
-- **Specification traceability**: PASS pending resolution of the two explicit exposure decisions and
-  ADR acceptance. No public manifest task may start before that gate.
+- **Specification traceability**: PASS. The NLB/HTTP development decisions are resolved and ADR 0026
+  is accepted before public manifest work.
 - **Service ownership**: PASS. No service source, JPA, schema, migration, or database access changes.
 - **Communication**: PASS. All external requests still enter through `api-gateway`; Kubernetes
   Service/DNS remains internal service discovery; existing HTTP routes are reused.
@@ -51,8 +51,7 @@ restore `ClusterIP` without data deletion.
 - **Observability**: PASS. Existing readiness endpoint and trace-safe HTTP status checks are reused;
   no Prometheus registry code is added.
 - **Contracts and dependencies**: PASS. `contracts/public-gateway-smoke.md` documents consumed
-  routes; no application API contract changes. Controller/IAM/Helm is a blocked dependency unless
-  the operator selects that alternative.
+  routes; no application API contract changes. No controller/IAM/Helm dependency is added.
 - **Validation**: PASS for the planned layers; Maven/Kafka/load layers are intentionally omitted
   because no application or messaging behavior changes.
 
@@ -101,12 +100,11 @@ specs/042-gitops-public-gateway/
 
 ## Implementation Sequence
 
-1. Resolve the two human decisions and mark ADR 0026 Accepted.
-2. Add the cloud-only Service patch and verify the rendered manifest contains exactly one public
+1. Add the cloud-only Service patch and verify the rendered manifest contains exactly one public
    Service.
-3. Add the bounded smoke/guard helper and static tests.
-4. Open a PR; let Argo reconcile only after review and merge.
-5. Run public smoke, record sanitized evidence, then run the rollback path and record private-service
+2. Add the bounded smoke/guard helper and static tests.
+3. Open a PR; let Argo reconcile only after review and merge.
+4. Run public smoke, record sanitized evidence, then run the rollback path and record private-service
    inventory.
 
 ## Complexity Tracking

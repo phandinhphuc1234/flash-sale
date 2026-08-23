@@ -1,6 +1,6 @@
 # ADR 0026: Development Public Gateway Exposure
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-08-23
 
 ## Context
@@ -10,7 +10,7 @@ uses a localhost port-forward for Phase 22 smoke tests. The canonical roadmap ne
 temporary cloud endpoint while preserving the rule that every external request enters through
 `api-gateway`. Backend services, PostgreSQL, Redis, Kafka, and Schema Registry must remain private.
 
-## Decision pending
+## Decision
 
 The recommended development baseline is one Kubernetes `Service` of type `LoadBalancer` for
 `api-gateway`, with AWS NLB annotations and the existing public-subnet discovery tags. This is the
@@ -18,11 +18,9 @@ smallest topology change and avoids adding a second Ingress/ALB controller lifec
 would use the AWS-generated hostname and remain HTTP-only for the internship environment; custom
 DNS, ACM/TLS, WAF, and production hardening remain separate work.
 
-Before implementation, the operator must confirm:
-
-1. the existing EKS Service LoadBalancer integration is acceptable instead of installing the AWS
-   Load Balancer Controller; and
-2. the generated HTTP hostname is acceptable for development-only testing.
+The operator selected the existing EKS Service LoadBalancer integration with one AWS-managed NLB.
+The endpoint uses the AWS-generated hostname over HTTP for development-only verification. No AWS
+Load Balancer Controller, Ingress, custom DNS, ACM/TLS, WAF, or production hardening is added here.
 
 ## Alternatives considered
 
@@ -41,4 +39,5 @@ Before implementation, the operator must confirm:
 
 ## Approval
 
-- 2026-08-23 — Proposed; awaiting operator confirmation before public manifest changes.
+- 2026-08-23 — Accepted by operator: NLB-backed `Service type: LoadBalancer`, generated HTTP hostname,
+  development-only scope.

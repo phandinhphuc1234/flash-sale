@@ -2,7 +2,7 @@
 
 **Feature Branch**: `codex/gitops-phase23-public-gateway`
 **Created**: 2026-08-23
-**Status**: Draft
+**Status**: Approved for implementation
 **Input**: Continue the canonical GitOps roadmap after the authenticated internal E2E smoke and expose the API Gateway through an AWS endpoint for the cloud-only internship environment.
 
 ## Problem and Scope
@@ -135,11 +135,12 @@ the rollback change and verify the external endpoint disappears and the Service 
   cluster requires an additional controller or IAM role, that dependency must be added to the plan
   and approved before implementation.
 
-## Human Decisions Required
+## Approved Decisions
 
-- **[NEEDS CLARIFICATION: Confirm the development exposure mechanism before implementation: use the existing EKS Service LoadBalancer integration with an AWS-managed NLB, or install/manage AWS Load Balancer Controller and use an Ingress/ALB? The former is smaller and avoids a new controller; the latter offers richer routing and TLS but adds IAM/controller lifecycle.]**
-
-- **[NEEDS CLARIFICATION: Confirm that the temporary development endpoint may be HTTP-only with the AWS-generated hostname. HTTPS/custom domain requires an ACM certificate and DNS ownership and is intentionally not included in this phase.]**
+- Use the existing EKS Service LoadBalancer integration with one AWS-managed NLB for `api-gateway`.
+  Do not add AWS Load Balancer Controller, Ingress, or a second edge lifecycle in this phase.
+- Use the AWS-generated hostname over HTTP for development-only verification. Custom DNS, ACM/TLS,
+  WAF, and production hardening remain out of scope.
 
 ## Constitutional Constraints
 
@@ -151,8 +152,9 @@ the rollback change and verify the external endpoint disappears and the Service 
 - **Root infrastructure ownership**: Kubernetes exposure and verification assets remain under `infra/`; an ingress ADR is required.
 - **Observability**: Existing readiness/Prometheus configuration is reused; evidence records endpoint health and trace-safe status only.
 - **Verification**: Kustomize dry-run, public Service inventory, Argo health, endpoint smoke, and rollback verification are required.
-- **Architecture decisions**: `docs/adr/0026-public-gateway-development-exposure.md` must be Accepted before production manifest changes.
+- **Architecture decisions**: `docs/adr/0026-public-gateway-development-exposure.md` is Accepted for the NLB/HTTP development boundary.
 
 ## Approval and History
 
 - 2026-08-23 — Draft created after the successful Phase 22 internal E2E run.
+- 2026-08-23 — Operator selected the existing EKS LoadBalancer/NLB integration and HTTP-only development hostname.

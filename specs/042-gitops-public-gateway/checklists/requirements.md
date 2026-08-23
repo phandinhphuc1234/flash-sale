@@ -17,10 +17,10 @@
 - [x] Success criteria are measurable.
 - [x] Security and credential-output boundaries are explicit.
 - [x] Applicable infrastructure and operational dependencies are listed.
-- [ ] Exposure mechanism and HTTP/TLS boundary are awaiting operator decisions.
+- [x] Exposure mechanism and HTTP/TLS boundary are approved: NLB-backed LoadBalancer and generated HTTP hostname for dev only.
 
 ## Readiness
 
-- [ ] ADR is Accepted.
-- [ ] Plan and tasks are approved for implementation.
-- [ ] No public manifest change is allowed until the two decisions are resolved.
+- [x] ADR is Accepted for the selected development boundary.
+- [x] Plan and tasks are approved for implementation.
+- [x] Public manifest work is limited to the cloud Gateway Service.
