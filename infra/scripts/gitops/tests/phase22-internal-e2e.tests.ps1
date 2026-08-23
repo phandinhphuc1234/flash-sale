@@ -33,6 +33,8 @@ $requiredMarkers = @(
   '[Security.SecureString]$AdminPassword',
   'SkipHeaderValidation',
   'variants = @(@{ id = $null',
+  '$CampaignPrice -ge $ProductBasePrice',
+  'campaignPrice = $CampaignPrice',
   'Product composition detail',
   'deployment/inventory-service',
   'INVENTORY_FIXTURE_ENABLED',
