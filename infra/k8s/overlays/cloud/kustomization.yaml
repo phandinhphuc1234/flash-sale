@@ -76,7 +76,7 @@ images:
     newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
   - name: inventory-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/inventory-service
-    newTag: release-32093baf2350e24f48821837f82fb86b02369d56
+    newTag: release-880c718676319e142d4fb171340f6cecff87d718
   - name: order-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/order-service
     newTag: release-41de68fb88c0b4246a0c4ef9f447a620286f4e9e
