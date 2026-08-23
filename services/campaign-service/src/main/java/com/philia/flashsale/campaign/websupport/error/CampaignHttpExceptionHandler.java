@@ -150,8 +150,13 @@ public class CampaignHttpExceptionHandler {
     ResponseEntity<ApiErrorResponse> unexpected(
             Exception exception, HttpServletRequest request) {
         String traceId = CampaignRequestContext.resolveTraceId(request);
-        LOG.error("campaign_unexpected_failure traceId={} exceptionType={}",
-                traceId, exception.getClass().getSimpleName());
+        Throwable cause = exception.getCause();
+        LOG.error("campaign_unexpected_failure traceId={} exceptionType={} causeType={} message={}",
+                traceId,
+                exception.getClass().getSimpleName(),
+                cause == null ? "none" : cause.getClass().getSimpleName(),
+                exception.getMessage(),
+                exception);
         return error(CampaignErrorCode.CAMPAIGN_INTERNAL_ERROR, request, null);
     }
 

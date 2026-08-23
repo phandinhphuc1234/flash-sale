@@ -33,8 +33,14 @@ public final class ScheduleOperationRecoveryJob {
                         operation.campaignId(), operation.campaignVersion(),
                         operation.idempotencyKey(), operation.callerService(), operation.traceId()));
             } catch (RuntimeException exception) {
-                LOG.warn("campaign_schedule_recovery_deferred campaignId={} operationId={} failureType={}",
-                        operation.campaignId(), operation.id(), exception.getClass().getSimpleName());
+                Throwable cause = exception.getCause();
+                LOG.warn(
+                        "campaign_schedule_recovery_deferred campaignId={} operationId={} "
+                                + "failureType={} causeType={} message={}",
+                        operation.campaignId(), operation.id(),
+                        exception.getClass().getSimpleName(),
+                        cause == null ? "none" : cause.getClass().getSimpleName(),
+                        exception.getMessage(), exception);
             }
         }
     }
