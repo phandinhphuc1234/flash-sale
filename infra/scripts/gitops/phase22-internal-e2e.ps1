@@ -12,6 +12,7 @@
 param(
   [switch]$Run,
   [string]$AdminLogin,
+  [Security.SecureString]$AdminPassword,
   [ValidateRange(1024, 65535)]
   [int]$LocalPort = 28082,
   [ValidateRange(60, 1800)]
@@ -340,13 +341,22 @@ function Assert-Preflight {
 
 function Invoke-AdminLogin {
   param([Parameter(Mandatory)][string]$BaseUri)
-  $secure = Read-Host "Existing ROLE_ADMIN password" -AsSecureString
+  $ownsSecurePassword = $null -eq $AdminPassword
+  $secure = if ($ownsSecurePassword) {
+    Read-Host "Existing ROLE_ADMIN password" -AsSecureString
+  } else {
+    $AdminPassword
+  }
   $plain = Convert-SecurePassword $secure
   try {
     $response = Invoke-Api -Method POST -Uri "$BaseUri/api/v1/auth/login" -Body @{
       login = $AdminLogin; password = $plain; deviceName = "phase22-internal-e2e"
     }
-  } finally { $plain = $null }
+  } finally {
+    $plain = $null
+    if ($ownsSecurePassword) { $secure.Dispose() }
+    $secure = $null
+  }
   Assert-ApiStatus $response @(200) "admin login"
   $data = Get-ApiData $response.Body
   $token = [string](Get-PropertyValue $data "accessToken")
@@ -491,14 +501,14 @@ spec:
       if ($failed -ge 1) {
         $logs = (& kubectl -n $Namespace logs "job/$($script:FixtureJobName)" --all-containers=true --tail=100 2>&1 | Out-String).Trim()
         if ([string]::IsNullOrWhiteSpace($logs)) { $logs = "no logs available" }
-        throw "Inventory fixture Job failed (failedAttempts=$failed): $(Get-BoundedText $logs 2000)"
+        throw "Inventory fixture Job failed (failedAttempts=$failed): $(Get-BoundedText $logs 5000)"
       }
       Start-Sleep -Seconds ([Math]::Min(3, (Get-RemainingSeconds)))
     } while ((Get-Date) -lt $waitDeadline)
     if (-not $completed) {
       $logs = (& kubectl -n $Namespace logs "job/$($script:FixtureJobName)" --all-containers=true --tail=100 2>&1 | Out-String).Trim()
       if ([string]::IsNullOrWhiteSpace($logs)) { $logs = "no logs available" }
-      throw "Inventory fixture completion timed out: $(Get-BoundedText $logs 2000)"
+      throw "Inventory fixture completion timed out: $(Get-BoundedText $logs 5000)"
     }
     Write-Output "Inventory fixture Job: PASS (variantId=$($Product.VariantId) quantity=$InventoryQuantity)"
   } finally {

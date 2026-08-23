@@ -15,7 +15,9 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..\..")).Path
 $runner = Join-Path $repoRoot "infra\scripts\gitops\phase22-internal-e2e.ps1"
+$wrapper = Join-Path $repoRoot "infra\scripts\gitops\phase22-internal-e2e-memory.ps1"
 if (-not (Test-Path -LiteralPath $runner)) { throw "Runner not found: $runner" }
+if (-not (Test-Path -LiteralPath $wrapper)) { throw "Secure wrapper not found: $wrapper" }
 
 $tokens = $null
 $errors = $null
@@ -25,8 +27,10 @@ if ($errors.Count -gt 0) {
 }
 
 $content = Get-Content -LiteralPath $runner -Raw
+$wrapperContent = Get-Content -LiteralPath $wrapper -Raw
 $requiredMarkers = @(
   'Read-Host "Existing ROLE_ADMIN password" -AsSecureString',
+  '[Security.SecureString]$AdminPassword',
   'SkipHeaderValidation',
   'variants = @(@{ id = $null',
   'Product composition detail',
@@ -34,7 +38,7 @@ $requiredMarkers = @(
   'INVENTORY_FIXTURE_ENABLED',
   'Inventory fixture status',
   'Inventory fixture Job failed',
-  'Get-BoundedText $logs 2000',
+  'Get-BoundedText $logs 5000',
   'api/v1/orders?page=0&size=100',
   'purchaseRequestId',
   'reservationId',
@@ -47,6 +51,20 @@ foreach ($marker in $requiredMarkers) {
   if ($content.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) {
     throw "Required safety/flow marker is missing: $marker"
   }
+}
+
+foreach ($marker in @(
+  'Read-Host "Existing ROLE_ADMIN password (memory only)" -AsSecureString',
+  '-AdminPassword $securePassword',
+  '$securePassword.Dispose()'
+)) {
+  if ($wrapperContent.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) {
+    throw "Secure wrapper marker is missing: $marker"
+  }
+}
+
+if ($wrapperContent -match '(?i)(password\s*=\s*"|ConvertTo-SecureString\s+-String)') {
+  throw "Secure wrapper contains a plaintext password assignment."
 }
 
 $forbiddenPatterns = @(

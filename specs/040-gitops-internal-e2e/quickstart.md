@@ -33,6 +33,20 @@ submits one reservation, replays the key, and polls the owner Order list. It del
 exit paths; Product/Campaign IDs are reported for manual archive/cleanup because no delete contract
 exists.
 
+### Optional secure one-prompt wrapper
+
+To avoid the canonical runner prompting again when you repeat the command, use the memory-only
+wrapper. It accepts the password as a `SecureString` object in the current PowerShell process,
+disposes it after the run, and never stores it in `.env`, a file, or command-line history:
+
+```powershell
+pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase22-internal-e2e-memory.ps1 `
+  -AdminLogin "existing-admin-login"
+```
+
+The wrapper still prompts interactively once per run; it intentionally does not persist or reuse
+the password between runs.
+
 ## Verification commands
 
 ```powershell
