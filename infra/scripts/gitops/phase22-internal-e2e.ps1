@@ -50,10 +50,13 @@ function Get-RemainingSeconds {
 }
 
 function Get-BoundedText {
-  param([AllowEmptyString()][string]$Text)
+  param(
+    [AllowEmptyString()][string]$Text,
+    [ValidateRange(200, 5000)][int]$MaxLength = 500
+  )
   if ([string]::IsNullOrWhiteSpace($Text)) { return "no diagnostic output" }
-  if ($Text.Length -le 500) { return $Text }
-  return $Text.Substring(0, 500) + "... [truncated]"
+  if ($Text.Length -le $MaxLength) { return $Text }
+  return $Text.Substring(0, $MaxLength) + "... [truncated]"
 }
 
 function Invoke-BoundedNativeProcess {
@@ -488,14 +491,14 @@ spec:
       if ($failed -ge 1) {
         $logs = (& kubectl -n $Namespace logs "job/$($script:FixtureJobName)" --all-containers=true --tail=100 2>&1 | Out-String).Trim()
         if ([string]::IsNullOrWhiteSpace($logs)) { $logs = "no logs available" }
-        throw "Inventory fixture Job failed (failedAttempts=$failed): $(Get-BoundedText $logs)"
+        throw "Inventory fixture Job failed (failedAttempts=$failed): $(Get-BoundedText $logs 2000)"
       }
       Start-Sleep -Seconds ([Math]::Min(3, (Get-RemainingSeconds)))
     } while ((Get-Date) -lt $waitDeadline)
     if (-not $completed) {
       $logs = (& kubectl -n $Namespace logs "job/$($script:FixtureJobName)" --all-containers=true --tail=100 2>&1 | Out-String).Trim()
       if ([string]::IsNullOrWhiteSpace($logs)) { $logs = "no logs available" }
-      throw "Inventory fixture completion timed out: $(Get-BoundedText $logs)"
+      throw "Inventory fixture completion timed out: $(Get-BoundedText $logs 2000)"
     }
     Write-Output "Inventory fixture Job: PASS (variantId=$($Product.VariantId) quantity=$InventoryQuantity)"
   } finally {
