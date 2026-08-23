@@ -13,8 +13,8 @@ or public exposure by itself.
 | 20 | Provision Kafka topics and Avro schemas on EKS | **Complete** | Seven approved topics and nine Schema Registry subjects; Payment remains disabled. |
 | 21 | CI/CD for all eight services | **Partial** | Selective Maven CI covers affected services; hosted ECR/PR promotion is currently proven for Product Service. Full eight-service image promotion is still required. |
 | 22 | Internal end-to-end smoke | **Complete** | Live authenticated smoke passed on 2026-08-23: Product → Inventory → Campaign → Flash Sale reservation/replay → Order identity convergence. Evidence is recorded in `specs/040-gitops-internal-e2e/validation.md`; Payment remains disabled by design. |
-| 23 | Public Gateway on AWS | **Pending** | Gateway remains `ClusterIP` and is tested through localhost port-forward. No public LoadBalancer/Ingress/DNS/TLS is enabled. |
-| 24 | Stripe cloud enablement | **Pending** | Payment and Stripe runtime flags remain disabled; no cloud checkout/webhook flow is enabled. |
+| 23 | Public Gateway on AWS | **Complete (rolled back by design)** | A bounded NLB smoke passed, then the public edge was reverted; the cloud overlay is private `ClusterIP` again. Evidence: `specs/042-gitops-public-gateway/validation.md`. |
+| 24 | Stripe cloud enablement | **In planning — transport decision required** | Payment and Stripe runtime flags remain disabled until the owner approves a domain-backed HTTPS Gateway edge (ADR 0027). |
 | 25 | Observability | **Pending** | Services expose Actuator/Prometheus endpoints; cloud Prometheus, Grafana, dashboards, and alerts are not yet deployed. |
 | 26 | Final validation and cleanup | **Pending** | Final cloud E2E, load, full rollback, runbooks, and pilot cleanup remain. |
 
