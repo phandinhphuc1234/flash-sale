@@ -11,6 +11,7 @@ import com.philia.flashsale.order.order.application.result.OrderCreationResult;
 import com.philia.flashsale.order.order.domain.model.Order;
 import com.philia.flashsale.order.order.domain.model.OrderLine;
 import com.philia.flashsale.order.order.domain.valueobject.Money;
+import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -45,11 +46,14 @@ public final class CreateOrderFromAcceptedPurchaseService implements CreateOrder
         var order = Order.create(orderId, orderNumber, command.purchaseRequestId(), command.reservationId(),
                 command.campaignId(), command.userId(), command.currency(), line,
                 command.acceptedAt(), command.expiresAt());
+        var saga = PurchaseSaga.start(order.id(), command.purchaseRequestId(), command.reservationId(),
+                command.expiresAt(), createdAt);
         var candidate = new OrderCreationCandidate(
                 command.eventId(), command.eventType(), command.eventVersion(), command.producer(),
                 command.aggregateType(), command.aggregateId(), command.aggregateVersion(), command.correlationId(),
                 command.eventId(), createdAt, order, identities.generate(), fingerprint, command.traceparent(),
-                command.tracestate(), command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), createdAt);
+                command.tracestate(), command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), createdAt,
+                saga, identities.generate());
         return persistence.persist(candidate);
     }
 }

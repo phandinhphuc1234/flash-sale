@@ -27,7 +27,8 @@ class OrderPropertiesTests {
                 "order-purchase-accepted-v1",
                 "flashsale.order.purchase-accepted.dlt.v1",
                 "flashsale.order.events.v1",
-                List.of(Duration.ofSeconds(1), Duration.ofSeconds(3), Duration.ofSeconds(10)));
+                List.of(Duration.ofSeconds(1), Duration.ofSeconds(3), Duration.ofSeconds(10)),
+                "flashsale.payment.commands.v1");
         OrderOutboxProperties outbox = new OrderOutboxProperties(
                 true, Duration.ofMillis(500), 100, Duration.ofSeconds(30), Duration.ofSeconds(60));
         OrderRuntimeProperties runtime = new OrderRuntimeProperties(true, true, 100);
@@ -49,13 +50,13 @@ class OrderPropertiesTests {
     @Test
     void blankRequiredValuesAndEmptyRetryListAreRejected() {
         OrderKafkaProperties invalidKafka = new OrderKafkaProperties(
-                "", " ", "", "", "", "", List.of());
+                "", " ", "", "", "", "", List.of(), "");
         OrderJwtProperties invalidJwt = new OrderJwtProperties("", " ", "", "");
 
         assertThat(validator.validate(invalidKafka)).extracting(v -> v.getPropertyPath().toString())
                 .contains("bootstrapServers", "schemaRegistryUrl", "acceptedPurchaseTopic",
                         "acceptedPurchaseConsumerGroup", "acceptedPurchaseDltTopic", "orderEventsTopic",
-                        "retryDelays");
+                        "retryDelays", "paymentCommandsTopic");
         assertThat(validator.validate(invalidJwt)).extracting(v -> v.getPropertyPath().toString())
                 .contains("issuer", "jwkSetUri", "audience", "type");
     }

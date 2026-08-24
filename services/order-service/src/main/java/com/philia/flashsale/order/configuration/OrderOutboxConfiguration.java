@@ -2,9 +2,12 @@ package com.philia.flashsale.order.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.contract.order.event.v1.OrderCreatedV1;
+import com.philia.flashsale.contract.payment.command.v1.PaymentRequestedV1;
 import com.philia.flashsale.order.outbox.adapter.in.scheduling.OrderOutboxPublisherJob;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderCreatedPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedAvroMapper;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaPaymentRequestedPublisher;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.PaymentRequestedAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.persistence.OrderOutboxPersistenceAdapter;
 import com.philia.flashsale.order.outbox.application.port.ClaimOrderOutboxEventsPort;
 import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
@@ -49,11 +52,24 @@ public class OrderOutboxConfiguration {
     }
 
     @Bean
+    PaymentRequestedAvroMapper paymentRequestedAvroMapper(ObjectMapper objectMapper) {
+        return new PaymentRequestedAvroMapper(objectMapper);
+    }
+
+    @Bean
+    KafkaPaymentRequestedPublisher kafkaPaymentRequestedPublisher(
+            KafkaTemplate<String, PaymentRequestedV1> kafka, PaymentRequestedAvroMapper mapper,
+            OrderKafkaProperties properties) {
+        return new KafkaPaymentRequestedPublisher(kafka, mapper, properties);
+    }
+
+    @Bean
     OrderOutboxEventTypeDispatcher orderOutboxEventTypeDispatcher(
-            KafkaOrderCreatedPublisher publisher) {
-        // G2 registers only the already-live OrderCreated publisher. Saga
-        // publishers are added by their owning story without changing retry/lease semantics.
-        return new OrderOutboxEventTypeDispatcher(Map.of("OrderCreated", publisher));
+            KafkaOrderCreatedPublisher orderCreatedPublisher,
+            KafkaPaymentRequestedPublisher paymentRequestedPublisher) {
+        return new OrderOutboxEventTypeDispatcher(Map.of(
+                "OrderCreated", orderCreatedPublisher,
+                "PaymentRequested", paymentRequestedPublisher));
     }
 
     @Bean

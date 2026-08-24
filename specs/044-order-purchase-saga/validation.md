@@ -27,3 +27,22 @@ deferred until the full local implementation is green as required by the approve
 | Generalized Order outbox dispatch | PASS | `OrderOutboxPublicationServiceTests`, `OrderOutboxEventTypeDispatcherTests`, and `OrderArchitectureTests`: 8 tests, 0 failures, 0 errors. Lease, retry, sanitized error, stable identity, and event-type routing remain application-port concerns; only the existing OrderCreated Kafka adapter is registered. |
 | Generalized Flash Sale outbox dispatch and causation model | PASS | `FlashSaleOutboxPublisherTests` and `FlashSaleArchitectureTests`: 7 tests, 0 failures, 0 errors. Accepted publication retains existing behavior, event dispatcher rejects unregistered outcome types, and `causation_id` is carried through the durable outbox model/adapter. |
 | G2 boundary | PASS | No Payment/Saga producer, consumer, Redis command, application image build, ECR push, EKS rollout, or cloud mutation was performed. New event publishers remain disabled until the user-story groups wire them. |
+
+## G3 — Order-owned Saga start and Payment request — 2026-08-25
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| PurchaseSaga domain invariants | PASS | `PurchaseSagaDomainTests`: 3 tests, 0 failures, 0 errors, 0 skipped. Verified the 30-second reservation safety margin, future deadline requirement, Order/Saga identity separation, and initial `PAYMENT_PENDING` state. |
+| Atomic persistence, rollback, replay | PASS | `AcceptedPurchasePersistenceIntegrationTests`: 5 tests, 0 failures, 0 errors, 0 skipped. Testcontainers PostgreSQL verified one Order, one line, one accepted inbox row, one Saga row, one `OrderCreated` outbox row, and one `PaymentRequested` outbox row in one transaction; replay and rollback remain idempotent. |
+| Duplicate/concurrent accepted delivery | PASS | `AcceptedPurchaseConcurrencyIntegrationTests`: 2 tests, 0 failures, 0 errors, 0 skipped. 100 equivalent deliveries and 100 contradictory deliveries converge to one Order/Saga and two durable outbox rows; the bounded run used an extended local datasource connection timeout only. |
+| PaymentRequested contract mapping/publication | PASS | `PaymentRequestedPublisherTests`: 2 tests, 0 failures, 0 errors, 0 skipped. Mapping validates the DB envelope, keeps `PaymentRequestedV1` wire shape unchanged, publishes to `flashsale.payment.commands.v1` with `orderId` key, and propagates trace headers. |
+| Order module Start gate | PASS | `pwsh -NoLogo -NoProfile -File .\\infra\\docker\\smoke\\feature-044-purchase-saga.ps1 -Scenario Start -TimeoutSeconds 1500`: Order module `verify` completed with 98 tests, 0 failures, 0 errors, 8 intentional skips; Maven reactor `BUILD SUCCESS`; runner emitted `FEATURE_044_START=PASS`. |
+| Static hygiene | PASS | PowerShell parser check passed and `git diff --check` found no whitespace errors. Git emitted only the existing user-config ignore permission/LF-to-CRLF warnings. |
+
+G3 establishes the Order-owned durable start boundary. An accepted reservation now atomically creates
+the Order, `PurchaseSaga(PAYMENT_PENDING)`, accepted inbox, `OrderCreated` outbox, and
+`PaymentRequested` outbox; the Order outbox relay can publish the latter through Schema Registry to
+`flashsale.payment.commands.v1`. Payment Service already owns the corresponding consumer and inbox
+boundary, but the paid, failed, replay, late-success, cloud, and image-promotion slices remain
+deferred to later task groups. No Payment/Flash Sale result transition, ECR image build, EKS rollout,
+cloud mutation, or ignored `.env` change was performed by G3.

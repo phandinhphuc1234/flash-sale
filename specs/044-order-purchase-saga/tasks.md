@@ -65,19 +65,19 @@ one Payment command identity, exact deadline, and one Payment-owned acceptance.
 
 ### Tests for User Story 1
 
-- [ ] T017 [P] [US1] Add failing deadline, creation, invariant, and replay transition tests for `PurchaseSaga` under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/domain/`
-- [ ] T018 [P] [US1] Add failing atomic creation/rollback/100-duplicate concurrency tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PurchaseSagaStartIntegrationTests.java`
-- [ ] T019 [P] [US1] Add failing PaymentRequested mapping, `orderId` key, headers, Registry, retry, and stable-ID tests under `services/order-service/src/test/java/com/philia/flashsale/order/outbox/adapter/out/messaging/kafka/PaymentRequestedPublisherTests.java`
+- [X] T017 [P] [US1] Add failing deadline, creation, invariant, and replay transition tests for `PurchaseSaga` under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/domain/`
+- [X] T018 [P] [US1] Add failing atomic creation/rollback/100-duplicate concurrency tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PurchaseSagaStartIntegrationTests.java`
+- [X] T019 [P] [US1] Add failing PaymentRequested mapping, `orderId` key, headers, Registry, retry, and stable-ID tests under `services/order-service/src/test/java/com/philia/flashsale/order/outbox/adapter/out/messaging/kafka/PaymentRequestedPublisherTests.java`
 
 ### Implementation for User Story 1
 
-- [ ] T020 [P] [US1] Implement `PurchaseSaga`, `PurchaseSagaStatus`, deadline policy, and domain failures under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/domain/`
-- [ ] T021 [P] [US1] Implement framework-free start commands/results and input/output ports under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/application/`
-- [ ] T022 [US1] Extend accepted-purchase creation in `services/order-service/src/main/java/com/philia/flashsale/order/order/application/usecase/CreateOrderFromAcceptedPurchaseService.java` and its atomic persistence capability so Order, line, accepted inbox, Saga, OrderCreated outbox, and PaymentRequested outbox commit together
-- [ ] T023 [US1] Implement Saga JPA entities/repositories/mapping and the atomic start adapter under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/out/persistence/jpa/`
-- [ ] T024 [US1] Implement PaymentRequested Avro mapping/publication under `services/order-service/src/main/java/com/philia/flashsale/order/outbox/adapter/out/messaging/kafka/` using the existing accepted contract unchanged
-- [ ] T025 [US1] Add Saga/outbox topic/runtime properties and wiring in `services/order-service/src/main/java/com/philia/flashsale/order/configuration/` and `services/order-service/src/main/resources/application.yml`
-- [ ] T026 [US1] Implement the `Start` selector and bounded real-interface assertions in `infra/docker/smoke/feature-044-purchase-saga.ps1`, then record Order module verify and `FEATURE_044_START=PASS` in `specs/044-order-purchase-saga/validation.md`
+- [X] T020 [P] [US1] Implement `PurchaseSaga`, `PurchaseSagaStatus`, deadline policy, and domain failures under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/domain/`
+- [X] T021 [P] [US1] Implement framework-free start commands/results and input/output ports under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/application/`
+- [X] T022 [US1] Extend accepted-purchase creation in `services/order-service/src/main/java/com/philia/flashsale/order/order/application/usecase/CreateOrderFromAcceptedPurchaseService.java` and its atomic persistence capability so Order, line, accepted inbox, Saga, OrderCreated outbox, and PaymentRequested outbox commit together
+- [X] T023 [US1] Implement Saga JPA entities/repositories/mapping and the atomic start adapter under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/out/persistence/jpa/`
+- [X] T024 [US1] Implement PaymentRequested Avro mapping/publication under `services/order-service/src/main/java/com/philia/flashsale/order/outbox/adapter/out/messaging/kafka/` using the existing accepted contract unchanged
+- [X] T025 [US1] Add Saga/outbox topic/runtime properties and wiring in `services/order-service/src/main/java/com/philia/flashsale/order/configuration/` and `services/order-service/src/main/resources/application.yml`
+- [X] T026 [US1] Implement the `Start` selector and bounded real-interface assertions in `infra/docker/smoke/feature-044-purchase-saga.ps1`, then record Order module verify and `FEATURE_044_START=PASS` in `specs/044-order-purchase-saga/validation.md`
 
 **Checkpoint**: The previous Phase 24 blocker is removed locally: a real accepted purchase causes
 Payment Service to own one durable Payment request.

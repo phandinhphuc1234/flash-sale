@@ -88,6 +88,46 @@ public class OrderCreationOutboxJpaEntity {
         return entity;
     }
 
+    /** Creates the stable PaymentRequested command intent in the same local transaction. */
+    public static OrderCreationOutboxJpaEntity paymentRequested(OrderCreationCandidate candidate) {
+        if (candidate.purchaseSaga() == null || candidate.paymentRequestedOutboxEventId() == null) {
+            throw new IllegalArgumentException("PaymentRequested outbox identity is missing");
+        }
+        var saga = candidate.purchaseSaga();
+        var order = candidate.order();
+        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
+        entity.eventId = candidate.paymentRequestedOutboxEventId();
+        entity.aggregateType = "PURCHASE_SAGA";
+        entity.aggregateId = order.id();
+        entity.aggregateVersion = 1;
+        entity.eventType = "PaymentRequested";
+        entity.eventVersion = 1;
+        entity.eventKey = order.id().toString();
+        entity.correlationId = candidate.correlationId();
+        entity.causationId = candidate.causationId();
+        entity.payload = paymentRequestedPayload(order, saga);
+        entity.traceparent = candidate.traceparent();
+        entity.tracestate = candidate.tracestate();
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = candidate.createdAt();
+        entity.occurredAt = candidate.occurredAt();
+        entity.createdAt = candidate.createdAt();
+        entity.updatedAt = candidate.createdAt();
+        return entity;
+    }
+
+    private static String paymentRequestedPayload(
+            com.philia.flashsale.order.order.domain.model.Order order,
+            com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga saga) {
+        return "{"
+                + "\"orderId\":\"" + order.id() + "\","
+                + "\"userId\":\"" + order.userId() + "\","
+                + "\"amount\":\"" + order.total().amount().toPlainString() + "\","
+                + "\"currency\":\"" + order.currency() + "\","
+                + "\"paymentDeadline\":\"" + saga.paymentDeadline() + "\"}";
+    }
+
     private static String snapshotPayload(OrderCreationCandidate candidate) {
         var order = candidate.order();
         var line = order.line();

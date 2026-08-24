@@ -3,14 +3,14 @@
   Runs bounded local validation scenarios for Feature 044.
 
 .DESCRIPTION
-  G1 implements the Contracts scenario only. It verifies the contract Maven module, starts the
-  local Kafka/Schema Registry pair unless -SkipTopology is supplied, provisions approved topics,
-  and idempotently registers all main and DLT subjects. Later groups extend this same runner with
-  Start, Paid, Failed, Replay, LateSuccess, and All without duplicating topology logic.
+  Contracts verifies the contract Maven module and local Kafka/Schema Registry provisioning.
+  Start runs the Order-owned Purchase Saga start gate through the service module's real PostgreSQL
+  integration tests, proving one durable Saga and PaymentRequested outbox intent under replay and
+  concurrency. Later groups extend this same runner with Paid, Failed, Replay, LateSuccess, and All.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('Contracts')]
+    [ValidateSet('Contracts', 'Start')]
     [string]$Scenario = 'Contracts',
     [switch]$SkipTopology,
     [ValidateRange(60, 1800)]
@@ -148,21 +148,30 @@ function Invoke-TopicProvisioning {
     }
 }
 
-if ($Scenario -ne 'Contracts') {
-    throw "Scenario '$Scenario' is not implemented until its approved task group."
+switch ($Scenario) {
+    'Contracts' {
+        Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 contract Maven verify' -Arguments @(
+            '--batch-mode', '--no-transfer-progress', '-pl', 'contracts/kafka-avro-contracts', '-am', 'verify'
+        )
+
+        if (-not $SkipTopology) {
+            Invoke-Compose @('up', '-d', 'kafka', 'schema-registry') 'start local Kafka and Schema Registry'
+            Wait-SchemaRegistry
+            Invoke-TopicProvisioning
+            Invoke-BoundedNativeProcess -Command 'pwsh' -Stage 'register Feature 044 schemas' -Arguments @(
+                '-NoLogo', '-NoProfile', '-File', $schemaScript, '-SchemaRegistryUrl', $SchemaRegistryUrl
+            )
+        }
+
+        Write-Output 'FEATURE_044_CONTRACTS=PASS'
+    }
+    'Start' {
+        # The service-owned Testcontainers integration gate exercises the application boundary and
+        # its PostgreSQL transaction. The runner does not write another service's database or emit
+        # an artificial Kafka record; it only reports the bounded test result.
+        Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 Order Saga start Maven verify' -Arguments @(
+            '--batch-mode', '--no-transfer-progress', '-pl', 'services/order-service', '-am', 'verify'
+        )
+        Write-Output 'FEATURE_044_START=PASS'
+    }
 }
-
-Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 contract Maven verify' -Arguments @(
-    '--batch-mode', '--no-transfer-progress', '-pl', 'contracts/kafka-avro-contracts', '-am', 'verify'
-)
-
-if (-not $SkipTopology) {
-    Invoke-Compose @('up', '-d', 'kafka', 'schema-registry') 'start local Kafka and Schema Registry'
-    Wait-SchemaRegistry
-    Invoke-TopicProvisioning
-    Invoke-BoundedNativeProcess -Command 'pwsh' -Stage 'register Feature 044 schemas' -Arguments @(
-        '-NoLogo', '-NoProfile', '-File', $schemaScript, '-SchemaRegistryUrl', $SchemaRegistryUrl
-    )
-}
-
-Write-Output 'FEATURE_044_CONTRACTS=PASS'

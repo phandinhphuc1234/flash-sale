@@ -26,6 +26,10 @@ public class OrderPersistenceMapper {
         return OrderCreationOutboxJpaEntity.from(candidate);
     }
 
+    public OrderCreationOutboxJpaEntity paymentRequestedOutbox(OrderCreationCandidate candidate) {
+        return OrderCreationOutboxJpaEntity.paymentRequested(candidate);
+    }
+
     public Instant createdAt(OrderCreationCandidate candidate) {
         return candidate.createdAt();
     }

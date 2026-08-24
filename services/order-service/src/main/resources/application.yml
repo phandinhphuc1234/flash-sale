@@ -93,6 +93,7 @@ order:
     accepted-purchase-consumer-group: ${ORDER_PURCHASE_ACCEPTED_CONSUMER_GROUP:order-purchase-accepted-v1}
     accepted-purchase-dlt-topic: ${ORDER_PURCHASE_ACCEPTED_DLT_TOPIC:flashsale.order.purchase-accepted.dlt.v1}
     order-events-topic: ${ORDER_EVENTS_TOPIC:flashsale.order.events.v1}
+    payment-commands-topic: ${ORDER_PAYMENT_COMMANDS_TOPIC:flashsale.payment.commands.v1}
     retry-delays: ${ORDER_KAFKA_RETRY_DELAYS:1s,3s,10s}
   outbox:
     enabled: ${ORDER_OUTBOX_ENABLED:true}

@@ -25,10 +25,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 
-/** Verifies the four-row atomic Order creation capability against real PostgreSQL. */
+/** Verifies atomic Order, Purchase Saga, inbox, and dual-outbox creation against PostgreSQL. */
 @SpringBootTest(properties = {
         "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.kafka.bootstrap-servers=localhost:19092"
+        "spring.kafka.bootstrap-servers=localhost:19092",
+        "order.runtime.outbox-publisher-enabled=false",
+        "order.runtime.accepted-purchase-consumer-enabled=false"
 })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationTestSupport {
@@ -56,6 +58,19 @@ class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationT
         assertThat(count("order_lines", "order_id", result.orderId())).isEqualTo(1);
         assertThat(count("order_consumer_inbox", "event_id", command.eventId())).isEqualTo(1);
         assertThat(count("order_outbox_events", "event_id", result.outboxEventId())).isEqualTo(1);
+        assertThat(result.purchaseSagaId()).isEqualTo(command.purchaseRequestId());
+        assertThat(result.paymentRequestedOutboxEventId()).isNotNull();
+        assertThat(count("purchase_sagas", "id", command.purchaseRequestId())).isEqualTo(1);
+        assertThat(count("order_outbox_events", "event_id", result.paymentRequestedOutboxEventId())).isEqualTo(1);
+        Map<String, Object> paymentOutbox = jdbc.queryForMap("""
+                SELECT aggregate_type, aggregate_id, event_key, event_type, payload::text AS payload
+                FROM order_outbox_events WHERE event_id = ?
+                """, result.paymentRequestedOutboxEventId());
+        assertThat(paymentOutbox.get("aggregate_type")).isEqualTo("PURCHASE_SAGA");
+        assertThat(paymentOutbox.get("aggregate_id")).isEqualTo(result.orderId());
+        assertThat(paymentOutbox.get("event_key")).isEqualTo(result.orderId().toString());
+        assertThat(paymentOutbox.get("event_type")).isEqualTo("PaymentRequested");
+        assertThat(paymentOutbox.get("payload").toString()).contains("paymentDeadline");
         Map<String, Object> snapshot = jdbc.queryForMap("""
                 SELECT o.status, o.currency, o.subtotal_amount, l.quantity, l.unit_price, l.line_amount
                 FROM orders o JOIN order_lines l ON l.order_id = o.id
@@ -83,7 +98,8 @@ class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationT
         assertThat(businessReplay.orderId()).isEqualTo(created.orderId());
         assertThat(count("orders", "purchase_request_id", first.purchaseRequestId())).isEqualTo(1);
         assertThat(count("order_consumer_inbox", "purchase_request_id", first.purchaseRequestId())).isEqualTo(1);
-        assertThat(count("order_outbox_events", "aggregate_id", created.orderId())).isEqualTo(1);
+        assertThat(count("order_outbox_events", "aggregate_id", created.orderId())).isEqualTo(2);
+        assertThat(count("purchase_sagas", "order_id", created.orderId())).isEqualTo(1);
     }
 
     @Test
@@ -108,7 +124,7 @@ class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationT
     }
 
     @Test
-    void orderNumberCollisionRollsBackAllFourRows() {
+    void orderNumberCollisionRollsBackAllDurableRows() {
         CreateOrderFromAcceptedPurchaseCommand first = command(UUID.randomUUID());
         OrderCreationResult created = useCase.create(first);
         String existingNumber = jdbc.queryForObject("SELECT order_number FROM orders WHERE id = ?", String.class,
