@@ -456,6 +456,7 @@ function Assert-Preflight {
       [string](Get-PropertyValue $source "targetRevision") -ne "develop") {
     throw "Argo source drift detected."
   }
+  $expectedPaymentFlag = if ($AllowPaymentEnabled -or $RunStripeCloudSmoke) { "true" } else { "false" }
   $requiredDeployments = @("api-gateway", "authentication-service", "product-service", "campaign-service", "flash-sale-service", "inventory-service", "order-service")
   if ($expectedPaymentFlag -eq "true") { $requiredDeployments += "payment-service" }
   foreach ($name in $requiredDeployments) {
@@ -466,7 +467,6 @@ function Assert-Preflight {
   }
   $paymentConfig = Get-NativeJson -Command "kubectl" -Arguments @("-n", $Namespace, "get", "configmap", "payment-service-runtime-config", "-o", "json") -Description "Payment runtime flags"
   $data = Get-PropertyValue $paymentConfig "data"
-  $expectedPaymentFlag = if ($AllowPaymentEnabled -or $RunStripeCloudSmoke) { "true" } else { "false" }
   foreach ($flag in @("PAYMENT_ACCEPTANCE_ENABLED", "PAYMENT_CHECKOUT_ENABLED", "STRIPE_ENABLED", "PAYMENT_CONSUMER_ENABLED", "PAYMENT_OUTBOX_PUBLISHER_ENABLED", "PAYMENT_RECOVERY_ENABLED", "PAYMENT_WEBHOOK_PROCESSING_ENABLED")) {
     if ([string](Get-PropertyValue $data $flag).ToLowerInvariant() -ne $expectedPaymentFlag) {
       throw "Payment flag '$flag' is not '$expectedPaymentFlag'."
