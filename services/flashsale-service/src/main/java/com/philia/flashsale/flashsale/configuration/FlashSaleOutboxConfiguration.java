@@ -7,7 +7,9 @@ import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseAcc
 import com.philia.flashsale.flashsale.outbox.application.port.UpdateOutboxPublicationPort;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxPublicationService;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxRetryPolicy;
+import com.philia.flashsale.flashsale.outbox.application.usecase.FlashSaleOutboxEventTypeDispatcher;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -31,10 +33,19 @@ public class FlashSaleOutboxConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({ClaimOutboxEventsPort.class, PublishPurchaseAcceptedPort.class,
+    @ConditionalOnBean(PublishPurchaseAcceptedPort.class)
+    FlashSaleOutboxEventTypeDispatcher flashSaleOutboxEventTypeDispatcher(
+            PublishPurchaseAcceptedPort publisher) {
+        // G2 registers only the already-live PurchaseAccepted publisher. Confirmed
+        // and released result publishers are introduced with their owning stories.
+        return new FlashSaleOutboxEventTypeDispatcher(Map.of("PurchaseAccepted", publisher));
+    }
+
+    @Bean
+    @ConditionalOnBean({ClaimOutboxEventsPort.class, FlashSaleOutboxEventTypeDispatcher.class,
             UpdateOutboxPublicationPort.class})
     OutboxPublicationService outboxPublicationService(ClaimOutboxEventsPort claims,
-            PublishPurchaseAcceptedPort publisher, UpdateOutboxPublicationPort updates,
+            FlashSaleOutboxEventTypeDispatcher publisher, UpdateOutboxPublicationPort updates,
             OutboxRetryPolicy retryPolicy, OutboxProperties properties) {
         return new OutboxPublicationService(claims, publisher, updates, retryPolicy,
                 properties.batchSize(), properties.claimLease());

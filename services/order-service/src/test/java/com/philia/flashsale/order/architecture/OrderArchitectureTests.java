@@ -41,4 +41,14 @@ class OrderArchitectureTests {
                 .allowEmptyShould(true)
                 .check(CLASSES);
     }
+
+    @Test
+    void outboxApplicationDoesNotDependOnAdaptersOrTransportProviders() {
+        noClasses().that().resideInAnyPackage("..order.outbox.application..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "..order.outbox.adapter..", "org.springframework..", "org.apache.kafka..",
+                        "org.apache.avro..", "com.fasterxml.jackson..")
+                .allowEmptyShould(true)
+                .check(CLASSES);
+    }
 }

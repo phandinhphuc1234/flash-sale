@@ -7,10 +7,11 @@ import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderC
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.persistence.OrderOutboxPersistenceAdapter;
 import com.philia.flashsale.order.outbox.application.port.ClaimOrderOutboxEventsPort;
-import com.philia.flashsale.order.outbox.application.port.PublishOrderCreatedPort;
 import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
+import java.util.Map;
 import com.philia.flashsale.order.outbox.application.usecase.OrderOutboxPublicationService;
 import com.philia.flashsale.order.outbox.application.usecase.OrderOutboxRetryPolicy;
+import com.philia.flashsale.order.outbox.application.usecase.OrderOutboxEventTypeDispatcher;
 import com.philia.flashsale.order.observability.OrderObservability;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
@@ -48,8 +49,16 @@ public class OrderOutboxConfiguration {
     }
 
     @Bean
+    OrderOutboxEventTypeDispatcher orderOutboxEventTypeDispatcher(
+            KafkaOrderCreatedPublisher publisher) {
+        // G2 registers only the already-live OrderCreated publisher. Saga
+        // publishers are added by their owning story without changing retry/lease semantics.
+        return new OrderOutboxEventTypeDispatcher(Map.of("OrderCreated", publisher));
+    }
+
+    @Bean
     OrderOutboxPublicationService orderOutboxPublicationService(
-            ClaimOrderOutboxEventsPort claims, PublishOrderCreatedPort publisher,
+            ClaimOrderOutboxEventsPort claims, OrderOutboxEventTypeDispatcher publisher,
             UpdateOrderOutboxPublicationPort updates, OrderOutboxRetryPolicy retryPolicy,
             OrderOutboxProperties properties, OrderObservability observability) {
         return new OrderOutboxPublicationService(claims, publisher, updates, retryPolicy,

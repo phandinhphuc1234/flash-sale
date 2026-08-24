@@ -23,6 +23,7 @@ public class PurchaseEventOutboxJpaEntity {
     @Column(name = "aggregate_version", nullable = false) private long aggregateVersion;
     @Column(name = "event_type", nullable = false, length = 100) private String eventType;
     @Column(name = "event_version", nullable = false) private int eventVersion;
+    @Column(name = "causation_id") private UUID causationId;
     @JdbcTypeCode(SqlTypes.JSON) @Column(nullable = false, columnDefinition = "jsonb") private Map<String, Object> payload;
     @Column(nullable = false, length = 16) private String status;
     @Column(name = "attempt_count", nullable = false) private int attemptCount;
@@ -44,6 +45,7 @@ public class PurchaseEventOutboxJpaEntity {
         entity.aggregateVersion = 1;
         entity.eventType = "PurchaseAccepted";
         entity.eventVersion = 1;
+        entity.causationId = null;
         entity.payload = new LinkedHashMap<>();
         entity.payload.put("purchaseRequestId", snapshot.purchaseRequestId().toString());
         entity.payload.put("reservationId", snapshot.reservationId().toString());

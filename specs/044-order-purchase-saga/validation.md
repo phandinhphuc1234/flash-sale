@@ -17,3 +17,13 @@ payloads, webhook signatures, JWTs, and Checkout URLs must never be recorded her
 
 G1 performs no application image build, ECR push, EKS rollout, or cloud mutation. Those gates remain
 deferred until the full local implementation is green as required by the approved plan.
+
+## G2 — Durable schema and outbox capabilities — 2026-08-24
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Order migration and constraints | PASS | `OrderSchemaMigrationIntegrationTests`: 7 tests, 0 failures, 0 errors; Liquibase applied two changesets and rollback of the Saga changeset restored the G1 schema. Verified Saga identity/deadline/status, inbox source-position deduplication, generalized Order statuses, and event/aggregate/key constraints. |
+| Flash Sale migration and constraints | PASS | `FlashSaleSchemaMigrationIntegrationTests`: 3 tests, 0 failures, 0 errors; Liquibase applied nine changesets. Verified reservation finalization columns/statuses, `reservation_command_inbox`, typed outcome events, legacy accepted uniqueness, and partial causation uniqueness. |
+| Generalized Order outbox dispatch | PASS | `OrderOutboxPublicationServiceTests`, `OrderOutboxEventTypeDispatcherTests`, and `OrderArchitectureTests`: 8 tests, 0 failures, 0 errors. Lease, retry, sanitized error, stable identity, and event-type routing remain application-port concerns; only the existing OrderCreated Kafka adapter is registered. |
+| Generalized Flash Sale outbox dispatch and causation model | PASS | `FlashSaleOutboxPublisherTests` and `FlashSaleArchitectureTests`: 7 tests, 0 failures, 0 errors. Accepted publication retains existing behavior, event dispatcher rejects unregistered outcome types, and `causation_id` is carried through the durable outbox model/adapter. |
+| G2 boundary | PASS | No Payment/Saga producer, consumer, Redis command, application image build, ECR push, EKS rollout, or cloud mutation was performed. New event publishers remain disabled until the user-story groups wire them. |

@@ -2,6 +2,7 @@ package com.philia.flashsale.order.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -63,10 +64,11 @@ class OrderSchemaMigrationIntegrationTests {
     void migrationCreatesOnlyOrderTablesAndLiquibaseLedger() {
         assertThat(publicTables()).containsExactlyInAnyOrder(
                 "orders", "order_lines", "order_consumer_inbox", "order_outbox_events",
+                "purchase_sagas", "purchase_saga_inbox",
                 "databasechangelog", "databasechangeloglock");
         assertThat(jdbc.queryForObject("SELECT locked FROM databasechangeloglock WHERE id = 1", Boolean.class))
                 .isFalse();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(2);
     }
 
     @Test
@@ -85,7 +87,11 @@ class OrderSchemaMigrationIntegrationTests {
                 "idx_order_consumer_inbox_purchase_request",
                 "idx_order_consumer_inbox_reservation",
                 "idx_order_outbox_events_due",
-                "idx_order_outbox_events_claim_recovery");
+                "idx_order_outbox_events_claim_recovery",
+                "idx_purchase_sagas_order",
+                "idx_purchase_sagas_deadline",
+                "idx_purchase_saga_inbox_order",
+                "idx_purchase_saga_inbox_aggregate_version");
     }
 
     @Test
@@ -111,7 +117,7 @@ class OrderSchemaMigrationIntegrationTests {
                 new BigDecimal("1.0000"), new BigDecimal("1.0000")))
                 .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> insertOrder(UUID.randomUUID(), "ORD-" + UUID.randomUUID(),
-                UUID.randomUUID(), UUID.randomUUID(), "CONFIRMED", "VND",
+                UUID.randomUUID(), UUID.randomUUID(), "BROKEN", "VND",
                 new BigDecimal("1.0000"), new BigDecimal("1.0000")))
                 .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> insertOrder(UUID.randomUUID(), " ",
@@ -163,6 +169,35 @@ class OrderSchemaMigrationIntegrationTests {
 
     @Test
     @Order(5)
+    void sagaConstraintsProtectWorkflowIdentityAndProgress() {
+        UUID orderId = UUID.randomUUID();
+        UUID purchaseRequestId = UUID.randomUUID();
+        UUID reservationId = UUID.randomUUID();
+        insertOrder(orderId, "ORD-" + orderId, purchaseRequestId, reservationId,
+                "PENDING_PAYMENT", "VND", new BigDecimal("2.0000"), new BigDecimal("2.0000"));
+        insertSaga(purchaseRequestId, orderId, purchaseRequestId, reservationId, "PAYMENT_PENDING",
+                ACCEPTED.plusMinutes(1), ACCEPTED);
+
+        assertThatThrownBy(() -> insertSaga(UUID.randomUUID(), orderId, UUID.randomUUID(), UUID.randomUUID(),
+                "PAYMENT_PENDING", ACCEPTED.plusMinutes(1), ACCEPTED))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertSaga(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                "BROKEN", ACCEPTED.plusMinutes(1), ACCEPTED))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertSaga(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                "PAYMENT_PENDING", ACCEPTED.minusSeconds(1), ACCEPTED))
+                .isInstanceOf(DataAccessException.class);
+
+        UUID eventId = UUID.randomUUID();
+        insertSagaInbox(eventId, orderId, UUID.randomUUID(), 1, 1, 20);
+        assertThatThrownBy(() -> insertSagaInbox(UUID.randomUUID(), orderId, UUID.randomUUID(), -1, 1, 21))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertSagaInbox(UUID.randomUUID(), orderId, UUID.randomUUID(), 1, 1, 20))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    @Order(6)
     void outboxConstraintsProtectStablePublicationIdentityAndRetryState() {
         UUID orderId = UUID.randomUUID();
         insertOrder(orderId, "ORD-" + orderId, UUID.randomUUID(), UUID.randomUUID(),
@@ -176,11 +211,30 @@ class OrderSchemaMigrationIntegrationTests {
                 .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> insertOutbox(UUID.randomUUID(), UUID.randomUUID(), "PENDING", -1))
                 .isInstanceOf(DataAccessException.class);
+
+        UUID sagaId = UUID.randomUUID();
+        assertThatCode(() -> insertOutbox(UUID.randomUUID(), "PURCHASE_SAGA", sagaId, 2,
+                "PaymentRequested", orderId.toString(), "PENDING", 0)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> insertOutbox(UUID.randomUUID(), "ORDER", UUID.randomUUID(), 2,
+                "PaymentRequested", orderId.toString(), "PENDING", 0))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertOutbox(UUID.randomUUID(), "PURCHASE_SAGA", sagaId, 0,
+                "PaymentRequested", orderId.toString(), "PENDING", 0))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertOutbox(UUID.randomUUID(), "PURCHASE_SAGA", UUID.randomUUID(), 2,
+                "UnsupportedEvent", orderId.toString(), "PENDING", 0))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> insertOutbox(UUID.randomUUID(), "PURCHASE_SAGA", UUID.randomUUID(), 2,
+                "PaymentRequested", "not-a-uuid", "PENDING", 0))
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
     @Order(99)
     void developmentRollbackRemovesOrderObjectsInReverseDependencyOrder() throws Exception {
+        // The rollback restores the pre-saga constraints. Remove the one
+        // generalized outbox row first so the old ORDER-only check is valid.
+        jdbc.update("DELETE FROM order_outbox_events WHERE aggregate_type = 'PURCHASE_SAGA'");
         try (var connection = dataSource.getConnection()) {
             var database = DatabaseFactory.getInstance()
                     .findCorrectDatabaseImplementation(new JdbcConnection(connection));
@@ -189,7 +243,9 @@ class OrderSchemaMigrationIntegrationTests {
             liquibase.rollback(1, new Contexts(), new LabelExpression());
         }
 
-        assertThat(publicTables()).containsExactlyInAnyOrder("databasechangelog", "databasechangeloglock");
+        assertThat(publicTables()).containsExactlyInAnyOrder(
+                "orders", "order_lines", "order_consumer_inbox", "order_outbox_events",
+                "databasechangelog", "databasechangeloglock");
     }
 
     private static void insertOrder(
@@ -240,15 +296,43 @@ class OrderSchemaMigrationIntegrationTests {
                 partition, offset, orderId, ACCEPTED);
     }
 
+    private static void insertSaga(UUID sagaId, UUID orderId, UUID purchaseRequestId, UUID reservationId,
+            String status, OffsetDateTime paymentDeadline, OffsetDateTime createdAt) {
+        jdbc.update("""
+                INSERT INTO purchase_sagas (
+                    id, order_id, purchase_request_id, reservation_id, status, payment_deadline,
+                    step_started_at, version, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                """, sagaId, orderId, purchaseRequestId, reservationId, status, paymentDeadline,
+                createdAt, createdAt, createdAt);
+    }
+
+    private static void insertSagaInbox(UUID eventId, UUID orderId, UUID aggregateId,
+            int partition, long aggregateVersion, long offset) {
+        jdbc.update("""
+                INSERT INTO purchase_saga_inbox (
+                    event_id, event_type, event_version, producer, aggregate_id, aggregate_version,
+                    order_id, payload_fingerprint, source_topic, source_partition, source_offset, processed_at
+                ) VALUES (?, 'PaymentSucceeded', 1, 'payment-service', ?, ?, ?, ?,
+                          'flashsale.payment.events.v1', ?, ?, ?)
+                """, eventId, aggregateId, aggregateVersion, orderId, "b".repeat(64), partition, offset, ACCEPTED);
+    }
+
     private static void insertOutbox(UUID eventId, UUID orderId, String status, int attemptCount) {
+        insertOutbox(eventId, "ORDER", orderId, 1, "OrderCreated", orderId.toString(), status, attemptCount);
+    }
+
+    private static void insertOutbox(UUID eventId, String aggregateType, UUID aggregateId, long aggregateVersion,
+            String eventType, String eventKey, String status, int attemptCount) {
         jdbc.update("""
                 INSERT INTO order_outbox_events (
                     event_id, aggregate_type, aggregate_id, aggregate_version, event_type, event_version,
                     event_key, correlation_id, causation_id, payload, status, attempt_count,
                     next_attempt_at, occurred_at, created_at, updated_at
-                ) VALUES (?, 'ORDER', ?, 1, 'OrderCreated', 1, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?, ?, ?, ?)
-                """, eventId, orderId, orderId.toString(), UUID.randomUUID(), UUID.randomUUID(), "{}", status,
-                attemptCount, ACCEPTED, ACCEPTED, ACCEPTED, ACCEPTED);
+                ) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, CAST(? AS jsonb), ?, ?, ?, ?, ?, ?)
+                """, eventId, aggregateType, aggregateId, aggregateVersion, eventType, eventKey,
+                UUID.randomUUID(), UUID.randomUUID(), "{}", status, attemptCount,
+                ACCEPTED, ACCEPTED, ACCEPTED, ACCEPTED);
     }
 
     private static void assertNumeric(String table, String column) {

@@ -13,7 +13,9 @@ import com.philia.flashsale.flashsale.outbox.adapter.out.messaging.kafka.Purchas
 import com.philia.flashsale.flashsale.outbox.application.model.OutboxEvent;
 import com.philia.flashsale.flashsale.outbox.application.port.ClaimOutboxEventsPort;
 import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseAcceptedPort;
+import com.philia.flashsale.flashsale.outbox.application.port.PublishOutboxEventPort;
 import com.philia.flashsale.flashsale.outbox.application.port.UpdateOutboxPublicationPort;
+import com.philia.flashsale.flashsale.outbox.application.usecase.FlashSaleOutboxEventTypeDispatcher;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxPublicationService;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxRetryPolicy;
 import java.time.Duration;
@@ -79,6 +81,30 @@ class FlashSaleOutboxPublisherTests {
         assertThat(policy.delayForAttempt(3)).isEqualTo(Duration.ofSeconds(4));
         assertThat(policy.delayForAttempt(7)).isEqualTo(Duration.ofSeconds(60));
         assertThat(policy.delayForAttempt(20)).isEqualTo(Duration.ofSeconds(60));
+    }
+
+    @Test
+    void dispatchesAcceptedEventThroughGenericOutboxPort() {
+        var received = new java.util.ArrayList<UUID>();
+        PublishOutboxEventPort publisher = event -> received.add(event.eventId());
+        var dispatcher = new FlashSaleOutboxEventTypeDispatcher(Map.of("PurchaseAccepted", publisher));
+        var event = event(0);
+
+        dispatcher.publish(event);
+
+        assertThat(received).containsExactly(event.eventId());
+    }
+
+    @Test
+    void keepsResultPublishersDisabledUntilTheirStoryRegistersOne() {
+        var dispatcher = new FlashSaleOutboxEventTypeDispatcher(Map.of());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> dispatcher.publish(
+                new OutboxEvent(UUID.randomUUID(), "RESERVATION", UUID.randomUUID(), 1,
+                        "PurchaseReservationConfirmed", 1, Map.of(), "PENDING", 0,
+                        NOW, null, null, null, null, NOW, NOW)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("PurchaseReservationConfirmed");
     }
 
     private static OutboxEvent event(int attemptCount) {
