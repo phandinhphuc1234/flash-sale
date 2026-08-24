@@ -5,8 +5,10 @@
 .DESCRIPTION
   Validation mode is non-mutating. Run mode uses a loopback API Gateway port-forward, an existing
   ROLE_ADMIN login, a generated shopper, Gateway-owned Product/Campaign HTTP contracts, and an
-  Inventory-owned one-shot fixture Job. It never executes SQL, reads another service database, or
-  prints passwords, JWTs, cookies, Kubernetes Secret values, or full request bodies.
+  Inventory-owned one-shot fixture Job. With -AllowPaymentEnabled it accepts the Phase 24 runtime
+  flags; with -RunStripeCloudSmoke it continues through the hosted Stripe Checkout and webhook
+  evidence path. It never executes SQL, reads another service database, or prints passwords, JWTs,
+  cookies, Kubernetes Secret values, Checkout URLs, or full request bodies.
 #>
 [CmdletBinding()]
 param(
@@ -18,7 +20,10 @@ param(
   [ValidateRange(60, 1800)]
   [int]$TimeoutSeconds = 600,
   [ValidateRange(1, 100)]
-  [int]$InventoryQuantity = 1
+  [int]$InventoryQuantity = 1,
+  [switch]$AllowPaymentEnabled,
+  [switch]$RunStripeCloudSmoke,
+  [string]$StripeGatewayBaseUri = "https://api.flashsale123.tech"
 )
 
 Set-StrictMode -Version Latest
@@ -35,6 +40,8 @@ $ArgoNamespace = "argocd"
 $ArgoApplication = "flash-sale-cloud"
 $ExpectedClusterName = "flash-sale-dev"
 $ExpectedRepositoryUrl = "https://github.com/phandinhphuc1234/flash-sale.git"
+$StripeApiVersion = "2026-07-29.dahlia"
+$StripeGatewayBaseUri = $StripeGatewayBaseUri.TrimEnd('/')
 $ProductBasePrice = 199000
 $CampaignPrice = 179000
 if ($CampaignPrice -ge $ProductBasePrice) {
@@ -144,6 +151,122 @@ function Get-ApiData {
   $data = Get-PropertyValue $Body "data"
   if ($null -ne $data) { return $data }
   return $Body
+}
+
+function Read-IgnoredDotEnv {
+  $path = Join-Path $RepoRoot "infra\docker\.env"
+  if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+    throw "Stripe cloud smoke requires infra/docker/.env; add local-only values and never commit it."
+  }
+  & git check-ignore --quiet -- $path
+  if ($LASTEXITCODE -ne 0) {
+    throw "Refusing to read Stripe values because infra/docker/.env is not ignored by Git."
+  }
+  $values = @{}
+  foreach ($line in Get-Content -LiteralPath $path) {
+    if ($line -match '^\s*(?:export\s+)?(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<value>.*)\s*$') {
+      $value = $Matches.value.Trim()
+      if ($value.Length -ge 2 -and (($value.StartsWith('"') -and $value.EndsWith('"')) -or
+          ($value.StartsWith("'") -and $value.EndsWith("'")))) {
+        $value = $value.Substring(1, $value.Length - 2)
+      }
+      $values[$Matches.key] = $value
+    }
+  }
+  return $values
+}
+
+function Get-StripeRuntimeSecrets {
+  $values = Read-IgnoredDotEnv
+  foreach ($name in @("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET")) {
+    if (-not $values.ContainsKey($name) -or [string]::IsNullOrWhiteSpace([string]$values[$name])) {
+      throw "Stripe cloud smoke requires $name in the ignored infra/docker/.env."
+    }
+  }
+  if ($values.ContainsKey("STRIPE_API_VERSION") -and
+      -not [string]::IsNullOrWhiteSpace([string]$values.STRIPE_API_VERSION) -and
+      [string]$values.STRIPE_API_VERSION -ne $StripeApiVersion) {
+    throw "Stripe API version mismatch; expected $StripeApiVersion."
+  }
+  return [pscustomobject]@{
+    SecretKey = [string]$values.STRIPE_SECRET_KEY
+    WebhookSecret = [string]$values.STRIPE_WEBHOOK_SECRET
+  }
+}
+
+function Invoke-StripeApiGet {
+  param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$SecretKey)
+  try {
+    $response = Invoke-WebRequest -Uri ("https://api.stripe.com" + $Path) -Method GET `
+      -Headers @{ Authorization = "Bearer $SecretKey" } -UseBasicParsing `
+      -TimeoutSec ([Math]::Min(20, (Get-RemainingSeconds))) -SkipHttpErrorCheck
+  } catch {
+    throw "Stripe API request failed before a response was received."
+  }
+  if ([int]$response.StatusCode -notin @(200)) {
+    throw "Stripe API request failed with HTTP $($response.StatusCode)."
+  }
+  try { return $response.Content | ConvertFrom-Json -Depth 100 }
+  catch { throw "Stripe API returned invalid JSON." }
+}
+
+function Get-StripeSessionIdFromUrl {
+  param([Parameter(Mandatory)][string]$CheckoutUrl)
+  $match = [regex]::Match($CheckoutUrl, '/c/pay/(?<id>cs_[^#?]+)')
+  if (-not $match.Success) { throw "Checkout response did not contain a Stripe session identity." }
+  return $match.Groups['id'].Value
+}
+
+function Wait-Condition {
+  param(
+    [Parameter(Mandatory)][scriptblock]$Condition,
+    [Parameter(Mandatory)][string]$Description,
+    [int]$DelaySeconds = 3
+  )
+  do {
+    if (& $Condition) { return }
+    Start-Sleep -Seconds ([Math]::Min($DelaySeconds, (Get-RemainingSeconds)))
+  } while ($true)
+}
+
+function Get-HmacSha256Hex {
+  param([Parameter(Mandatory)][string]$Secret, [Parameter(Mandatory)][string]$Value)
+  $hmac = [Security.Cryptography.HMACSHA256]::new([Text.Encoding]::UTF8.GetBytes($Secret))
+  try { return ([BitConverter]::ToString($hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes($Value)))).Replace('-', '').ToLowerInvariant() }
+  finally { $hmac.Dispose() }
+}
+
+function Post-SignedStripeWebhook {
+  param(
+    [Parameter(Mandatory)][string]$Payload,
+    [Parameter(Mandatory)][string]$WebhookSecret,
+    [Parameter(Mandatory)][string]$EventId
+  )
+  $timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+  $digest = Get-HmacSha256Hex -Secret $WebhookSecret -Value ("$timestamp.$Payload")
+  try {
+    $response = Invoke-WebRequest -Uri "$StripeGatewayBaseUri/webhooks/v1/payments/stripe" -Method POST `
+      -Headers @{ 'Stripe-Signature' = "t=$timestamp,v1=$digest"; 'Content-Type' = 'application/json' } `
+      -Body ([Text.Encoding]::UTF8.GetBytes($Payload)) -UseBasicParsing `
+      -TimeoutSec ([Math]::Min(20, (Get-RemainingSeconds))) -SkipHttpErrorCheck
+  } catch {
+    throw "Stripe webhook $EventId failed before a response was received."
+  }
+  if ([int]$response.StatusCode -ne 204) {
+    throw "Stripe webhook $EventId returned HTTP $($response.StatusCode)."
+  }
+}
+
+function Get-KafkaTopicEndOffset {
+  $result = Invoke-BoundedNativeProcess -Command "kubectl" -Arguments @(
+    "-n", $Namespace, "exec", "kafka-0", "--", "/opt/kafka/bin/kafka-get-offsets.sh",
+    "--bootstrap-server", "localhost:9092", "--topic", "flashsale.payment.events.v1"
+  )
+  if ($result.ExitCode -ne 0) { throw "Kafka offset query failed." }
+  $offsets = @($result.StandardOutput -split "`r?`n" |
+    ForEach-Object { if ($_ -match ':([0-9]+)$') { [long]$Matches[1] } })
+  if ($offsets.Count -eq 0) { throw "Kafka offset query returned no partitions." }
+  return ($offsets | Measure-Object -Maximum).Maximum
 }
 
 function Get-ApiErrorCode {
@@ -333,15 +456,24 @@ function Assert-Preflight {
       [string](Get-PropertyValue $source "targetRevision") -ne "develop") {
     throw "Argo source drift detected."
   }
-  foreach ($name in @("api-gateway", "authentication-service", "product-service", "campaign-service", "flash-sale-service", "inventory-service", "order-service")) {
+  $requiredDeployments = @("api-gateway", "authentication-service", "product-service", "campaign-service", "flash-sale-service", "inventory-service", "order-service")
+  if ($expectedPaymentFlag -eq "true") { $requiredDeployments += "payment-service" }
+  foreach ($name in $requiredDeployments) {
     Get-NativeText -Command "kubectl" -Arguments @("-n", $Namespace, "rollout", "status", "deployment/$name", "--timeout=60s") -Description "Deployment/$name readiness" | Out-Null
+  }
+  if ($expectedPaymentFlag -eq "true") {
+    Get-NativeText -Command "kubectl" -Arguments @("-n", $Namespace, "get", "secret", "payment-secrets", "-o", "name") -Description "Payment Secret boundary" | Out-Null
   }
   $paymentConfig = Get-NativeJson -Command "kubectl" -Arguments @("-n", $Namespace, "get", "configmap", "payment-service-runtime-config", "-o", "json") -Description "Payment runtime flags"
   $data = Get-PropertyValue $paymentConfig "data"
+  $expectedPaymentFlag = if ($AllowPaymentEnabled -or $RunStripeCloudSmoke) { "true" } else { "false" }
   foreach ($flag in @("PAYMENT_ACCEPTANCE_ENABLED", "PAYMENT_CHECKOUT_ENABLED", "STRIPE_ENABLED", "PAYMENT_CONSUMER_ENABLED", "PAYMENT_OUTBOX_PUBLISHER_ENABLED", "PAYMENT_RECOVERY_ENABLED", "PAYMENT_WEBHOOK_PROCESSING_ENABLED")) {
-    if ([string](Get-PropertyValue $data $flag).ToLowerInvariant() -ne "false") { throw "Payment flag '$flag' is not disabled." }
+    if ([string](Get-PropertyValue $data $flag).ToLowerInvariant() -ne $expectedPaymentFlag) {
+      throw "Payment flag '$flag' is not '$expectedPaymentFlag'."
+    }
   }
-  Write-Output "Phase 22 preflight: PASS (context=$context sync=$sync health=$health payment=7/7-disabled)"
+  $paymentState = if ($expectedPaymentFlag -eq "true") { "7/7-enabled" } else { "7/7-disabled" }
+  Write-Output "Phase 22 preflight: PASS (context=$context sync=$sync health=$health payment=$paymentState)"
 }
 
 function Invoke-AdminLogin {
@@ -654,6 +786,116 @@ function Assert-OrderConvergence {
   throw "Order consumer did not produce a matching owned Order before timeout."
 }
 
+function Invoke-StripeCloudSmoke {
+  param(
+    [Parameter(Mandatory)][string]$BaseUri,
+    [Parameter(Mandatory)][string]$ShopperToken,
+    [Parameter(Mandatory)][object]$Order
+  )
+  $secrets = Get-StripeRuntimeSecrets
+  $script:StripePaymentResponse = $null
+  Wait-Condition -Description "Payment aggregate for Order" -Condition {
+    $script:StripePaymentResponse = Invoke-Api -Method GET -Uri "$BaseUri/api/v1/payments/by-order/$($Order.id)" `
+      -Headers (New-OperationHeaders $ShopperToken (New-TraceId))
+    return $script:StripePaymentResponse.StatusCode -eq 200
+  }
+  $payment = Get-ApiData $script:StripePaymentResponse.Body
+  $paymentId = [guid](Get-PropertyValue $payment "id")
+  if ($paymentId -eq [guid]::Empty) { throw "Payment query returned an empty Payment id." }
+  Write-Output "Payment aggregate: PASS (paymentId=$paymentId status=$([string](Get-PropertyValue $payment 'status')))"
+
+  $offsetBefore = Get-KafkaTopicEndOffset
+  $checkoutKey = "phase24-stripe-$([guid]::NewGuid().ToString('N'))"
+  $checkoutResponse = $null
+  $checkoutData = $null
+  do {
+    $checkoutHeaders = New-OperationHeaders $ShopperToken (New-TraceId)
+    $checkoutHeaders["Idempotency-Key"] = $checkoutKey
+    $checkoutResponse = Invoke-Api -Method POST -Uri "$BaseUri/api/v1/payments/$paymentId/checkout-sessions" `
+      -Headers $checkoutHeaders
+    Assert-ApiStatus $checkoutResponse @(200, 201, 202) "Checkout creation"
+    $checkoutData = Get-ApiData $checkoutResponse.Body
+    $checkoutUrl = [string](Get-PropertyValue $checkoutData "checkoutUrl")
+    if (-not [string]::IsNullOrWhiteSpace($checkoutUrl)) { break }
+    Start-Sleep -Seconds ([Math]::Min(3, (Get-RemainingSeconds)))
+  } while ($true)
+
+  $replayHeaders = New-OperationHeaders $ShopperToken (New-TraceId)
+  $replayHeaders["Idempotency-Key"] = $checkoutKey
+  $replay = Invoke-Api -Method POST -Uri "$BaseUri/api/v1/payments/$paymentId/checkout-sessions" -Headers $replayHeaders
+  Assert-ApiStatus $replay @(200, 201, 202) "Checkout idempotency replay"
+  Write-Output "Checkout: PASS (status=$($checkoutResponse.StatusCode), replay=$($replay.StatusCode), URL withheld)"
+
+  $sessionId = Get-StripeSessionIdFromUrl $checkoutUrl
+  try { Start-Process -FilePath $checkoutUrl | Out-Null }
+  catch { throw "Could not open the hosted Checkout page in the default browser." }
+  Write-Host "Hosted Stripe Checkout opened. Complete it with a Stripe test card, then press Enter."
+  [void](Read-Host "Press Enter after the test payment completes")
+
+  $script:StripeSession = $null
+  Wait-Condition -Description "Stripe Checkout completion" -Condition {
+    $script:StripeSession = Invoke-StripeApiGet -Path "/v1/checkout/sessions/$sessionId" -SecretKey $secrets.SecretKey
+    return [string](Get-PropertyValue $script:StripeSession "status") -eq "complete" -and
+      [string](Get-PropertyValue $script:StripeSession "payment_status") -eq "paid"
+  }
+  $stripeSession = $script:StripeSession
+  $metadata = Get-PropertyValue $stripeSession "metadata"
+  $sessionPaymentId = [string](Get-PropertyValue $metadata "paymentId")
+  $sessionOrderId = [string](Get-PropertyValue $metadata "orderId")
+  if ($sessionPaymentId -ne [string]$paymentId -or $sessionOrderId -ne [string]$Order.id) {
+    throw "Stripe Checkout metadata did not match the Order-owned Payment identity."
+  }
+  Write-Output "Stripe Checkout: PASS (test payment completed; provider identifiers withheld)"
+
+  Wait-Condition -Description "Payment webhook convergence" -Condition {
+    $current = Invoke-Api -Method GET -Uri "$BaseUri/api/v1/payments/$paymentId" `
+      -Headers (New-OperationHeaders $ShopperToken (New-TraceId))
+    if ($current.StatusCode -ne 200) { return $false }
+    return [string](Get-PropertyValue (Get-ApiData $current.Body) "status") -eq "SUCCEEDED"
+  }
+  Write-Output "Webhook delivery: PASS (Payment status=SUCCEEDED)"
+
+  $attemptId = [string](Get-PropertyValue $metadata "attemptId")
+  $eventMetadata = [ordered]@{
+    paymentId = [string]$paymentId
+    orderId = [string]$Order.id
+  }
+  if (-not [string]::IsNullOrWhiteSpace($attemptId)) { $eventMetadata.attemptId = $attemptId }
+  $event = [ordered]@{
+    id = "evt_phase24_$([guid]::NewGuid().ToString('N'))"
+    object = "event"
+    api_version = $StripeApiVersion
+    created = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    livemode = $false
+    type = "checkout.session.completed"
+    data = [ordered]@{ object = [ordered]@{
+      id = $sessionId
+      object = "checkout.session"
+      status = [string](Get-PropertyValue $stripeSession "status")
+      payment_status = [string](Get-PropertyValue $stripeSession "payment_status")
+      metadata = $eventMetadata
+    } }
+  }
+  $payload = $event | ConvertTo-Json -Depth 20 -Compress
+  Post-SignedStripeWebhook -Payload $payload -WebhookSecret $secrets.WebhookSecret -EventId $event.id
+  Post-SignedStripeWebhook -Payload $payload -WebhookSecret $secrets.WebhookSecret -EventId $event.id
+  Write-Output "Webhook replay: PASS (first and duplicate delivery acknowledged with HTTP 204)"
+
+  Wait-Condition -Description "PaymentSucceeded Kafka outbox publication" -Condition {
+    return (Get-KafkaTopicEndOffset) -gt $offsetBefore
+  }
+  Write-Output "Kafka Payment event: PASS (flashsale.payment.events.v1 advanced)"
+
+  $orderHeaders = New-OperationHeaders $ShopperToken (New-TraceId)
+  $orderResponse = Invoke-Api -Method GET -Uri "$BaseUri/api/v1/orders/$($Order.id)" -Headers $orderHeaders
+  Assert-ApiStatus $orderResponse @(200) "Order final query"
+  $finalOrder = Get-ApiData $orderResponse.Body
+  if ([string](Get-PropertyValue $finalOrder "purchaseRequestId") -ne [string]$Order.purchaseRequestId) {
+    throw "Order final query changed purchaseRequestId."
+  }
+  Write-Output "Order Saga boundary: PASS (orderId=$($Order.id) status=$([string](Get-PropertyValue $finalOrder 'status')))"
+}
+
 if (-not (Test-Path $OverlayPath)) { throw "Cloud overlay not found: $OverlayPath" }
 Assert-Preflight
 if (-not $Run) {
@@ -688,6 +930,10 @@ try {
   $order = Assert-OrderConvergence $baseUri $shopper.Token $reservation $product $campaign
   $elapsed = [int]((Get-Date) - $startedAt).TotalSeconds
   Write-Output "Phase 22 internal E2E: PASS (orderId=$($order.id) status=$($order.status) elapsedSeconds=$elapsed)"
+  if ($RunStripeCloudSmoke) {
+    Invoke-StripeCloudSmoke -BaseUri $baseUri -ShopperToken $shopper.Token -Order $order
+    Write-Output "Phase 24 Stripe runtime smoke: PASS"
+  }
   Write-Output "Manual cleanup: ProductId=$($product.ProductId) CampaignId=$($campaign.CampaignId) ShopperSubject=$($shopper.UserId)"
 } finally {
   Stop-GatewayPortForward

@@ -15,9 +15,9 @@
   mutate live state unless `-Apply` is explicit.
 - [x] T005 Add HTTPS Gateway desired state for option A, or document the option-B relay as partial;
   keep Payment and all backend Services private.
-- [ ] T006 Change all seven Payment switches together in the cloud ConfigMap; keep test mode and
+- [x] T006 Change all seven Payment switches together in the cloud ConfigMap; keep test mode and
   existing topic names unchanged.
-- [ ] T007 Add/adjust static tests for the ConfigMap, secret boundaries, route preservation, and
+- [x] T007 Add/adjust static tests for the ConfigMap, secret boundaries, route preservation, and
   all-flags-together invariant.
 
 ## Verification
