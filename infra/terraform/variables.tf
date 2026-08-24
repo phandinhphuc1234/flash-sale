@@ -47,3 +47,23 @@ variable "cluster_endpoint_public_access_cidrs" {
     error_message = "Supply at least one valid IPv4 CIDR and do not use 0.0.0.0/0. Use the operator's public IP as /32 whenever possible."
   }
 }
+
+variable "gateway_acm_enabled" {
+  description = "Create an ACM DNS-validated certificate for the optional HTTPS development Gateway edge."
+  type        = bool
+  default     = false
+}
+
+variable "gateway_domain_name" {
+  description = "DNS name for the HTTPS development Gateway edge, for example api-dev.example.com."
+  type        = string
+  default     = ""
+
+  validation {
+    condition = (
+      trimspace(var.gateway_domain_name) == "" ||
+      can(regex("^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$", trimspace(var.gateway_domain_name)))
+    )
+    error_message = "gateway_domain_name must be a DNS name or remain empty while ACM is disabled."
+  }
+}

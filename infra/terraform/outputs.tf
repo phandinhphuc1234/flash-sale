@@ -25,3 +25,20 @@ output "ecr_repository_urls" {
     service_name => repository.repository_url
   }
 }
+
+output "gateway_acm_certificate_arn" {
+  description = "ACM certificate ARN for the optional HTTPS Gateway edge; null when disabled."
+  value       = try(aws_acm_certificate.gateway[0].arn, null)
+}
+
+output "gateway_acm_dns_validation_options" {
+  description = "DNS validation records to publish for the optional ACM certificate."
+  value = try([
+    for option in aws_acm_certificate.gateway[0].domain_validation_options : {
+      domain_name           = option.domain_name
+      resource_record_name  = option.resource_record_name
+      resource_record_type  = option.resource_record_type
+      resource_record_value = option.resource_record_value
+    }
+  ], [])
+}
