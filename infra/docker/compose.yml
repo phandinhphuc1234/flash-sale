@@ -193,6 +193,10 @@ services:
       - kafka-data:/tmp/kraft-combined-logs
     healthcheck:
       <<: *platform-health-defaults
+      # Kafka's shell probe starts a JVM and can take more than five seconds on
+      # Docker Desktop even when the broker is responsive. Keep the shared
+      # interval/retry policy, but allow this heavier probe to finish.
+      timeout: 20s
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
     networks:
       - flash-sale-net

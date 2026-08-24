@@ -1,0 +1,33 @@
+{
+  "type": "record",
+  "name": "OrderConfirmedV1",
+  "namespace": "com.philia.flashsale.contract.order.event.v1",
+  "doc": "Committed Order fact after payment and reservation confirmation.",
+  "fields": [
+    {"name": "eventId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "eventType", "type": "string", "doc": "OrderConfirmed"},
+    {"name": "eventVersion", "type": "int", "doc": "1"},
+    {"name": "producer", "type": "string", "doc": "order-service"},
+    {"name": "aggregateType", "type": "string", "doc": "ORDER"},
+    {"name": "aggregateId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "aggregateVersion", "type": "long"},
+    {"name": "correlationId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "causationId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "occurredAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {
+      "name": "data",
+      "type": {
+        "type": "record",
+        "name": "OrderConfirmedDataV1",
+        "fields": [
+          {"name": "orderId", "type": {"type": "string", "logicalType": "uuid"}},
+          {"name": "orderNumber", "type": "string"},
+          {"name": "purchaseRequestId", "type": {"type": "string", "logicalType": "uuid"}},
+          {"name": "reservationId", "type": {"type": "string", "logicalType": "uuid"}},
+          {"name": "paymentId", "type": {"type": "string", "logicalType": "uuid"}},
+          {"name": "confirmedAt", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+        ]
+      }
+    }
+  ]
+}

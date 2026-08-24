@@ -6,15 +6,11 @@ This document is the repository-wide target catalog for Kafka topics, commands, 
 and Saga ordering. It reconciles the Saga and end-to-end architecture guides; it does not approve
 candidate contracts by itself.
 
-Current approved production scope remains:
-
-- topic `campaign.lifecycle.v1`;
-- `CampaignScheduled.v1`;
-- `CampaignActivated.v1`.
-
-Every other topic or message below is a candidate. Its owning feature must approve the Avro schema,
-producer, consumers, partition key, authorization, retention, retry/DLT, rollout, and recovery
-policy before production code or topic provisioning is added.
+Approved contract scope now includes the two Campaign lifecycle records plus the Purchase, Payment,
+and Order records owned by Features 019, 020, 021, and 044. Product, Campaign end/cancellation, and
+Inventory candidate families remain unapproved. A candidate still requires its owning feature to
+approve Avro schema, producer, consumers, key, authorization, retention, retry/DLT, rollout, and
+recovery before implementation or provisioning.
 
 ## 1. Reconciliation result
 
@@ -27,9 +23,9 @@ The corrected full-system target is:
 | Item | Count |
 |---|---:|
 | Main business topics | 11 |
-| Event types | 22 |
+| Event types | 23 |
 | Command types | 7 |
-| Total business message types | 29 |
+| Total business message types | 30 |
 
 The count excludes Kafka internal topics, Schema Registry's `_schemas`, retry topics, and DLTs.
 Those are operational artifacts rather than business message types.
@@ -42,11 +38,11 @@ Those are operational artifacts rather than business message types.
 | 2 | `campaign.lifecycle.v1` | Two events approved; two candidate | Campaign -> Flash Sale and fan-out consumers | `CampaignScheduled.v1`, `CampaignActivated.v1`, `CampaignEnded.v1`, `CampaignCancelled.v1` | `campaignId` |
 | 3 | `flashsale.campaign.commands.v1` | Candidate | Campaign -> Flash Sale | `StopCampaignSales.v1`, `DisableCampaignSales.v1` | `campaignId` |
 | 4 | `flashsale.campaign.results.v1` | Candidate | Flash Sale -> Campaign | `CampaignSalesStopped.v1`, `CampaignReservationsDrained.v1`, `CampaignSalesDisabled.v1` | `campaignId` |
-| 5 | `flashsale.purchase.commands.v1` | Candidate | Order -> Flash Sale | `ConfirmPurchaseReservation.v1`, `ReleasePurchaseReservation.v1` | `orderId` |
-| 6 | `flashsale.purchase.events.v1` | Candidate | Flash Sale -> Order | `PurchaseAccepted.v1`, `PurchaseReservationConfirmed.v1`, `PurchaseReservationReleased.v1` | See key transition below |
-| 7 | `flashsale.payment.commands.v1` | Candidate | Order -> Payment | `PaymentRequested.v1` | `orderId` |
-| 8 | `flashsale.payment.events.v1` | Candidate | Payment -> Order | `PaymentSucceeded.v1`, `PaymentFailed.v1` | `orderId` |
-| 9 | `flashsale.order.events.v1` | Candidate | Order -> notification, analytics, audit, and optional projections | `OrderCreated.v1`, `OrderConfirmed.v1`, `OrderCancelled.v1`, `OrderExpired.v1` | `orderId` |
+| 5 | `flashsale.purchase.commands.v1` | Approved Feature 044 | Order -> Flash Sale | `ConfirmPurchaseReservation.v1`, `ReleasePurchaseReservation.v1` | `orderId` |
+| 6 | `flashsale.purchase.events.v1` | Approved Features 019/044 | Flash Sale -> Order | `PurchaseAccepted.v1`, `PurchaseReservationConfirmed.v1`, `PurchaseReservationReleased.v1` | See key transition below |
+| 7 | `flashsale.payment.commands.v1` | Approved Feature 021 | Order -> Payment | `PaymentRequested.v1` | `orderId` |
+| 8 | `flashsale.payment.events.v1` | Approved Feature 021 | Payment -> Order | `PaymentSucceeded.v1`, `PaymentFailed.v1` | `orderId` |
+| 9 | `flashsale.order.events.v1` | Approved Features 020/044 | Order -> future notification, analytics, audit, and optional projections | `OrderCreated.v1`, `OrderConfirmed.v1`, `OrderCancelled.v1`, `OrderExpired.v1`, `OrderPaymentReviewRequired.v1` | `orderId` |
 | 10 | `flashsale.inventory.commands.v1` | Candidate | Campaign -> Inventory | `ReconcileCampaignStock.v1`, `ReleaseCampaignAllocation.v1` | `campaignId` |
 | 11 | `flashsale.inventory.events.v1` | Candidate | Inventory -> Campaign | `CampaignStockReconciled.v1`, `CampaignStockReconciliationFailed.v1`, `CampaignAllocationReleased.v1` | `campaignId` |
 
@@ -63,9 +59,20 @@ the Saga/correlation ID as metadata. This identity transition must be explicit i
 | Campaign control/results | 3 | 2 | 5 |
 | Purchase reservation | 3 | 2 | 5 |
 | Payment | 2 | 1 | 3 |
-| Order | 4 | 0 | 4 |
+| Order | 5 | 0 | 5 |
 | Inventory | 3 | 2 | 5 |
-| **Total** | **22** | **7** | **29** |
+| **Total** | **23** | **7** | **30** |
+
+### Feature 044 operational DLT ownership
+
+| DLT | Producer | Poison source records |
+|---|---|---|
+| `flashsale.order.payment-result.dlt.v1` | Order consumer recovery | `PaymentSucceededV1`, `PaymentFailedV1` |
+| `flashsale.flash-sale.purchase-command.dlt.v1` | Flash Sale consumer recovery | `ConfirmPurchaseReservationV1`, `ReleasePurchaseReservationV1` |
+| `flashsale.order.purchase-reservation-result.dlt.v1` | Order consumer recovery | `PurchaseReservationConfirmedV1`, `PurchaseReservationReleasedV1` |
+
+DLTs are operational evidence, not business failure facts. With `TopicRecordNameStrategy`, the eight
+new main record subjects plus six DLT topic/record bindings produce 14 Registry subjects.
 
 ## 4. Correct purchase Saga
 
@@ -93,6 +100,12 @@ terminal PaymentFailed or payment deadline
   -> PurchaseReservationReleased
   -> Order becomes CANCELLED or EXPIRED
   -> OrderCancelled or OrderExpired
+
+higher-version verified success after unpaid terminal Order
+  -> Order corrects public state to PENDING_PAYMENT
+  -> Purchase Saga becomes MANUAL_REVIEW
+  -> OrderPaymentReviewRequired correction fact
+  -> no automatic refund or stock reallocation
 ```
 
 `PaymentFailed` represents an approved failed payment-attempt outcome. A transient timeout or
@@ -183,15 +196,20 @@ the project defines how to handle in-flight reservations and captured payments.
 ## 9. Implementation status and order
 
 ```text
-Implemented/approved now
+Implemented before Feature 044
   -> campaign.lifecycle.v1 contract family
   -> CampaignScheduled.v1 and CampaignActivated.v1 schemas
   -> Avro SpecificRecord contract module and compatibility tests
   -> Campaign transactional-outbox publisher with controlled Registry registration
 
+Approved schema-first in Feature 044
+  -> Purchase reservation confirm/release commands and results
+  -> PaymentRequested / PaymentSucceeded / PaymentFailed reuse
+  -> Order confirmed/cancelled/expired/review-required facts
+  -> three consumer-specific DLTs
+
 Still candidate
   -> Product lifecycle messages
-  -> Purchase/Payment/Order Saga messages
   -> Campaign end/cancellation commands, results, and final events
   -> Inventory reconcile/release messages
 ```
@@ -199,7 +217,7 @@ Still candidate
 Do not create all candidate topics immediately. Implement one approved feature slice at a time:
 
 1. run the opt-in Campaign lifecycle Kafka/Registry integration validation and add one idempotent consumer;
-2. approve Purchase Saga decisions and contracts;
+2. implement the approved Purchase Saga contracts locally;
 3. implement purchase/payment/reservation happy path;
 4. add failure, deadline, compensation, and manual recovery;
 5. add Campaign drain/end;
