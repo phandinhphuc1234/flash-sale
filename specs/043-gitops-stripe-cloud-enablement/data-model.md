@@ -26,6 +26,12 @@ environment: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_
 existing Payment database credentials. The values are not represented in this file, logs, Git, or
 evidence. `auth-jwt` remains a separate file-based Secret.
 
+## ACM certificate
+
+The development HTTPS certificate covers `flashsale123.tech` and `*.flashsale123.tech` in AWS
+region `ap-southeast-2`. ACM DNS validation records are output by Terraform and entered manually at
+Get.Tech. Route 53 is not an owner of this DNS zone.
+
 ## Existing durable entities affected
 
 - `Payment`: one logical Order obligation and monotonic lifecycle.
@@ -41,4 +47,3 @@ evidence. `auth-jwt` remains a separate file-based Secret.
 3. One provider event ID has at most one semantic receipt/effect.
 4. A verified provider outcome, not browser navigation, decides Payment state.
 5. Rollback changes runtime switches only; it does not delete durable evidence.
-

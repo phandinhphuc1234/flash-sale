@@ -4,8 +4,9 @@
 resource "aws_acm_certificate" "gateway" {
   count = var.gateway_acm_enabled ? 1 : 0
 
-  domain_name       = var.gateway_domain_name
-  validation_method = "DNS"
+  domain_name               = var.gateway_domain_name
+  subject_alternative_names = ["*.${var.gateway_domain_name}"]
+  validation_method         = "DNS"
 
   lifecycle {
     create_before_destroy = true

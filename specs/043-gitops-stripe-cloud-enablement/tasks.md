@@ -11,9 +11,9 @@
 
 ## Safe implementation
 
-- [ ] T004 Add a bounded Phase 24 preflight/rollback script; it must not print Secret values or
+- [x] T004 Add a bounded Phase 24 preflight/rollback script; it must not print Secret values or
   mutate live state unless `-Apply` is explicit.
-- [ ] T005 Add HTTPS Gateway desired state for option A, or document the option-B relay as partial;
+- [x] T005 Add HTTPS Gateway desired state for option A, or document the option-B relay as partial;
   keep Payment and all backend Services private.
 - [ ] T006 Change all seven Payment switches together in the cloud ConfigMap; keep test mode and
   existing topic names unchanged.

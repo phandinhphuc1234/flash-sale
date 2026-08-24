@@ -41,6 +41,10 @@ Select the existing Checkout events required by the Payment spec. Do not use the
 generated hostname. For interim local validation only, use Stripe CLI forwarding and record Phase
 24 as partial.
 
+For this project the certificate covers `flashsale123.tech` and `*.flashsale123.tech` in
+`ap-southeast-2`. Terraform outputs the DNS validation CNAMEs; add them manually in Get.Tech. Do not
+create a Route 53 Hosted Zone or Route 53 record.
+
 ## 5. Enable and reconcile
 
 After the Phase 24 PR is reviewed and merged:
@@ -58,4 +62,3 @@ secret -o yaml` in a transcript.
 
 Revert the ConfigMap commit, let Argo reconcile, and verify all seven flags are false. Keep the
 Secret and database evidence; do not delete PVCs, Kafka topics, or Payment rows.
-
