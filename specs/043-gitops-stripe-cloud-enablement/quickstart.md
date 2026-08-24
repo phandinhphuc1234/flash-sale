@@ -58,7 +58,33 @@ kubectl -n argocd get application flash-sale-cloud --watch
 Verify Payment readiness and all seven flags before attempting Checkout. Never use `kubectl get
 secret -o yaml` in a transcript.
 
-## 6. Rollback
+## 6. Run the bounded Stripe cloud smoke
+
+The runner reuses the Phase 22 Order fixture, then continues through Payment Checkout. Validation
+mode is non-mutating:
+
+```powershell
+.\infra\scripts\gitops\phase24-stripe-cloud.ps1 -AdminLogin "admin@flashsale.test"
+```
+
+Run mode prompts for the existing `ROLE_ADMIN` password, creates a Checkout Session for the
+Order-owned Payment, opens the hosted Checkout page without printing its URL, and waits for the
+operator to complete it with a Stripe test card (for example `4242 4242 4242 4242`). It then checks
+the HTTPS webhook, duplicate acknowledgement, Payment result, Kafka outbox offset, and final Order
+identity:
+
+```powershell
+.\infra\scripts\gitops\phase24-stripe-cloud.ps1 `
+  -Run `
+  -AdminLogin "admin@flashsale.test"
+```
+
+The script reads Stripe keys only from the ignored `infra/docker/.env`; it never prints secret
+values, JWTs, Checkout URLs, Stripe identifiers, signatures, or raw webhook bodies. A successful
+rollout alone is not evidence of Stripe delivery; T009 and T010 remain open until this bounded
+run completes.
+
+## 7. Rollback
 
 Revert the ConfigMap commit, let Argo reconcile, and verify all seven flags are false. Keep the
 Secret and database evidence; do not delete PVCs, Kafka topics, or Payment rows.

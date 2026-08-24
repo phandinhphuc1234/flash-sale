@@ -1,4 +1,4 @@
-# GitOps Phase 5–23 helper scripts
+# GitOps Phase 5–24 helper scripts
 
 ## Canonical roadmap numbering
 
@@ -66,6 +66,12 @@ rollback/rehearsal.
   and classifies Terraform detailed exit code 0 versus 2. It never runs apply, destroy, import, state
   mutation, or writes tfvars. Pass `-AutoDetectPublicIp` to derive the current public IPv4 `/32`
   locally when the variable is not already set.
+- Phase 24 Stripe cloud smoke reuses the Phase 22 fixture flow only after all seven Payment flags
+  are enabled. Validation-only mode checks Argo/Kustomize/rollout boundaries; `-Run` prompts for
+  the ROLE_ADMIN password, opens hosted Checkout for a manual Stripe test-card payment, verifies
+  HTTPS webhook acknowledgement and replay, observes the Payment Kafka outbox offset, and checks
+  the final Order identity. It reads Stripe values only from ignored `infra/docker/.env` and never
+  prints secrets, JWTs, Checkout URLs, provider IDs, signatures, or raw webhook bodies.
 - Canonical roadmap 21 is hosted by `.github/workflows/service-delivery.yml`; it is separate from
   the read-only Phase 21 cloud release verification helper above. Manual dispatch accepts `all` or
   one deployed service. Review the generated PR before Argo CD reconciles `flash-sale-cloud`.
@@ -102,6 +108,10 @@ From the repository root:
 
     .\infra\scripts\gitops\phase18-gateway-smoke.ps1
     .\infra\scripts\gitops\phase18-gateway-smoke.ps1 -Run
+
+    # After the HTTPS edge, Stripe Secret, and seven Payment flags are reconciled:
+    .\infra\scripts\gitops\phase24-stripe-cloud.ps1 -AdminLogin "admin@flashsale.test"
+    .\infra\scripts\gitops\phase24-stripe-cloud.ps1 -Run -AdminLogin "admin@flashsale.test"
 
     .\infra\scripts\gitops\phase19-argocd-cloud.ps1
 

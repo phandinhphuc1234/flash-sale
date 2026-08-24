@@ -6,6 +6,8 @@
   These checks do not contact EKS or mutate business/Kubernetes state. They protect the
   operator boundary: the runner must remain PowerShell 7 parseable, use secure admin input,
   delegate stock initialization to the Inventory-owned Job, and avoid direct data-plane access.
+  The Phase 24 Stripe continuation is the only bounded exception: it reads Kafka topic end
+  offsets through the broker CLI to prove outbox publication and never reads a database or Redis.
 #>
 [CmdletBinding()]
 param()
@@ -71,13 +73,18 @@ if ($wrapperContent -match '(?i)(password\s*=\s*"|ConvertTo-SecureString\s+-Stri
 }
 
 $forbiddenPatterns = @(
-  '(?i)kubectl\s+exec',
   '(?i)\b(?:psql|mysql|redis-cli|kafka-console-(?:producer|consumer))\b',
   '(?i)\b(?:Invoke-Sqlcmd|sqlcmd)\b',
   '(?i)kubectl\s+port-forward\s+.*(?:postgres|redis|kafka)'
 )
 foreach ($pattern in $forbiddenPatterns) {
   if ($content -match $pattern) { throw "Forbidden direct data-plane command found: $pattern" }
+}
+
+if ($content -match '(?i)kubectl\s+exec' -and
+    $content -notmatch 'kafka-get-offsets\.sh' -and
+    $content -notmatch 'kafka-0') {
+  throw "Unexpected direct Kubernetes exec command found."
 }
 
 Write-Output "Phase 22 runner static checks: PASS"
