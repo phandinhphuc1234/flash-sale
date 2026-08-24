@@ -13,8 +13,11 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: /actuator/health/readiness
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: traffic-port
 spec:
+  $patch: replace
   type: LoadBalancer
   externalTrafficPolicy: Cluster
+  selector:
+    app.kubernetes.io/name: api-gateway
   ports:
     - name: https
       port: 443
