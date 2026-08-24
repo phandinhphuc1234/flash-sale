@@ -48,11 +48,25 @@ if ($Domain -notmatch '^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-
 }
 
 $rendered = Invoke-KubectlText @("kustomize", $OverlayPath)
-if ($rendered -notmatch '(?ms)kind:\s*Service.*?name:\s*api-gateway.*?type:\s*LoadBalancer') {
+$apiGatewayService = @(
+  $rendered -split '(?m)^---\s*$' |
+    Where-Object {
+      $_ -match '(?m)^kind:\s*Service\s*$' -and
+      $_ -match '(?m)^\s*name:\s*api-gateway\s*$'
+    } |
+    Select-Object -First 1
+) -join "`n"
+if ([string]::IsNullOrWhiteSpace($apiGatewayService)) {
+  throw "Cloud overlay does not render the api-gateway Service."
+}
+if ($apiGatewayService -notmatch '(?ms)kind:\s*Service.*?type:\s*LoadBalancer') {
   throw "Cloud overlay does not render api-gateway as a LoadBalancer."
 }
-if ($rendered -notmatch '(?ms)kind:\s*Service.*?name:\s*api-gateway.*?port:\s*443.*?targetPort:\s*http') {
+if ($apiGatewayService -notmatch '(?ms)ports:\s*.*?port:\s*443.*?targetPort:\s*http') {
   throw "Cloud overlay does not render the HTTPS 443 -> Gateway http port mapping."
+}
+if ($apiGatewayService -match '(?m)^\s*port:\s*8080\s*$') {
+  throw "Cloud overlay still exposes api-gateway port 8080; only HTTPS 443 may be public."
 }
 if ($rendered.IndexOf($CertificateArn, [StringComparison]::Ordinal) -lt 0) {
   throw "Cloud overlay does not reference the expected ACM certificate ARN."
@@ -85,6 +99,10 @@ do {
   if ($service.metadata.annotations.'service.beta.kubernetes.io/aws-load-balancer-ssl-cert' -ne $CertificateArn) {
     throw "Live api-gateway Service does not reference the expected ACM certificate."
   }
+  $livePorts = @($service.spec.ports | ForEach-Object { [int]$_.port })
+  if ($livePorts -contains 8080 -or $livePorts -notcontains 443) {
+    throw "Live api-gateway Service must expose HTTPS 443 only; observed ports=$($livePorts -join ',')."
+  }
   $ingress = @($service.status.loadBalancer.ingress)
   if ($ingress.Count -gt 0) { $externalHost = if ($ingress[0].hostname) { $ingress[0].hostname } else { $ingress[0].ip } }
   if ([string]::IsNullOrWhiteSpace($externalHost)) { Start-Sleep -Seconds 5 }
@@ -93,8 +111,12 @@ do {
 if ([string]::IsNullOrWhiteSpace($externalHost)) { throw "AWS HTTPS endpoint was not assigned within $TimeoutSeconds seconds." }
 Write-Output "AWS HTTPS endpoint assigned: <redacted-hostname>"
 
-$dns = Resolve-DnsName -Name $Domain -Type A,AAAA,CNAME -ErrorAction SilentlyContinue
-if ($null -eq $dns) { throw "DNS for $Domain has not propagated to the HTTPS Gateway yet." }
+$dns = @(
+  foreach ($recordType in @("A", "AAAA", "CNAME")) {
+    Resolve-DnsName -Name $Domain -Type $recordType -ErrorAction SilentlyContinue
+  }
+)
+if ($dns.Count -eq 0) { throw "DNS for $Domain has not propagated to the HTTPS Gateway yet." }
 Write-Output "Gateway DNS: PASS ($Domain resolved)"
 
 $readiness = Get-HttpStatus "https://$Domain/actuator/health/readiness"
