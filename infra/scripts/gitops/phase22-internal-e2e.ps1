@@ -409,13 +409,21 @@ function Start-GatewayPortForward {
   $base = Join-Path ([IO.Path]::GetTempPath()) ("phase22-gateway-{0}" -f ([guid]::NewGuid().ToString("N")))
   $script:PortForwardOut = "$base.out.log"
   $script:PortForwardErr = "$base.err.log"
+  # Phase 24 intentionally exposes only Service port 443. The Service still maps that
+  # port to the Gateway's plain HTTP container port, so the loopback probe remains HTTP.
   $script:PortForward = Start-Process -FilePath "kubectl" -ArgumentList @(
-    "-n", $Namespace, "port-forward", "--address", "127.0.0.1", "service/api-gateway", ("{0}:8080" -f $LocalPort)
+    "-n", $Namespace, "port-forward", "--address", "127.0.0.1", "service/api-gateway", ("{0}:443" -f $LocalPort)
   ) -RedirectStandardOutput $script:PortForwardOut -RedirectStandardError $script:PortForwardErr -WindowStyle Hidden -PassThru
   $baseUri = "http://127.0.0.1:$LocalPort"
   do {
     Start-Sleep -Milliseconds 500
-    if ($script:PortForward.HasExited) { throw "Gateway port-forward exited before readiness." }
+    if ($script:PortForward.HasExited) {
+      $details = if (Test-Path -LiteralPath $script:PortForwardErr) {
+        (Get-Content -LiteralPath $script:PortForwardErr -Raw).Trim()
+      } else { "no kubectl stderr captured" }
+      if ([string]::IsNullOrWhiteSpace($details)) { $details = "no kubectl stderr captured" }
+      throw "Gateway port-forward exited before readiness: $details"
+    }
     try {
       $probe = Invoke-WebRequest -Uri "$baseUri/actuator/health/readiness" -TimeoutSec 5 -SkipHttpErrorCheck
       if ($probe.StatusCode -eq 200) { return $baseUri }
