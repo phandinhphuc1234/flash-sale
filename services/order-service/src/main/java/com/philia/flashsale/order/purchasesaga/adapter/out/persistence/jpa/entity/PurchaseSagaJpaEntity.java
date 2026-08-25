@@ -28,6 +28,14 @@ public class PurchaseSagaJpaEntity {
     private PurchaseSagaStatus status;
     @Column(name = "payment_deadline", nullable = false)
     private Instant paymentDeadline;
+    @Column(name = "payment_id")
+    private UUID paymentId;
+    @Column(name = "last_payment_version")
+    private Long lastPaymentVersion;
+    @Column(name = "payment_succeeded_at")
+    private Instant paymentSucceededAt;
+    @Column(name = "active_command_id")
+    private UUID activeCommandId;
     @Column(name = "step_started_at", nullable = false)
     private Instant stepStartedAt;
     @Column(nullable = false)
@@ -48,6 +56,10 @@ public class PurchaseSagaJpaEntity {
         entity.reservationId = saga.reservationId();
         entity.status = saga.status();
         entity.paymentDeadline = saga.paymentDeadline();
+        entity.paymentId = saga.paymentId();
+        entity.lastPaymentVersion = saga.lastPaymentVersion();
+        entity.paymentSucceededAt = saga.paymentSucceededAt();
+        entity.activeCommandId = saga.activeCommandId();
         entity.stepStartedAt = saga.stepStartedAt();
         entity.version = saga.version();
         entity.createdAt = saga.createdAt();
@@ -61,6 +73,26 @@ public class PurchaseSagaJpaEntity {
     public UUID getReservationId() { return reservationId; }
     public PurchaseSagaStatus getStatus() { return status; }
     public Instant getPaymentDeadline() { return paymentDeadline; }
+    public UUID getPaymentId() { return paymentId; }
+    public Long getLastPaymentVersion() { return lastPaymentVersion; }
+    public Instant getPaymentSucceededAt() { return paymentSucceededAt; }
+    public UUID getActiveCommandId() { return activeCommandId; }
     public long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+
+    /** Applies a framework-free Saga transition while keeping the mapping adapter-local. */
+    public void apply(PurchaseSaga saga) {
+        if (!id.equals(saga.id())) {
+            throw new IllegalArgumentException("Saga identity mismatch");
+        }
+        status = saga.status();
+        paymentId = saga.paymentId();
+        lastPaymentVersion = saga.lastPaymentVersion();
+        paymentSucceededAt = saga.paymentSucceededAt();
+        activeCommandId = saga.activeCommandId();
+        stepStartedAt = saga.stepStartedAt();
+        version = saga.version();
+        updatedAt = saga.updatedAt();
+    }
 }

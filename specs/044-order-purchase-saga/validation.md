@@ -46,3 +46,18 @@ the Order, `PurchaseSaga(PAYMENT_PENDING)`, accepted inbox, `OrderCreated` outbo
 boundary, but the paid, failed, replay, late-success, cloud, and image-promotion slices remain
 deferred to later task groups. No Payment/Flash Sale result transition, ECR image build, EKS rollout,
 cloud mutation, or ignored `.env` change was performed by G3.
+
+## G4a — Order PaymentSucceeded boundary — 2026-08-25
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| PaymentSucceeded domain transition | PASS | `PurchaseSagaDomainTests`: 4 tests, 0 failures, 0 errors. A verified payment records payment identity/version, increments Saga version, and opens `CONFIRMING_RESERVATION` with a deterministic confirm-command identity. |
+| PaymentSucceeded Avro boundary | PASS | `PaymentSucceededAvroMapperTests`: 2 tests, 0 failures, 0 errors. Envelope, producer/type/version, amount/currency, order key, and stable fingerprint checks pass. |
+| Order Kafka property binding | PASS | `OrderPropertiesTests`: 3 tests, 0 failures, 0 errors. Payment result topic/group/DLT and purchase-command topic defaults bind successfully. |
+| Order module compile | PASS | `mvnw.cmd -pl services/order-service -am -DskipTests compile`: reactor `BUILD SUCCESS`. |
+
+This G4a slice adds the Order-side PaymentSucceeded consumer boundary, durable Saga inbox
+representation, atomic confirm-command outbox adapter, and Schema Registry publisher wiring. The
+Flash Sale confirm participant and terminal Order finalization are intentionally not marked complete
+yet; they are the next dependent slices of the approved Paid path. No ECR/EKS/cloud mutation or
+ignored `.env` change was performed.

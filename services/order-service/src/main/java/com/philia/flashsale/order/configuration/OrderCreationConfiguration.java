@@ -12,6 +12,10 @@ import com.philia.flashsale.order.order.application.usecase.AcceptedPurchaseFing
 import com.philia.flashsale.order.order.application.usecase.CreateOrderFromAcceptedPurchaseService;
 import com.philia.flashsale.order.observability.OrderObservability;
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.repository.PurchaseSagaJpaRepository;
+import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.repository.PurchaseSagaInboxJpaRepository;
+import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.PaymentSuccessPersistenceAdapter;
+import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPaymentSuccessUseCase;
+import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPaymentSuccessService;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -45,5 +49,17 @@ public class OrderCreationConfiguration {
             AcceptedPurchaseFingerprintService fingerprints) {
         return new CreateOrderFromAcceptedPurchaseService(
                 persistence, identities, orderNumbers, clock, fingerprints);
+    }
+
+    @Bean
+    public PaymentSuccessPersistenceAdapter paymentSuccessPersistenceAdapter(
+            PurchaseSagaJpaRepository sagas, PurchaseSagaInboxJpaRepository inbox,
+            OrderCreationOutboxJpaRepository outbox) {
+        return new PaymentSuccessPersistenceAdapter(sagas, inbox, outbox);
+    }
+
+    @Bean
+    public ApplyPaymentSuccessUseCase applyPaymentSuccessUseCase(PaymentSuccessPersistenceAdapter persistence) {
+        return new ApplyPaymentSuccessService(persistence);
     }
 }

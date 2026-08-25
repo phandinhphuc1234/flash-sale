@@ -1,6 +1,8 @@
 package com.philia.flashsale.order.order.adapter.out.persistence.jpa.entity;
 
 import com.philia.flashsale.order.order.application.model.OrderCreationCandidate;
+import com.philia.flashsale.order.purchasesaga.application.command.PaymentSucceededCommand;
+import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -114,6 +116,37 @@ public class OrderCreationOutboxJpaEntity {
         entity.occurredAt = candidate.occurredAt();
         entity.createdAt = candidate.createdAt();
         entity.updatedAt = candidate.createdAt();
+        return entity;
+    }
+
+    /** Creates the stable Flash Sale confirm command after a verified PaymentSucceeded fact. */
+    public static OrderCreationOutboxJpaEntity confirmReservation(PaymentSucceededCommand command,
+            PurchaseSaga saga, UUID commandId) {
+        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
+        entity.eventId = commandId;
+        entity.aggregateType = "PURCHASE_SAGA";
+        entity.aggregateId = saga.id();
+        entity.aggregateVersion = saga.version();
+        entity.eventType = "ConfirmPurchaseReservation";
+        entity.eventVersion = 1;
+        entity.eventKey = saga.orderId().toString();
+        entity.correlationId = command.correlationId();
+        entity.causationId = command.eventId();
+        entity.payload = "{"
+                + "\"sagaId\":\"" + saga.id() + "\","
+                + "\"orderId\":\"" + saga.orderId() + "\","
+                + "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\","
+                + "\"reservationId\":\"" + saga.reservationId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"paidAt\":\"" + command.paidAt() + "\"}";
+        entity.traceparent = command.traceparent();
+        entity.tracestate = command.tracestate();
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = command.occurredAt();
+        entity.occurredAt = command.occurredAt();
+        entity.createdAt = command.occurredAt();
+        entity.updatedAt = command.occurredAt();
         return entity;
     }
 
