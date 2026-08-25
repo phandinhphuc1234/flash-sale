@@ -80,6 +80,7 @@ public class PurchaseSagaJpaEntity {
     public long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public Instant getStepStartedAt() { return stepStartedAt; }
 
     /** Applies a framework-free Saga transition while keeping the mapping adapter-local. */
     public void apply(PurchaseSaga saga) {

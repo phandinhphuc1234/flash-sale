@@ -17,7 +17,7 @@ import java.util.Objects;
 import org.springframework.dao.DataAccessException;
 
 /** PostgreSQL boundary for the atomic PaymentSucceeded -> confirm-command transition. */
-public final class PaymentSuccessPersistenceAdapter implements ApplyPaymentSuccessPort {
+public class PaymentSuccessPersistenceAdapter implements ApplyPaymentSuccessPort {
     private final PurchaseSagaJpaRepository sagas;
     private final PurchaseSagaInboxJpaRepository inbox;
     private final OrderCreationOutboxJpaRepository outbox;

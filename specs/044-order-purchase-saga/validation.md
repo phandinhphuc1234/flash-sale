@@ -78,3 +78,19 @@ ignored `.env` change was performed.
 G5 closes the Flash Sale confirmation participant only. Order terminal finalization, Payment failure
 release, late-success/reordering convergence, and the dedicated Redis reconciliation worker remain
 deferred to the following task groups.
+
+## G6 — Order terminal finalization — 2026-08-25
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| PurchaseReservationConfirmed contract boundary | PASS | `PurchaseReservationConfirmedAvroMapperTests`: 3 tests, 0 failures; validates topic/key, producer/type, aggregate/version, Saga identity, and SHA-256 replay fingerprint before entering the use case. |
+| OrderConfirmed publication boundary | PASS | `OrderConfirmedAvroMapperTests`: 2 tests, 0 failures; maps the durable outbox envelope to `flashsale.order.events.v1` with `orderId` key and the approved terminal payload. |
+| Domain terminal transitions | PASS | `PurchaseSagaDomainTests` and `OrderDomainTests`: confirmation transition tests pass; Saga moves `CONFIRMING_RESERVATION → COMPLETED`, while Order moves `PENDING_PAYMENT → CONFIRMED` without losing its snapshot. |
+| Atomic terminalization and replay | PASS | `PurchaseReservationConfirmationPersistenceIntegrationTests`: 1 test, 0 failures; Testcontainers PostgreSQL verified `Order.CONFIRMED`, `PurchaseSaga.COMPLETED`, one Saga inbox row, one `OrderConfirmed` outbox row, and same-event replay as a no-op. |
+| Order consumer wiring/regression | PASS WITH INFRA NOTE | Targeted Spring contexts: 5/5 pass; `AcceptedPurchaseConcurrencyIntegrationTests`: 2/2 pass on rerun. One full-suite attempt ran 108 tests with 2 transient Testcontainers JDBC connection errors; rerunning that class passed 2/2. |
+| Static hygiene | PASS | `git diff --check` passed. No ECR push, EKS rollout, cloud mutation, or ignored `.env` change was performed. |
+
+G6 closes the successful paid-path terminalization boundary: an authenticated
+`PurchaseReservationConfirmedV1` result is deduplicated by the Order Saga inbox and atomically
+confirms the Order, completes the Saga, and queues `OrderConfirmedV1` for the outbox relay. Payment
+failure/release, replay/reordering recovery, local Paid runner, and cloud promotion remain deferred.

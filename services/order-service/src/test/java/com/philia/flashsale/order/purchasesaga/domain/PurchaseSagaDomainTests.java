@@ -61,4 +61,23 @@ class PurchaseSagaDomainTests {
         assertThat(transitioned.paymentId()).isEqualTo(paymentId);
         assertThat(transitioned.activeCommandId()).isEqualTo(commandId);
     }
+
+    @Test
+    void verifiedReservationConfirmationCompletesTheSagaAndClearsTheActiveCommand() {
+        UUID orderId = UUID.randomUUID();
+        UUID requestId = UUID.randomUUID();
+        UUID reservationId = UUID.randomUUID();
+        UUID paymentId = UUID.randomUUID();
+        PurchaseSaga saga = PurchaseSaga.start(orderId, requestId, reservationId,
+                CREATED.plusSeconds(300), CREATED)
+                .confirmReservation(paymentId, 1, CREATED.plusSeconds(2), UUID.randomUUID(),
+                        CREATED.plusSeconds(3));
+
+        PurchaseSaga completed = saga.completeReservation(reservationId, paymentId, CREATED.plusSeconds(4));
+
+        assertThat(completed.status()).isEqualTo(PurchaseSagaStatus.COMPLETED);
+        assertThat(completed.version()).isEqualTo(2);
+        assertThat(completed.activeCommandId()).isNull();
+        assertThat(completed.paymentId()).isEqualTo(paymentId);
+    }
 }

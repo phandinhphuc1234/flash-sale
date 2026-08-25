@@ -2,6 +2,7 @@ package com.philia.flashsale.order.order.adapter.out.persistence.jpa.entity;
 
 import com.philia.flashsale.order.order.application.model.OrderCreationCandidate;
 import com.philia.flashsale.order.purchasesaga.application.command.PaymentSucceededCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationConfirmedCommand;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -147,6 +149,40 @@ public class OrderCreationOutboxJpaEntity {
         entity.occurredAt = command.occurredAt();
         entity.createdAt = command.occurredAt();
         entity.updatedAt = command.occurredAt();
+        return entity;
+    }
+
+    /** Creates the terminal OrderConfirmed fact in the same local transaction as the state changes. */
+    public static OrderCreationOutboxJpaEntity orderConfirmed(PurchaseReservationConfirmedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-confirmed:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.confirmedAt();
+        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
+        entity.eventId = eventId;
+        entity.aggregateType = "ORDER";
+        entity.aggregateId = order.getId();
+        entity.aggregateVersion = saga.version();
+        entity.eventType = "OrderConfirmed";
+        entity.eventVersion = 1;
+        entity.eventKey = order.getId().toString();
+        entity.correlationId = command.correlationId();
+        entity.causationId = command.eventId();
+        entity.payload = "{"
+                + "\"orderId\":\"" + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"reservationId\":\"" + order.getReservationId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"confirmedAt\":\"" + occurredAt + "\"}";
+        entity.traceparent = command.traceparent();
+        entity.tracestate = command.tracestate();
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = occurredAt;
+        entity.occurredAt = occurredAt;
+        entity.createdAt = occurredAt;
+        entity.updatedAt = occurredAt;
         return entity;
     }
 

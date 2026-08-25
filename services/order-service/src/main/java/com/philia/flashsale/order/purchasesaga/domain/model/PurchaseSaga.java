@@ -60,6 +60,16 @@ public final class PurchaseSaga {
                 createdAt, 0, createdAt, createdAt, true);
     }
 
+    /** Rehydrates a persisted Saga without allowing the application core to depend on JPA. */
+    public static PurchaseSaga restore(UUID id, UUID orderId, UUID purchaseRequestId, UUID reservationId,
+            PurchaseSagaStatus status, Instant paymentDeadline, UUID paymentId, Long lastPaymentVersion,
+            Instant paymentSucceededAt, UUID activeCommandId, Instant stepStartedAt, long version,
+            Instant createdAt, Instant updatedAt) {
+        return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId, status, paymentDeadline,
+                paymentId, lastPaymentVersion, paymentSucceededAt, activeCommandId, stepStartedAt,
+                version, createdAt, updatedAt, false);
+    }
+
     /** Applies one verified PaymentSucceeded fact and opens the confirm-reservation step. */
     public PurchaseSaga confirmReservation(UUID paymentId, long paymentVersion, Instant paidAt,
             UUID commandId, Instant transitionedAt) {
@@ -81,6 +91,26 @@ public final class PurchaseSaga {
                 PurchaseSagaStatus.CONFIRMING_RESERVATION, paymentDeadline, paymentId,
                 paymentVersion, paidAt, commandId, transitionedAt, version + 1, createdAt,
                 transitionedAt, false);
+    }
+
+    /** Applies the verified Flash Sale confirmation and completes the Order-owned Saga. */
+    public PurchaseSaga completeReservation(UUID confirmedReservationId, UUID confirmedPaymentId,
+            Instant confirmedAt) {
+        Objects.requireNonNull(confirmedReservationId, "confirmedReservationId");
+        Objects.requireNonNull(confirmedPaymentId, "confirmedPaymentId");
+        Objects.requireNonNull(confirmedAt, "confirmedAt");
+        if (status != PurchaseSagaStatus.CONFIRMING_RESERVATION) {
+            throw new InvalidPurchaseSagaException("Saga is not awaiting reservation confirmation");
+        }
+        if (!reservationId.equals(confirmedReservationId)) {
+            throw new InvalidPurchaseSagaException("reservation identity conflicts with Saga");
+        }
+        if (paymentId == null || !paymentId.equals(confirmedPaymentId)) {
+            throw new InvalidPurchaseSagaException("payment identity conflicts with Saga");
+        }
+        return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId,
+                PurchaseSagaStatus.COMPLETED, paymentDeadline, paymentId, lastPaymentVersion,
+                paymentSucceededAt, null, confirmedAt, version + 1, createdAt, confirmedAt, false);
     }
 
     public UUID id() { return id; }

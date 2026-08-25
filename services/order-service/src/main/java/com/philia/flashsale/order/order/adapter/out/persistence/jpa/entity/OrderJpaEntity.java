@@ -92,4 +92,13 @@ public class OrderJpaEntity {
     public long getRowVersion() { return rowVersion; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    /** Applies the Order terminal transition inside the enclosing database transaction. */
+    public void confirm(Instant confirmedAt) {
+        if (status != OrderStatus.PENDING_PAYMENT && status != OrderStatus.CONFIRMED) {
+            throw new IllegalStateException("Order is not awaiting payment confirmation");
+        }
+        status = OrderStatus.CONFIRMED;
+        updatedAt = confirmedAt;
+    }
 }

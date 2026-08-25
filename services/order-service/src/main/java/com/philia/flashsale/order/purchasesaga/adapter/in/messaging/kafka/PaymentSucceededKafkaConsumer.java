@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
 
 /** Inbound adapter that acknowledges a PaymentSucceeded fact after its Saga transaction commits. */
 @Component
-@ConditionalOnProperty(name = "order.runtime.payment-events-consumer-enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = {"order.creation.enabled", "order.runtime.payment-events-consumer-enabled"},
+        havingValue = "true", matchIfMissing = true)
 public final class PaymentSucceededKafkaConsumer {
     private final PaymentSucceededAvroMapper mapper;
     private final ApplyPaymentSuccessUseCase useCase;

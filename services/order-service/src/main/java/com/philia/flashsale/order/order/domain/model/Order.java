@@ -39,7 +39,7 @@ public final class Order {
         this.acceptedAt = Objects.requireNonNull(acceptedAt, "acceptedAt");
         this.reservationExpiresAt = Objects.requireNonNull(reservationExpiresAt, "reservationExpiresAt");
         this.line = Objects.requireNonNull(line, "line");
-        if (status != OrderStatus.PENDING_PAYMENT) {
+        if (status != OrderStatus.PENDING_PAYMENT && status != OrderStatus.CONFIRMED) {
             throw new InvalidOrderException("unsupported Order status");
         }
         if (!acceptedAt.isBefore(reservationExpiresAt)) {
@@ -57,6 +57,18 @@ public final class Order {
         Money amount = line.lineAmount();
         return new Order(id, orderNumber, purchaseRequestId, reservationId, campaignId, userId,
                 OrderStatus.PENDING_PAYMENT, currency, amount, amount, acceptedAt, reservationExpiresAt, line);
+    }
+
+    /** Returns the terminal paid state while preserving the accepted commercial snapshot. */
+    public Order confirm() {
+        if (status == OrderStatus.CONFIRMED) {
+            return this;
+        }
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            throw new InvalidOrderException("Order is not awaiting payment confirmation");
+        }
+        return new Order(id, orderNumber, purchaseRequestId, reservationId, campaignId, userId,
+                OrderStatus.CONFIRMED, currency, subtotal, total, acceptedAt, reservationExpiresAt, line);
     }
 
     private static <T> T require(T value, String name) {

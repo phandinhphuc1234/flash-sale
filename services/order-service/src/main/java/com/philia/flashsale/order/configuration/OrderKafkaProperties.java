@@ -24,7 +24,10 @@ public record OrderKafkaProperties(
         @NotBlank String paymentEventsTopic,
         @NotBlank String paymentEventsConsumerGroup,
         @NotBlank String paymentEventsDltTopic,
-        @NotBlank String purchaseCommandsTopic) {
+        @NotBlank String purchaseCommandsTopic,
+        @NotBlank String purchaseReservationResultsTopic,
+        @NotBlank String purchaseReservationResultsConsumerGroup,
+        @NotBlank String purchaseReservationResultsDltTopic) {
 
     /** Backward-compatible constructor for unit tests and local callers before result topics existed. */
     public OrderKafkaProperties(String bootstrapServers, String schemaRegistryUrl,
@@ -34,7 +37,9 @@ public record OrderKafkaProperties(
         this(bootstrapServers, schemaRegistryUrl, acceptedPurchaseTopic, acceptedPurchaseConsumerGroup,
                 acceptedPurchaseDltTopic, orderEventsTopic, retryDelays, paymentCommandsTopic,
                 "flashsale.payment.events.v1", "order-payment-events-v1",
-                "flashsale.order.payment-events.dlt.v1", "flashsale.purchase.commands.v1");
+                "flashsale.order.payment-events.dlt.v1", "flashsale.purchase.commands.v1",
+                "flashsale.purchase.events.v1", "order-purchase-reservation-results-v1",
+                "flashsale.order.purchase-reservation-result.dlt.v1");
     }
 
     @ConstructorBinding

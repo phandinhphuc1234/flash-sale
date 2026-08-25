@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.contract.order.event.v1.OrderCreatedV1;
 import com.philia.flashsale.contract.payment.command.v1.PaymentRequestedV1;
 import com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservationV1;
+import com.philia.flashsale.contract.order.event.v1.OrderConfirmedV1;
 import com.philia.flashsale.order.outbox.adapter.in.scheduling.OrderOutboxPublisherJob;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderCreatedPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedAvroMapper;
@@ -11,6 +12,8 @@ import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaPaymen
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.PaymentRequestedAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.ConfirmReservationAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaConfirmReservationPublisher;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderConfirmedAvroMapper;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderConfirmedPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.persistence.OrderOutboxPersistenceAdapter;
 import com.philia.flashsale.order.outbox.application.port.ClaimOrderOutboxEventsPort;
 import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
@@ -79,14 +82,28 @@ public class OrderOutboxConfiguration {
     }
 
     @Bean
+    OrderConfirmedAvroMapper orderConfirmedAvroMapper(ObjectMapper objectMapper) {
+        return new OrderConfirmedAvroMapper(objectMapper);
+    }
+
+    @Bean
+    KafkaOrderConfirmedPublisher kafkaOrderConfirmedPublisher(
+            KafkaTemplate<String, OrderConfirmedV1> kafka, OrderConfirmedAvroMapper mapper,
+            OrderKafkaProperties properties) {
+        return new KafkaOrderConfirmedPublisher(kafka, mapper, properties);
+    }
+
+    @Bean
     OrderOutboxEventTypeDispatcher orderOutboxEventTypeDispatcher(
             KafkaOrderCreatedPublisher orderCreatedPublisher,
             KafkaPaymentRequestedPublisher paymentRequestedPublisher,
-            KafkaConfirmReservationPublisher confirmReservationPublisher) {
+            KafkaConfirmReservationPublisher confirmReservationPublisher,
+            KafkaOrderConfirmedPublisher orderConfirmedPublisher) {
         return new OrderOutboxEventTypeDispatcher(Map.of(
                 "OrderCreated", orderCreatedPublisher,
                 "PaymentRequested", paymentRequestedPublisher,
-                "ConfirmPurchaseReservation", confirmReservationPublisher));
+                "ConfirmPurchaseReservation", confirmReservationPublisher,
+                "OrderConfirmed", orderConfirmedPublisher));
     }
 
     @Bean

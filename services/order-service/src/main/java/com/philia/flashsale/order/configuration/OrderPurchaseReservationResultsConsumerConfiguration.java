@@ -1,8 +1,8 @@
 package com.philia.flashsale.order.configuration;
 
-import com.philia.flashsale.contract.payment.event.v1.PaymentSucceededV1;
-import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PaymentSucceededConflictException;
-import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PaymentSucceededRecordException;
+import com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1;
+import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PurchaseReservationConfirmedConflictException;
+import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PurchaseReservationConfirmedRecordException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import java.time.Duration;
 import java.util.HashMap;
@@ -24,41 +24,42 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
 
-/** Retry/DLT wiring for the Order-owned PaymentSucceeded boundary. */
+/** Retry/DLT wiring for the Order-owned reservation confirmation boundary. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(name = {"order.creation.enabled", "order.runtime.payment-events-consumer-enabled"},
+@ConditionalOnProperty(name = {"order.creation.enabled", "order.runtime.purchase-reservation-results-consumer-enabled"},
         havingValue = "true", matchIfMissing = true)
-public class OrderPaymentEventsConsumerConfiguration {
-    @Bean(name = "orderPaymentSucceededConsumerFactory")
-    ConsumerFactory<String, PaymentSucceededV1> orderPaymentSucceededConsumerFactory(KafkaProperties properties) {
+public class OrderPurchaseReservationResultsConsumerConfiguration {
+    @Bean(name = "orderPurchaseReservationResultsConsumerFactory")
+    ConsumerFactory<String, PurchaseReservationConfirmedV1> orderPurchaseReservationResultsConsumerFactory(
+            KafkaProperties properties) {
         Map<String, Object> consumerProperties = new HashMap<>(properties.buildConsumerProperties());
         consumerProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         consumerProperties.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
         return new DefaultKafkaConsumerFactory<>(consumerProperties);
     }
 
-    @Bean(name = "orderPaymentSucceededKafkaListenerContainerFactory")
-    ConcurrentKafkaListenerContainerFactory<String, PaymentSucceededV1>
-            orderPaymentSucceededKafkaListenerContainerFactory(
-                    ConsumerFactory<String, PaymentSucceededV1> consumerFactory,
-                    DefaultErrorHandler orderPaymentSucceededErrorHandler) {
-        var factory = new ConcurrentKafkaListenerContainerFactory<String, PaymentSucceededV1>();
+    @Bean(name = "orderPurchaseReservationConfirmedKafkaListenerContainerFactory")
+    ConcurrentKafkaListenerContainerFactory<String, PurchaseReservationConfirmedV1>
+            orderPurchaseReservationConfirmedKafkaListenerContainerFactory(
+                    ConsumerFactory<String, PurchaseReservationConfirmedV1> consumerFactory,
+                    DefaultErrorHandler orderPurchaseReservationConfirmedErrorHandler) {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, PurchaseReservationConfirmedV1>();
         factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setAckMode(AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setObservationEnabled(true);
-        factory.setCommonErrorHandler(orderPaymentSucceededErrorHandler);
+        factory.setCommonErrorHandler(orderPurchaseReservationConfirmedErrorHandler);
         return factory;
     }
 
     @Bean
-    DefaultErrorHandler orderPaymentSucceededErrorHandler(
+    DefaultErrorHandler orderPurchaseReservationConfirmedErrorHandler(
             KafkaOperations<Object, Object> kafkaOperations, OrderKafkaProperties properties) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
-                kafkaOperations,
-                (record, exception) -> new TopicPartition(properties.paymentEventsDltTopic(), record.partition()));
+                kafkaOperations, (record, exception) -> new TopicPartition(
+                        properties.purchaseReservationResultsDltTopic(), record.partition()));
         var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
-        handler.addNotRetryableExceptions(PaymentSucceededRecordException.class,
-                PaymentSucceededConflictException.class);
+        handler.addNotRetryableExceptions(PurchaseReservationConfirmedRecordException.class,
+                PurchaseReservationConfirmedConflictException.class);
         handler.setCommitRecovered(true);
         handler.setAckAfterHandle(true);
         return handler;
@@ -66,8 +67,11 @@ public class OrderPaymentEventsConsumerConfiguration {
 
     static final class RetryBackOff implements BackOff {
         private final List<Duration> delays;
+
         RetryBackOff(List<Duration> delays) { this.delays = List.copyOf(delays); }
-        @Override public BackOffExecution start() {
+
+        @Override
+        public BackOffExecution start() {
             return new BackOffExecution() {
                 private int index;
                 @Override public long nextBackOff() {

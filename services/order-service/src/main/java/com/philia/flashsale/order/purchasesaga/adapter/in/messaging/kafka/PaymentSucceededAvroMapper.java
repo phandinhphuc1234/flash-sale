@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /** Keeps Avro/Kafka validation at the inbound adapter boundary. */
 @Component
@@ -21,6 +22,7 @@ public final class PaymentSucceededAvroMapper {
     private static final Pattern CURRENCY = Pattern.compile("[A-Z]{3}");
     private final String expectedTopic;
 
+    @Autowired
     public PaymentSucceededAvroMapper(OrderKafkaProperties properties) {
         this(properties.paymentEventsTopic());
     }
