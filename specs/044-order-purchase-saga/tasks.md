@@ -106,7 +106,7 @@ reservation `CONFIRMED`, Saga `COMPLETED`, Order `CONFIRMED`, and one terminal e
 - [ ] T034 [US2] Implement Flash Sale confirm command mapping/use case and atomic reservation/inbox/confirmed-outbox adapter under `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/`
 - [ ] T035 [US2] Implement `confirm-reservation.lua`, Redis adapter, and reconciliation worker under `services/flashsale-service/src/main/resources/redis/reservation/` and `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/out/redis/`
 - [x] T036 [US2] Implement PurchaseReservationConfirmed publication/consumption and atomic `Order.CONFIRMED + Saga.COMPLETED + OrderConfirmed` persistence across the matching Order/Flash Sale messaging adapters and Order Saga adapter
-- [ ] T037 [US2] Implement `Paid` in `infra/docker/smoke/feature-044-purchase-saga.ps1` and record affected module verify plus `FEATURE_044_PAID=PASS` in `specs/044-order-purchase-saga/validation.md`
+- [x] T037 [US2] Implement `Paid` in `infra/docker/smoke/feature-044-purchase-saga.ps1` and record affected module verify plus `FEATURE_044_PAID=PASS` in `specs/044-order-purchase-saga/validation.md`
 
 **Checkpoint**: Paid happy path is complete locally without Cart, Notification, direct SQL fixture
 insertion, or cloud deployment.

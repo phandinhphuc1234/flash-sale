@@ -93,4 +93,16 @@ deferred to the following task groups.
 G6 closes the successful paid-path terminalization boundary: an authenticated
 `PurchaseReservationConfirmedV1` result is deduplicated by the Order Saga inbox and atomically
 confirms the Order, completes the Saga, and queues `OrderConfirmedV1` for the outbox relay. Payment
-failure/release, replay/reordering recovery, local Paid runner, and cloud promotion remain deferred.
+failure/release, replay/reordering recovery, and cloud promotion remain deferred.
+
+## G6/T037 — Local Paid gate — 2026-08-25
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Paid runner selector | PASS | `pwsh -NoLogo -NoProfile -File .\\infra\\docker\\smoke\\feature-044-purchase-saga.ps1 -Scenario Paid -TimeoutSeconds 1800` runs the affected Order and Flash Sale module verification in one Maven reactor and emits `FEATURE_044_PAID=PASS`. |
+| Affected module verification | PASS | Order + Flash Sale `verify`: 216 tests, 0 failures, 0 errors, 9 intentional skips; reactor `BUILD SUCCESS`. |
+| Paid-path behavior covered | PASS | Order PaymentSucceeded/confirmation/outbox tests and Flash Sale confirm/inbox/Redis/outcome tests prove the approved `PaymentSucceeded → ConfirmPurchaseReservation → PurchaseReservationConfirmed → OrderConfirmed` boundary. |
+| Safety boundary | PASS | The runner invokes service-owned tests only; it does not write another service's database, print secrets, mutate `.env`, build/push images, or change cloud state. |
+
+T037 closes the local paid checkpoint. Failure/release, replay/reordering, late-success recovery,
+and aggregate `All` validation remain deferred to their approved task groups.

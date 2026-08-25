@@ -6,11 +6,13 @@
   Contracts verifies the contract Maven module and local Kafka/Schema Registry provisioning.
   Start runs the Order-owned Purchase Saga start gate through the service module's real PostgreSQL
   integration tests, proving one durable Saga and PaymentRequested outbox intent under replay and
-  concurrency. Later groups extend this same runner with Paid, Failed, Replay, LateSuccess, and All.
+  concurrency. Paid verifies the affected Order and Flash Sale modules together, including the
+  PaymentSucceeded -> reservation confirmation -> OrderConfirmed path. Later groups extend this
+  same runner with Failed, Replay, LateSuccess, and All.
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('Contracts', 'Start')]
+    [ValidateSet('Contracts', 'Start', 'Paid')]
     [string]$Scenario = 'Contracts',
     [switch]$SkipTopology,
     [ValidateRange(60, 1800)]
@@ -44,7 +46,7 @@ if ([string]::IsNullOrWhiteSpace($SchemaRegistryUrl)) {
 function Get-RemainingMilliseconds {
     $remaining = [int][Math]::Floor(($deadline - (Get-Date)).TotalMilliseconds)
     if ($remaining -lt 1) {
-        throw "Feature 044 Contracts scenario exceeded its $TimeoutSeconds-second execution budget."
+        throw "Feature 044 $Scenario scenario exceeded its $TimeoutSeconds-second execution budget."
     }
     return $remaining
 }
@@ -173,5 +175,16 @@ switch ($Scenario) {
             '--batch-mode', '--no-transfer-progress', '-pl', 'services/order-service', '-am', 'verify'
         )
         Write-Output 'FEATURE_044_START=PASS'
+    }
+    'Paid' {
+        # This is an affected-module gate rather than a cross-service fixture. The Order tests
+        # exercise PaymentSucceeded, confirm-command persistence, and Order terminalization; the
+        # Flash Sale tests exercise the reservation confirmation transaction and outcome outbox.
+        # Both boundaries use their own Testcontainers/database setup and no SQL is issued here.
+        Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 Paid affected-module verify' -Arguments @(
+            '--batch-mode', '--no-transfer-progress', '-pl', 'services/order-service,services/flashsale-service',
+            '-am', 'verify'
+        )
+        Write-Output 'FEATURE_044_PAID=PASS'
     }
 }
