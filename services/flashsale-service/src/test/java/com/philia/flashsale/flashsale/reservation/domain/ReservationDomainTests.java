@@ -50,6 +50,24 @@ class ReservationDomainTests {
         assertThat(snapshot.purchaseRequestId()).isNotEqualTo(snapshot.reservationId());
     }
 
+    @Test
+    void confirmsAnActiveReservationAndMakesReplayIdempotent() {
+        Reservation reservation = Reservation.reserved(snapshot());
+
+        reservation.confirm(ACCEPTED_AT.plusSeconds(1));
+        reservation.confirm(ACCEPTED_AT.plusSeconds(2));
+
+        assertThat(reservation.status()).isEqualTo(ReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void cannotConfirmAfterTheReservationDeadline() {
+        Reservation reservation = Reservation.reserved(snapshot());
+
+        assertThatThrownBy(() -> reservation.confirm(EXPIRES_AT))
+                .isInstanceOf(InvalidReservationStateException.class);
+    }
+
     private AcceptedReservationSnapshot snapshot() {
         return new AcceptedReservationSnapshot(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "SKU-1",

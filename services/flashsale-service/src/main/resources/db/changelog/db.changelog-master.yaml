@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/002-add-reservation-finalization.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/changes/003-normalize-reservation-inbox-fingerprint.sql
+      relativeToChangelogFile: false

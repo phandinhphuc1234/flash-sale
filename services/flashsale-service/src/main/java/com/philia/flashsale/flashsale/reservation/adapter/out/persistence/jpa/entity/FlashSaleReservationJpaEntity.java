@@ -33,6 +33,8 @@ public class FlashSaleReservationJpaEntity {
     @Version @Column(nullable = false) private long version;
     @Column(name = "created_at", nullable = false) private Instant createdAt;
     @Column(name = "updated_at", nullable = false) private Instant updatedAt;
+    @Column(name = "finalized_at") private Instant finalizedAt;
+    @Column(name = "redis_reconciled_at") private Instant redisReconciledAt;
 
     protected FlashSaleReservationJpaEntity() { }
 
@@ -62,6 +64,20 @@ public class FlashSaleReservationJpaEntity {
         return true;
     }
 
+    /** Applies the durable confirm transition; replay of an already confirmed row is harmless. */
+    public boolean confirm(Instant at) {
+        if (status == Status.CONFIRMED) return false;
+        if (status != Status.RESERVED || !at.isBefore(expiresAt)) return false;
+        status = Status.CONFIRMED;
+        finalizedAt = at;
+        updatedAt = at;
+        return true;
+    }
+
+    public void markRedisReconciled(Instant at) {
+        redisReconciledAt = at;
+    }
+
     public UUID getId() { return id; }
     public UUID getPurchaseRequestId() { return purchaseRequestId; }
     public UUID getCampaignId() { return campaignId; }
@@ -74,6 +90,9 @@ public class FlashSaleReservationJpaEntity {
     public long getQuantity() { return quantity; }
     public Instant getExpiresAt() { return expiresAt; }
     public Instant getCreatedAt() { return createdAt; }
+    public Instant getFinalizedAt() { return finalizedAt; }
+    public Instant getRedisReconciledAt() { return redisReconciledAt; }
+    public long getVersion() { return version; }
     public Status getStatus() { return status; }
-    public enum Status { RESERVED, EXPIRED }
+    public enum Status { RESERVED, CONFIRMED, RELEASED, EXPIRED }
 }

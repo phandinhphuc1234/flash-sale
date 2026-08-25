@@ -47,7 +47,8 @@ public class ReservationExpiryJpaAdapter implements FindDueReservationPort, Pers
         if (batchSize < 1 || batchSize > 100) {
             throw new IllegalArgumentException("batchSize must be in 1..100");
         }
-        return reservations.findTop100ByExpiresAtLessThanEqualOrderByExpiresAtAsc(now).stream()
+        return reservations.findTop100ByStatusAndExpiresAtLessThanEqualOrderByExpiresAtAsc(
+                FlashSaleReservationJpaEntity.Status.RESERVED, now).stream()
                 .limit(batchSize)
                 .map(this::candidate)
                 .toList();

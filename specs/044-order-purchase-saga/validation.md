@@ -61,3 +61,20 @@ representation, atomic confirm-command outbox adapter, and Schema Registry publi
 Flash Sale confirm participant and terminal Order finalization are intentionally not marked complete
 yet; they are the next dependent slices of the approved Paid path. No ECR/EKS/cloud mutation or
 ignored `.env` change was performed.
+
+## G5 — Flash Sale confirm participant — 2026-08-25
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Confirm command boundary | PASS | `ConfirmReservationAvroMapperTests`: 2 tests, 0 failures; validates topic, key, envelope, Saga identity, producer, version, and SHA-256 fingerprint before entering the use case. |
+| Durable confirmation | PASS | `ReservationConfirmationPersistenceTests`: 3 tests, 0 failures; PostgreSQL adapter locks the reservation, deduplicates the command inbox, transitions only `RESERVED` to `CONFIRMED`, and writes the confirmed outbox intent in the same transaction. |
+| Confirmed outcome publication | PASS | Confirmed outbox mapping/publisher routes `PurchaseReservationConfirmedV1` to the approved purchase-events topic with `orderId` key, causation ID, and trace headers. Existing accepted publication remains registered. |
+| Redis confirmation | PASS | `confirm-reservation.lua` is idempotent: `RESERVED` becomes `CONFIRMED`, the expiry index entry is removed, and replay returns `ALREADY_CONFIRMED`; Redis failures bubble before Kafka acknowledgement. |
+| Schema/JPA compatibility | PASS | Added Liquibase changeset `003-normalize-reservation-inbox-fingerprint.sql` to convert the previously committed `CHAR(64)` fingerprint column to `VARCHAR(64)` expected by JPA. |
+| Flash Sale module verify | PASS | `\.\mvnw.cmd -pl services/flashsale-service -am verify`: 107 tests, 0 failures, 0 errors, 1 intentional skip; reactor `BUILD SUCCESS`. |
+| Targeted persistence regression | PASS | Outbox concurrency, durable acceptance persistence, and owned-reservation integration tests: 8 tests, 0 failures, 0 errors. |
+| Contract boundary | PASS | Consumer DLT uses the approved `flashsale.flash-sale.purchase-command.dlt.v1`; no new topic/schema provisioning, ECR push, EKS rollout, cloud mutation, or ignored `.env` change was performed. |
+
+G5 closes the Flash Sale confirmation participant only. Order terminal finalization, Payment failure
+release, late-success/reordering convergence, and the dedicated Redis reconciliation worker remain
+deferred to the following task groups.

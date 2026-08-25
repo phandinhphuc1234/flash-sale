@@ -8,6 +8,10 @@ import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.re
 import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.repository.PurchaseRequestJpaRepository;
 import com.philia.flashsale.flashsale.reservation.adapter.out.redis.ReservationExpiryRedisAdapter;
 import com.philia.flashsale.flashsale.reservation.adapter.out.redis.ReservationHandoffRedisAdapter;
+import com.philia.flashsale.flashsale.reservation.adapter.out.redis.ReservationConfirmationRedisAdapter;
+import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.ReservationConfirmationJpaAdapter;
+import com.philia.flashsale.flashsale.reservation.application.port.in.ConfirmReservationUseCase;
+import com.philia.flashsale.flashsale.reservation.application.usecase.ConfirmReservationService;
 import com.philia.flashsale.flashsale.reservation.application.port.out.PersistAcceptedPurchasePort;
 import com.philia.flashsale.flashsale.reservation.adapter.in.messaging.redis.ReservationHandoffConsumerGroupInitializer;
 import com.philia.flashsale.flashsale.reservation.adapter.in.messaging.redis.ReservationHandoffStreamConsumer;
@@ -79,5 +83,13 @@ public class ReservationDurabilityConfiguration {
             ReservationAcceptanceFlow acceptance,
             PersistAcceptedPurchasePort durableAcceptance) {
         return new ReservationHandoffStreamConsumer(initializer, handoff, acceptance, durableAcceptance);
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnBean({ReservationConfirmationJpaAdapter.class, ReservationConfirmationRedisAdapter.class})
+    ConfirmReservationUseCase confirmReservationUseCase(ReservationConfirmationJpaAdapter persistence,
+            ReservationConfirmationRedisAdapter redis) {
+        return new ConfirmReservationService(persistence, redis);
     }
 }

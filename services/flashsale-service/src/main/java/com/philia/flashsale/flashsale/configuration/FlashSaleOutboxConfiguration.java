@@ -4,6 +4,7 @@ import com.philia.flashsale.flashsale.outbox.adapter.in.scheduling.FlashSaleOutb
 import com.philia.flashsale.flashsale.outbox.adapter.out.persistence.jpa.FlashSaleOutboxPersistenceAdapter;
 import com.philia.flashsale.flashsale.outbox.application.port.ClaimOutboxEventsPort;
 import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseAcceptedPort;
+import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseReservationConfirmedPort;
 import com.philia.flashsale.flashsale.outbox.application.port.UpdateOutboxPublicationPort;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxPublicationService;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxRetryPolicy;
@@ -33,12 +34,13 @@ public class FlashSaleOutboxConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean(PublishPurchaseAcceptedPort.class)
+    @ConditionalOnBean({PublishPurchaseAcceptedPort.class, PublishPurchaseReservationConfirmedPort.class})
     FlashSaleOutboxEventTypeDispatcher flashSaleOutboxEventTypeDispatcher(
-            PublishPurchaseAcceptedPort publisher) {
-        // G2 registers only the already-live PurchaseAccepted publisher. Confirmed
-        // and released result publishers are introduced with their owning stories.
-        return new FlashSaleOutboxEventTypeDispatcher(Map.of("PurchaseAccepted", publisher));
+            PublishPurchaseAcceptedPort acceptedPublisher,
+            PublishPurchaseReservationConfirmedPort confirmedPublisher) {
+        return new FlashSaleOutboxEventTypeDispatcher(Map.of(
+                "PurchaseAccepted", acceptedPublisher,
+                "PurchaseReservationConfirmed", confirmedPublisher));
     }
 
     @Bean

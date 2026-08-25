@@ -1,6 +1,7 @@
 package com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.entity;
 
 import com.philia.flashsale.flashsale.reservation.domain.model.AcceptedReservationSnapshot;
+import com.philia.flashsale.flashsale.reservation.application.command.ConfirmReservationCommand;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -69,8 +70,40 @@ public class PurchaseEventOutboxJpaEntity {
         return entity;
     }
 
+    /** Creates a stable confirmed outcome scoped to the causing confirm command. */
+    public static PurchaseEventOutboxJpaEntity confirmed(ConfirmReservationCommand command,
+            FlashSaleReservationJpaEntity reservation, UUID resultEventId, Instant confirmedAt) {
+        var entity = new PurchaseEventOutboxJpaEntity();
+        entity.eventId = resultEventId;
+        entity.aggregateType = "PURCHASE_RESERVATION";
+        entity.aggregateId = reservation.getId();
+        entity.aggregateVersion = Math.max(1, reservation.getVersion() + 1);
+        entity.eventType = "PurchaseReservationConfirmed";
+        entity.eventVersion = 1;
+        entity.causationId = command.commandId();
+        entity.payload = new LinkedHashMap<>();
+        entity.payload.put("sagaId", command.sagaId().toString());
+        entity.payload.put("orderId", command.orderId().toString());
+        entity.payload.put("purchaseRequestId", command.purchaseRequestId().toString());
+        entity.payload.put("reservationId", command.reservationId().toString());
+        entity.payload.put("paymentId", command.paymentId().toString());
+        entity.payload.put("confirmedAt", confirmedAt.toString());
+        entity.payload.put("traceparent", command.traceparent());
+        entity.payload.put("tracestate", command.tracestate());
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = confirmedAt;
+        entity.createdAt = confirmedAt;
+        entity.updatedAt = confirmedAt;
+        return entity;
+    }
+
     public UUID getEventId() { return eventId; }
     public UUID getAggregateId() { return aggregateId; }
+    public String getEventType() { return eventType; }
+    public int getEventVersion() { return eventVersion; }
+    public long getAggregateVersion() { return aggregateVersion; }
+    public UUID getCausationId() { return causationId; }
     public String getStatus() { return status; }
     public Map<String, Object> getPayload() { return payload; }
 }

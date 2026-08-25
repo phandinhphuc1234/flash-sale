@@ -152,6 +152,12 @@ flashsale:
     batch-size: ${FLASHSALE_OUTBOX_BATCH_SIZE:100}
     claim-lease: ${FLASHSALE_OUTBOX_CLAIM_LEASE:30s}
     retry-backoff-cap: ${FLASHSALE_OUTBOX_RETRY_BACKOFF_CAP:60s}
+  reservation-commands:
+    topic: ${FLASHSALE_PURCHASE_COMMANDS_TOPIC:flashsale.purchase.commands.v1}
+    consumer-group: ${FLASHSALE_RESERVATION_COMMANDS_CONSUMER_GROUP:flashsale-reservation-commands-v1}
+  dlt-topic: ${FLASHSALE_RESERVATION_COMMANDS_DLT_TOPIC:flashsale.flash-sale.purchase-command.dlt.v1}
+    retry-delays: ${FLASHSALE_RESERVATION_COMMANDS_RETRY_DELAYS:500ms,2s}
+    enabled: ${FLASHSALE_RESERVATION_COMMANDS_ENABLED:true}
 
 info:
   app:

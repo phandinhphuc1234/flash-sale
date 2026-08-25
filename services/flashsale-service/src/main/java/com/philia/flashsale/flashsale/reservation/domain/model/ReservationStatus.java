@@ -1,7 +1,9 @@
 package com.philia.flashsale.flashsale.reservation.domain.model;
 
-/** Terminal state model for the first Flash Sale reservation flow. */
+/** Durable reservation lifecycle states owned by Flash Sale. */
 public enum ReservationStatus {
     RESERVED,
+    CONFIRMED,
+    RELEASED,
     EXPIRED
 }
