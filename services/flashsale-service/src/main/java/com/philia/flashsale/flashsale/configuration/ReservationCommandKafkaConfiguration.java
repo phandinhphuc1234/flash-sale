@@ -2,6 +2,7 @@ package com.philia.flashsale.flashsale.configuration;
 
 import com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservationV1;
 import com.philia.flashsale.flashsale.reservation.adapter.in.messaging.kafka.ConfirmReservationRecordException;
+import com.philia.flashsale.flashsale.reservation.adapter.in.messaging.kafka.ReleaseReservationRecordException;
 import com.philia.flashsale.flashsale.reservation.adapter.in.messaging.kafka.ReservationCommandProperties;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import java.time.Duration;
@@ -30,7 +31,7 @@ import org.springframework.util.backoff.BackOffExecution;
 @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public class ReservationCommandKafkaConfiguration {
     @Bean(name = "flashSaleReservationCommandConsumerFactory")
-    ConsumerFactory<String, ConfirmPurchaseReservationV1> flashSaleReservationCommandConsumerFactory(
+    ConsumerFactory<String, Object> flashSaleReservationCommandConsumerFactory(
             KafkaProperties properties) {
         Map<String, Object> consumerProperties = new HashMap<>(properties.buildConsumerProperties());
         consumerProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
@@ -39,11 +40,11 @@ public class ReservationCommandKafkaConfiguration {
     }
 
     @Bean(name = "flashSaleReservationCommandKafkaListenerContainerFactory")
-    ConcurrentKafkaListenerContainerFactory<String, ConfirmPurchaseReservationV1>
+    ConcurrentKafkaListenerContainerFactory<String, Object>
             flashSaleReservationCommandKafkaListenerContainerFactory(
-                    ConsumerFactory<String, ConfirmPurchaseReservationV1> consumerFactory,
+                    ConsumerFactory<String, Object> consumerFactory,
                     DefaultErrorHandler flashSaleReservationCommandErrorHandler) {
-        var factory = new ConcurrentKafkaListenerContainerFactory<String, ConfirmPurchaseReservationV1>();
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, Object>();
         factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setAckMode(AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setObservationEnabled(true);
@@ -57,7 +58,8 @@ public class ReservationCommandKafkaConfiguration {
         var recoverer = new DeadLetterPublishingRecoverer(kafkaOperations,
                 (record, exception) -> new TopicPartition(properties.dltTopic(), record.partition()));
         var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
-        handler.addNotRetryableExceptions(ConfirmReservationRecordException.class);
+        handler.addNotRetryableExceptions(ConfirmReservationRecordException.class,
+                ReleaseReservationRecordException.class);
         handler.setCommitRecovered(true);
         handler.setAckAfterHandle(true);
         return handler;

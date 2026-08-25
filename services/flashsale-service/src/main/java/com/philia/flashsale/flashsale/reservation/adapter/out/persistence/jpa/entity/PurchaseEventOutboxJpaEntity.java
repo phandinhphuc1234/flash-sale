@@ -2,6 +2,7 @@ package com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.e
 
 import com.philia.flashsale.flashsale.reservation.domain.model.AcceptedReservationSnapshot;
 import com.philia.flashsale.flashsale.reservation.application.command.ConfirmReservationCommand;
+import com.philia.flashsale.flashsale.reservation.application.command.ReleaseReservationCommand;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -95,6 +96,20 @@ public class PurchaseEventOutboxJpaEntity {
         entity.nextAttemptAt = confirmedAt;
         entity.createdAt = confirmedAt;
         entity.updatedAt = confirmedAt;
+        return entity;
+    }
+
+    /** Creates a released/expired reservation result scoped to the causing release command. */
+    public static PurchaseEventOutboxJpaEntity released(ReleaseReservationCommand command,
+            FlashSaleReservationJpaEntity reservation, UUID resultEventId, Instant releasedAt, String status) {
+        var entity = new PurchaseEventOutboxJpaEntity();
+        entity.eventId = resultEventId; entity.aggregateType = "PURCHASE_RESERVATION"; entity.aggregateId = reservation.getId();
+        entity.aggregateVersion = Math.max(1, reservation.getVersion() + 1); entity.eventType = "PurchaseReservationReleased"; entity.eventVersion = 1; entity.causationId = command.commandId();
+        entity.payload = new LinkedHashMap<>(); entity.payload.put("sagaId", command.sagaId().toString()); entity.payload.put("orderId", command.orderId().toString());
+        entity.payload.put("purchaseRequestId", command.purchaseRequestId().toString()); entity.payload.put("reservationId", command.reservationId().toString());
+        entity.payload.put("reservationStatus", status); entity.payload.put("reason", command.reason()); entity.payload.put("releasedAt", releasedAt.toString());
+        entity.payload.put("traceparent", command.traceparent()); entity.payload.put("tracestate", command.tracestate());
+        entity.status = "PENDING"; entity.attemptCount = 0; entity.nextAttemptAt = releasedAt; entity.createdAt = releasedAt; entity.updatedAt = releasedAt;
         return entity;
     }
 

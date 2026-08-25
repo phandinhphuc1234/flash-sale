@@ -3,6 +3,8 @@ package com.philia.flashsale.order.configuration;
 import com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1;
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PurchaseReservationConfirmedConflictException;
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PurchaseReservationConfirmedRecordException;
+import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PurchaseReservationReleasedConflictException;
+import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PurchaseReservationReleasedRecordException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import java.time.Duration;
 import java.util.HashMap;
@@ -21,6 +23,7 @@ import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
 
@@ -30,7 +33,7 @@ import org.springframework.util.backoff.BackOffExecution;
         havingValue = "true", matchIfMissing = true)
 public class OrderPurchaseReservationResultsConsumerConfiguration {
     @Bean(name = "orderPurchaseReservationResultsConsumerFactory")
-    ConsumerFactory<String, PurchaseReservationConfirmedV1> orderPurchaseReservationResultsConsumerFactory(
+    ConsumerFactory<String, Object> orderPurchaseReservationResultsConsumerFactory(
             KafkaProperties properties) {
         Map<String, Object> consumerProperties = new HashMap<>(properties.buildConsumerProperties());
         consumerProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
@@ -39,11 +42,11 @@ public class OrderPurchaseReservationResultsConsumerConfiguration {
     }
 
     @Bean(name = "orderPurchaseReservationConfirmedKafkaListenerContainerFactory")
-    ConcurrentKafkaListenerContainerFactory<String, PurchaseReservationConfirmedV1>
+    ConcurrentKafkaListenerContainerFactory<String, Object>
             orderPurchaseReservationConfirmedKafkaListenerContainerFactory(
-                    ConsumerFactory<String, PurchaseReservationConfirmedV1> consumerFactory,
+                    @Qualifier("orderPurchaseReservationResultsConsumerFactory") ConsumerFactory<String, Object> consumerFactory,
                     DefaultErrorHandler orderPurchaseReservationConfirmedErrorHandler) {
-        var factory = new ConcurrentKafkaListenerContainerFactory<String, PurchaseReservationConfirmedV1>();
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, Object>();
         factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setAckMode(AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setObservationEnabled(true);
@@ -59,7 +62,9 @@ public class OrderPurchaseReservationResultsConsumerConfiguration {
                         properties.purchaseReservationResultsDltTopic(), record.partition()));
         var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
         handler.addNotRetryableExceptions(PurchaseReservationConfirmedRecordException.class,
-                PurchaseReservationConfirmedConflictException.class);
+                PurchaseReservationConfirmedConflictException.class,
+                PurchaseReservationReleasedRecordException.class,
+                PurchaseReservationReleasedConflictException.class);
         handler.setCommitRecovered(true);
         handler.setAckAfterHandle(true);
         return handler;

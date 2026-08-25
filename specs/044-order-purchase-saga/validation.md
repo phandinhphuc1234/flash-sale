@@ -106,3 +106,19 @@ failure/release, replay/reordering recovery, and cloud promotion remain deferred
 
 T037 closes the local paid checkpoint. Failure/release, replay/reordering, late-success recovery,
 and aggregate `All` validation remain deferred to their approved task groups.
+
+## G7 — Terminal Payment failure and reservation release — 2026-08-25
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| PaymentFailed contract boundary | PASS | `PaymentFailedConsumerTests`: 4 tests, 0 failures, 0 errors. The three approved terminal reasons map to the owner-approved cancellation/expiry policy; duplicate/version/conflict and non-retryable record validation remain bounded at the Kafka adapter. |
+| Atomic failure transition | PASS | `PaymentFailureTransitionIntegrationTests`: 2 tests, 0 failures, 0 errors. Testcontainers PostgreSQL verified PaymentFailed inbox deduplication, Saga `RELEASING_RESERVATION`, one release command, replay no-op, and deadline-driven `EXPIRED` terminalization. |
+| Reservation release persistence | PASS | `ReservationReleasePersistenceTests`: 4 tests, 0 failures, 0 errors. PostgreSQL adapter behavior verifies reserved release, already-expired mapping, command replay, and confirmed-reservation protection. |
+| Redis exact-once release | PASS | `ReservationReleaseRedisIntegrationTests`: 1 test, 0 failures, 0 errors. Real Redis 7 executes `release-reservation.lua`; stock/user quota is restored once, expiry index is removed, and replay reports the existing release result. |
+| Full failure smoke | PASS | `pwsh -NoLogo -NoProfile -File .\\infra\\docker\\smoke\\feature-044-purchase-saga.ps1 -Scenario Failed -TimeoutSeconds 1800` exited 0 and emitted `FEATURE_044_FAILED=PASS`. Affected reactor verification completed with Flash Sale 116 tests plus Order 120 tests: 236 tests, 0 failures, 0 errors, 9 intentional skips; `BUILD SUCCESS`. |
+| Failure-flow boundary | PASS | Payment failure is persisted before the release command; Flash Sale acknowledges release through `PurchaseReservationReleasedV1`; Order then atomically terminalizes to `CANCELLED` or `EXPIRED`, marks Saga `COMPENSATED`, and queues the matching terminal event. No ECR push, EKS rollout, cloud mutation, or ignored `.env` change was performed. |
+| Static hygiene | PASS | `git diff --check` passed. Existing Git user-config permission and line-ending warnings do not represent source/test failures. |
+
+G7 closes T038–T046 locally. The failure path is now durable and replay-safe; replay/reordering,
+late-success/manual-review correction, aggregate `All`, and cloud promotion remain deferred to the
+next approved groups.

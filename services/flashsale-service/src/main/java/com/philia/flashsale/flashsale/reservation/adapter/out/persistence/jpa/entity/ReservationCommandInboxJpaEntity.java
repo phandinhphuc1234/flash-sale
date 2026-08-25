@@ -1,6 +1,7 @@
 package com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.entity;
 
 import com.philia.flashsale.flashsale.reservation.application.command.ConfirmReservationCommand;
+import com.philia.flashsale.flashsale.reservation.application.command.ReleaseReservationCommand;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -49,8 +50,20 @@ public class ReservationCommandInboxJpaEntity {
         return entity;
     }
 
+    public static ReservationCommandInboxJpaEntity released(ReleaseReservationCommand command,
+            UUID resultEventId, Instant processedAt) {
+        var entity = new ReservationCommandInboxJpaEntity();
+        entity.commandId = command.commandId(); entity.commandType = command.commandType(); entity.commandVersion = command.commandVersion();
+        entity.producer = command.producer(); entity.sagaId = command.sagaId(); entity.orderId = command.orderId();
+        entity.purchaseRequestId = command.purchaseRequestId(); entity.reservationId = command.reservationId();
+        entity.payloadFingerprint = command.payloadFingerprint(); entity.resultEventId = resultEventId;
+        entity.sourceTopic = command.sourceTopic(); entity.sourcePartition = command.sourcePartition(); entity.sourceOffset = command.sourceOffset(); entity.processedAt = processedAt;
+        return entity;
+    }
+
     public UUID getCommandId() { return commandId; }
     public String getPayloadFingerprint() { return payloadFingerprint; }
     public UUID getResultEventId() { return resultEventId; }
     public UUID getReservationId() { return reservationId; }
+    public String getCommandType() { return commandType; }
 }

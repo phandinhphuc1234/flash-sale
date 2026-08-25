@@ -1,8 +1,9 @@
 package com.philia.flashsale.order.configuration;
 
-import com.philia.flashsale.contract.payment.event.v1.PaymentSucceededV1;
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PaymentSucceededConflictException;
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PaymentSucceededRecordException;
+import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PaymentFailedConflictException;
+import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PaymentFailedRecordException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import java.time.Duration;
 import java.util.HashMap;
@@ -21,6 +22,7 @@ import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
 
@@ -30,7 +32,7 @@ import org.springframework.util.backoff.BackOffExecution;
         havingValue = "true", matchIfMissing = true)
 public class OrderPaymentEventsConsumerConfiguration {
     @Bean(name = "orderPaymentSucceededConsumerFactory")
-    ConsumerFactory<String, PaymentSucceededV1> orderPaymentSucceededConsumerFactory(KafkaProperties properties) {
+    ConsumerFactory<String, Object> orderPaymentSucceededConsumerFactory(KafkaProperties properties) {
         Map<String, Object> consumerProperties = new HashMap<>(properties.buildConsumerProperties());
         consumerProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         consumerProperties.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
@@ -38,11 +40,11 @@ public class OrderPaymentEventsConsumerConfiguration {
     }
 
     @Bean(name = "orderPaymentSucceededKafkaListenerContainerFactory")
-    ConcurrentKafkaListenerContainerFactory<String, PaymentSucceededV1>
+    ConcurrentKafkaListenerContainerFactory<String, Object>
             orderPaymentSucceededKafkaListenerContainerFactory(
-                    ConsumerFactory<String, PaymentSucceededV1> consumerFactory,
+                    @Qualifier("orderPaymentSucceededConsumerFactory") ConsumerFactory<String, Object> consumerFactory,
                     DefaultErrorHandler orderPaymentSucceededErrorHandler) {
-        var factory = new ConcurrentKafkaListenerContainerFactory<String, PaymentSucceededV1>();
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, Object>();
         factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setAckMode(AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setObservationEnabled(true);
@@ -58,7 +60,8 @@ public class OrderPaymentEventsConsumerConfiguration {
                 (record, exception) -> new TopicPartition(properties.paymentEventsDltTopic(), record.partition()));
         var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
         handler.addNotRetryableExceptions(PaymentSucceededRecordException.class,
-                PaymentSucceededConflictException.class);
+                PaymentSucceededConflictException.class, PaymentFailedRecordException.class,
+                PaymentFailedConflictException.class);
         handler.setCommitRecovered(true);
         handler.setAckAfterHandle(true);
         return handler;

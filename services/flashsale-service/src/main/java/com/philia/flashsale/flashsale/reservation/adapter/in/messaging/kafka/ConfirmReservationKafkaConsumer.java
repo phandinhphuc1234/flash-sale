@@ -1,7 +1,9 @@
 package com.philia.flashsale.flashsale.reservation.adapter.in.messaging.kafka;
 
 import com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservationV1;
+import com.philia.flashsale.contract.purchase.command.v1.ReleasePurchaseReservationV1;
 import com.philia.flashsale.flashsale.reservation.application.port.in.ConfirmReservationUseCase;
+import com.philia.flashsale.flashsale.reservation.application.port.in.ReleaseReservationUseCase;
 import java.nio.charset.StandardCharsets;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,20 +18,35 @@ import org.springframework.stereotype.Component;
 public final class ConfirmReservationKafkaConsumer {
     private final ConfirmReservationAvroMapper mapper;
     private final ConfirmReservationUseCase useCase;
+    private final ReleaseReservationAvroMapper releaseMapper;
+    private final ReleaseReservationUseCase releaseUseCase;
 
     public ConfirmReservationKafkaConsumer(ConfirmReservationAvroMapper mapper,
-            ConfirmReservationUseCase useCase) {
+            ConfirmReservationUseCase useCase, ReleaseReservationAvroMapper releaseMapper,
+            ReleaseReservationUseCase releaseUseCase) {
         this.mapper = mapper;
         this.useCase = useCase;
+        this.releaseMapper = releaseMapper;
+        this.releaseUseCase = releaseUseCase;
     }
 
     @KafkaListener(topics = "${flashsale.reservation-commands.topic}",
             groupId = "${flashsale.reservation-commands.consumer-group}",
             containerFactory = "flashSaleReservationCommandKafkaListenerContainerFactory",
             autoStartup = "${flashsale.reservation-commands.enabled:true}")
-    public void onMessage(ConsumerRecord<String, ConfirmPurchaseReservationV1> record,
+    public void onMessage(ConsumerRecord<String, Object> record,
             Acknowledgment acknowledgment) {
-        useCase.confirm(mapper.map(record));
+        if (record.value() instanceof ConfirmPurchaseReservationV1) {
+            @SuppressWarnings("unchecked") ConsumerRecord<String, ConfirmPurchaseReservationV1> confirmRecord =
+                    (ConsumerRecord<String, ConfirmPurchaseReservationV1>) (ConsumerRecord<?, ?>) record;
+            useCase.confirm(mapper.map(confirmRecord));
+        } else if (record.value() instanceof ReleasePurchaseReservationV1) {
+            @SuppressWarnings("unchecked") ConsumerRecord<String, ReleasePurchaseReservationV1> releaseRecord =
+                    (ConsumerRecord<String, ReleasePurchaseReservationV1>) (ConsumerRecord<?, ?>) record;
+            releaseUseCase.release(releaseMapper.map(releaseRecord));
+        } else {
+            throw new ReleaseReservationRecordException("unsupported reservation command SpecificRecord");
+        }
         acknowledgment.acknowledge();
     }
 

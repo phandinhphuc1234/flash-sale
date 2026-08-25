@@ -5,6 +5,7 @@ import com.philia.flashsale.flashsale.outbox.adapter.out.persistence.jpa.FlashSa
 import com.philia.flashsale.flashsale.outbox.application.port.ClaimOutboxEventsPort;
 import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseAcceptedPort;
 import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseReservationConfirmedPort;
+import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseReservationReleasedPort;
 import com.philia.flashsale.flashsale.outbox.application.port.UpdateOutboxPublicationPort;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxPublicationService;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxRetryPolicy;
@@ -34,13 +35,16 @@ public class FlashSaleOutboxConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({PublishPurchaseAcceptedPort.class, PublishPurchaseReservationConfirmedPort.class})
+    @ConditionalOnBean({PublishPurchaseAcceptedPort.class, PublishPurchaseReservationConfirmedPort.class,
+            PublishPurchaseReservationReleasedPort.class})
     FlashSaleOutboxEventTypeDispatcher flashSaleOutboxEventTypeDispatcher(
             PublishPurchaseAcceptedPort acceptedPublisher,
-            PublishPurchaseReservationConfirmedPort confirmedPublisher) {
+            PublishPurchaseReservationConfirmedPort confirmedPublisher,
+            PublishPurchaseReservationReleasedPort releasedPublisher) {
         return new FlashSaleOutboxEventTypeDispatcher(Map.of(
                 "PurchaseAccepted", acceptedPublisher,
-                "PurchaseReservationConfirmed", confirmedPublisher));
+                "PurchaseReservationConfirmed", confirmedPublisher,
+                "PurchaseReservationReleased", releasedPublisher));
     }
 
     @Bean

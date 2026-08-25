@@ -34,6 +34,10 @@ public class PurchaseSagaJpaEntity {
     private Long lastPaymentVersion;
     @Column(name = "payment_succeeded_at")
     private Instant paymentSucceededAt;
+    @Column(name = "payment_failure_reason")
+    private String paymentFailureReason;
+    @Column(name = "desired_order_status", length = 32)
+    private String desiredOrderStatus;
     @Column(name = "active_command_id")
     private UUID activeCommandId;
     @Column(name = "step_started_at", nullable = false)
@@ -59,6 +63,8 @@ public class PurchaseSagaJpaEntity {
         entity.paymentId = saga.paymentId();
         entity.lastPaymentVersion = saga.lastPaymentVersion();
         entity.paymentSucceededAt = saga.paymentSucceededAt();
+        entity.paymentFailureReason = saga.paymentFailureReason();
+        entity.desiredOrderStatus = saga.desiredOrderStatus();
         entity.activeCommandId = saga.activeCommandId();
         entity.stepStartedAt = saga.stepStartedAt();
         entity.version = saga.version();
@@ -76,6 +82,8 @@ public class PurchaseSagaJpaEntity {
     public UUID getPaymentId() { return paymentId; }
     public Long getLastPaymentVersion() { return lastPaymentVersion; }
     public Instant getPaymentSucceededAt() { return paymentSucceededAt; }
+    public String getPaymentFailureReason() { return paymentFailureReason; }
+    public String getDesiredOrderStatus() { return desiredOrderStatus; }
     public UUID getActiveCommandId() { return activeCommandId; }
     public long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
@@ -91,6 +99,8 @@ public class PurchaseSagaJpaEntity {
         paymentId = saga.paymentId();
         lastPaymentVersion = saga.lastPaymentVersion();
         paymentSucceededAt = saga.paymentSucceededAt();
+        paymentFailureReason = saga.paymentFailureReason();
+        desiredOrderStatus = saga.desiredOrderStatus();
         activeCommandId = saga.activeCommandId();
         stepStartedAt = saga.stepStartedAt();
         version = saga.version();

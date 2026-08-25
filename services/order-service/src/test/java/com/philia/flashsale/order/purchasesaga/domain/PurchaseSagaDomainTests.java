@@ -80,4 +80,39 @@ class PurchaseSagaDomainTests {
         assertThat(completed.activeCommandId()).isNull();
         assertThat(completed.paymentId()).isEqualTo(paymentId);
     }
+
+    @Test
+    void terminalPaymentFailureMapsDeadlineToExpiryAndCompensatesAfterRelease() {
+        UUID orderId = UUID.randomUUID();
+        UUID requestId = UUID.randomUUID();
+        UUID paymentId = UUID.randomUUID();
+        PurchaseSaga releasing = PurchaseSaga.start(orderId, requestId, UUID.randomUUID(),
+                CREATED.plusSeconds(300), CREATED)
+                .releaseReservation(paymentId, 2, "PAYMENT_DEADLINE_EXPIRED", "EXPIRED",
+                        CREATED.plusSeconds(2), UUID.randomUUID(), CREATED.plusSeconds(3));
+
+        PurchaseSaga compensated = releasing.completeRelease(CREATED.plusSeconds(4));
+
+        assertThat(releasing.status()).isEqualTo(PurchaseSagaStatus.RELEASING_RESERVATION);
+        assertThat(releasing.desiredOrderStatus()).isEqualTo("EXPIRED");
+        assertThat(compensated.status()).isEqualTo(PurchaseSagaStatus.COMPENSATED);
+        assertThat(compensated.activeCommandId()).isNull();
+    }
+
+    @Test
+    void checkoutAttemptLimitMapsToCancellationAndRejectsInvalidTarget() {
+        PurchaseSaga saga = PurchaseSaga.start(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                CREATED.plusSeconds(300), CREATED);
+
+        PurchaseSaga cancelled = saga.releaseReservation(UUID.randomUUID(), 1,
+                "CHECKOUT_ATTEMPT_LIMIT_REACHED", "CANCELLED", CREATED.plusSeconds(1),
+                UUID.randomUUID(), CREATED.plusSeconds(2));
+
+        assertThat(cancelled.desiredOrderStatus()).isEqualTo("CANCELLED");
+        assertThatThrownBy(() -> saga.releaseReservation(UUID.randomUUID(), 1,
+                "PROVIDER_TERMINAL_FAILURE", "CONFIRMED", CREATED.plusSeconds(1),
+                UUID.randomUUID(), CREATED.plusSeconds(2)))
+                .isInstanceOf(InvalidPurchaseSagaException.class)
+                .hasMessageContaining("release target");
+    }
 }

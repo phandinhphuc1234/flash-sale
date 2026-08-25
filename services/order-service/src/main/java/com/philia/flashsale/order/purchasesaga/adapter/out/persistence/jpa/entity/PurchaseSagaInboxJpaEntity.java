@@ -1,7 +1,9 @@
 package com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.entity;
 
 import com.philia.flashsale.order.purchasesaga.application.command.PaymentSucceededCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.PaymentFailedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationConfirmedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationReleasedCommand;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -62,6 +64,23 @@ public class PurchaseSagaInboxJpaEntity {
         return entity;
     }
 
+    public static PurchaseSagaInboxJpaEntity paymentFailed(PaymentFailedCommand command) {
+        PurchaseSagaInboxJpaEntity entity = new PurchaseSagaInboxJpaEntity();
+        entity.eventId = command.eventId();
+        entity.eventType = command.eventType();
+        entity.eventVersion = command.eventVersion();
+        entity.producer = command.producer();
+        entity.aggregateId = command.aggregateId();
+        entity.aggregateVersion = command.aggregateVersion();
+        entity.orderId = command.orderId();
+        entity.payloadFingerprint = command.fingerprint();
+        entity.sourceTopic = command.sourceTopic();
+        entity.sourcePartition = command.sourcePartition();
+        entity.sourceOffset = command.sourceOffset();
+        entity.processedAt = command.failedAt();
+        return entity;
+    }
+
     public static PurchaseSagaInboxJpaEntity purchaseReservationConfirmed(
             PurchaseReservationConfirmedCommand command) {
         PurchaseSagaInboxJpaEntity entity = new PurchaseSagaInboxJpaEntity();
@@ -77,6 +96,18 @@ public class PurchaseSagaInboxJpaEntity {
         entity.sourcePartition = command.sourcePartition();
         entity.sourceOffset = command.sourceOffset();
         entity.processedAt = command.confirmedAt();
+        return entity;
+    }
+
+    public static PurchaseSagaInboxJpaEntity purchaseReservationReleased(
+            PurchaseReservationReleasedCommand command) {
+        PurchaseSagaInboxJpaEntity entity = new PurchaseSagaInboxJpaEntity();
+        entity.eventId = command.eventId(); entity.eventType = command.eventType();
+        entity.eventVersion = command.eventVersion(); entity.producer = command.producer();
+        entity.aggregateId = command.aggregateId(); entity.aggregateVersion = command.aggregateVersion();
+        entity.orderId = command.orderId(); entity.payloadFingerprint = command.fingerprint();
+        entity.sourceTopic = command.sourceTopic(); entity.sourcePartition = command.sourcePartition();
+        entity.sourceOffset = command.sourceOffset(); entity.processedAt = command.releasedAt();
         return entity;
     }
 

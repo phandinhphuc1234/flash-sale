@@ -123,18 +123,18 @@ owner-approved state.
 
 ### Tests for User Story 3
 
-- [ ] T038 [P] [US3] Add failing PaymentFailed reason validation, status mapping, duplicate/version, and DLT tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/PaymentFailedConsumerTests.java`
-- [ ] T039 [P] [US3] Add failing atomic release-command creation and desired-terminal-state tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PaymentFailureTransitionIntegrationTests.java`
-- [ ] T040 [P] [US3] Add failing Flash Sale release, already-expired, competing-confirm, command replay, and exact-once quota tests under `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/`
-- [ ] T041 [P] [US3] Add failing PurchaseReservationReleased consumer, OrderCancelled/OrderExpired outbox, and authenticated public Order-status response tests in `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PurchaseReleaseIntegrationTests.java` and `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/in/web/OrderQueryControllerTests.java`
+- [X] T038 [P] [US3] Add failing PaymentFailed reason validation, status mapping, duplicate/version, and DLT tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/PaymentFailedConsumerTests.java`
+- [X] T039 [P] [US3] Add failing atomic release-command creation and desired-terminal-state tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PaymentFailureTransitionIntegrationTests.java`
+- [X] T040 [P] [US3] Add failing Flash Sale release, already-expired, competing-confirm, command replay, and exact-once quota tests under `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/`
+- [X] T041 [P] [US3] Add failing PurchaseReservationReleased consumer, OrderCancelled/OrderExpired outbox, and authenticated public Order-status response tests in `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PaymentFailureTransitionIntegrationTests.java` and the existing `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/in/web/OrderQueryControllerTests.java`
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Implement PaymentFailed mapping/policy/use case and atomic Saga inbox/release-command transition under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/`
-- [ ] T043 [US3] Implement Flash Sale release command consumer/application/persistence and `PurchaseReservationReleasedV1` outbox mapping under `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/` and `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/outbox/`
-- [ ] T044 [US3] Implement `release-reservation.lua`, exact-once stock/user-quota restoration, expiry-index removal, and durable reconciliation completion under `services/flashsale-service/src/main/resources/redis/reservation/` and the reservation Redis adapter package
-- [ ] T045 [US3] Implement released-result handling and atomic Order `CANCELLED`/`EXPIRED`, Saga `COMPENSATED`, and terminal event outbox transitions under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/` and `services/order-service/src/main/java/com/philia/flashsale/order/order/domain/model/`
-- [ ] T046 [US3] Implement all reason branches in the `Failed` scenario of `infra/docker/smoke/feature-044-purchase-saga.ps1` and record `FEATURE_044_FAILED=PASS` in `specs/044-order-purchase-saga/validation.md`
+- [X] T042 [US3] Implement PaymentFailed mapping/policy/use case and atomic Saga inbox/release-command transition under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/`
+- [X] T043 [US3] Implement Flash Sale release command consumer/application/persistence and `PurchaseReservationReleasedV1` outbox mapping under `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/` and `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/outbox/`
+- [X] T044 [US3] Implement `release-reservation.lua`, exact-once stock/user-quota restoration, expiry-index removal, and durable reconciliation completion under `services/flashsale-service/src/main/resources/redis/reservation/` and the reservation Redis adapter package
+- [X] T045 [US3] Implement released-result handling and atomic Order `CANCELLED`/`EXPIRED`, Saga `COMPENSATED`, and terminal event outbox transitions under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/` and `services/order-service/src/main/java/com/philia/flashsale/order/order/domain/model/`
+- [X] T046 [US3] Implement all reason branches in the `Failed` scenario of `infra/docker/smoke/feature-044-purchase-saga.ps1` and record `FEATURE_044_FAILED=PASS` in `specs/044-order-purchase-saga/validation.md`
 
 **Checkpoint**: No unpaid terminal workflow strands a durable reservation or emits a terminal Order
 event before Flash Sale acknowledgement.

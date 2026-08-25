@@ -12,7 +12,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('Contracts', 'Start', 'Paid')]
+    [ValidateSet('Contracts', 'Start', 'Paid', 'Failed')]
     [string]$Scenario = 'Contracts',
     [switch]$SkipTopology,
     [ValidateRange(60, 1800)]
@@ -186,5 +186,16 @@ switch ($Scenario) {
             '-am', 'verify'
         )
         Write-Output 'FEATURE_044_PAID=PASS'
+    }
+    'Failed' {
+        # The failure gate runs both participants in one reactor. Order verifies the three
+        # PaymentFailed reason branches, durable release command, and terminal Order/Saga facts;
+        # Flash Sale verifies release/expiry idempotency, Redis Lua reconciliation, and its result
+        # outbox. No SQL or synthetic Kafka record is created by this runner.
+        Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 PaymentFailed release affected-module verify' -Arguments @(
+            '--batch-mode', '--no-transfer-progress', '-pl', 'services/order-service,services/flashsale-service',
+            '-am', 'verify'
+        )
+        Write-Output 'FEATURE_044_FAILED=PASS'
     }
 }

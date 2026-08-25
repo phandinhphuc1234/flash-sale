@@ -14,11 +14,17 @@ import com.philia.flashsale.order.observability.OrderObservability;
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.repository.PurchaseSagaJpaRepository;
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.repository.PurchaseSagaInboxJpaRepository;
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.PaymentSuccessPersistenceAdapter;
+import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.PaymentFailurePersistenceAdapter;
 import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPaymentSuccessUseCase;
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPaymentSuccessService;
+import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPaymentFailureUseCase;
+import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPaymentFailureService;
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.ReservationConfirmationPersistenceAdapter;
+import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.ReservationReleasePersistenceAdapter;
 import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPurchaseReservationConfirmationUseCase;
+import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPurchaseReservationReleaseUseCase;
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPurchaseReservationConfirmationService;
+import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPurchaseReservationReleaseService;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -67,6 +73,18 @@ public class OrderCreationConfiguration {
     }
 
     @Bean
+    public PaymentFailurePersistenceAdapter paymentFailurePersistenceAdapter(OrderJpaRepository orders,
+            PurchaseSagaJpaRepository sagas, PurchaseSagaInboxJpaRepository inbox,
+            OrderCreationOutboxJpaRepository outbox) {
+        return new PaymentFailurePersistenceAdapter(orders, sagas, inbox, outbox);
+    }
+
+    @Bean
+    public ApplyPaymentFailureUseCase applyPaymentFailureUseCase(PaymentFailurePersistenceAdapter persistence) {
+        return new ApplyPaymentFailureService(persistence);
+    }
+
+    @Bean
     public ReservationConfirmationPersistenceAdapter reservationConfirmationPersistenceAdapter(
             OrderJpaRepository orders, PurchaseSagaJpaRepository sagas,
             PurchaseSagaInboxJpaRepository inbox, OrderCreationOutboxJpaRepository outbox) {
@@ -77,5 +95,18 @@ public class OrderCreationConfiguration {
     public ApplyPurchaseReservationConfirmationUseCase applyPurchaseReservationConfirmationUseCase(
             ReservationConfirmationPersistenceAdapter persistence) {
         return new ApplyPurchaseReservationConfirmationService(persistence);
+    }
+
+    @Bean
+    public ReservationReleasePersistenceAdapter reservationReleasePersistenceAdapter(
+            OrderJpaRepository orders, PurchaseSagaJpaRepository sagas,
+            PurchaseSagaInboxJpaRepository inbox, OrderCreationOutboxJpaRepository outbox) {
+        return new ReservationReleasePersistenceAdapter(orders, sagas, inbox, outbox);
+    }
+
+    @Bean
+    public ApplyPurchaseReservationReleaseUseCase applyPurchaseReservationReleaseUseCase(
+            ReservationReleasePersistenceAdapter persistence) {
+        return new ApplyPurchaseReservationReleaseService(persistence);
     }
 }

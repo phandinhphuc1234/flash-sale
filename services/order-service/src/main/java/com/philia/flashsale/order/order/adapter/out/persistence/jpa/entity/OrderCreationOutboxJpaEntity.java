@@ -2,7 +2,9 @@ package com.philia.flashsale.order.order.adapter.out.persistence.jpa.entity;
 
 import com.philia.flashsale.order.order.application.model.OrderCreationCandidate;
 import com.philia.flashsale.order.purchasesaga.application.command.PaymentSucceededCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.PaymentFailedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationConfirmedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationReleasedCommand;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -152,6 +154,36 @@ public class OrderCreationOutboxJpaEntity {
         return entity;
     }
 
+    /** Creates the stable Flash Sale release command after a terminal PaymentFailed fact. */
+    public static OrderCreationOutboxJpaEntity releaseReservation(PaymentFailedCommand command,
+            PurchaseSaga saga, UUID commandId) {
+        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
+        entity.eventId = commandId;
+        entity.aggregateType = "PURCHASE_SAGA";
+        entity.aggregateId = saga.id();
+        entity.aggregateVersion = saga.version();
+        entity.eventType = "ReleasePurchaseReservation";
+        entity.eventVersion = 1;
+        entity.eventKey = saga.orderId().toString();
+        entity.correlationId = command.correlationId();
+        entity.causationId = command.eventId();
+        entity.payload = "{" +
+                "\"sagaId\":\"" + saga.id() + "\"," +
+                "\"orderId\":\"" + saga.orderId() + "\"," +
+                "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\"," +
+                "\"reservationId\":\"" + saga.reservationId() + "\"," +
+                "\"reason\":\"" + command.reason() + "\"}";
+        entity.traceparent = command.traceparent();
+        entity.tracestate = command.tracestate();
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = command.occurredAt();
+        entity.occurredAt = command.occurredAt();
+        entity.createdAt = command.occurredAt();
+        entity.updatedAt = command.occurredAt();
+        return entity;
+    }
+
     /** Creates the terminal OrderConfirmed fact in the same local transaction as the state changes. */
     public static OrderCreationOutboxJpaEntity orderConfirmed(PurchaseReservationConfirmedCommand command,
             PurchaseSaga saga, OrderJpaEntity order) {
@@ -183,6 +215,40 @@ public class OrderCreationOutboxJpaEntity {
         entity.occurredAt = occurredAt;
         entity.createdAt = occurredAt;
         entity.updatedAt = occurredAt;
+        return entity;
+    }
+
+    /** Creates the terminal OrderCancelled/OrderExpired fact after reservation release. */
+    public static OrderCreationOutboxJpaEntity orderCancelled(PurchaseReservationReleasedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        return terminalRelease(command, saga, order, "OrderCancelled", "cancelledAt");
+    }
+
+    public static OrderCreationOutboxJpaEntity orderExpired(PurchaseReservationReleasedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        return terminalRelease(command, saga, order, "OrderExpired", "expiredAt");
+    }
+
+    private static OrderCreationOutboxJpaEntity terminalRelease(PurchaseReservationReleasedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order, String eventType, String timeField) {
+        UUID eventId = UUID.nameUUIDFromBytes((eventType + ":" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.releasedAt();
+        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
+        entity.eventId = eventId; entity.aggregateType = "ORDER"; entity.aggregateId = order.getId();
+        entity.aggregateVersion = saga.version(); entity.eventType = eventType; entity.eventVersion = 1;
+        entity.eventKey = order.getId().toString(); entity.correlationId = command.correlationId();
+        entity.causationId = command.eventId();
+        entity.payload = "{"
+                + "\"orderId\":\"" + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"reservationId\":\"" + order.getReservationId() + "\","
+                + "\"reason\":\"" + command.reason() + "\","
+                + "\"" + timeField + "\":\"" + occurredAt + "\"}";
+        entity.traceparent = command.traceparent(); entity.tracestate = command.tracestate();
+        entity.status = "PENDING"; entity.attemptCount = 0; entity.nextAttemptAt = occurredAt;
+        entity.occurredAt = occurredAt; entity.createdAt = occurredAt; entity.updatedAt = occurredAt;
         return entity;
     }
 

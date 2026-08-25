@@ -74,6 +74,15 @@ public class FlashSaleReservationJpaEntity {
         return true;
     }
 
+    /** Applies an unpaid release; expired and confirmed rows remain immutable. */
+    public boolean release(Instant at) {
+        if (status != Status.RESERVED) return false;
+        status = Status.RELEASED;
+        finalizedAt = at;
+        updatedAt = at;
+        return true;
+    }
+
     public void markRedisReconciled(Instant at) {
         redisReconciledAt = at;
     }

@@ -116,6 +116,7 @@ order:
   runtime:
     accepted-purchase-consumer-enabled: ${ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED:true}
     purchase-reservation-results-consumer-enabled: ${ORDER_PURCHASE_RESERVATION_RESULTS_CONSUMER_ENABLED:true}
+    payment-events-consumer-enabled: ${ORDER_PAYMENT_EVENTS_CONSUMER_ENABLED:true}
     outbox-publisher-enabled: ${ORDER_OUTBOX_PUBLISHER_ENABLED:true}
     query-page-size-max: ${ORDER_QUERY_PAGE_SIZE_MAX:100}
   creation:

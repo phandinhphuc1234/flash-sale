@@ -81,7 +81,8 @@ public class ReservationConfirmationPersistenceAdapter
     private PurchaseSaga toDomain(PurchaseSagaJpaEntity entity) {
         return PurchaseSaga.restore(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(),
                 entity.getReservationId(), entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(),
-                entity.getLastPaymentVersion(), entity.getPaymentSucceededAt(), entity.getActiveCommandId(),
+                entity.getLastPaymentVersion(), entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(),
+                entity.getDesiredOrderStatus(), entity.getActiveCommandId(),
                 entity.getStepStartedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 

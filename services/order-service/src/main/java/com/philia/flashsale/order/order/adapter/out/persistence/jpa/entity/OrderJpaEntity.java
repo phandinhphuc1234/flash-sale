@@ -101,4 +101,17 @@ public class OrderJpaEntity {
         status = OrderStatus.CONFIRMED;
         updatedAt = confirmedAt;
     }
+
+    /** Applies an unpaid terminal state after the Flash Sale release fact commits. */
+    public void terminalize(OrderStatus terminalStatus, Instant at) {
+        if (terminalStatus != OrderStatus.CANCELLED && terminalStatus != OrderStatus.EXPIRED) {
+            throw new IllegalArgumentException("unsupported unpaid terminal status");
+        }
+        if (status == terminalStatus) return;
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            throw new IllegalStateException("Order is not awaiting payment release");
+        }
+        status = terminalStatus;
+        updatedAt = at;
+    }
 }
