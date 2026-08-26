@@ -21,28 +21,40 @@ public final class OrderReadinessHealthIndicator implements HealthIndicator {
     private final BooleanSupplier consumerAvailable;
     private final LongSupplier outboxBacklog;
     private final Supplier<Duration> oldestPendingAge;
+    private final Supplier<Map<String, Long>> sagaStateCounts;
+    private final Supplier<Duration> oldestSagaStepAge;
     private final OrderObservability observability;
 
     public OrderReadinessHealthIndicator(BooleanSupplier postgresAvailable,
             BooleanSupplier consumerAvailable) {
         this(postgresAvailable, consumerAvailable, () -> 0L, () -> Duration.ZERO,
-                OrderObservability.noop());
+                Map::of, () -> Duration.ZERO, OrderObservability.noop());
     }
 
     public OrderReadinessHealthIndicator(BooleanSupplier postgresAvailable,
             BooleanSupplier consumerAvailable, LongSupplier outboxBacklog,
             Supplier<Duration> oldestPendingAge) {
         this(postgresAvailable, consumerAvailable, outboxBacklog, oldestPendingAge,
-                OrderObservability.noop());
+                Map::of, () -> Duration.ZERO, OrderObservability.noop());
     }
 
     public OrderReadinessHealthIndicator(BooleanSupplier postgresAvailable,
             BooleanSupplier consumerAvailable, LongSupplier outboxBacklog,
             Supplier<Duration> oldestPendingAge, OrderObservability observability) {
+        this(postgresAvailable, consumerAvailable, outboxBacklog, oldestPendingAge,
+                Map::of, () -> Duration.ZERO, observability);
+    }
+
+    public OrderReadinessHealthIndicator(BooleanSupplier postgresAvailable,
+            BooleanSupplier consumerAvailable, LongSupplier outboxBacklog,
+            Supplier<Duration> oldestPendingAge, Supplier<Map<String, Long>> sagaStateCounts,
+            Supplier<Duration> oldestSagaStepAge, OrderObservability observability) {
         this.postgresAvailable = Objects.requireNonNull(postgresAvailable, "postgresAvailable");
         this.consumerAvailable = Objects.requireNonNull(consumerAvailable, "consumerAvailable");
         this.outboxBacklog = Objects.requireNonNull(outboxBacklog, "outboxBacklog");
         this.oldestPendingAge = Objects.requireNonNull(oldestPendingAge, "oldestPendingAge");
+        this.sagaStateCounts = Objects.requireNonNull(sagaStateCounts, "sagaStateCounts");
+        this.oldestSagaStepAge = Objects.requireNonNull(oldestSagaStepAge, "oldestSagaStepAge");
         this.observability = Objects.requireNonNull(observability, "observability");
     }
 
@@ -62,6 +74,7 @@ public final class OrderReadinessHealthIndicator implements HealthIndicator {
         if (!postgres) {
             Duration age = Duration.ZERO;
             observability.recordOutboxBacklog(0L, age);
+            observability.recordSagaDiagnostics(Map.of(), Duration.ZERO);
             details.put("outboxBacklog", 0L);
             details.put("outboxOldestPendingAgeSeconds", 0.0d);
             details.put("unavailableDependencies", List.of("postgres"));
@@ -70,10 +83,33 @@ public final class OrderReadinessHealthIndicator implements HealthIndicator {
 
         long backlog = safeBacklog();
         Duration age = safeAge();
+        Map<String, Long> states = safeSagaStateCounts();
+        Duration sagaAge = safeSagaAge();
         observability.recordOutboxBacklog(backlog, age);
+        observability.recordSagaDiagnostics(states, sagaAge);
         details.put("outboxBacklog", backlog);
         details.put("outboxOldestPendingAgeSeconds", age.toMillis() / 1000d);
+        details.put("sagaManualReviewCount", states.getOrDefault("MANUAL_REVIEW", 0L));
+        details.put("sagaOldestStepAgeSeconds", sagaAge.toMillis() / 1000d);
         return Health.up().withDetails(details).build();
+    }
+
+    private Map<String, Long> safeSagaStateCounts() {
+        try {
+            Map<String, Long> value = sagaStateCounts.get();
+            return value == null ? Map.of() : Map.copyOf(value);
+        } catch (RuntimeException ignored) {
+            return Map.of();
+        }
+    }
+
+    private Duration safeSagaAge() {
+        try {
+            Duration value = oldestSagaStepAge.get();
+            return value == null || value.isNegative() ? Duration.ZERO : value;
+        } catch (RuntimeException ignored) {
+            return Duration.ZERO;
+        }
     }
 
     private long safeBacklog() {

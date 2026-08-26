@@ -122,3 +122,80 @@ and aggregate `All` validation remain deferred to their approved task groups.
 G7 closes T038–T046 locally. The failure path is now durable and replay-safe; replay/reordering,
 late-success/manual-review correction, aggregate `All`, and cloud promotion remain deferred to the
 next approved groups.
+
+## G8 — Replay, reordering, late success, and Redis recovery — 2026-08-25
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Fingerprint and conflict guards | PASS | Existing Order/Flash Sale inbox tests plus the affected-module suite cover duplicate delivery, canonical fingerprints, same-event/different-payload conflicts, stale participant versions, and non-retryable identity conflicts. |
+| Concurrency/crash-window safety | PASS | `AcceptedPurchaseConcurrencyIntegrationTests`, `AcceptedPurchasePersistenceIntegrationTests`, `ReservationIdempotencyConcurrencyIntegrationTests`, and Redis failure/recovery tests pass; physical replay remains one semantic effect. |
+| Compensated late success | PASS | `LatePaymentCorrectionIntegrationTests.lateSuccessReopensTerminalOrderAndWritesOneStableReviewCorrection`: Order `CANCELLED` reopens to `PENDING_PAYMENT`, Saga enters `MANUAL_REVIEW`, and one `OrderPaymentReviewRequired` outbox fact remains after replay. |
+| Release-in-flight late success | PASS | `LatePaymentCorrectionIntegrationTests.releaseResultAfterLateSuccessInFlightMovesSagaToManualReview`: a higher-version success opens confirmation while release is in flight; the later released result preserves `PENDING_PAYMENT`, records manual review, and does not emit a second correction. |
+| Correction contract boundary | PASS | `OrderPaymentReviewRequiredMapperTests` validates `OrderPaymentReviewRequiredV1`, fixed `LATE_PAYMENT_RESERVATION_UNAVAILABLE` reason, previous terminal state, stable event identity, and `flashsale.order.events.v1` routing. |
+| Redis reconciliation backlog | PASS | `ReservationReconciliationServiceTests` verifies bounded retry with failed rows left pending; `ReservationReconciliationIntegrationTests` verifies CONFIRMED/RELEASED/EXPIRED Lua repair and a restarted worker observing no pending marker. |
+| Reconciliation scheduling/metrics | PASS | The scheduled adapter uses a bounded batch, single-process in-flight lease, safe exception logging, and the existing low-cardinality `FlashSaleObservability.REDIS_RECONCILIATION` timer/observation; PostgreSQL `redis_reconciled_at` remains the durable completion marker. |
+| Replay runner | PASS | `pwsh -NoLogo -NoProfile -File .\infra\docker\smoke\feature-044-purchase-saga.ps1 -Scenario Replay -TimeoutSeconds 1800` exited 0 and emitted `FEATURE_044_REPLAY=PASS`; affected Order/Flash Sale focused tests passed with no secrets or cloud mutation. |
+| Late-success runner | PASS | `pwsh -NoLogo -NoProfile -File .\infra\docker\smoke\feature-044-purchase-saga.ps1 -Scenario LateSuccess -TimeoutSeconds 1200` exited 0 and emitted `FEATURE_044_LATE_SUCCESS=PASS`; 5 selected tests passed, 0 failures, 0 errors. |
+| Static hygiene | PASS | PowerShell parser validation and `git diff --check` passed. No `.env`, ECR, EKS, Argo, or cloud state was changed. |
+
+G8 closes T047–T054 locally. `Replay` and `LateSuccess` are now selectable runner scenarios; the
+`All` selector is implemented but has not been executed in this turn because it intentionally runs
+the full reactor and is the final pre-cloud gate. The one-time cloud release remains deferred until
+the user explicitly runs/approves `-Scenario All`, then promotes the affected images and executes the
+existing Phase 20/21/24 cloud gates.
+
+## US5 aggregate local gate — 2026-08-26
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Aggregate Feature 044 runner | PASS | `pwsh -NoLogo -NoProfile -File .\\infra\\docker\\smoke\\feature-044-purchase-saga.ps1 -Scenario All -TimeoutSeconds 3600` completed with `FEATURE_044_CONTRACTS`, `FEATURE_044_START`, `FEATURE_044_PAID`, `FEATURE_044_FAILED`, `FEATURE_044_REPLAY`, `FEATURE_044_LATE_SUCCESS`, `FEATURE_044_MODULES`, `FEATURE_044_MONOREPO`, and `FEATURE_044_LOCAL_GATE` all `PASS`. The aggregate timeout was increased only for the full local reactor and remains bounded. |
+| Full monorepo verification | PASS | Maven `clean verify` completed through all reactor modules. Recent Surefire reports cover 855 tests across 262 suites with 0 failures, 0 errors, and 16 intentional skips. |
+| Replay performance regression | PASS | `CheckoutReplayConcurrencyIntegrationTests`: 3 tests, 0 failures, 0 errors; the replay benchmark passed after a bounded warm-up and the idempotent persistence fast path removed redundant locking/update work. |
+| Local environment restoration | PASS | Five high-load local containers were stopped only while measuring the benchmark and were started again after the aggregate run. No `.env`, ECR, EKS, Argo, or cloud state was changed. |
+
+T064 is complete. Cloud promotion and live Phase 20/21/24 evidence remain separate release-gate tasks.
+
+## T065–T066 — Documentation and static audit — 2026-08-26
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Architecture documentation | PASS | Updated the end-to-end guide with the implemented Feature 044 Purchase Saga, approved deadline/terminal/late-success rules, deferred Cart/Notification boundary, and troubleshooting table. |
+| Messaging reliability documentation | PASS | Updated topic statuses so Feature 044 Purchase/Payment/Order topics are approved while Campaign end/cancellation and other candidate families remain explicitly deferred; documented `MANUAL_REVIEW` and DLT boundaries. |
+| Kafka catalog | PASS | Recorded Feature 044's five approved main topics, three consumer DLTs, 14 Registry-subject inventory, and the local-gate release boundary. |
+| Java package/comment audit | PASS | Changed Order/Flash Sale Java files remain under service-owned feature/configuration/adapter/observability packages; no TODO/FIXME/HACK/XXX markers were introduced. |
+| Log/error/redaction audit | PASS | No production `System.out`, stack-trace, Authorization/Bearer, provider-secret, or password logging pattern was found in changed Java files. The only matches are a deterministic test webhook fixture and a non-sensitive replay benchmark metric. |
+| Formatting hygiene | PASS | `git diff --check` completed with no whitespace errors. Git's existing user-config permission and LF/CRLF warnings are environmental only. |
+
+T065 and T066 are complete. T067–T068 are the next required quality gates.
+
+## T067–T068 — Local quality gates — 2026-08-26
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Affected-module reactor verification (T067) | PASS | `./mvnw.cmd --batch-mode --no-transfer-progress -pl contracts/kafka-avro-contracts,services/order-service,services/flashsale-service -am verify` completed successfully: common-web 9 tests, Kafka contracts 21, Flash Sale 118 (1 intentional skip), and Order 125 (8 intentional skips); 273 tests total, 0 failures, 0 errors, 9 skips; reactor `BUILD SUCCESS`. |
+| Full monorepo clean verification (T068) | PASS | `./mvnw.cmd --batch-mode --no-transfer-progress clean verify` completed all 13 reactor modules in 40:57: 855 tests, 0 failures, 0 errors, 16 intentional skips; reactor `BUILD SUCCESS`. Module counts: common-web 9, Kafka contracts 21, API Gateway 194, Authentication 64, Product 35, Cart 1, Campaign 111 (1 skip), Flash Sale 118 (1 skip), Order 125 (8 skips), Payment 147 (6 skips), Notification 1, Inventory 29. |
+| PowerShell syntax/tests gate (T068) | PASS | PowerShell parser checked all 46 `infra/**/*.ps1` files with 0 parser errors; `Invoke-Pester -Path .\\infra\\scripts\\gitops\\tests -PassThru` completed with exit code 0 and all four static safety scripts emitted `PASS`. The Phase 23 test was aligned with the current `api-gateway-https-service.yaml` patch name. Existing Git user-config permission and line-ending warnings are environmental only. |
+| Kubernetes cloud manifest gate (T068) | PASS | `kubectl apply --dry-run=client -k infra/k8s/overlays/cloud` rendered namespace, 8 service ConfigMaps, platform services, 8 Deployments, Schema Registry, and Postgres/Redis/Kafka StatefulSets successfully. No live Kubernetes resource was changed. |
+| Secret/cloud boundary | PASS | No `.env` file was read or changed, and no ECR push, Argo sync, EKS rollout, or other cloud mutation was executed by these gates. |
+
+T067 and T068 close the local quality gates. The remaining T069–T072 tasks are sequential cloud
+release, promotion, live verification, and rollback evidence and must not be marked complete from
+these local results.
+
+## T055–T063 — Release assets, observability, and cloud-contract closure — 2026-08-26
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Local runner safety contract (T055/T058) | PASS | `infra/scripts/tests/feature-044-purchase-saga.tests.ps1` parsed the runner and verified scenario dispatch, the bounded 60–3600 second timeout, bounded native processes/diagnostics, cleanup, redaction, and forbidden cloud/secret mutations. `-Scenario Contracts` additionally verified the local Kafka/Registry contract inventory and emitted `FEATURE_044_CONTRACTS=PASS`; the previously recorded aggregate `All` gate remains PASS. |
+| Observability/readiness contract (T056/T060) | PASS | Targeted Order/Flash Sale observability tests completed 15 tests with 0 failures/errors. The affected-module `verify` then completed Flash Sale 120 tests (1 intentional skip) and Order 127 tests (8 intentional skips), 0 failures/errors, reactor `BUILD SUCCESS` in 6:50. Metrics use bounded Saga state/outcome tags; readiness exposes manual-review, outbox, DLT, and Redis-reconciliation diagnostics without making Kafka a false hard dependency. |
+| Local Compose configuration (T059) | PASS | `docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml -f infra/docker/compose.dev.yml config --quiet` exited 0. Order and Flash Sale Feature 044 topics, consumer groups, DLTs, retries, and explicit local enable flags render without reading or changing ignored `infra/docker/.env`. |
+| Phase 20 inventory (T061) | PASS | PowerShell parsing passed. The Phase 20 inventory now contains 11 topics and 23 subjects overall; the Feature 044 subset is 4 reviewed topics/DLTs and 14 exact topic-record subjects with `BACKWARD_TRANSITIVE` compatibility. Local `Contracts` validation found partitions=3, replication factor=1, and registered/verified all 14 subjects without topic deletion or broker auto-creation. |
+| Cloud ConfigMap contract (T057/T062) | PASS | `phase44-purchase-saga-cloud.tests.ps1` verified canonical Order/Flash Sale topic names, all reviewed runtime/consumer/reconciliation flags, absence of the deprecated Payment-result DLT name, Phase 20/schema-script linkage, and a successful local Kustomize render. No EKS, Kafka, Registry, database, Redis, Stripe, or Secret state changed. |
+| Phase 24 continuation (T063) | PASS | `phase24-stripe-cloud.tests.ps1` passed. The delegated real fixture path now polls the owner-scoped reservation and Order APIs after Checkout/webhook/replay, requires matching `purchaseRequestId`, reservation `CONFIRMED`, and final Order `CONFIRMED`, and does not fabricate Payment state or query another service's database. Live Stripe/cloud proof remains correctly owned by T071. |
+| Canonical DLT/config consistency | PASS | Order defaults, local Compose, cloud ConfigMaps, Phase 20, and static tests consistently use `flashsale.order.payment-result.dlt.v1`; the obsolete `flashsale.order.payment-events.dlt.v1` name is absent. |
+| Static hygiene and mutation boundary | PASS | `git diff --check` passed. No ignored `.env`, Secret value, ECR image, Argo Application, EKS workload, cloud topic/schema, or live database was read or mutated by this task group. |
+
+T055–T063 are complete. Together with the previously green T064–T068 local gates, the next allowed
+work is the sequential post-merge cloud path T069–T072. Database migration ordering, immutable image
+promotion, and rollback compatibility must be resolved and evidenced at that release boundary rather
+than inferred from local tests.

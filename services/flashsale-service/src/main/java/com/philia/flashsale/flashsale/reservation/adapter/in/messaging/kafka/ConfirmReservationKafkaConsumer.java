@@ -4,6 +4,7 @@ import com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservat
 import com.philia.flashsale.contract.purchase.command.v1.ReleasePurchaseReservationV1;
 import com.philia.flashsale.flashsale.reservation.application.port.in.ConfirmReservationUseCase;
 import com.philia.flashsale.flashsale.reservation.application.port.in.ReleaseReservationUseCase;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.nio.charset.StandardCharsets;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,14 +21,16 @@ public final class ConfirmReservationKafkaConsumer {
     private final ConfirmReservationUseCase useCase;
     private final ReleaseReservationAvroMapper releaseMapper;
     private final ReleaseReservationUseCase releaseUseCase;
+    private final FlashSaleObservability observability;
 
     public ConfirmReservationKafkaConsumer(ConfirmReservationAvroMapper mapper,
             ConfirmReservationUseCase useCase, ReleaseReservationAvroMapper releaseMapper,
-            ReleaseReservationUseCase releaseUseCase) {
+            ReleaseReservationUseCase releaseUseCase, FlashSaleObservability observability) {
         this.mapper = mapper;
         this.useCase = useCase;
         this.releaseMapper = releaseMapper;
         this.releaseUseCase = releaseUseCase;
+        this.observability = observability;
     }
 
     @KafkaListener(topics = "${flashsale.reservation-commands.topic}",
@@ -39,11 +42,13 @@ public final class ConfirmReservationKafkaConsumer {
         if (record.value() instanceof ConfirmPurchaseReservationV1) {
             @SuppressWarnings("unchecked") ConsumerRecord<String, ConfirmPurchaseReservationV1> confirmRecord =
                     (ConsumerRecord<String, ConfirmPurchaseReservationV1>) (ConsumerRecord<?, ?>) record;
-            useCase.confirm(mapper.map(confirmRecord));
+            var result = useCase.confirm(mapper.map(confirmRecord));
+            observability.recordReservationCommandOutcome(result.status().name());
         } else if (record.value() instanceof ReleasePurchaseReservationV1) {
             @SuppressWarnings("unchecked") ConsumerRecord<String, ReleasePurchaseReservationV1> releaseRecord =
                     (ConsumerRecord<String, ReleasePurchaseReservationV1>) (ConsumerRecord<?, ?>) record;
-            releaseUseCase.release(releaseMapper.map(releaseRecord));
+            var result = releaseUseCase.release(releaseMapper.map(releaseRecord));
+            observability.recordReservationCommandOutcome(result.status().name());
         } else {
             throw new ReleaseReservationRecordException("unsupported reservation command SpecificRecord");
         }

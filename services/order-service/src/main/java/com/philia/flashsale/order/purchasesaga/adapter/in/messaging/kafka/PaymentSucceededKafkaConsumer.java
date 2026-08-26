@@ -6,6 +6,7 @@ import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPaymentS
 import com.philia.flashsale.order.purchasesaga.application.result.PaymentSuccessResult;
 import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPaymentFailureUseCase;
 import com.philia.flashsale.order.purchasesaga.application.result.PaymentFailureResult;
+import com.philia.flashsale.order.observability.OrderObservability;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.nio.charset.StandardCharsets;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -23,15 +24,17 @@ public final class PaymentSucceededKafkaConsumer {
     private final ApplyPaymentSuccessUseCase useCase;
     private final PaymentFailedAvroMapper failureMapper;
     private final ApplyPaymentFailureUseCase failureUseCase;
+    private final OrderObservability observability;
 
     @Autowired
     public PaymentSucceededKafkaConsumer(PaymentSucceededAvroMapper mapper,
             ApplyPaymentSuccessUseCase useCase, PaymentFailedAvroMapper failureMapper,
-            ApplyPaymentFailureUseCase failureUseCase) {
+            ApplyPaymentFailureUseCase failureUseCase, OrderObservability observability) {
         this.mapper = mapper;
         this.useCase = useCase;
         this.failureMapper = failureMapper;
         this.failureUseCase = failureUseCase;
+        this.observability = observability;
     }
 
     @KafkaListener(topics = "${order.kafka.payment-events-topic}",
@@ -44,6 +47,8 @@ public final class PaymentSucceededKafkaConsumer {
             @SuppressWarnings("unchecked") ConsumerRecord<String, PaymentSucceededV1> successRecord =
                     (ConsumerRecord<String, PaymentSucceededV1>) (ConsumerRecord<?, ?>) record;
             PaymentSuccessResult result = useCase.apply(mapper.map(successRecord));
+            observability.recordConsumerOutcome(OrderObservability.ConsumerBoundary.PAYMENT_RESULTS,
+                    result.outcome().name());
             if (result.outcome() == PaymentSuccessResult.Outcome.CONFLICT) {
                 throw new PaymentSucceededConflictException(result.conflictReason());
             }
@@ -51,6 +56,8 @@ public final class PaymentSucceededKafkaConsumer {
             @SuppressWarnings("unchecked") ConsumerRecord<String, PaymentFailedV1> failureRecord =
                     (ConsumerRecord<String, PaymentFailedV1>) (ConsumerRecord<?, ?>) record;
             PaymentFailureResult result = failureUseCase.apply(failureMapper.map(failureRecord));
+            observability.recordConsumerOutcome(OrderObservability.ConsumerBoundary.PAYMENT_RESULTS,
+                    result.outcome().name());
             if (result.outcome() == PaymentFailureResult.Outcome.CONFLICT) {
                 throw new PaymentFailedConflictException(result.conflictReason());
             }

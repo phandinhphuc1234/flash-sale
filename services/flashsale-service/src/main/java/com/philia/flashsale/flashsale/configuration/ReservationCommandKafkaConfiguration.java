@@ -24,6 +24,7 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
+import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 
 /** Bounded retry/DLT policy for Order-owned reservation commands. */
 @Configuration(proxyBeanMethods = false)
@@ -54,9 +55,12 @@ public class ReservationCommandKafkaConfiguration {
 
     @Bean
     DefaultErrorHandler flashSaleReservationCommandErrorHandler(KafkaOperations<Object, Object> kafkaOperations,
-            ReservationCommandProperties properties) {
+            ReservationCommandProperties properties, FlashSaleObservability observability) {
         var recoverer = new DeadLetterPublishingRecoverer(kafkaOperations,
-                (record, exception) -> new TopicPartition(properties.dltTopic(), record.partition()));
+                (record, exception) -> {
+                    observability.recordReservationCommandDltPublication();
+                    return new TopicPartition(properties.dltTopic(), record.partition());
+                });
         var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
         handler.addNotRetryableExceptions(ConfirmReservationRecordException.class,
                 ReleaseReservationRecordException.class);

@@ -8,6 +8,9 @@ import com.philia.flashsale.flashsale.reservation.application.usecase.Reservatio
 import com.philia.flashsale.flashsale.reservation.application.usecase.ReservationIdentityFactory;
 import com.philia.flashsale.flashsale.reservation.application.usecase.ReservationSubmissionService;
 import com.philia.flashsale.flashsale.reservation.application.usecase.ReserveCampaignQuotaService;
+import com.philia.flashsale.flashsale.reservation.application.port.out.LoadReservationReconciliationPort;
+import com.philia.flashsale.flashsale.reservation.application.port.out.ReconcileReservationProjectionPort;
+import com.philia.flashsale.flashsale.reservation.application.usecase.ReservationReconciliationService;
 import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
@@ -62,11 +65,20 @@ public class ReservationConfiguration {
     @Bean
     @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
     @ConditionalOnBean(PersistAcceptedPurchasePort.class)
-        ReservationSubmissionService reservationSubmissionService(
+    ReservationSubmissionService reservationSubmissionService(
             ReserveCampaignQuotaUseCase admission,
             LoadCampaignEndPort campaignEnds,
             PersistAcceptedPurchasePort durableAcceptance,
             Clock clock) {
-        return new ReservationSubmissionService(admission, campaignEnds, durableAcceptance, clock);
+            return new ReservationSubmissionService(admission, campaignEnds, durableAcceptance, clock);
+    }
+
+    @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnExpression("'${flashsale.runtime.enabled:true}' == 'true' && '${flashsale.runtime.reconciliation-enabled:true}' == 'true'")
+    ReservationReconciliationService reservationReconciliationService(
+            LoadReservationReconciliationPort backlog,
+            ReconcileReservationProjectionPort projection,
+            Clock clock) {
+        return new ReservationReconciliationService(backlog, projection, clock);
     }
 }

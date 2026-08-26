@@ -19,6 +19,7 @@ public final class PurchaseSaga {
     private final Instant paymentSucceededAt;
     private final String paymentFailureReason;
     private final String desiredOrderStatus;
+    private final String manualReviewReason;
     private final UUID activeCommandId;
     private final Instant stepStartedAt;
     private final long version;
@@ -28,7 +29,7 @@ public final class PurchaseSaga {
     private PurchaseSaga(UUID id, UUID orderId, UUID purchaseRequestId, UUID reservationId,
             PurchaseSagaStatus status, Instant paymentDeadline, UUID paymentId, Long lastPaymentVersion,
             Instant paymentSucceededAt, String paymentFailureReason, String desiredOrderStatus,
-            UUID activeCommandId, Instant stepStartedAt,
+            String manualReviewReason, UUID activeCommandId, Instant stepStartedAt,
             long version, Instant createdAt, Instant updatedAt, boolean initial) {
         this.id = Objects.requireNonNull(id, "id");
         this.orderId = Objects.requireNonNull(orderId, "orderId");
@@ -41,6 +42,7 @@ public final class PurchaseSaga {
         this.paymentSucceededAt = paymentSucceededAt;
         this.paymentFailureReason = paymentFailureReason;
         this.desiredOrderStatus = desiredOrderStatus;
+        this.manualReviewReason = manualReviewReason;
         this.activeCommandId = activeCommandId;
         this.stepStartedAt = Objects.requireNonNull(stepStartedAt, "stepStartedAt");
         this.version = version;
@@ -61,7 +63,7 @@ public final class PurchaseSaga {
             Instant reservationExpiresAt, Instant createdAt) {
         Instant deadline = PurchaseSagaDeadlinePolicy.paymentDeadline(reservationExpiresAt, createdAt);
         return new PurchaseSaga(purchaseRequestId, orderId, purchaseRequestId, reservationId,
-                PurchaseSagaStatus.PAYMENT_PENDING, deadline, null, null, null, null, null, null,
+                PurchaseSagaStatus.PAYMENT_PENDING, deadline, null, null, null, null, null, null, null,
                 createdAt, 0, createdAt, createdAt, true);
     }
 
@@ -69,11 +71,11 @@ public final class PurchaseSaga {
     public static PurchaseSaga restore(UUID id, UUID orderId, UUID purchaseRequestId, UUID reservationId,
             PurchaseSagaStatus status, Instant paymentDeadline, UUID paymentId, Long lastPaymentVersion,
             Instant paymentSucceededAt, String paymentFailureReason, String desiredOrderStatus,
-            UUID activeCommandId, Instant stepStartedAt, long version,
+            String manualReviewReason, UUID activeCommandId, Instant stepStartedAt, long version,
             Instant createdAt, Instant updatedAt) {
         return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId, status, paymentDeadline,
                 paymentId, lastPaymentVersion, paymentSucceededAt, paymentFailureReason, desiredOrderStatus,
-                activeCommandId, stepStartedAt,
+                manualReviewReason, activeCommandId, stepStartedAt,
                 version, createdAt, updatedAt, false);
     }
 
@@ -96,7 +98,7 @@ public final class PurchaseSaga {
         }
         return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId,
                 PurchaseSagaStatus.CONFIRMING_RESERVATION, paymentDeadline, paymentId,
-                paymentVersion, paidAt, null, null, commandId, transitionedAt, version + 1, createdAt,
+                paymentVersion, paidAt, null, null, null, commandId, transitionedAt, version + 1, createdAt,
                 transitionedAt, false);
     }
 
@@ -122,7 +124,43 @@ public final class PurchaseSaga {
         return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId,
                 PurchaseSagaStatus.RELEASING_RESERVATION, paymentDeadline, paymentId,
                 paymentVersion, paymentSucceededAt, failureReason, desiredStatus,
-                commandId, transitionedAt, version + 1, createdAt, transitionedAt, false);
+                null, commandId, transitionedAt, version + 1, createdAt, transitionedAt, false);
+    }
+
+    /** Records verified late payment when the reservation cannot be safely reacquired. */
+    public PurchaseSaga enterManualReview(UUID paymentId, long paymentVersion, Instant paidAt,
+            String reason, Instant transitionedAt) {
+        Objects.requireNonNull(paymentId, "paymentId");
+        Objects.requireNonNull(paidAt, "paidAt");
+        Objects.requireNonNull(reason, "reason");
+        Objects.requireNonNull(transitionedAt, "transitionedAt");
+        if (paymentVersion <= 0) throw new InvalidPurchaseSagaException("payment version must be positive");
+        if (status != PurchaseSagaStatus.COMPENSATED) {
+            throw new InvalidPurchaseSagaException("Saga is not eligible for manual review correction");
+        }
+        if (lastPaymentVersion != null && paymentVersion <= lastPaymentVersion) {
+            throw new InvalidPurchaseSagaException("manual review payment version is not newer");
+        }
+        return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId,
+                PurchaseSagaStatus.MANUAL_REVIEW, paymentDeadline, paymentId, paymentVersion,
+                paidAt, null, null, reason, null, transitionedAt, version + 1, createdAt,
+                transitionedAt, false);
+    }
+
+    /** Moves an in-flight success to manual review when Flash Sale reports the reservation gone. */
+    public PurchaseSaga enterManualReviewAfterReservationFailure(Instant transitionedAt) {
+        Objects.requireNonNull(transitionedAt, "transitionedAt");
+        if (status != PurchaseSagaStatus.CONFIRMING_RESERVATION
+                && status != PurchaseSagaStatus.RELEASING_RESERVATION) {
+            throw new InvalidPurchaseSagaException("Saga is not awaiting reservation recovery");
+        }
+        if (paymentId == null || lastPaymentVersion == null) {
+            throw new InvalidPurchaseSagaException("manual review requires a verified payment");
+        }
+        return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId,
+                PurchaseSagaStatus.MANUAL_REVIEW, paymentDeadline, paymentId, lastPaymentVersion,
+                paymentSucceededAt, null, null, "LATE_PAYMENT_RESERVATION_UNAVAILABLE", null,
+                transitionedAt, version + 1, createdAt, transitionedAt, false);
     }
 
     /** Applies the durable Flash Sale release result and closes the Saga. */
@@ -133,7 +171,7 @@ public final class PurchaseSaga {
         }
         return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId,
                 PurchaseSagaStatus.COMPENSATED, paymentDeadline, paymentId, lastPaymentVersion,
-                paymentSucceededAt, paymentFailureReason, desiredOrderStatus, null, releasedAt,
+                paymentSucceededAt, paymentFailureReason, desiredOrderStatus, manualReviewReason, null, releasedAt,
                 version + 1, createdAt, releasedAt, false);
     }
 
@@ -154,7 +192,7 @@ public final class PurchaseSaga {
         }
         return new PurchaseSaga(id, orderId, purchaseRequestId, reservationId,
                 PurchaseSagaStatus.COMPLETED, paymentDeadline, paymentId, lastPaymentVersion,
-                paymentSucceededAt, null, null, null, confirmedAt, version + 1, createdAt, confirmedAt, false);
+                paymentSucceededAt, null, null, null, null, confirmedAt, version + 1, createdAt, confirmedAt, false);
     }
 
     public UUID id() { return id; }
@@ -168,6 +206,7 @@ public final class PurchaseSaga {
     public Instant paymentSucceededAt() { return paymentSucceededAt; }
     public String paymentFailureReason() { return paymentFailureReason; }
     public String desiredOrderStatus() { return desiredOrderStatus; }
+    public String manualReviewReason() { return manualReviewReason; }
     public UUID activeCommandId() { return activeCommandId; }
     public Instant stepStartedAt() { return stepStartedAt; }
     public long version() { return version; }

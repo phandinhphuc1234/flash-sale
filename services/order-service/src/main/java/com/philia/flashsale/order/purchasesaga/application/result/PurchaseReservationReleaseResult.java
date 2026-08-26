@@ -5,12 +5,14 @@ import java.util.UUID;
 
 /** Outcome of the atomic Order/Saga release-result terminal transition. */
 public record PurchaseReservationReleaseResult(Outcome outcome, UUID orderId, UUID sagaId, String conflictReason) {
-    public enum Outcome { APPLIED, REPLAYED, CONFLICT }
+    public enum Outcome { APPLIED, REPLAYED, MANUAL_REVIEW, STALE, CONFLICT }
     public PurchaseReservationReleaseResult {
         Objects.requireNonNull(outcome, "outcome"); Objects.requireNonNull(orderId, "orderId"); Objects.requireNonNull(sagaId, "sagaId");
         if (outcome == Outcome.CONFLICT && (conflictReason == null || conflictReason.isBlank())) throw new IllegalArgumentException("conflict reason is required");
     }
     public static PurchaseReservationReleaseResult applied(UUID orderId, UUID sagaId) { return new PurchaseReservationReleaseResult(Outcome.APPLIED, orderId, sagaId, null); }
     public static PurchaseReservationReleaseResult replayed(UUID orderId, UUID sagaId) { return new PurchaseReservationReleaseResult(Outcome.REPLAYED, orderId, sagaId, null); }
+    public static PurchaseReservationReleaseResult manualReview(UUID orderId, UUID sagaId) { return new PurchaseReservationReleaseResult(Outcome.MANUAL_REVIEW, orderId, sagaId, null); }
+    public static PurchaseReservationReleaseResult stale(UUID orderId, UUID sagaId) { return new PurchaseReservationReleaseResult(Outcome.STALE, orderId, sagaId, null); }
     public static PurchaseReservationReleaseResult conflict(UUID orderId, UUID sagaId, String reason) { return new PurchaseReservationReleaseResult(Outcome.CONFLICT, orderId, sagaId, reason); }
 }

@@ -38,6 +38,8 @@ public class PurchaseSagaJpaEntity {
     private String paymentFailureReason;
     @Column(name = "desired_order_status", length = 32)
     private String desiredOrderStatus;
+    @Column(name = "manual_review_reason", length = 100)
+    private String manualReviewReason;
     @Column(name = "active_command_id")
     private UUID activeCommandId;
     @Column(name = "step_started_at", nullable = false)
@@ -65,6 +67,7 @@ public class PurchaseSagaJpaEntity {
         entity.paymentSucceededAt = saga.paymentSucceededAt();
         entity.paymentFailureReason = saga.paymentFailureReason();
         entity.desiredOrderStatus = saga.desiredOrderStatus();
+        entity.manualReviewReason = saga.manualReviewReason();
         entity.activeCommandId = saga.activeCommandId();
         entity.stepStartedAt = saga.stepStartedAt();
         entity.version = saga.version();
@@ -84,6 +87,7 @@ public class PurchaseSagaJpaEntity {
     public Instant getPaymentSucceededAt() { return paymentSucceededAt; }
     public String getPaymentFailureReason() { return paymentFailureReason; }
     public String getDesiredOrderStatus() { return desiredOrderStatus; }
+    public String getManualReviewReason() { return manualReviewReason; }
     public UUID getActiveCommandId() { return activeCommandId; }
     public long getVersion() { return version; }
     public Instant getCreatedAt() { return createdAt; }
@@ -101,6 +105,7 @@ public class PurchaseSagaJpaEntity {
         paymentSucceededAt = saga.paymentSucceededAt();
         paymentFailureReason = saga.paymentFailureReason();
         desiredOrderStatus = saga.desiredOrderStatus();
+        manualReviewReason = saga.manualReviewReason();
         activeCommandId = saga.activeCommandId();
         stepStartedAt = saga.stepStartedAt();
         version = saga.version();

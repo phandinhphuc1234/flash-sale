@@ -5,6 +5,8 @@ import com.philia.flashsale.order.observability.OrderReadinessHealthIndicator;
 import java.sql.Connection;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import javax.sql.DataSource;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -27,6 +29,8 @@ public class OrderReadinessConfiguration {
                 () -> consumerAvailable(listeners.getIfAvailable()),
                 () -> outboxBacklog(jdbc),
                 () -> oldestPendingAge(jdbc),
+                () -> sagaStateCounts(jdbc),
+                () -> oldestSagaStepAge(jdbc),
                 observability);
     }
 
@@ -61,6 +65,26 @@ public class OrderReadinessConfiguration {
         Number seconds = jdbc.queryForObject(
                 "select coalesce(extract(epoch from (current_timestamp - min(next_attempt_at))), 0) "
                         + "from order_outbox_events where status <> 'PUBLISHED'",
+                Number.class);
+        return seconds == null ? Duration.ZERO : Duration.ofMillis(Math.max(0L,
+                Math.round(seconds.doubleValue() * 1000d)));
+    }
+
+    private static Map<String, Long> sagaStateCounts(JdbcTemplate jdbc) {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (Map<String, Object> row : jdbc.queryForList(
+                "select status, count(*) as state_count from purchase_sagas group by status")) {
+            Object count = row.get("state_count");
+            counts.put(String.valueOf(row.get("status")), count instanceof Number number
+                    ? number.longValue() : 0L);
+        }
+        return Map.copyOf(counts);
+    }
+
+    private static Duration oldestSagaStepAge(JdbcTemplate jdbc) {
+        Number seconds = jdbc.queryForObject(
+                "select coalesce(extract(epoch from (current_timestamp - min(step_started_at))), 0) "
+                        + "from purchase_sagas where status not in ('COMPLETED', 'COMPENSATED')",
                 Number.class);
         return seconds == null ? Duration.ZERO : Duration.ofMillis(Math.max(0L,
                 Math.round(seconds.doubleValue() * 1000d)));

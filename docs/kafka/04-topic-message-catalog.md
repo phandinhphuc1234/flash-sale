@@ -7,10 +7,11 @@ and Saga ordering. It reconciles the Saga and end-to-end architecture guides; it
 candidate contracts by itself.
 
 Approved contract scope now includes the two Campaign lifecycle records plus the Purchase, Payment,
-and Order records owned by Features 019, 020, 021, and 044. Product, Campaign end/cancellation, and
-Inventory candidate families remain unapproved. A candidate still requires its owning feature to
-approve Avro schema, producer, consumers, key, authorization, retention, retry/DLT, rollout, and
-recovery before implementation or provisioning.
+and Order records owned by Features 019, 020, 021, and 044. Feature 044 adds five approved main
+topics, three consumer DLTs, and the reservation-confirmation/late-review message boundaries.
+Product, Campaign end/cancellation, and Inventory candidate families remain unapproved. A
+candidate still requires its owning feature to approve Avro schema, producer, consumers, key,
+authorization, retention, retry/DLT, rollout, and recovery before implementation or provisioning.
 
 ## 1. Reconciliation result
 
@@ -29,6 +30,11 @@ The corrected full-system target is:
 
 The count excludes Kafka internal topics, Schema Registry's `_schemas`, retry topics, and DLTs.
 Those are operational artifacts rather than business message types.
+
+Feature 044 operational inventory: 5 approved main topics, 3 approved consumer DLTs, and 14
+Schema Registry subjects when the eight new main record subjects and six DLT bindings are counted
+under `TopicRecordNameStrategy`. Cart, Notification, Product lifecycle, Campaign end/cancellation,
+and Inventory reconciliation topics are not part of this feature's acceptance.
 
 ## 2. Canonical topic catalog
 
@@ -202,11 +208,15 @@ Implemented before Feature 044
   -> Avro SpecificRecord contract module and compatibility tests
   -> Campaign transactional-outbox publisher with controlled Registry registration
 
-Approved schema-first in Feature 044
+Implemented and locally verified in Feature 044
   -> Purchase reservation confirm/release commands and results
   -> PaymentRequested / PaymentSucceeded / PaymentFailed reuse
   -> Order confirmed/cancelled/expired/review-required facts
   -> three consumer-specific DLTs
+
+The aggregate local gate (`FEATURE_044_LOCAL_GATE=PASS`) is the release boundary for this catalog.
+Cloud provisioning and image promotion are separate sequential gates; they do not make candidate
+Campaign or Inventory topics implicitly approved.
 
 Still candidate
   -> Product lifecycle messages

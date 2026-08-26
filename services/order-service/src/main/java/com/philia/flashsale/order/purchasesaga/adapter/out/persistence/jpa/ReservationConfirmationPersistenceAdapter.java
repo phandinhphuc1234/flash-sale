@@ -50,6 +50,10 @@ public class ReservationConfirmationPersistenceAdapter
                     "PurchaseReservationConfirmed event identity was reused");
         }
         validateIdentity(command, storedSaga, storedOrder);
+        if (storedSaga.getStatus() != com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSagaStatus.CONFIRMING_RESERVATION) {
+            inbox.saveAndFlush(PurchaseSagaInboxJpaEntity.purchaseReservationConfirmed(command));
+            return PurchaseReservationConfirmationResult.stale(command.orderId(), storedSaga.getId());
+        }
         PurchaseSaga current = toDomain(storedSaga);
         PurchaseSaga completed = current.completeReservation(command.reservationId(), command.paymentId(),
                 command.confirmedAt());
@@ -82,7 +86,7 @@ public class ReservationConfirmationPersistenceAdapter
         return PurchaseSaga.restore(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(),
                 entity.getReservationId(), entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(),
                 entity.getLastPaymentVersion(), entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(),
-                entity.getDesiredOrderStatus(), entity.getActiveCommandId(),
+                entity.getDesiredOrderStatus(), entity.getManualReviewReason(), entity.getActiveCommandId(),
                 entity.getStepStartedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
 

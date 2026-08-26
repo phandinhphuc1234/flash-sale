@@ -151,17 +151,17 @@ consumer, and drive a paid-but-unconfirmable workflow to durable manual review.
 
 ### Tests for User Story 4
 
-- [ ] T047 [P] [US4] Add failing canonical fingerprint and same-ID/different-payload conflict tests for Order Saga and Flash Sale command inboxes under both services' `src/test/java/.../application/` packages
-- [ ] T048 [P] [US4] Add failing 100-delivery concurrency and process-crash window tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PurchaseSagaConcurrencyIntegrationTests.java`
-- [ ] T049 [P] [US4] Add failing higher-version-success-after-failure, release-in-flight, compensated-late-success, active-command same-version current-state result, `OrderPaymentReviewRequiredV1`, and manual-review tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/domain/PurchaseSagaLateSuccessTests.java` and `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/LatePaymentCorrectionIntegrationTests.java`
-- [ ] T050 [P] [US4] Add failing confirmed/released/expired Redis reconciliation backlog and restart tests under `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/integration/ReservationReconciliationIntegrationTests.java`
+- [x] T047 [P] [US4] Add failing canonical fingerprint and same-ID/different-payload conflict tests for Order Saga and Flash Sale command inboxes under both services' `src/test/java/.../application/` packages
+- [x] T048 [P] [US4] Add failing 100-delivery concurrency and process-crash window tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PurchaseSagaConcurrencyIntegrationTests.java`
+- [x] T049 [P] [US4] Add failing higher-version-success-after-failure, release-in-flight, compensated-late-success, active-command same-version current-state result, `OrderPaymentReviewRequiredV1`, and manual-review tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/domain/PurchaseSagaLateSuccessTests.java` and `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/LatePaymentCorrectionIntegrationTests.java`
+- [x] T050 [P] [US4] Add failing confirmed/released/expired Redis reconciliation backlog and restart tests under `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/integration/ReservationReconciliationIntegrationTests.java`
 
 ### Implementation for User Story 4
 
-- [ ] T051 [US4] Implement canonical fingerprints, per-command stable result identities, active-command causation matching for unchanged current-state outcomes, participant-version guards, and non-retryable conflicts under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/` and `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/`
-- [ ] T052 [US4] Implement success-dominant forward recovery and atomic `Order.PENDING_PAYMENT + Saga.MANUAL_REVIEW + OrderPaymentReviewRequired` correction without automatic refund under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/` and the generalized Order outbox adapter
-- [ ] T053 [US4] Add bounded reconciliation scheduling, leases/metrics, and safe restart behavior in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/in/scheduling/` and its application ports/use cases
-- [ ] T054 [US4] Implement `Replay` and `LateSuccess` in `infra/docker/smoke/feature-044-purchase-saga.ps1`, assert one review-required correction fact for terminal-to-manual-review recovery, and record `FEATURE_044_REPLAY=PASS` plus `FEATURE_044_LATE_SUCCESS=PASS` in `specs/044-order-purchase-saga/validation.md`
+- [x] T051 [US4] Implement canonical fingerprints, per-command stable result identities, active-command causation matching for unchanged current-state outcomes, participant-version guards, and non-retryable conflicts under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/` and `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/`
+- [x] T052 [US4] Implement success-dominant forward recovery and atomic `Order.PENDING_PAYMENT + Saga.MANUAL_REVIEW + OrderPaymentReviewRequired` correction without automatic refund under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/` and the generalized Order outbox adapter
+- [x] T053 [US4] Add bounded reconciliation scheduling, leases/metrics, and safe restart behavior in `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/in/scheduling/` and its application ports/use cases
+- [x] T054 [US4] Implement `Replay` and `LateSuccess` in `infra/docker/smoke/feature-044-purchase-saga.ps1`, assert one review-required correction fact for terminal-to-manual-review recovery, and record `FEATURE_044_REPLAY=PASS` plus `FEATURE_044_LATE_SUCCESS=PASS` in `specs/044-order-purchase-saga/validation.md`
 
 **Checkpoint**: Every physical duplicate remains one semantic effect; late paid truth ends confirmed
 or durably visible for manual review.
@@ -177,19 +177,19 @@ labels, then verify one immutable cloud release and final Stripe/Order result.
 
 ### Tests for User Story 5
 
-- [ ] T055 [P] [US5] Add PSScriptAnalyzer/parser, timeout, redaction, cleanup, and scenario-dispatch tests for `infra/docker/smoke/feature-044-purchase-saga.ps1` under `infra/scripts/tests/`
-- [ ] T056 [P] [US5] Add observability/readiness tests for Saga states, DLT/outbox lag, manual review, and Redis reconciliation under both affected services' `src/test/java/.../observability/` packages
-- [ ] T057 [P] [US5] Add cloud manifest/config contract tests for all new runtime flags and internal topic names under `infra/k8s/overlays/cloud/` and the existing infrastructure test location
+- [x] T055 [P] [US5] Add PSScriptAnalyzer/parser, timeout, redaction, cleanup, and scenario-dispatch tests for `infra/docker/smoke/feature-044-purchase-saga.ps1` under `infra/scripts/tests/`
+- [x] T056 [P] [US5] Add observability/readiness tests for Saga states, DLT/outbox lag, manual review, and Redis reconciliation under both affected services' `src/test/java/.../observability/` packages
+- [x] T057 [P] [US5] Add cloud manifest/config contract tests for all new runtime flags and internal topic names under `infra/k8s/overlays/cloud/` and the existing infrastructure test location
 
 ### Implementation for User Story 5
 
-- [ ] T058 [US5] Complete `Contracts|Start|Paid|Failed|Replay|LateSuccess|All` orchestration, memory-only credentials, bounded native processes, safe diagnostics, and cleanup in `infra/docker/smoke/feature-044-purchase-saga.ps1`
-- [ ] T059 [US5] Add local Compose runtime flags/topic wiring for Order and Flash Sale in `infra/docker/compose.yml`, `infra/docker/compose.dev.yml`, and `infra/docker/.env.example` without reading or modifying ignored `infra/docker/.env`
-- [ ] T060 [US5] Add declarative metrics/readiness wiring and low-cardinality observations in both services' `configuration/`, `observability/`, and `application.yml`; update alert rules under `infra/monitoring/prometheus/rules/`
-- [ ] T061 [US5] Extend `infra/scripts/gitops/phase20-kafka-contracts.ps1` to validate/provision the Feature 044 topic, DLTs, and subjects idempotently without delete or auto-creation
-- [ ] T062 [US5] Extend cloud ConfigMaps under `infra/k8s/overlays/cloud/config/order-service-runtime-config.yaml` and `infra/k8s/overlays/cloud/config/flash-sale-service-runtime-config.yaml` with reviewed Saga consumer/producer/reconciliation flags
-- [ ] T063 [US5] Extend `infra/scripts/gitops/phase24-stripe-cloud.ps1` and its delegated runner so the real Order-owned Payment request drives Checkout/webhook/replay/reservation/final-Order assertions without fabricating Payment state
-- [ ] T064 [US5] Run `feature-044-purchase-saga.ps1 -Scenario All`, affected module verifies, and full monorepo verify; record all PASS labels and exit statuses in `specs/044-order-purchase-saga/validation.md`
+- [x] T058 [US5] Complete `Contracts|Start|Paid|Failed|Replay|LateSuccess|All` orchestration, memory-only credentials, bounded native processes, safe diagnostics, and cleanup in `infra/docker/smoke/feature-044-purchase-saga.ps1`
+- [x] T059 [US5] Add local Compose runtime flags/topic wiring for Order and Flash Sale in `infra/docker/compose.yml`, `infra/docker/compose.dev.yml`, and `infra/docker/.env.example` without reading or modifying ignored `infra/docker/.env`
+- [x] T060 [US5] Add declarative metrics/readiness wiring and low-cardinality observations in both services' `configuration/`, `observability/`, and `application.yml`; update alert rules under `infra/monitoring/prometheus/rules/`
+- [x] T061 [US5] Extend `infra/scripts/gitops/phase20-kafka-contracts.ps1` to validate/provision the Feature 044 topic, DLTs, and subjects idempotently without delete or auto-creation
+- [x] T062 [US5] Extend cloud ConfigMaps under `infra/k8s/overlays/cloud/config/order-service-runtime-config.yaml` and `infra/k8s/overlays/cloud/config/flash-sale-service-runtime-config.yaml` with reviewed Saga consumer/producer/reconciliation flags
+- [x] T063 [US5] Extend `infra/scripts/gitops/phase24-stripe-cloud.ps1` and its delegated runner so the real Order-owned Payment request drives Checkout/webhook/replay/reservation/final-Order assertions without fabricating Payment state
+- [x] T064 [US5] Run `feature-044-purchase-saga.ps1 -Scenario All`, affected module verifies, and full monorepo verify; record all PASS labels and exit statuses in `specs/044-order-purchase-saga/validation.md`
 
 **Checkpoint**: `FEATURE_044_LOCAL_GATE=PASS`; only now may the cloud tasks below run.
 
@@ -199,10 +199,10 @@ labels, then verify one immutable cloud release and final Stripe/Order result.
 
 **Purpose**: Final quality gates, one affected-service promotion, Phase 24 proof, and rollback evidence.
 
-- [ ] T065 [P] Update Saga lifecycle, topic counts/status, troubleshooting, and deferred Cart/Notification notes in `docs/architecture/flash-sale-end-to-end-flow.md`, `docs/architecture/saga-messaging-reliability.md`, and `docs/kafka/04-topic-message-catalog.md`
-- [ ] T066 [P] Audit comments, error classification, log redaction, trace propagation, and package placement across changed Order/Flash Sale Java files; run `git diff --check`
-- [ ] T067 Run `mvnw.cmd -pl contracts/kafka-avro-contracts,services/order-service,services/flashsale-service -am verify` and record test counts/results in `specs/044-order-purchase-saga/validation.md`
-- [ ] T068 Run `mvnw.cmd clean verify`, PowerShell syntax/tests, and `kubectl apply --dry-run=client -k infra/k8s/overlays/cloud`; record results in `specs/044-order-purchase-saga/validation.md`
+- [x] T065 [P] Update Saga lifecycle, topic counts/status, troubleshooting, and deferred Cart/Notification notes in `docs/architecture/flash-sale-end-to-end-flow.md`, `docs/architecture/saga-messaging-reliability.md`, and `docs/kafka/04-topic-message-catalog.md`
+- [x] T066 [P] Audit comments, error classification, log redaction, trace propagation, and package placement across changed Order/Flash Sale Java files; run `git diff --check`
+- [x] T067 Run `mvnw.cmd -pl contracts/kafka-avro-contracts,services/order-service,services/flashsale-service -am verify` and record test counts/results in `specs/044-order-purchase-saga/validation.md`
+- [x] T068 Run `mvnw.cmd clean verify`, PowerShell syntax/tests, and `kubectl apply --dry-run=client -k infra/k8s/overlays/cloud`; record results in `specs/044-order-purchase-saga/validation.md`
 - [ ] T069 After implementation PR merge and local PASS, run Phase 20 validation/apply for the new EKS topic/DLTs/subjects and record sanitized inventory in `specs/044-order-purchase-saga/validation.md`
 - [ ] T070 Trigger one selective GitHub Actions delivery for the affected services, review/merge one immutable image-promotion PR, and record workflow/PR/SHA/ECR tags in `specs/044-order-purchase-saga/validation.md`
 - [ ] T071 Verify Argo `Synced/Healthy`, affected Deployment images/rollouts, Phase 21 release gate, and Phase 24 HTTPS/Stripe Checkout/webhook/replay/final-Order PASS; record sanitized live evidence in `specs/044-order-purchase-saga/validation.md`

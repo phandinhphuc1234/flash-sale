@@ -38,6 +38,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.CannotCreateTransactionException;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -47,6 +48,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /** Live G4 proof for real broker/Registry delivery, deduplication, retry, and commit replay. */
 @Testcontainers(disabledWithoutDocker = true)
 @EnabledIfSystemProperty(named = "payment.kafka.integration", matches = "true")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(properties = {
         "payment.acceptance.enabled=true",
         "payment.checkout.enabled=false",

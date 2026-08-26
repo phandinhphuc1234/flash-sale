@@ -62,9 +62,10 @@ public class OrderCreationConfiguration {
 
     @Bean
     public PaymentSuccessPersistenceAdapter paymentSuccessPersistenceAdapter(
-            PurchaseSagaJpaRepository sagas, PurchaseSagaInboxJpaRepository inbox,
+            PurchaseSagaJpaRepository sagas, OrderJpaRepository orders,
+            PurchaseSagaInboxJpaRepository inbox,
             OrderCreationOutboxJpaRepository outbox) {
-        return new PaymentSuccessPersistenceAdapter(sagas, inbox, outbox);
+        return new PaymentSuccessPersistenceAdapter(sagas, orders, inbox, outbox);
     }
 
     @Bean

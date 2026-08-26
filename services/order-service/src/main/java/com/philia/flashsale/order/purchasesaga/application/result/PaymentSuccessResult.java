@@ -7,13 +7,13 @@ import java.util.UUID;
 public record PaymentSuccessResult(Outcome outcome, UUID orderId, UUID sagaId,
         UUID confirmCommandId, String conflictReason) {
 
-    public enum Outcome { APPLIED, REPLAYED, CONFLICT }
+    public enum Outcome { APPLIED, REPLAYED, STALE, MANUAL_REVIEW, CONFLICT }
 
     public PaymentSuccessResult {
         Objects.requireNonNull(outcome, "outcome");
         Objects.requireNonNull(orderId, "orderId");
         Objects.requireNonNull(sagaId, "sagaId");
-        if (outcome == Outcome.APPLIED && confirmCommandId == null) {
+        if ((outcome == Outcome.APPLIED || outcome == Outcome.REPLAYED) && confirmCommandId == null) {
             throw new IllegalArgumentException("applied result requires confirm command identity");
         }
         if (outcome == Outcome.CONFLICT && (conflictReason == null || conflictReason.isBlank())) {
@@ -27,6 +27,14 @@ public record PaymentSuccessResult(Outcome outcome, UUID orderId, UUID sagaId,
 
     public static PaymentSuccessResult replayed(UUID orderId, UUID sagaId, UUID commandId) {
         return new PaymentSuccessResult(Outcome.REPLAYED, orderId, sagaId, commandId, null);
+    }
+
+    public static PaymentSuccessResult stale(UUID orderId, UUID sagaId) {
+        return new PaymentSuccessResult(Outcome.STALE, orderId, sagaId, null, "PAYMENT_VERSION_STALE");
+    }
+
+    public static PaymentSuccessResult manualReview(UUID orderId, UUID sagaId, String reason) {
+        return new PaymentSuccessResult(Outcome.MANUAL_REVIEW, orderId, sagaId, null, reason);
     }
 
     public static PaymentSuccessResult conflict(UUID orderId, UUID sagaId, String reason) {

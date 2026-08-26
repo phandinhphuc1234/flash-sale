@@ -2,8 +2,9 @@
 
 ## Status and authority
 
-This document is a target workflow guide. It does not approve production behavior, Kafka topics,
-Redis TTLs, payment policy, or Campaign lifecycle changes by itself.
+This document is the repository-level workflow guide. It does not approve production behavior,
+Kafka topics, Redis TTLs, payment policy, or Campaign lifecycle changes by itself; the governing
+feature spec, plan, contracts, and ADR remain authoritative.
 
 The Feature 017 baseline and approved Avro amendment govern Campaign:
 
@@ -16,8 +17,10 @@ The approved Feature 017 amendment selects Avro SpecificRecords through Confluen
 for the two lifecycle events. The protocol module is implemented; live publisher/Registry smoke
 evidence remains tracked by later runtime tasks.
 
-Purchase, payment, Campaign draining/end orchestration, and cancellation below are proposed future
-features. Their specs, ADRs, contracts, plans, and tasks must be approved before implementation.
+Feature 044 now governs the implemented Order-owned Purchase Saga: its contracts, deadline margin,
+terminal mappings, replay rules, late-success correction, and local aggregate gate are approved in
+`specs/044-order-purchase-saga/`. Campaign draining/end and scheduled cancellation remain future
+features and require their own approved specs, contracts, plans, and ADRs before implementation.
 
 ## 1. Ownership and workflow style
 
@@ -54,7 +57,8 @@ Product/Inventory setup
   -> Campaign ended
 ```
 
-The purchase and Campaign end portions are target behavior, not current code.
+The Purchase Saga portion is implemented and locally verified by Feature 044. Campaign end,
+Inventory reconciliation at campaign close, and scheduled cancellation remain target behavior.
 
 ## 3. Campaign scheduling — current approved direction
 
@@ -150,7 +154,7 @@ Returning `202` after Redis alone would make Redis the effective business truth 
 the repository Constitution. A future feature may propose another durability boundary only through
 an explicit ADR and Constitution-compatible plan.
 
-## 6. Purchase Saga — proposed Order-owned orchestration
+## 6. Purchase Saga — implemented Feature 044 Order-owned orchestration
 
 ### 6.1 Happy path
 
@@ -183,7 +187,8 @@ PurchaseReservationConfirmed
 ```
 
 Order coordinates the process. Payment never cancels Order directly, and Flash Sale never decides
-the final Order state.
+the final Order state. The approved local gate covers the happy path, terminal failure, replay,
+late success, and Redis reconciliation.
 
 ### 6.2 Payment failure or deadline
 
@@ -203,12 +208,14 @@ PurchaseReservationReleased
   -> OrderCancelled or OrderExpired
 ```
 
-The reservation TTL, payment deadline, retry count, and the distinction between `CANCELLED` and
-`EXPIRED` are business decisions and must not be inferred during implementation.
+Feature 044 resolves these rules: `paymentDeadline` is 30 seconds earlier than
+`reservationExpiresAt`; `PAYMENT_DEADLINE_EXPIRED` maps to `EXPIRED`, while
+`CHECKOUT_ATTEMPT_LIMIT_REACHED` and `PROVIDER_TERMINAL_FAILURE` map to `CANCELLED` after release.
+Payment retry and release remain idempotent and durable.
 
 ### 6.3 Pivot and forward recovery
 
-`PaymentSucceeded` is the proposed pivot point. After it:
+`PaymentSucceeded` is the approved pivot point. After it:
 
 - never charge the same payment attempt again;
 - retry reservation confirmation idempotently;
@@ -216,6 +223,10 @@ The reservation TTL, payment deadline, retry count, and the distinction between 
 - prefer forward recovery to complete the paid Order;
 - enter manual review if safe automatic recovery is impossible;
 - treat refund as a separate audited workflow, not a database rollback.
+
+If a higher-version verified success arrives after an unpaid terminal Order, Order reopens the
+public state to `PENDING_PAYMENT`, records Saga `MANUAL_REVIEW`, and emits one stable
+`OrderPaymentReviewRequired.v1` correction fact. No automatic refund is performed.
 
 ## 7. Campaign end — proposed future Saga
 
@@ -299,18 +310,32 @@ CampaignActivated
 ```
 
 A Notification failure never rolls back Order, Payment, or Campaign. Each consumer uses its own
-consumer group and idempotency boundary.
+consumer group and idempotency boundary. Notification and Cart implementation remain explicitly
+deferred from Feature 044; their future consumers must not block this Saga's acceptance.
 
-## 10. Decisions still required before purchase implementation
+## 10. Decisions resolved and future decisions
+
+Feature 044 resolved the purchase-specific decisions for reservation expiry, payment deadline,
+terminal failure mapping, late success, and manual review. The following decisions remain only for
+future Campaign lifecycle features:
 
 | Decision | Why it is required |
 |---|---|
-| Reservation TTL versus payment deadline | Prevents a reservation expiring during a valid payment |
-| Payment authorization versus immediate capture | Defines the pivot and compensation/refund policy |
-| Final durable stock-consumption owner and movement | Defines Inventory/Flash Sale reconciliation truth |
 | Durable sales-summary fields and watermark | Makes Campaign end reproducible and auditable |
-| Terminal reservation-confirmation failure policy | Defines forward recovery versus refund/manual review |
 | Active Campaign cancellation | Must handle in-flight purchases and captured payments |
-| Kafka topic/schema compatibility policy | Required before producers and consumers are implemented |
+| Campaign end/cancellation topic compatibility | Required before future Campaign contracts are implemented |
 
 These decisions belong in the governing feature artifacts rather than this architecture guide.
+
+## 11. Feature 044 troubleshooting boundaries
+
+| Symptom | First evidence to inspect | Safe interpretation/action |
+|---|---|---|
+| Order remains `PENDING_PAYMENT` | Order Saga state, payment-result inbox, and outbox age | Check whether Payment is retrying/reconciling; do not mark the Order paid manually. |
+| Reservation is paid but not confirmed | Flash Sale reservation state, command inbox, and outbox/DLT | Replay the idempotent confirm command only after inspecting the existing result identity. |
+| Stock and PostgreSQL disagree | Redis reconciliation marker, pending Redis Stream entries, and reservation row | PostgreSQL remains durable truth; let the bounded reconciliation worker repair Redis. |
+| Late success after `CANCELLED`/`EXPIRED` | Saga state and `OrderPaymentReviewRequired.v1` event | Expect `PENDING_PAYMENT` plus `MANUAL_REVIEW`; do not issue an automatic refund. |
+| Kafka message in a Feature 044 DLT | DLT record, consumer error classification, and trace/message IDs | Fix the contract or data issue, then use the approved authenticated replay path; DLT is not a business event. |
+
+Never print JWTs, provider secrets, raw authorization headers, Checkout URLs, or raw provider
+payloads while troubleshooting.

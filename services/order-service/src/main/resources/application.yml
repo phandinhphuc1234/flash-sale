@@ -96,7 +96,7 @@ order:
     payment-commands-topic: ${ORDER_PAYMENT_COMMANDS_TOPIC:flashsale.payment.commands.v1}
     payment-events-topic: ${ORDER_PAYMENT_EVENTS_TOPIC:flashsale.payment.events.v1}
     payment-events-consumer-group: ${ORDER_PAYMENT_EVENTS_CONSUMER_GROUP:order-payment-events-v1}
-    payment-events-dlt-topic: ${ORDER_PAYMENT_EVENTS_DLT_TOPIC:flashsale.order.payment-events.dlt.v1}
+    payment-events-dlt-topic: ${ORDER_PAYMENT_EVENTS_DLT_TOPIC:flashsale.order.payment-result.dlt.v1}
     purchase-commands-topic: ${ORDER_PURCHASE_COMMANDS_TOPIC:flashsale.purchase.commands.v1}
     purchase-reservation-results-topic: ${ORDER_PURCHASE_RESERVATION_RESULTS_TOPIC:flashsale.purchase.events.v1}
     purchase-reservation-results-consumer-group: ${ORDER_PURCHASE_RESERVATION_RESULTS_CONSUMER_GROUP:order-purchase-reservation-results-v1}

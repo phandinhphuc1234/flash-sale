@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
 import com.philia.flashsale.flashsale.websupport.context.FlashSaleRequestContext;
 import java.util.concurrent.atomic.AtomicReference;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -105,5 +106,39 @@ class FlashSaleObservabilityTests {
         assertThat(traceId.get()).isEqualTo("0123456789abcdef0123456789abcdef");
         assertThat(parent.get()).isEqualTo(traceparent);
         assertThat(response.getHeader("X-Trace-Id")).isEqualTo("0123456789abcdef0123456789abcdef");
+    }
+
+    @Test
+    void recordsOutboxReconciliationConsumerAndDltSignalsWithBoundedTags() {
+        observability.recordOperationalBacklog(5L, Duration.ofSeconds(12),
+                2L, Duration.ofSeconds(20));
+        observability.recordReservationCommandOutcome("ALREADY_CONFIRMED");
+        observability.recordReservationCommandDltPublication();
+
+        assertThat(registry.get(FlashSaleObservability.OUTBOX_BACKLOG).gauge().value()).isEqualTo(5d);
+        assertThat(registry.get(FlashSaleObservability.OUTBOX_OLDEST_PENDING_AGE).gauge().value())
+                .isEqualTo(12d);
+        assertThat(registry.get(FlashSaleObservability.REDIS_RECONCILIATION_BACKLOG).gauge().value())
+                .isEqualTo(2d);
+        assertThat(registry.get(FlashSaleObservability.REDIS_RECONCILIATION_OLDEST_AGE).gauge().value())
+                .isEqualTo(20d);
+        assertThat(registry.get(FlashSaleObservability.CONSUMER_OUTCOME_TOTAL)
+                .tag("outcome", "already_confirmed").counter().count()).isEqualTo(1d);
+        assertThat(registry.get(FlashSaleObservability.DLT_PUBLICATION_TOTAL).counter().count())
+                .isEqualTo(1d);
+    }
+
+    @Test
+    void readinessKeepsOperationalBacklogsDiagnosticOnly() {
+        FlashSaleReadinessHealthIndicator indicator = new FlashSaleReadinessHealthIndicator(
+                () -> true, () -> true, () -> 3L, () -> Duration.ofSeconds(8),
+                () -> 1L, () -> Duration.ofSeconds(30), observability);
+
+        var health = indicator.health();
+
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails()).containsEntry("outboxBacklog", 3L)
+                .containsEntry("redisReconciliationBacklog", 1L)
+                .containsEntry("redisReconciliationOldestAgeSeconds", 30.0d);
     }
 }

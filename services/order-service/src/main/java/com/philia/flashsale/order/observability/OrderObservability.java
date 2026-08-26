@@ -7,7 +7,11 @@ import io.micrometer.core.instrument.Timer;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 
@@ -21,28 +25,51 @@ public final class OrderObservability {
     public static final String OPERATION_TOTAL = "order.operation.total";
     public static final String OUTBOX_BACKLOG = "order.outbox.backlog";
     public static final String OUTBOX_OLDEST_PENDING_AGE = "order.outbox.oldest_pending_age_seconds";
+    public static final String SAGA_STATE = "order.saga.state";
+    public static final String SAGA_OLDEST_STEP_AGE = "order.saga.oldest_step_age_seconds";
+    public static final String CONSUMER_OUTCOME_TOTAL = "order.saga.consumer.outcome.total";
+    public static final String DLT_PUBLICATION_TOTAL = "order.saga.dlt.publication.total";
+
+    private static final Set<String> SAGA_STATES = Set.of(
+            "PAYMENT_PENDING", "CONFIRMING_RESERVATION", "RELEASING_RESERVATION",
+            "COMPLETED", "COMPENSATED", "MANUAL_REVIEW");
 
     private static final OrderObservability NOOP = new OrderObservability();
 
     private final ObservationRegistry observations;
     private final MeterRegistry metrics;
+    private final Map<String, AtomicLong> sagaStateCounts;
     private volatile double outboxBacklog;
     private volatile double outboxOldestPendingAge;
+    private volatile double sagaOldestStepAge;
 
     public OrderObservability(ObservationRegistry observations, MeterRegistry metrics) {
         this.observations = Objects.requireNonNull(observations, "observations");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
+        this.sagaStateCounts = new ConcurrentHashMap<>();
         Gauge.builder(OUTBOX_BACKLOG, this, value -> value.outboxBacklog)
                 .description("Number of unpublished Order outbox rows")
                 .register(metrics);
         Gauge.builder(OUTBOX_OLDEST_PENDING_AGE, this, value -> value.outboxOldestPendingAge)
                 .description("Age in seconds of the oldest unpublished Order outbox row")
                 .register(metrics);
+        Gauge.builder(SAGA_OLDEST_STEP_AGE, this, value -> value.sagaOldestStepAge)
+                .description("Age in seconds of the oldest non-terminal Purchase Saga step")
+                .register(metrics);
+        for (String status : SAGA_STATES) {
+            AtomicLong count = new AtomicLong();
+            sagaStateCounts.put(status, count);
+            Gauge.builder(SAGA_STATE, count, AtomicLong::get)
+                    .description("Current durable Purchase Saga rows by bounded state")
+                    .tag("status", status)
+                    .register(metrics);
+        }
     }
 
     private OrderObservability() {
         this.observations = null;
         this.metrics = null;
+        this.sagaStateCounts = Map.of();
     }
 
     public static OrderObservability noop() {
@@ -99,6 +126,51 @@ public final class OrderObservability {
         outboxBacklog = Math.max(0L, backlog);
         outboxOldestPendingAge = oldestPendingAge == null
                 ? 0d : Math.max(0d, oldestPendingAge.toMillis() / 1000d);
+    }
+
+    public void recordSagaDiagnostics(Map<String, Long> stateCounts, Duration oldestStepAge) {
+        if (metrics == null) {
+            return;
+        }
+        for (String status : SAGA_STATES) {
+            long count = stateCounts == null ? 0L : Math.max(0L, stateCounts.getOrDefault(status, 0L));
+            sagaStateCounts.get(status).set(count);
+        }
+        sagaOldestStepAge = oldestStepAge == null
+                ? 0d : Math.max(0d, oldestStepAge.toMillis() / 1000d);
+    }
+
+    public void recordConsumerOutcome(ConsumerBoundary consumer, String outcome) {
+        if (metrics == null) {
+            return;
+        }
+        Counter.builder(CONSUMER_OUTCOME_TOTAL)
+                .description("Order Purchase Saga consumer results")
+                .tags("consumer", consumer.tagValue(), "outcome", boundedConsumerOutcome(outcome))
+                .register(metrics)
+                .increment();
+    }
+
+    public void recordDltPublication(ConsumerBoundary consumer) {
+        if (metrics == null) {
+            return;
+        }
+        Counter.builder(DLT_PUBLICATION_TOTAL)
+                .description("Order Purchase Saga records delegated to a consumer-specific DLT")
+                .tag("consumer", consumer.tagValue())
+                .register(metrics)
+                .increment();
+    }
+
+    private String boundedConsumerOutcome(String outcome) {
+        if (outcome == null) {
+            return "unknown";
+        }
+        return switch (outcome) {
+            case "APPLIED", "REPLAYED", "STALE", "MANUAL_REVIEW", "CONFLICT" ->
+                outcome.toLowerCase(java.util.Locale.ROOT);
+            default -> "other";
+        };
     }
 
     private void increment(Operation operation, Outcome outcome, String status) {
@@ -160,6 +232,21 @@ public final class OrderObservability {
         String eventType() { return eventType; }
         String dependency() { return dependency; }
         String defaultStatus() { return defaultStatus; }
+    }
+
+    public enum ConsumerBoundary {
+        PAYMENT_RESULTS("payment_results"),
+        RESERVATION_RESULTS("reservation_results");
+
+        private final String tagValue;
+
+        ConsumerBoundary(String tagValue) {
+            this.tagValue = tagValue;
+        }
+
+        String tagValue() {
+            return tagValue;
+        }
     }
 
     private enum Outcome {

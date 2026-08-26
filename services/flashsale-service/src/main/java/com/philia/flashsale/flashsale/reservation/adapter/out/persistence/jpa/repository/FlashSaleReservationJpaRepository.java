@@ -16,6 +16,7 @@ public interface FlashSaleReservationJpaRepository extends JpaRepository<FlashSa
     Optional<FlashSaleReservationJpaEntity> findByIdAndUserId(UUID id, UUID userId);
     List<FlashSaleReservationJpaEntity> findTop100ByStatusAndExpiresAtLessThanEqualOrderByExpiresAtAsc(
             FlashSaleReservationJpaEntity.Status status, Instant at);
+    List<FlashSaleReservationJpaEntity> findTop100ByFinalizedAtIsNotNullAndRedisReconciledAtIsNullOrderByFinalizedAtAsc();
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select reservation from FlashSaleReservationJpaEntity reservation where reservation.id = :id")
     Optional<FlashSaleReservationJpaEntity> findWithLockById(@Param("id") UUID id);

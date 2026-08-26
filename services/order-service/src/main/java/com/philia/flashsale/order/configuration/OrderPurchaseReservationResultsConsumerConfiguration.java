@@ -26,6 +26,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
+import com.philia.flashsale.order.observability.OrderObservability;
 
 /** Retry/DLT wiring for the Order-owned reservation confirmation boundary. */
 @Configuration(proxyBeanMethods = false)
@@ -56,10 +57,13 @@ public class OrderPurchaseReservationResultsConsumerConfiguration {
 
     @Bean
     DefaultErrorHandler orderPurchaseReservationConfirmedErrorHandler(
-            KafkaOperations<Object, Object> kafkaOperations, OrderKafkaProperties properties) {
+            KafkaOperations<Object, Object> kafkaOperations, OrderKafkaProperties properties,
+            OrderObservability observability) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
-                kafkaOperations, (record, exception) -> new TopicPartition(
-                        properties.purchaseReservationResultsDltTopic(), record.partition()));
+                kafkaOperations, (record, exception) -> {
+                    observability.recordDltPublication(OrderObservability.ConsumerBoundary.RESERVATION_RESULTS);
+                    return new TopicPartition(properties.purchaseReservationResultsDltTopic(), record.partition());
+                });
         var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
         handler.addNotRetryableExceptions(PurchaseReservationConfirmedRecordException.class,
                 PurchaseReservationConfirmedConflictException.class,

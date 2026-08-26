@@ -35,12 +35,29 @@ public class ReservationReleasePersistenceAdapter implements ApplyPurchaseReserv
             return PurchaseReservationReleaseResult.conflict(command.orderId(), storedSaga.getId(), "PurchaseReservationReleased event identity was reused");
         }
         validateIdentity(command, storedSaga, storedOrder);
-        OrderStatus desired = desiredStatus(storedSaga);
         if (command.reservationStatus() == null
                 || !(command.reservationStatus().equals("RELEASED")
                 || command.reservationStatus().equals("EXPIRED"))) {
             throw invalid("release result has an unsupported reservation status");
         }
+        if (storedSaga.getStatus() == PurchaseSagaStatus.CONFIRMING_RESERVATION) {
+            // A higher-version PaymentSucceeded may have opened confirmation while the old
+            // release command was still in flight. The release result proves the reservation is
+            // gone, so keep the public Order pending and persist a visible manual-review fact.
+            PurchaseSaga reviewed = toDomain(storedSaga)
+                    .enterManualReviewAfterReservationFailure(command.releasedAt());
+            storedSaga.apply(reviewed);
+            sagas.saveAndFlush(storedSaga);
+            inbox.saveAndFlush(PurchaseSagaInboxJpaEntity.purchaseReservationReleased(command));
+            outbox.saveAndFlush(OrderCreationOutboxJpaEntity.orderPaymentReviewRequired(
+                    command, reviewed, storedOrder));
+            return PurchaseReservationReleaseResult.manualReview(command.orderId(), storedSaga.getId());
+        }
+        if (storedSaga.getStatus() != PurchaseSagaStatus.RELEASING_RESERVATION) {
+            inbox.saveAndFlush(PurchaseSagaInboxJpaEntity.purchaseReservationReleased(command));
+            return PurchaseReservationReleaseResult.stale(command.orderId(), storedSaga.getId());
+        }
+        OrderStatus desired = desiredStatus(storedSaga);
         PurchaseSaga completed = toDomain(storedSaga).completeRelease(command.releasedAt());
         storedOrder.terminalize(desired, command.releasedAt());
         storedSaga.apply(completed);
@@ -59,7 +76,7 @@ public class ReservationReleasePersistenceAdapter implements ApplyPurchaseReserv
         if (!saga.getId().equals(command.sagaId()) || !saga.getPurchaseRequestId().equals(command.purchaseRequestId()) || !saga.getReservationId().equals(command.reservationId()) || !saga.getOrderId().equals(command.orderId()) || !order.getPurchaseRequestId().equals(command.purchaseRequestId()) || !order.getReservationId().equals(command.reservationId()) || !order.getId().equals(command.orderId())) throw invalid("reservation release identity conflicts with Order Saga");
     }
     private PurchaseSaga toDomain(PurchaseSagaJpaEntity entity) {
-        return PurchaseSaga.restore(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(), entity.getReservationId(), entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(), entity.getLastPaymentVersion(), entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(), entity.getDesiredOrderStatus(), entity.getActiveCommandId(), entity.getStepStartedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
+        return PurchaseSaga.restore(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(), entity.getReservationId(), entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(), entity.getLastPaymentVersion(), entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(), entity.getDesiredOrderStatus(), entity.getManualReviewReason(), entity.getActiveCommandId(), entity.getStepStartedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
     private IllegalStateException invalid(String message) { return new IllegalStateException(message); }
 }

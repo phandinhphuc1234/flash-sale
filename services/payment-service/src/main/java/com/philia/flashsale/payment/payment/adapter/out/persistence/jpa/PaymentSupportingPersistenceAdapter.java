@@ -64,9 +64,13 @@ public class PaymentSupportingPersistenceAdapter implements PaymentClientIdempot
     @Transactional
     public PaymentClientIdempotencyPort.Record attachAttempt(UUID id, UUID attemptId,
             String outcomeStatus, Instant updatedAt) {
-        return idempotencyRepository.findLockedById(id).map(entity -> {
+        // The caller locks the idempotency row first when this is the second
+        // checkout transaction. Reusing the managed entity avoids issuing a
+        // second SELECT ... FOR UPDATE (and preserves the idempotency ->
+        // payment lock order used by CheckoutPersistenceService).
+        return idempotencyRepository.findById(id).map(entity -> {
             entity.attachAttempt(attemptRepository.getReferenceById(attemptId), outcomeStatus, updatedAt);
-            return toIdempotencyRecord(idempotencyRepository.save(entity));
+            return toIdempotencyRecord(entity);
         }).orElseThrow(() -> new IllegalArgumentException("unknown payment idempotency record"));
     }
 

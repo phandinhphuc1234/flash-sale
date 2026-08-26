@@ -26,6 +26,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -33,6 +34,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /** Live proof that poison commands reach the command DLT and can be corrected and replayed. */
 @Testcontainers(disabledWithoutDocker = true)
 @EnabledIfSystemProperty(named = "payment.kafka.integration", matches = "true")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(properties = {
         "payment.acceptance.enabled=true",
         "payment.checkout.enabled=false",

@@ -158,6 +158,10 @@ flashsale:
     dlt-topic: ${FLASHSALE_RESERVATION_COMMANDS_DLT_TOPIC:flashsale.flash-sale.purchase-command.dlt.v1}
     retry-delays: ${FLASHSALE_RESERVATION_COMMANDS_RETRY_DELAYS:500ms,2s}
     enabled: ${FLASHSALE_RESERVATION_COMMANDS_ENABLED:true}
+  runtime:
+    enabled: ${FLASHSALE_RUNTIME_ENABLED:true}
+    reconciliation-enabled: ${FLASHSALE_RUNTIME_RECONCILIATION_ENABLED:true}
+    reconciliation-interval-ms: ${FLASHSALE_RUNTIME_RECONCILIATION_INTERVAL_MS:2000}
 
 info:
   app:

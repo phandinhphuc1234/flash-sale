@@ -72,6 +72,7 @@ public class PaymentFailurePersistenceAdapter implements ApplyPaymentFailurePort
         return PurchaseSaga.restore(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(), entity.getReservationId(),
                 entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(), entity.getLastPaymentVersion(),
                 entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(), entity.getDesiredOrderStatus(),
+                entity.getManualReviewReason(),
                 entity.getActiveCommandId(), entity.getStepStartedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
     }
     private InvalidPaymentFailureException invalid(String message) { return new InvalidPaymentFailureException(message); }

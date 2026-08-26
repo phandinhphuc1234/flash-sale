@@ -25,6 +25,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
+import com.philia.flashsale.order.observability.OrderObservability;
 
 /** Retry/DLT wiring for the Order-owned PaymentSucceeded boundary. */
 @Configuration(proxyBeanMethods = false)
@@ -54,10 +55,14 @@ public class OrderPaymentEventsConsumerConfiguration {
 
     @Bean
     DefaultErrorHandler orderPaymentSucceededErrorHandler(
-            KafkaOperations<Object, Object> kafkaOperations, OrderKafkaProperties properties) {
+            KafkaOperations<Object, Object> kafkaOperations, OrderKafkaProperties properties,
+            OrderObservability observability) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
                 kafkaOperations,
-                (record, exception) -> new TopicPartition(properties.paymentEventsDltTopic(), record.partition()));
+                (record, exception) -> {
+                    observability.recordDltPublication(OrderObservability.ConsumerBoundary.PAYMENT_RESULTS);
+                    return new TopicPartition(properties.paymentEventsDltTopic(), record.partition());
+                });
         var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
         handler.addNotRetryableExceptions(PaymentSucceededRecordException.class,
                 PaymentSucceededConflictException.class, PaymentFailedRecordException.class,

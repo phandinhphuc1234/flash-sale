@@ -7,7 +7,7 @@ import java.util.UUID;
 public record PurchaseReservationConfirmationResult(
         Outcome outcome, UUID orderId, UUID sagaId, String conflictReason) {
 
-    public enum Outcome { APPLIED, REPLAYED, CONFLICT }
+    public enum Outcome { APPLIED, REPLAYED, STALE, CONFLICT }
 
     public PurchaseReservationConfirmationResult {
         Objects.requireNonNull(outcome, "outcome");
@@ -24,6 +24,10 @@ public record PurchaseReservationConfirmationResult(
 
     public static PurchaseReservationConfirmationResult replayed(UUID orderId, UUID sagaId) {
         return new PurchaseReservationConfirmationResult(Outcome.REPLAYED, orderId, sagaId, null);
+    }
+
+    public static PurchaseReservationConfirmationResult stale(UUID orderId, UUID sagaId) {
+        return new PurchaseReservationConfirmationResult(Outcome.STALE, orderId, sagaId, null);
     }
 
     public static PurchaseReservationConfirmationResult conflict(UUID orderId, UUID sagaId, String reason) {

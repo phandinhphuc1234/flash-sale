@@ -229,6 +229,79 @@ public class OrderCreationOutboxJpaEntity {
         return terminalRelease(command, saga, order, "OrderExpired", "expiredAt");
     }
 
+    /** Creates the stable correction fact for a verified late payment after release. */
+    public static OrderCreationOutboxJpaEntity orderPaymentReviewRequired(
+            PaymentSucceededCommand command, PurchaseSaga saga, OrderJpaEntity order,
+            String previousStatus) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-payment-review-required:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.paidAt();
+        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
+        entity.eventId = eventId;
+        entity.aggregateType = "ORDER";
+        entity.aggregateId = order.getId();
+        entity.aggregateVersion = saga.version();
+        entity.eventType = "OrderPaymentReviewRequired";
+        entity.eventVersion = 1;
+        entity.eventKey = order.getId().toString();
+        entity.correlationId = command.correlationId();
+        entity.causationId = command.eventId();
+        entity.payload = "{"
+                + "\"orderId\":\"" + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"reservationId\":\"" + order.getReservationId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"previousStatus\":\"" + previousStatus + "\","
+                + "\"reviewReason\":\"LATE_PAYMENT_RESERVATION_UNAVAILABLE\","
+                + "\"reviewRequiredAt\":\"" + occurredAt + "\"}";
+        entity.traceparent = command.traceparent();
+        entity.tracestate = command.tracestate();
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = occurredAt;
+        entity.occurredAt = occurredAt;
+        entity.createdAt = occurredAt;
+        entity.updatedAt = occurredAt;
+        return entity;
+    }
+
+    /** Creates the same correction when the confirm attempt loses a release race. */
+    public static OrderCreationOutboxJpaEntity orderPaymentReviewRequired(
+            PurchaseReservationReleasedCommand command, PurchaseSaga saga, OrderJpaEntity order) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-payment-review-required:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.releasedAt();
+        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
+        entity.eventId = eventId;
+        entity.aggregateType = "ORDER";
+        entity.aggregateId = order.getId();
+        entity.aggregateVersion = saga.version();
+        entity.eventType = "OrderPaymentReviewRequired";
+        entity.eventVersion = 1;
+        entity.eventKey = order.getId().toString();
+        entity.correlationId = command.correlationId();
+        entity.causationId = saga.activeCommandId() == null ? command.eventId() : saga.activeCommandId();
+        entity.payload = "{"
+                + "\"orderId\":\"" + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"reservationId\":\"" + order.getReservationId() + "\","
+                + "\"paymentId\":\"" + saga.paymentId() + "\","
+                + "\"previousStatus\":\"" + order.getStatus() + "\","
+                + "\"reviewReason\":\"LATE_PAYMENT_RESERVATION_UNAVAILABLE\","
+                + "\"reviewRequiredAt\":\"" + occurredAt + "\"}";
+        entity.traceparent = command.traceparent();
+        entity.tracestate = command.tracestate();
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = occurredAt;
+        entity.occurredAt = occurredAt;
+        entity.createdAt = occurredAt;
+        entity.updatedAt = occurredAt;
+        return entity;
+    }
+
     private static OrderCreationOutboxJpaEntity terminalRelease(PurchaseReservationReleasedCommand command,
             PurchaseSaga saga, OrderJpaEntity order, String eventType, String timeField) {
         UUID eventId = UUID.nameUUIDFromBytes((eventType + ":" + command.eventId())

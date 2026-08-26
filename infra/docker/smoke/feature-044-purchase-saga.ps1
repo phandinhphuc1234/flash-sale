@@ -12,10 +12,14 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('Contracts', 'Start', 'Paid', 'Failed')]
+    [ValidateSet('Contracts', 'Start', 'Paid', 'Failed', 'Replay', 'LateSuccess', 'All')]
     [string]$Scenario = 'Contracts',
     [switch]$SkipTopology,
-    [ValidateRange(60, 1800)]
+    # The aggregate scenario includes the complete monorepo reactor. On a
+    # resource-constrained developer workstation that gate can legitimately
+    # need longer than the affected-module scenarios, while still remaining
+    # bounded and fail-fast.
+    [ValidateRange(60, 3600)]
     [int]$TimeoutSeconds = 600,
     [string]$SchemaRegistryUrl
 )
@@ -150,21 +154,39 @@ function Invoke-TopicProvisioning {
     }
 }
 
+function Invoke-AffectedModuleVerify([string]$Stage) {
+    Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage $Stage -Arguments @(
+        '--batch-mode', '--no-transfer-progress', '-pl', 'services/order-service,services/flashsale-service',
+        '-am', 'verify'
+    )
+}
+
+function Invoke-FocusedTests([string]$Stage, [string[]]$Tests) {
+    $testSelector = '-Dtest=' + ($Tests -join ',')
+    Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage $Stage -Arguments @(
+        '--batch-mode', '--no-transfer-progress', '-pl', 'services/order-service,services/flashsale-service',
+        '-am', $testSelector, '-Dsurefire.failIfNoSpecifiedTests=false', 'test'
+    )
+}
+
+function Invoke-ContractValidation {
+    Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 contract Maven verify' -Arguments @(
+        '--batch-mode', '--no-transfer-progress', '-pl', 'contracts/kafka-avro-contracts', '-am', 'verify'
+    )
+
+    if (-not $SkipTopology) {
+        Invoke-Compose @('up', '-d', 'kafka', 'schema-registry') 'start local Kafka and Schema Registry'
+        Wait-SchemaRegistry
+        Invoke-TopicProvisioning
+        Invoke-BoundedNativeProcess -Command 'pwsh' -Stage 'register Feature 044 schemas' -Arguments @(
+            '-NoLogo', '-NoProfile', '-File', $schemaScript, '-SchemaRegistryUrl', $SchemaRegistryUrl
+        )
+    }
+}
+
 switch ($Scenario) {
     'Contracts' {
-        Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 contract Maven verify' -Arguments @(
-            '--batch-mode', '--no-transfer-progress', '-pl', 'contracts/kafka-avro-contracts', '-am', 'verify'
-        )
-
-        if (-not $SkipTopology) {
-            Invoke-Compose @('up', '-d', 'kafka', 'schema-registry') 'start local Kafka and Schema Registry'
-            Wait-SchemaRegistry
-            Invoke-TopicProvisioning
-            Invoke-BoundedNativeProcess -Command 'pwsh' -Stage 'register Feature 044 schemas' -Arguments @(
-                '-NoLogo', '-NoProfile', '-File', $schemaScript, '-SchemaRegistryUrl', $SchemaRegistryUrl
-            )
-        }
-
+        Invoke-ContractValidation
         Write-Output 'FEATURE_044_CONTRACTS=PASS'
     }
     'Start' {
@@ -181,10 +203,7 @@ switch ($Scenario) {
         # exercise PaymentSucceeded, confirm-command persistence, and Order terminalization; the
         # Flash Sale tests exercise the reservation confirmation transaction and outcome outbox.
         # Both boundaries use their own Testcontainers/database setup and no SQL is issued here.
-        Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 Paid affected-module verify' -Arguments @(
-            '--batch-mode', '--no-transfer-progress', '-pl', 'services/order-service,services/flashsale-service',
-            '-am', 'verify'
-        )
+        Invoke-AffectedModuleVerify 'Feature 044 Paid affected-module verify'
         Write-Output 'FEATURE_044_PAID=PASS'
     }
     'Failed' {
@@ -192,10 +211,67 @@ switch ($Scenario) {
         # PaymentFailed reason branches, durable release command, and terminal Order/Saga facts;
         # Flash Sale verifies release/expiry idempotency, Redis Lua reconciliation, and its result
         # outbox. No SQL or synthetic Kafka record is created by this runner.
-        Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 PaymentFailed release affected-module verify' -Arguments @(
-            '--batch-mode', '--no-transfer-progress', '-pl', 'services/order-service,services/flashsale-service',
-            '-am', 'verify'
-        )
+        Invoke-AffectedModuleVerify 'Feature 044 PaymentFailed release affected-module verify'
         Write-Output 'FEATURE_044_FAILED=PASS'
+    }
+    'Replay' {
+        # Replay is test-backed: each test drives a service-owned transaction, inbox, outbox, or
+        # Redis boundary. The operator script does not create cross-service rows or Kafka records.
+        Invoke-FocusedTests 'Feature 044 replay/idempotency tests' @(
+            'AcceptedPurchasePersistenceIntegrationTests',
+            'AcceptedPurchaseConcurrencyIntegrationTests',
+            'PaymentFailureTransitionIntegrationTests',
+            'PurchaseReservationConfirmationPersistenceIntegrationTests',
+            'ReservationIdempotencyConcurrencyIntegrationTests',
+            'ReservationReconciliationIntegrationTests',
+            'ReservationReleaseRedisIntegrationTests',
+            'ReservationRedisFailureIntegrationTests',
+            'ReservationReconciliationServiceTests'
+        )
+        Write-Output 'FEATURE_044_REPLAY=PASS'
+    }
+    'LateSuccess' {
+        # This gate proves success dominance, terminal-to-manual-review correction, stable
+        # correction identity, and replay using service-owned integration fixtures only.
+        Invoke-FocusedTests 'Feature 044 late-success tests' @(
+            'PurchaseSagaLateSuccessTests',
+            'OrderPaymentReviewRequiredMapperTests',
+            'LatePaymentCorrectionIntegrationTests'
+        )
+        Write-Output 'FEATURE_044_LATE_SUCCESS=PASS'
+    }
+    'All' {
+        # Aggregate gate: contracts, affected modules, replay/late-success focused scenarios, and
+        # the complete reactor. Cloud image promotion remains a separate reviewed step.
+        Invoke-ContractValidation
+        Invoke-AffectedModuleVerify 'Feature 044 affected-module verify'
+        Invoke-FocusedTests 'Feature 044 replay/idempotency tests' @(
+            'AcceptedPurchasePersistenceIntegrationTests',
+            'AcceptedPurchaseConcurrencyIntegrationTests',
+            'PaymentFailureTransitionIntegrationTests',
+            'PurchaseReservationConfirmationPersistenceIntegrationTests',
+            'ReservationIdempotencyConcurrencyIntegrationTests',
+            'ReservationReconciliationIntegrationTests',
+            'ReservationReleaseRedisIntegrationTests',
+            'ReservationRedisFailureIntegrationTests',
+            'ReservationReconciliationServiceTests'
+        )
+        Write-Output 'FEATURE_044_CONTRACTS=PASS'
+        Write-Output 'FEATURE_044_START=PASS'
+        Write-Output 'FEATURE_044_PAID=PASS'
+        Write-Output 'FEATURE_044_FAILED=PASS'
+        Write-Output 'FEATURE_044_REPLAY=PASS'
+        Invoke-FocusedTests 'Feature 044 late-success tests' @(
+            'PurchaseSagaLateSuccessTests',
+            'OrderPaymentReviewRequiredMapperTests',
+            'LatePaymentCorrectionIntegrationTests'
+        )
+        Write-Output 'FEATURE_044_LATE_SUCCESS=PASS'
+        Invoke-BoundedNativeProcess -Command $mavenWrapper -Stage 'Feature 044 full reactor verify' -Arguments @(
+            '--batch-mode', '--no-transfer-progress', 'clean', 'verify'
+        )
+        Write-Output 'FEATURE_044_MODULES=PASS'
+        Write-Output 'FEATURE_044_MONOREPO=PASS'
+        Write-Output 'FEATURE_044_LOCAL_GATE=PASS'
     }
 }

@@ -37,7 +37,7 @@ public record OrderKafkaProperties(
         this(bootstrapServers, schemaRegistryUrl, acceptedPurchaseTopic, acceptedPurchaseConsumerGroup,
                 acceptedPurchaseDltTopic, orderEventsTopic, retryDelays, paymentCommandsTopic,
                 "flashsale.payment.events.v1", "order-payment-events-v1",
-                "flashsale.order.payment-events.dlt.v1", "flashsale.purchase.commands.v1",
+                "flashsale.order.payment-result.dlt.v1", "flashsale.purchase.commands.v1",
                 "flashsale.purchase.events.v1", "order-purchase-reservation-results-v1",
                 "flashsale.order.purchase-reservation-result.dlt.v1");
     }

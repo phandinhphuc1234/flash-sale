@@ -8,6 +8,7 @@ import com.philia.flashsale.contract.purchase.command.v1.ReleasePurchaseReservat
 import com.philia.flashsale.contract.order.event.v1.OrderConfirmedV1;
 import com.philia.flashsale.contract.order.event.v1.OrderCancelledV1;
 import com.philia.flashsale.contract.order.event.v1.OrderExpiredV1;
+import com.philia.flashsale.contract.order.event.v1.OrderPaymentReviewRequiredV1;
 import com.philia.flashsale.order.outbox.adapter.in.scheduling.OrderOutboxPublisherJob;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderCreatedPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedAvroMapper;
@@ -23,6 +24,8 @@ import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderC
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderExpiredPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCancelledAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderExpiredAvroMapper;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderPaymentReviewRequiredAvroMapper;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderPaymentReviewRequiredPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.persistence.OrderOutboxPersistenceAdapter;
 import com.philia.flashsale.order.outbox.application.port.ClaimOrderOutboxEventsPort;
 import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
@@ -139,6 +142,18 @@ public class OrderOutboxConfiguration {
     }
 
     @Bean
+    OrderPaymentReviewRequiredAvroMapper orderPaymentReviewRequiredAvroMapper(ObjectMapper objectMapper) {
+        return new OrderPaymentReviewRequiredAvroMapper(objectMapper);
+    }
+
+    @Bean
+    KafkaOrderPaymentReviewRequiredPublisher kafkaOrderPaymentReviewRequiredPublisher(
+            KafkaTemplate<String, OrderPaymentReviewRequiredV1> kafka,
+            OrderPaymentReviewRequiredAvroMapper mapper, OrderKafkaProperties properties) {
+        return new KafkaOrderPaymentReviewRequiredPublisher(kafka, mapper, properties);
+    }
+
+    @Bean
     OrderOutboxEventTypeDispatcher orderOutboxEventTypeDispatcher(
             KafkaOrderCreatedPublisher orderCreatedPublisher,
             KafkaPaymentRequestedPublisher paymentRequestedPublisher,
@@ -146,7 +161,8 @@ public class OrderOutboxConfiguration {
             KafkaOrderConfirmedPublisher orderConfirmedPublisher,
             KafkaReleaseReservationPublisher releaseReservationPublisher,
             KafkaOrderCancelledPublisher orderCancelledPublisher,
-            KafkaOrderExpiredPublisher orderExpiredPublisher) {
+            KafkaOrderExpiredPublisher orderExpiredPublisher,
+            KafkaOrderPaymentReviewRequiredPublisher reviewPublisher) {
         return new OrderOutboxEventTypeDispatcher(Map.of(
                 "OrderCreated", orderCreatedPublisher,
                 "PaymentRequested", paymentRequestedPublisher,
@@ -154,7 +170,8 @@ public class OrderOutboxConfiguration {
                 "OrderConfirmed", orderConfirmedPublisher,
                 "ReleasePurchaseReservation", releaseReservationPublisher,
                 "OrderCancelled", orderCancelledPublisher,
-                "OrderExpired", orderExpiredPublisher));
+                "OrderExpired", orderExpiredPublisher,
+                "OrderPaymentReviewRequired", reviewPublisher));
     }
 
     @Bean

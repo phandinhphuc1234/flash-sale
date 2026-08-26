@@ -114,4 +114,15 @@ public class OrderJpaEntity {
         status = terminalStatus;
         updatedAt = at;
     }
+
+    /** Reopens an unpaid terminal Order for a verified late payment manual review. */
+    public OrderStatus reopenForManualReview(Instant at) {
+        if (status != OrderStatus.CANCELLED && status != OrderStatus.EXPIRED) {
+            throw new IllegalStateException("Order is not an unpaid terminal state");
+        }
+        OrderStatus previous = status;
+        status = OrderStatus.PENDING_PAYMENT;
+        updatedAt = at;
+        return previous;
+    }
 }

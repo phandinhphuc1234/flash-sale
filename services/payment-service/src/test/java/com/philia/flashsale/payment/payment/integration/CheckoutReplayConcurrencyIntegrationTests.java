@@ -36,12 +36,14 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /** PostgreSQL regression proof for Checkout lock ordering and concurrent identity convergence. */
 @Testcontainers(disabledWithoutDocker = true)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SpringBootTest(properties = {
         "payment.acceptance.enabled=true",
         "payment.checkout.enabled=true",
@@ -53,6 +55,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
         "payment.kafka.outbox-publisher-enabled=false",
         "payment.webhook.processing-enabled=false",
         "payment.recovery.enabled=false",
+        "spring.datasource.hikari.maximum-pool-size=32",
+        "spring.datasource.hikari.connection-timeout=30000",
         "spring.jpa.hibernate.ddl-auto=validate"
 })
 class CheckoutReplayConcurrencyIntegrationTests {
@@ -134,6 +138,16 @@ class CheckoutReplayConcurrencyIntegrationTests {
         UUID paymentId = acceptPayment();
         String key = "service-local-latency";
         checkout.start(new StartCheckoutCommand(paymentId, OWNER, key));
+
+        // Warm the JPA/Hikari/JIT path before measuring.  The latency budget is
+        // for a steady-state replay, not the first call after container and
+        // application startup; including cold-start work makes this regression
+        // test depend on the load of unrelated modules in the full reactor.
+        for (int index = 0; index < 25; index++) {
+            StartCheckoutResult warmup = checkout.start(new StartCheckoutCommand(paymentId, OWNER, key));
+            assertThat(warmup.outcome()).isEqualTo(StartCheckoutResult.Outcome.REPLAYED);
+        }
+
         List<Long> durations = new ArrayList<>();
 
         for (int index = 0; index < 200; index++) {
