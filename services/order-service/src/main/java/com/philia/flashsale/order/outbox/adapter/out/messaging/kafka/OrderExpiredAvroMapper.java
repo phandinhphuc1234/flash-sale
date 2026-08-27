@@ -14,9 +14,15 @@ public final class OrderExpiredAvroMapper {
     private final ObjectMapper objectMapper;
     public OrderExpiredAvroMapper(ObjectMapper objectMapper) { this.objectMapper = objectMapper; }
     public OrderExpiredV1 map(OrderOutboxEvent event) {
-        if (event == null || !"OrderExpired".equals(event.eventType()) || event.eventVersion() != 1 || !"ORDER".equals(event.aggregateType())) throw invalid("outbox envelope is not OrderExpired.v1");
+        if (event == null || !"OrderExpired".equals(event.eventType()) || event.eventVersion() != 1
+                || !"ORDER".equals(event.aggregateType())) {
+            throw invalid("outbox envelope is not OrderExpired.v1");
+        }
         JsonNode root; try { root = objectMapper.readTree(event.payload()); } catch (IOException exception) { throw invalid("OrderExpired payload is not valid JSON"); }
-        UUID orderId = uuid(root, "orderId"); if (!orderId.equals(event.aggregateId()) || !event.eventKey().equals(orderId.toString())) throw invalid("OrderExpired identity/key mismatch");
+        UUID orderId = uuid(root, "orderId");
+        if (!orderId.equals(event.aggregateId()) || !event.eventKey().equals(orderId.toString())) {
+            throw invalid("OrderExpired identity/key mismatch");
+        }
         return new OrderExpiredV1(event.eventId(), event.eventType(), event.eventVersion(), "order-service", event.aggregateType(), event.aggregateId(), event.aggregateVersion(), event.correlationId(), event.causationId(), event.occurredAt(), new OrderExpiredDataV1(orderId, text(root, "orderNumber"), uuid(root, "purchaseRequestId"), uuid(root, "reservationId"), text(root, "reason"), instant(root, "expiredAt")));
     }
     private UUID uuid(JsonNode root, String field) { try { return UUID.fromString(text(root, field)); } catch (RuntimeException exception) { throw invalid(field + " is not a UUID"); } }

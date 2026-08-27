@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -43,6 +44,7 @@ public final class OrderObservability {
     private volatile double outboxOldestPendingAge;
     private volatile double sagaOldestStepAge;
 
+    @Autowired
     public OrderObservability(ObservationRegistry observations, MeterRegistry metrics) {
         this.observations = Objects.requireNonNull(observations, "observations");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
