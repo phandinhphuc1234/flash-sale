@@ -16,16 +16,18 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..\..")).Path
 $orderConfig = Join-Path $repoRoot "infra\k8s\overlays\cloud\config\order-service-runtime-config.yaml"
 $flashSaleConfig = Join-Path $repoRoot "infra\k8s\overlays\cloud\config\flash-sale-service-runtime-config.yaml"
 $phase20 = Join-Path $repoRoot "infra\scripts\gitops\phase20-kafka-contracts.ps1"
+$orderSchemaScript = Join-Path $repoRoot "infra\docker\schema-registry\register-order-schemas.ps1"
 $schemaScript = Join-Path $repoRoot "infra\docker\schema-registry\register-purchase-saga-schemas.ps1"
 $overlay = Join-Path $repoRoot "infra\k8s\overlays\cloud"
 
-foreach ($path in @($orderConfig, $flashSaleConfig, $phase20, $schemaScript, $overlay)) {
+foreach ($path in @($orderConfig, $flashSaleConfig, $phase20, $orderSchemaScript, $schemaScript, $overlay)) {
   if (-not (Test-Path -LiteralPath $path)) { throw "Required Feature 044 cloud asset is missing: $path" }
 }
 
 $order = Get-Content -LiteralPath $orderConfig -Raw
 $flashSale = Get-Content -LiteralPath $flashSaleConfig -Raw
 $phase20Content = Get-Content -LiteralPath $phase20 -Raw
+$orderSchemaScriptContent = Get-Content -LiteralPath $orderSchemaScript -Raw
 $schemaScriptContent = Get-Content -LiteralPath $schemaScript -Raw
 
 foreach ($marker in @(
@@ -55,12 +57,25 @@ foreach ($marker in @(
   '"flashsale.order.payment-result.dlt.v1"',
   '"flashsale.flash-sale.purchase-command.dlt.v1"',
   '"flashsale.order.purchase-reservation-result.dlt.v1"',
+  '"flashsale.order.purchase-accepted.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1"',
+  '"flashsale.order.purchase-accepted.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationReleasedV1"',
   '"flashsale.order.purchase-reservation-result.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1"',
   '"register-purchase-saga-schemas.ps1"',
   'topics=$($TopicContracts.Count)',
   'subjects=$($SubjectContracts.Count)'
 )) {
   if ($phase20Content.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) { throw "Phase 20 marker is missing: $marker" }
+}
+foreach ($marker in @(
+  "Topic = 'flashsale.order.purchase-accepted.dlt.v1'",
+  "PurchaseReservationConfirmedV1.avsc",
+  "PurchaseReservationReleasedV1.avsc",
+  'com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1',
+  'com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationReleasedV1'
+)) {
+  if ($orderSchemaScriptContent.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) {
+    throw "Order DLT schema binding is missing: $marker"
+  }
 }
 if ($schemaScriptContent.IndexOf(
         "New-SchemaDefinition 'flashsale.order.purchase-reservation-result.dlt.v1' 'flashsale.purchase.events.v1'",

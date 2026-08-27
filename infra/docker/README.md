@@ -14,7 +14,7 @@ infra/docker/
 │   ├── init-campaign-topics.sh  # Approved Feature 017 topic provisioning
 │   └── init-order-topics.sh     # Approved Feature 020 topic provisioning
 ├── schema-registry/
-│   └── register-order-schemas.ps1 # OrderCreated + PurchaseAccepted DLT subjects
+│   └── register-order-schemas.ps1 # OrderCreated + shared purchase-event DLT subjects
 └── postgres/
     └── init/
         └── 01-create-databases.sql
@@ -329,8 +329,10 @@ bash infra/docker/kafka/init-order-topics.sh
 ```
 
 The script is idempotent and verifies three partitions with replication factor one for
-`flashsale.order.events.v1` and `flashsale.order.purchase-accepted.dlt.v1`. Register or check both
-the controlled `OrderCreatedV1` main subject and `PurchaseAcceptedV1` Order DLT subject with:
+`flashsale.order.events.v1` and `flashsale.order.purchase-accepted.dlt.v1`. Register or check the
+controlled `OrderCreatedV1` main subject and all record subjects that can be copied to the Order
+DLT from the shared `flashsale.purchase.events.v1` source (`PurchaseAcceptedV1`,
+`PurchaseReservationConfirmedV1`, and `PurchaseReservationReleasedV1`) with:
 
 ```powershell
 pwsh -File infra/docker/schema-registry/register-order-schemas.ps1 -CheckOnly
