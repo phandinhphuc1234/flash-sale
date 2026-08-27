@@ -84,6 +84,21 @@ class FlashSaleOutboxPublisherTests {
     }
 
     @Test
+    void keepsOptionalNullTraceStateInAnImmutableOutboxSnapshot() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("tracestate", null);
+
+        OutboxEvent snapshot = new OutboxEvent(UUID.randomUUID(), "PURCHASE_RESERVATION",
+                UUID.randomUUID(), 1, "PurchaseReservationReleased", 1, payload, "PENDING", 0,
+                NOW, null, null, null, null, NOW, NOW);
+
+        assertThat(snapshot.payload()).containsEntry("tracestate", null);
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> snapshot.payload().put("unexpected", "value"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
     void dispatchesAcceptedEventThroughGenericOutboxPort() {
         var received = new java.util.ArrayList<UUID>();
         PublishOutboxEventPort publisher = event -> received.add(event.eventId());
