@@ -7,6 +7,7 @@ import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.re
 import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.repository.PurchaseEventOutboxJpaRepository;
 import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.repository.ReservationCommandInboxJpaRepository;
 import com.philia.flashsale.flashsale.reservation.application.command.ConfirmReservationCommand;
+import com.philia.flashsale.flashsale.reservation.application.command.ReleaseReservationCommand;
 import com.philia.flashsale.flashsale.reservation.application.port.out.PersistReservationConfirmationPort;
 import com.philia.flashsale.flashsale.reservation.application.result.ReservationConfirmationResult;
 import java.nio.charset.StandardCharsets;
@@ -54,7 +55,7 @@ public class ReservationConfirmationJpaAdapter implements PersistReservationConf
                     () -> new IllegalStateException("reservation for command inbox row does not exist"));
             return new ReservationConfirmationResult(existing.getReservationId(), existingReservation.getCampaignId(),
                     command.commandId(),
-                    existing.getResultEventId(), ReservationConfirmationResult.Status.ALREADY_CONFIRMED,
+                    existing.getResultEventId(), replayStatus(existingReservation),
                     existingProcessedAt(existing));
         }
 
@@ -62,16 +63,80 @@ public class ReservationConfirmationJpaAdapter implements PersistReservationConf
                 () -> new IllegalStateException("reservation does not exist"));
         assertIdentity(reservation, command);
         Instant now = clock.instant();
-        if (reservation.getStatus() != FlashSaleReservationJpaEntity.Status.CONFIRMED
-                && !reservation.confirm(now)) {
-            throw new IllegalStateException("reservation is not confirmable before expiry");
-        }
-        UUID resultEventId = UUID.nameUUIDFromBytes(("purchase-reservation-confirmed:" + command.commandId())
-                .getBytes(StandardCharsets.UTF_8));
+        ConfirmationOutcome outcome = applyOutcome(reservation, now);
+        UUID resultEventId = resultEventId(command, outcome.status());
         inbox.save(ReservationCommandInboxJpaEntity.confirmed(command, resultEventId, now));
-        outbox.save(PurchaseEventOutboxJpaEntity.confirmed(command, reservation, resultEventId, now));
-        return new ReservationConfirmationResult(command.reservationId(), reservation.getCampaignId(), command.commandId(), resultEventId,
-                ReservationConfirmationResult.Status.CONFIRMED, now);
+        outbox.save(outcomeEvent(command, reservation, resultEventId, now, outcome));
+        return new ReservationConfirmationResult(command.reservationId(), reservation.getCampaignId(),
+                command.commandId(), resultEventId, outcome.status(), now);
+    }
+
+    private ConfirmationOutcome applyOutcome(FlashSaleReservationJpaEntity reservation, Instant now) {
+        return switch (reservation.getStatus()) {
+            case RESERVED -> {
+                if (reservation.confirm(now)) {
+                    yield new ConfirmationOutcome(ReservationConfirmationResult.Status.CONFIRMED, null, true);
+                }
+                if (!reservation.expire(now)) {
+                    throw new IllegalStateException("reservation is not confirmable before expiry");
+                }
+                yield new ConfirmationOutcome(ReservationConfirmationResult.Status.EXPIRED,
+                        "RESERVATION_EXPIRED", true);
+            }
+            case CONFIRMED -> new ConfirmationOutcome(
+                    ReservationConfirmationResult.Status.ALREADY_CONFIRMED, null, false);
+            case RELEASED -> new ConfirmationOutcome(
+                    ReservationConfirmationResult.Status.RELEASED, priorReleaseReason(reservation), false);
+            case EXPIRED -> new ConfirmationOutcome(
+                    ReservationConfirmationResult.Status.EXPIRED, "RESERVATION_EXPIRED", false);
+        };
+    }
+
+    private PurchaseEventOutboxJpaEntity outcomeEvent(ConfirmReservationCommand command,
+            FlashSaleReservationJpaEntity reservation, UUID resultEventId, Instant now,
+            ConfirmationOutcome outcome) {
+        long aggregateVersion = outcome.transitioned()
+                ? reservation.getVersion() + 1
+                : reservation.getVersion();
+        if (outcome.status().requiresConfirmationProjection()) {
+            return PurchaseEventOutboxJpaEntity.confirmed(
+                    command, reservation, resultEventId, now, aggregateVersion);
+        }
+        return PurchaseEventOutboxJpaEntity.currentStateReleased(command, reservation, resultEventId,
+                now, outcome.status().name(), outcome.reason(), aggregateVersion);
+    }
+
+    private UUID resultEventId(ConfirmReservationCommand command,
+            ReservationConfirmationResult.Status status) {
+        String prefix = status.requiresConfirmationProjection()
+                ? "purchase-reservation-confirmed:"
+                : "purchase-reservation-released:";
+        return UUID.nameUUIDFromBytes((prefix + command.commandId()).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String priorReleaseReason(FlashSaleReservationJpaEntity reservation) {
+        Object reason = outbox.findFirstByAggregateIdAndEventTypeOrderByCreatedAtDesc(
+                        reservation.getId(), "PurchaseReservationReleased")
+                .map(PurchaseEventOutboxJpaEntity::getPayload)
+                .map(payload -> payload.get("reason"))
+                .orElseThrow(() -> new IllegalStateException(
+                        "released reservation is missing its durable release reason"));
+        String value = reason.toString();
+        if (!ReleaseReservationCommand.REASONS.contains(value)) {
+            throw new IllegalStateException("released reservation has an unsupported release reason");
+        }
+        return value;
+    }
+
+    private ReservationConfirmationResult.Status replayStatus(
+            FlashSaleReservationJpaEntity reservation) {
+        return switch (reservation.getStatus()) {
+            case CONFIRMED -> ReservationConfirmationResult.Status.ALREADY_CONFIRMED;
+            case RELEASED -> ReservationConfirmationResult.Status.RELEASED;
+            case EXPIRED -> ReservationConfirmationResult.Status.EXPIRED;
+            case RESERVED -> throw new IllegalStateException(
+                    "processed confirmation command points to a non-final reservation");
+        };
     }
 
     private void assertIdentity(FlashSaleReservationJpaEntity reservation, ConfirmReservationCommand command) {
@@ -85,4 +150,9 @@ public class ReservationConfirmationJpaAdapter implements PersistReservationConf
         // is not part of the idempotency identity. Use the injected clock for a fresh result.
         return clock.instant();
     }
+
+    private record ConfirmationOutcome(
+            ReservationConfirmationResult.Status status,
+            String reason,
+            boolean transitioned) { }
 }

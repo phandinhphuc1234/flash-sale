@@ -199,3 +199,44 @@ T055–T063 are complete. Together with the previously green T064–T068 local g
 work is the sequential post-merge cloud path T069–T072. Database migration ordering, immutable image
 promotion, and rollback compatibility must be resolved and evidenced at that release boundary rather
 than inferred from local tests.
+
+## T073 — Paid-success slice convergence — 2026-08-26
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| PaymentSucceeded adapter and DLT boundary (T027/T033) | PASS | `PaymentSucceededConsumerTests` validates trace propagation, acknowledgement only after successful handling, validation of amount/currency, and non-retryable conflict behaviour. `OrderPaymentEventsConsumerConfigurationTests` verifies the actual non-retryable error handler publishes to the configured `flashsale.order.payment-result.dlt.v1` topic. |
+| Atomic Saga/inbox/confirm command (T028/T032) | PASS | `PaymentSuccessTransitionIntegrationTests` uses PostgreSQL + Liquibase and proves `PAYMENT_PENDING -> CONFIRMING_RESERVATION`, one inbox row and one confirm command; replay and lower versions add no command; invalid amount rolls back all three durable writes. |
+| Confirm state and expiry race (T029/T034) | PASS | `ReservationConfirmationPersistenceTests` covers normal confirmation, command replay, confirmation after release with the durable payment-failure reason, and the expiry boundary with stable `RESERVATION_EXPIRED`. A distinct confirm command after a terminal release/expiry now writes a causation-correlated existing `PurchaseReservationReleasedV1` result instead of throwing; this gives Order a durable result that can lead to `MANUAL_REVIEW`. |
+| Redis exact-once and recovery boundary (T030/T035) | PASS | `ReservationConfirmationRedisIntegrationTests` proves one successful confirmation removes the expiry marker while keeping stock/quota correct; replay is idempotent. `ConfirmReservationServiceTests` proves Redis confirmation Lua is invoked only for `CONFIRMED`/`ALREADY_CONFIRMED`, never for released/expired current-state results. Existing reconciliation and Redis-failure integration coverage remains green in the affected-module suite. |
+| Order confirmation and public state (T031) | PASS | Existing `PurchaseReservationConfirmationPersistenceIntegrationTests` verifies Order confirmation persistence; updated `OrderQueryControllerTests` includes authenticated terminal `CONFIRMED` responses. |
+| Focused tests | PASS | Focused Flash Sale test command completed with 8 tests, 0 failures/errors. Focused Order adapter/Saga/query command completed with 9 tests, 0 failures/errors; the focused DLT configuration command completed with 1 test, 0 failures/errors. |
+| Affected-module release gate | PASS | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service,services/flashsale-service -am verify` completed in 10:28 with reactor `BUILD SUCCESS`: Flash Sale 126 tests, 0 failures/errors, 1 intentional skip; Order 134 tests, 0 failures/errors, 8 intentional skips. |
+| Contract/schema and mutation boundary | PASS | The fix emits the already versioned `PurchaseReservationReleasedV1` current-state fact, so no Kafka topic, Avro schema, or database migration changed. `git diff --check` passed before ledger update; no `.env`, Secret, ECR, EKS, Argo, Kafka broker, Registry, Redis, or database state was changed. |
+
+T027–T035 and T073 are complete. T074 (cloud migration release gate) and T075 (rollback compatibility rehearsal) remain separate, intentionally unchecked follow-up tasks.
+
+## T074 — Feature 044 cloud migration release gate — 2026-08-26
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Test-first static contract | PASS | The new `phase44-purchase-saga-migration-gate.tests.ps1` initially failed because the gate assets did not exist, then passed after the gate, two-Job overlay, promotion-PR handoff, parser checks, and Kustomize render were implemented. It verifies that only Order and Flash Sale are selected and that the gate has explicit `-Apply`, immutable release-tag, dry-run, no-delete, and redaction boundaries. |
+| Manifest scope | PASS | `kubectl kustomize infra/k8s/overlays/cloud-migrations/feature-044` and `kubectl apply --dry-run=client -k infra/k8s/overlays/cloud-migrations/feature-044` rendered exactly `migrate-order-purchase-saga` and `migrate-flash-sale-reservation-finalization`; no other service migration Job is present. |
+| Release-gate behavior | PASS | Default mode resolves the current remote `develop` SHA, checks ECR digests for exactly `flash-sale/order-service` and `flash-sale/flash-sale-service`, validates EKS prerequisites, writes the resolved image manifest only to an OS temporary directory, and performs a client dry-run. `-Apply` is the sole mutation opt-in and waits Order then Flash Sale with bounded status-only diagnostics; it never deletes/reruns Jobs or reads Secret data. |
+| Promotion handoff | PASS | `service-delivery.yml` detects the two Feature 044 Liquibase change paths and injects an explicit pre-merge gate instruction into the generated promotion PR. PR Markdown is now supplied through `gh pr create --body-file`, avoiding Bash command-substitution from Markdown backticks. |
+| Live precondition probe | EXPECTED BLOCK | The read-only gate reached AWS identity successfully, then rejected the current remote `develop` tag because the two new `release-<develop SHA>` images are not in ECR yet. This is the intended stop condition before delivery; no Kubernetes Job, database migration, ECR image, Argo state, or Secret was changed. Run the two documented commands after the selective delivery workflow builds the images and before merging its promotion PR. |
+| Static hygiene | PASS | Gate static test, parser check, Kustomize render/client dry-run, and `git diff --check` passed. No ignored `.env` file or Secret value was read or changed. |
+
+T074 implements the required release gate. Its positive live execution is intentionally part of the later T070 promotion sequence, because the required immutable images do not exist until that workflow has completed.
+
+## T075 — Non-destructive rollback compatibility rehearsal — 2026-08-26
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Test-first static contract | PASS | `infra/scripts/gitops/tests/phase44-purchase-saga-rollback-rehearsal.tests.ps1` first failed because the rehearsal asset was absent, then passed after the read-only gate was added and parsed. It checks the immutable prior-release input, matching historical Order/Flash Sale enums, read-only PostgreSQL transaction, expanded-schema checks, terminal-row checks, redaction, and explicit incompatible-state stop. |
+| Rollback safety design | PASS | `phase44-purchase-saga-rollback-rehearsal.ps1` has no `-Apply` mode and contains no Kubernetes apply/delete/patch, Git revert, Liquibase history change, or data-write command. It resolves only `release-<SHA>` ECR images, compares their source enums with grouped terminal states, and stops before any rollback mutation when an old image cannot read a persisted state. |
+| Schema/data boundary | PASS | The rehearsal proves the additive Feature 044 tables/columns are present and queries only aggregate terminal status/count values inside `BEGIN TRANSACTION READ ONLY`; it does not print row IDs, customer data, credentials, Secret values, or full SQL payloads. An incompatible result explicitly preserves all Saga, inbox, outbox, reservation, topic, schema, receipt, and PVC data and returns to spec/plan approval. |
+| Operator handoff | PASS | `quickstart.md` now documents how to identify the prior common immutable SHA, run the compatibility prerequisite, interpret `PASS` versus `Incompatible persisted terminal state`, and continue the approved T072 GitOps rollback order. |
+| Live invocation | DEFERRED | A meaningful run requires the Feature 044 Order/Flash Sale images to be promoted and at least one representative terminal Order and Reservation row in EKS. The release has not been promoted in this implementation turn, so no ECR, EKS, Argo, PostgreSQL, Kafka, Schema Registry, Redis, or Secret state was contacted or changed. |
+
+T075 completes the rollback-compatibility asset and static evidence. Its read-only live result is a
+mandatory prerequisite of T072, not authorization to invent a destructive database rollback.

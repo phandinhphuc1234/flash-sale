@@ -81,7 +81,8 @@ class OrderQueryControllerTests {
                 .andExpect(jsonPath("$.data.id").value(ORDER.toString()))
                 .andExpect(jsonPath("$.data.userId").doesNotExist());
 
-        for (OrderStatus terminalStatus : List.of(OrderStatus.CANCELLED, OrderStatus.EXPIRED)) {
+        for (OrderStatus terminalStatus : List.of(
+                OrderStatus.CONFIRMED, OrderStatus.CANCELLED, OrderStatus.EXPIRED)) {
             OrderDetailsResult terminal = details(terminalStatus);
             OrderDetailsResponse terminalResponse = new OrderDetailsResponse(ORDER, "FS-001",
                     terminal.purchaseRequestId(), terminal.reservationId(), terminal.campaignId(),

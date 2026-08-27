@@ -212,7 +212,31 @@ The workflow must:
 3. push `release-<develop SHA>` tags to ECR;
 4. create one image-promotion PR updating the cloud overlay.
 
-Review the exact tag changes, merge one promotion PR, and close stale competing promotion PRs.
+### Required Feature 044 migration gate
+
+When the promotion PR includes the Feature 044 Order and Flash Sale migration changes, run this
+gate **after** the delivery workflow has pushed both ECR images and **before** merging the
+image-promotion PR:
+
+```powershell
+pwsh -NoLogo -NoProfile -File `
+  .\infra\scripts\gitops\phase44-purchase-saga-migration-gate.ps1
+
+pwsh -NoLogo -NoProfile -File `
+  .\infra\scripts\gitops\phase44-purchase-saga-migration-gate.ps1 `
+  -Apply
+```
+
+The first command is read-only: it resolves the current remote `develop` SHA, verifies the two
+`release-<develop SHA>` ECR images, checks only the Order/Flash Sale prerequisites, renders two
+service-owned Liquibase Jobs, and runs a Kubernetes client dry-run. The second command creates and
+waits **sequentially** for `migrate-order-purchase-saga` and then
+`migrate-flash-sale-reservation-finalization`. It never reads or prints Secret values and it never
+deletes or reruns an existing migration Job. If either immutable image does not exist, do not merge
+the promotion PR: wait for/fix the delivery workflow first.
+
+Only merge the promotion PR after the `-Apply` command reports `Feature 044 migration release gate:
+APPLY PASS`. Then close stale competing promotion PRs.
 
 ## 8. Argo and runtime verification
 
@@ -260,5 +284,34 @@ Rollback does not delete data:
 3. revert the image-promotion commit to previous immutable tags;
 4. refresh Argo and verify previous Deployments;
 5. confirm Saga/inbox/outbox/payment/reservation rows and topics remain intact.
+
+### Compatibility gate before a real rollback
+
+Before creating the reviewed GitOps image-promotion revert in step 3, run the read-only
+compatibility rehearsal against the exact previous **common** Order/Flash Sale release SHA. Obtain
+that SHA from the predecessor reviewed cloud image-promotion commit; it is the suffix of both
+previous `release-<SHA>` image tags.
+
+```powershell
+$PriorReleaseSha = "<40-character previous common release SHA>"
+
+pwsh -NoLogo -NoProfile -File `
+  .\infra\scripts\gitops\phase44-purchase-saga-rollback-rehearsal.ps1 `
+  -PriorReleaseSha $PriorReleaseSha
+```
+
+The rehearsal changes nothing. It verifies that the prior images still exist in ECR, reads their
+`OrderStatus` and `ReservationStatus` enum surfaces from the matching Git revision, confirms the
+expanded Feature 044 schema, and reads only aggregate terminal-state counts from the two owning
+databases. It requires at least one representative terminal Order and Reservation row, but never
+prints IDs, customer data, credentials, or SQL result payloads.
+
+- `PASS` means the prior images understand every observed terminal status. It is still only a
+  compatibility prerequisite: follow the five rollback steps above and verify Argo after the
+  reviewed image revert.
+- `Incompatible persisted terminal state` means **do not restore the prior images**. Do not drop
+  tables, shrink constraints, delete Saga/inbox/outbox rows, or map values back to older states.
+  Preserve data and return to spec/plan approval for an explicitly reviewed forward-compatible
+  release or a separately approved data policy.
 
 Cart Service and Notification Service are still deferred after Feature 044 succeeds.

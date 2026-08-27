@@ -93,18 +93,18 @@ reservation `CONFIRMED`, Saga `COMPLETED`, Order `CONFIRMED`, and one terminal e
 
 ### Tests for User Story 2
 
-- [ ] T027 [P] [US2] Add failing PaymentSucceeded Avro validation, identity, amount/currency, stale-version, duplicate, DLT, and trace tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/PaymentSucceededConsumerTests.java`
-- [ ] T028 [P] [US2] Add failing `PAYMENT_PENDING -> CONFIRMING_RESERVATION` atomic Saga/inbox/confirm-outbox tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PaymentSuccessTransitionIntegrationTests.java`
-- [ ] T029 [P] [US2] Add failing reservation confirm domain, command replay/conflict, expiry race, and PostgreSQL transaction tests under `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/`
-- [ ] T030 [P] [US2] Add failing confirm/reconciliation Lua exact-once and Redis outage/recovery tests under `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/adapter/out/redis/`
-- [ ] T031 [P] [US2] Add failing PurchaseReservationConfirmed consumer and Order terminal-outbox tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PurchaseConfirmationIntegrationTests.java`, plus authenticated public `CONFIRMED` response coverage in `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/in/web/OrderQueryControllerTests.java`
+- [x] T027 [P] [US2] Add failing PaymentSucceeded Avro validation, identity, amount/currency, stale-version, duplicate, DLT, and trace tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/PaymentSucceededConsumerTests.java`
+- [x] T028 [P] [US2] Add failing `PAYMENT_PENDING -> CONFIRMING_RESERVATION` atomic Saga/inbox/confirm-outbox tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PaymentSuccessTransitionIntegrationTests.java`
+- [x] T029 [P] [US2] Add failing reservation confirm domain, command replay/conflict, expiry race, and PostgreSQL transaction tests under `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/`
+- [x] T030 [P] [US2] Add failing confirm/reconciliation Lua exact-once and Redis outage/recovery tests under `services/flashsale-service/src/test/java/com/philia/flashsale/flashsale/reservation/adapter/out/redis/`
+- [x] T031 [P] [US2] Add failing PurchaseReservationConfirmed consumer and Order terminal-outbox tests under `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/integration/PurchaseConfirmationIntegrationTests.java`, plus authenticated public `CONFIRMED` response coverage in `services/order-service/src/test/java/com/philia/flashsale/order/order/adapter/in/web/OrderQueryControllerTests.java`
 
 ### Implementation for User Story 2
 
-- [ ] T032 [US2] Implement PaymentSucceeded application mapping/use case and atomic inbox/Saga/confirm-command persistence under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/`
-- [ ] T033 [US2] Implement strict PaymentSucceeded Kafka adapter, listener retry/DLT configuration, and trace extraction under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/` and `services/order-service/src/main/java/com/philia/flashsale/order/configuration/`
-- [ ] T034 [US2] Implement Flash Sale confirm command mapping/use case and atomic reservation/inbox/confirmed-outbox adapter under `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/`
-- [ ] T035 [US2] Implement `confirm-reservation.lua`, Redis adapter, and reconciliation worker under `services/flashsale-service/src/main/resources/redis/reservation/` and `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/out/redis/`
+- [x] T032 [US2] Implement PaymentSucceeded application mapping/use case and atomic inbox/Saga/confirm-command persistence under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/`
+- [x] T033 [US2] Implement strict PaymentSucceeded Kafka adapter, listener retry/DLT configuration, and trace extraction under `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/` and `services/order-service/src/main/java/com/philia/flashsale/order/configuration/`
+- [x] T034 [US2] Implement Flash Sale confirm command mapping/use case and atomic reservation/inbox/confirmed-outbox adapter under `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/`
+- [x] T035 [US2] Implement `confirm-reservation.lua`, Redis adapter, and reconciliation worker under `services/flashsale-service/src/main/resources/redis/reservation/` and `services/flashsale-service/src/main/java/com/philia/flashsale/flashsale/reservation/adapter/out/redis/`
 - [x] T036 [US2] Implement PurchaseReservationConfirmed publication/consumption and atomic `Order.CONFIRMED + Saga.COMPLETED + OrderConfirmed` persistence across the matching Order/Flash Sale messaging adapters and Order Saga adapter
 - [x] T037 [US2] Implement `Paid` in `infra/docker/smoke/feature-044-purchase-saga.ps1` and record affected module verify plus `FEATURE_044_PAID=PASS` in `specs/044-order-purchase-saga/validation.md`
 
@@ -305,3 +305,11 @@ Only after all local steps:
 - Do not create Cart/Notification code, topics, Deployments, or completion claims in Feature 044.
 - Any discovered change to financial, stock, timeout, refund, or public-status semantics stops the
   affected task and returns to spec/plan approval.
+
+---
+
+## Phase 9: Convergence
+
+- [x] T073 Audit the implemented paid-success slice against the exact consumer, DLT, atomic-transition, reservation-confirmation, expiry-race, Redis outage/recovery, and public-status coverage required by T027–T035; add only missing focused tests, record mapped evidence, and close the existing paid-slice ledger per US2/AC1–2, FR-005, FR-009, and plan G3–G5 (partial)
+- [x] T074 Add a test-first Feature 044 cloud migration release gate that selects only Order and Flash Sale, resolves their immutable `release-<develop SHA>` ECR images, validates without mutation by default, applies service-owned migration Jobs only on explicit opt-in, waits sequentially with bounded diagnostics, never prints Secret values, and must pass before the image-promotion PR is merged per FR-017, SC-006, and plan G8 (missing)
+- [x] T075 Add a non-destructive rollback compatibility rehearsal for the prior immutable Order/Flash Sale images against the expanded Feature 044 schema and representative terminal rows; preserve all Saga/inbox/outbox/reservation data, reject an incompatible restore before cloud mutation, and return to spec/plan approval instead of inventing data rollback semantics per FR-017, T072, and plan rollback order (partial)

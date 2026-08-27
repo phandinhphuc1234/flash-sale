@@ -74,11 +74,19 @@ public class PurchaseEventOutboxJpaEntity {
     /** Creates a stable confirmed outcome scoped to the causing confirm command. */
     public static PurchaseEventOutboxJpaEntity confirmed(ConfirmReservationCommand command,
             FlashSaleReservationJpaEntity reservation, UUID resultEventId, Instant confirmedAt) {
+        return confirmed(command, reservation, resultEventId, confirmedAt,
+                Math.max(1, reservation.getVersion() + 1));
+    }
+
+    /** Creates a confirmed current-state result without inventing a new aggregate version. */
+    public static PurchaseEventOutboxJpaEntity confirmed(ConfirmReservationCommand command,
+            FlashSaleReservationJpaEntity reservation, UUID resultEventId, Instant confirmedAt,
+            long aggregateVersion) {
         var entity = new PurchaseEventOutboxJpaEntity();
         entity.eventId = resultEventId;
         entity.aggregateType = "PURCHASE_RESERVATION";
         entity.aggregateId = reservation.getId();
-        entity.aggregateVersion = Math.max(1, reservation.getVersion() + 1);
+        entity.aggregateVersion = Math.max(1, aggregateVersion);
         entity.eventType = "PurchaseReservationConfirmed";
         entity.eventVersion = 1;
         entity.causationId = command.commandId();
@@ -96,6 +104,36 @@ public class PurchaseEventOutboxJpaEntity {
         entity.nextAttemptAt = confirmedAt;
         entity.createdAt = confirmedAt;
         entity.updatedAt = confirmedAt;
+        return entity;
+    }
+
+    /** Creates a released/expired result caused by a late confirm command. */
+    public static PurchaseEventOutboxJpaEntity currentStateReleased(ConfirmReservationCommand command,
+            FlashSaleReservationJpaEntity reservation, UUID resultEventId, Instant observedAt,
+            String reservationStatus, String reason, long aggregateVersion) {
+        var entity = new PurchaseEventOutboxJpaEntity();
+        entity.eventId = resultEventId;
+        entity.aggregateType = "PURCHASE_RESERVATION";
+        entity.aggregateId = reservation.getId();
+        entity.aggregateVersion = Math.max(1, aggregateVersion);
+        entity.eventType = "PurchaseReservationReleased";
+        entity.eventVersion = 1;
+        entity.causationId = command.commandId();
+        entity.payload = new LinkedHashMap<>();
+        entity.payload.put("sagaId", command.sagaId().toString());
+        entity.payload.put("orderId", command.orderId().toString());
+        entity.payload.put("purchaseRequestId", command.purchaseRequestId().toString());
+        entity.payload.put("reservationId", command.reservationId().toString());
+        entity.payload.put("reservationStatus", reservationStatus);
+        entity.payload.put("reason", reason);
+        entity.payload.put("releasedAt", observedAt.toString());
+        entity.payload.put("traceparent", command.traceparent());
+        entity.payload.put("tracestate", command.tracestate());
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = observedAt;
+        entity.createdAt = observedAt;
+        entity.updatedAt = observedAt;
         return entity;
     }
 

@@ -13,7 +13,16 @@ public record ReservationConfirmationResult(
         Status status,
         Instant confirmedAt) {
 
-    public enum Status { CONFIRMED, ALREADY_CONFIRMED }
+    public enum Status {
+        CONFIRMED,
+        ALREADY_CONFIRMED,
+        RELEASED,
+        EXPIRED;
+
+        public boolean requiresConfirmationProjection() {
+            return this == CONFIRMED || this == ALREADY_CONFIRMED;
+        }
+    }
 
     public ReservationConfirmationResult {
         Objects.requireNonNull(reservationId, "reservationId");

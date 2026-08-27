@@ -21,9 +21,11 @@ public final class ConfirmReservationService implements ConfirmReservationUseCas
     @Override
     public ReservationConfirmationResult confirm(ConfirmReservationCommand command) {
         ReservationConfirmationResult result = persistence.confirm(command);
-        // If this call fails, the Kafka consumer deliberately does not ack. A replay
-        // reads the already durable inbox/outbox row and retries only reconciliation.
-        redis.confirm(command, result);
+        if (result.status().requiresConfirmationProjection()) {
+            // If this call fails, the Kafka consumer deliberately does not ack. A replay
+            // reads the already durable inbox/outbox row and retries only reconciliation.
+            redis.confirm(command, result);
+        }
         return result;
     }
 }
