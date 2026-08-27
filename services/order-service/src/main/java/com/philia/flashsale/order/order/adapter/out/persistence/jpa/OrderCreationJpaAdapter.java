@@ -74,25 +74,10 @@ public class OrderCreationJpaAdapter implements PersistOrderCreationPort {
 
         Optional<OrderJpaEntity> purchaseOrder = orders.findByPurchaseRequestId(candidate.order().purchaseRequestId());
         Optional<OrderJpaEntity> reservationOrder = orders.findByReservationId(candidate.order().reservationId());
-        if (purchaseOrder.isPresent() || reservationOrder.isPresent()) {
-            OrderJpaEntity established = purchaseOrder.orElseGet(reservationOrder::get);
-            if (purchaseOrder.isPresent() && reservationOrder.isPresent()
-                    && !purchaseOrder.get().getId().equals(reservationOrder.get().getId())) {
-                return OrderCreationResult.conflict(established.getId(), candidate.fingerprint(),
-                        "purchase and reservation identities belong to different Orders");
-            }
-            Optional<OrderConsumerInboxJpaEntity> establishedInbox = inbox
-                    .findFirstByPurchaseRequestId(candidate.order().purchaseRequestId())
-                    .or(() -> inbox.findFirstByReservationId(candidate.order().reservationId()));
-            if (establishedInbox.isPresent() && establishedInbox.get().getPayloadFingerprint()
-                    .equals(candidate.fingerprint())) {
-                return OrderCreationResult.businessReplayed(established.getId(), candidate.fingerprint());
-            }
-            if (establishedInbox.isEmpty() && sameSnapshot(established, candidate)) {
-                return OrderCreationResult.businessReplayed(established.getId(), candidate.fingerprint());
-            }
-            return OrderCreationResult.conflict(established.getId(), candidate.fingerprint(),
-                    "accepted-purchase identity conflicts with established Order");
+        Optional<OrderCreationResult> establishedResult = resolveEstablishedOrder(candidate,
+                purchaseOrder, reservationOrder);
+        if (establishedResult.isPresent()) {
+            return establishedResult.get();
         }
 
         try {
@@ -120,6 +105,33 @@ public class OrderCreationJpaAdapter implements PersistOrderCreationPort {
         } catch (DataAccessException exception) {
             throw new RetryableOrderPersistenceException("Order persistence failed before commit", exception);
         }
+    }
+
+    private Optional<OrderCreationResult> resolveEstablishedOrder(OrderCreationCandidate candidate,
+            Optional<OrderJpaEntity> purchaseOrder, Optional<OrderJpaEntity> reservationOrder) {
+        if (purchaseOrder.isEmpty() && reservationOrder.isEmpty()) {
+            return Optional.empty();
+        }
+
+        OrderJpaEntity established = purchaseOrder.orElseGet(reservationOrder::get);
+        if (purchaseOrder.isPresent() && reservationOrder.isPresent()
+                && !purchaseOrder.get().getId().equals(reservationOrder.get().getId())) {
+            return Optional.of(OrderCreationResult.conflict(established.getId(), candidate.fingerprint(),
+                    "purchase and reservation identities belong to different Orders"));
+        }
+
+        Optional<OrderConsumerInboxJpaEntity> establishedInbox = inbox
+                .findFirstByPurchaseRequestId(candidate.order().purchaseRequestId())
+                .or(() -> inbox.findFirstByReservationId(candidate.order().reservationId()));
+        if (establishedInbox.isPresent()
+                && establishedInbox.get().getPayloadFingerprint().equals(candidate.fingerprint())) {
+            return Optional.of(OrderCreationResult.businessReplayed(established.getId(), candidate.fingerprint()));
+        }
+        if (establishedInbox.isEmpty() && sameSnapshot(established, candidate)) {
+            return Optional.of(OrderCreationResult.businessReplayed(established.getId(), candidate.fingerprint()));
+        }
+        return Optional.of(OrderCreationResult.conflict(established.getId(), candidate.fingerprint(),
+                "accepted-purchase identity conflicts with established Order"));
     }
 
     private OrderCreationResult eventResult(OrderConsumerInboxJpaEntity existing,
