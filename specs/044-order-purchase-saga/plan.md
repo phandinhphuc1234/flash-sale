@@ -442,6 +442,15 @@ Local Compose enables them for Feature 044. Cloud config is reviewed with the im
 old images ignore unknown values. Main topics/schemas are provisioned before promoted images start.
 Kafka buffers messages if one Deployment rolls out before another.
 
+**Phase 20 Payment safety pause (owner-approved 2026-08-27)**: The existing Phase 20 contract
+provisioning gate requires all seven Payment runtime flags to be disabled. In an environment where
+Phase 24 Stripe enablement already set them to `true`, a reviewed GitOps pause must first set those
+flags to `false` without changing `payment-secrets`, then Argo must reconcile and Payment Deployment
+must restart so environment variables are refreshed. Run the idempotent Phase 20 provisioner, then
+restore the approved flags through a separate reviewed GitOps change and verify the Payment rollout
+before the Feature 044 Stripe smoke. No Payment, webhook, consumer, outbox, or recovery work is
+allowed during the pause.
+
 Rollback order:
 
 1. disable new Order Payment/reservation command production;

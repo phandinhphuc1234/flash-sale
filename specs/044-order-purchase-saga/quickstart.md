@@ -196,7 +196,13 @@ pwsh -NoLogo -NoProfile -File `
   -Apply
 ```
 
-The script must remain idempotent and must not delete topics or schemas.
+The script must remain idempotent and must not delete topics or schemas. Its approved safety gate
+requires all seven Payment runtime flags to be `false`. If an earlier Phase 24 setup has enabled
+Stripe/Payment, use two reviewed GitOps changes: first pause Payment by setting those flags to
+`false` (without changing `payment-secrets`) and wait for Argo plus a Payment Deployment restart;
+after Phase 20 passes, restore the approved `true` values through a second reviewed change and
+verify the Payment rollout. Do not provision Feature 044 contracts by bypassing this gate while
+Payment processing is active.
 
 ## 7. One affected-service image release
 
