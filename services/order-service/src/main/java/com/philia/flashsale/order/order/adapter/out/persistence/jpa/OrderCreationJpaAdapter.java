@@ -6,6 +6,8 @@ import com.philia.flashsale.order.order.adapter.out.persistence.jpa.mapper.Order
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OrderConsumerInboxJpaRepository;
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OrderCreationOutboxJpaRepository;
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OrderJpaRepository;
+import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.entity.PurchaseSagaJpaEntity;
+import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.repository.PurchaseSagaJpaRepository;
 import com.philia.flashsale.order.order.application.exception.RetryableOrderPersistenceException;
 import com.philia.flashsale.order.order.application.model.OrderCreationCandidate;
 import com.philia.flashsale.order.order.application.port.out.PersistOrderCreationPort;
@@ -20,7 +22,7 @@ import java.util.UUID;
 import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.annotation.Transactional;
 
-/** PostgreSQL adapter that arbitrates identities and commits four durable rows atomically. */
+/** PostgreSQL adapter that arbitrates identities and commits the Order Saga start atomically. */
 public class OrderCreationJpaAdapter implements PersistOrderCreationPort {
 
     private final OrderJpaRepository orders;
@@ -29,20 +31,28 @@ public class OrderCreationJpaAdapter implements PersistOrderCreationPort {
     private final OrderPersistenceMapper mapper;
     private final EntityManager entityManager;
     private final OrderObservability observability;
+    private final PurchaseSagaJpaRepository purchaseSagas;
 
     public OrderCreationJpaAdapter(OrderJpaRepository orders, OrderConsumerInboxJpaRepository inbox,
             OrderCreationOutboxJpaRepository outbox, EntityManager entityManager) {
-        this(orders, inbox, outbox, entityManager, OrderObservability.noop());
+        this(orders, inbox, outbox, entityManager, null, OrderObservability.noop());
     }
 
     public OrderCreationJpaAdapter(OrderJpaRepository orders, OrderConsumerInboxJpaRepository inbox,
             OrderCreationOutboxJpaRepository outbox, EntityManager entityManager,
             OrderObservability observability) {
+        this(orders, inbox, outbox, entityManager, null, observability);
+    }
+
+    public OrderCreationJpaAdapter(OrderJpaRepository orders, OrderConsumerInboxJpaRepository inbox,
+            OrderCreationOutboxJpaRepository outbox, EntityManager entityManager,
+            PurchaseSagaJpaRepository purchaseSagas, OrderObservability observability) {
         this.orders = Objects.requireNonNull(orders, "orders");
         this.inbox = Objects.requireNonNull(inbox, "inbox");
         this.outbox = Objects.requireNonNull(outbox, "outbox");
         this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
         this.observability = Objects.requireNonNull(observability, "observability");
+        this.purchaseSagas = purchaseSagas;
         this.mapper = new OrderPersistenceMapper();
     }
 
@@ -64,25 +74,10 @@ public class OrderCreationJpaAdapter implements PersistOrderCreationPort {
 
         Optional<OrderJpaEntity> purchaseOrder = orders.findByPurchaseRequestId(candidate.order().purchaseRequestId());
         Optional<OrderJpaEntity> reservationOrder = orders.findByReservationId(candidate.order().reservationId());
-        if (purchaseOrder.isPresent() || reservationOrder.isPresent()) {
-            OrderJpaEntity established = purchaseOrder.orElseGet(reservationOrder::get);
-            if (purchaseOrder.isPresent() && reservationOrder.isPresent()
-                    && !purchaseOrder.get().getId().equals(reservationOrder.get().getId())) {
-                return OrderCreationResult.conflict(established.getId(), candidate.fingerprint(),
-                        "purchase and reservation identities belong to different Orders");
-            }
-            Optional<OrderConsumerInboxJpaEntity> establishedInbox = inbox
-                    .findFirstByPurchaseRequestId(candidate.order().purchaseRequestId())
-                    .or(() -> inbox.findFirstByReservationId(candidate.order().reservationId()));
-            if (establishedInbox.isPresent() && establishedInbox.get().getPayloadFingerprint()
-                    .equals(candidate.fingerprint())) {
-                return OrderCreationResult.businessReplayed(established.getId(), candidate.fingerprint());
-            }
-            if (establishedInbox.isEmpty() && sameSnapshot(established, candidate)) {
-                return OrderCreationResult.businessReplayed(established.getId(), candidate.fingerprint());
-            }
-            return OrderCreationResult.conflict(established.getId(), candidate.fingerprint(),
-                    "accepted-purchase identity conflicts with established Order");
+        Optional<OrderCreationResult> establishedResult = resolveEstablishedOrder(candidate,
+                purchaseOrder, reservationOrder);
+        if (establishedResult.isPresent()) {
+            return establishedResult.get();
         }
 
         try {
@@ -92,12 +87,51 @@ public class OrderCreationJpaAdapter implements PersistOrderCreationPort {
             var line = mapper.line(candidate, order);
             entityManager.persist(line);
             entityManager.flush();
+            if (candidate.purchaseSaga() != null) {
+                if (purchaseSagas == null) {
+                    throw new IllegalStateException("Purchase Saga persistence is not configured");
+                }
+                purchaseSagas.saveAndFlush(PurchaseSagaJpaEntity.from(candidate.purchaseSaga()));
+            }
             inbox.saveAndFlush(mapper.inbox(candidate, order));
             outbox.saveAndFlush(mapper.outbox(candidate));
+            if (candidate.purchaseSaga() != null) {
+                outbox.saveAndFlush(mapper.paymentRequestedOutbox(candidate));
+                return OrderCreationResult.createdWithSaga(order.getId(), candidate.outboxEventId(),
+                        candidate.purchaseSaga().id(), candidate.paymentRequestedOutboxEventId(),
+                        candidate.fingerprint());
+            }
             return OrderCreationResult.created(order.getId(), candidate.outboxEventId(), candidate.fingerprint());
         } catch (DataAccessException exception) {
             throw new RetryableOrderPersistenceException("Order persistence failed before commit", exception);
         }
+    }
+
+    private Optional<OrderCreationResult> resolveEstablishedOrder(OrderCreationCandidate candidate,
+            Optional<OrderJpaEntity> purchaseOrder, Optional<OrderJpaEntity> reservationOrder) {
+        if (purchaseOrder.isEmpty() && reservationOrder.isEmpty()) {
+            return Optional.empty();
+        }
+
+        OrderJpaEntity established = purchaseOrder.orElseGet(reservationOrder::get);
+        if (purchaseOrder.isPresent() && reservationOrder.isPresent()
+                && !purchaseOrder.get().getId().equals(reservationOrder.get().getId())) {
+            return Optional.of(OrderCreationResult.conflict(established.getId(), candidate.fingerprint(),
+                    "purchase and reservation identities belong to different Orders"));
+        }
+
+        Optional<OrderConsumerInboxJpaEntity> establishedInbox = inbox
+                .findFirstByPurchaseRequestId(candidate.order().purchaseRequestId())
+                .or(() -> inbox.findFirstByReservationId(candidate.order().reservationId()));
+        if (establishedInbox.isPresent()
+                && establishedInbox.get().getPayloadFingerprint().equals(candidate.fingerprint())) {
+            return Optional.of(OrderCreationResult.businessReplayed(established.getId(), candidate.fingerprint()));
+        }
+        if (establishedInbox.isEmpty() && sameSnapshot(established, candidate)) {
+            return Optional.of(OrderCreationResult.businessReplayed(established.getId(), candidate.fingerprint()));
+        }
+        return Optional.of(OrderCreationResult.conflict(established.getId(), candidate.fingerprint(),
+                "accepted-purchase identity conflicts with established Order"));
     }
 
     private OrderCreationResult eventResult(OrderConsumerInboxJpaEntity existing,

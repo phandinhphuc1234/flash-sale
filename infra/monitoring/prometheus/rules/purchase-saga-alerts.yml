@@ -1,0 +1,72 @@
+groups:
+  - name: purchase-saga
+    rules:
+      - alert: OrderPurchaseSagaStepStalled
+        expr: order_saga_oldest_step_age_seconds > 120
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Order Purchase Saga step is not converging
+          description: The oldest non-terminal Purchase Saga step has been active for more than two minutes.
+
+      - alert: OrderPurchaseSagaManualReviewRequired
+        expr: order_saga_state{status="MANUAL_REVIEW"} > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Paid Order requires manual review
+          description: At least one Purchase Saga has durable MANUAL_REVIEW evidence.
+
+      - alert: OrderPurchaseSagaDltGrowth
+        expr: increase(order_saga_dlt_publication_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Order Purchase Saga consumer delegated a record to DLT
+          description: Inspect the consumer label and the matching operational DLT before replay.
+
+      - alert: OrderOutboxLagging
+        expr: order_outbox_oldest_pending_age_seconds > 120
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Order outbox is behind
+          description: The oldest unpublished Order outbox row is older than two minutes.
+
+      - alert: FlashSaleReservationCommandDltGrowth
+        expr: increase(flashsale_reservation_command_dlt_publication_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Flash Sale reservation command delegated a record to DLT
+          description: Inspect the reservation-command DLT before replay.
+
+      - alert: FlashSaleRedisReconciliationBacklog
+        expr: flashsale_redis_reconciliation_backlog > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Reservation Redis projection repair is pending
+          description: PostgreSQL remains durable truth, but one or more final reservations still need Redis repair.
+
+      - alert: FlashSaleRedisReconciliationLagging
+        expr: flashsale_redis_reconciliation_oldest_age_seconds > 120
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Reservation Redis projection repair is delayed
+          description: The oldest unreconciled final reservation is older than two minutes.
+
+      - alert: FlashSaleOutboxLagging
+        expr: flashsale_outbox_oldest_pending_age_seconds > 120
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Flash Sale outbox is behind
+          description: The oldest unpublished Flash Sale outbox row is older than two minutes.

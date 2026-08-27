@@ -80,6 +80,22 @@ class OrderQueryControllerTests {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(ORDER.toString()))
                 .andExpect(jsonPath("$.data.userId").doesNotExist());
+
+        for (OrderStatus terminalStatus : List.of(
+                OrderStatus.CONFIRMED, OrderStatus.CANCELLED, OrderStatus.EXPIRED)) {
+            OrderDetailsResult terminal = details(terminalStatus);
+            OrderDetailsResponse terminalResponse = new OrderDetailsResponse(ORDER, "FS-001",
+                    terminal.purchaseRequestId(), terminal.reservationId(), terminal.campaignId(),
+                    terminal.status(), terminal.currency(), terminal.subtotalAmount(), terminal.totalAmount(),
+                    terminal.acceptedAt(), terminal.reservationExpiresAt(), List.of(), terminal.createdAt(),
+                    terminal.updatedAt());
+            when(getOwnedOrder.get(any())).thenReturn(terminal);
+            when(mapper.toDetailsResponse(terminal)).thenReturn(terminalResponse);
+
+            mvc.perform(get("/api/v1/orders/{orderId}", ORDER).header("X-Trace-Id", TRACE))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value(terminalStatus.name()));
+        }
     }
 
     @Test
@@ -111,9 +127,13 @@ class OrderQueryControllerTests {
     }
 
     private static OrderDetailsResult details() {
+        return details(OrderStatus.PENDING_PAYMENT);
+    }
+
+    private static OrderDetailsResult details(OrderStatus status) {
         Instant now = Instant.parse("2030-01-01T10:00:00Z");
         return new OrderDetailsResult(ORDER, "FS-001", UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                OrderStatus.PENDING_PAYMENT, "VND", BigDecimal.TEN, BigDecimal.TEN, now, now.plusSeconds(300),
+                status, "VND", BigDecimal.TEN, BigDecimal.TEN, now, now.plusSeconds(300),
                 List.of(), now, now);
     }
 

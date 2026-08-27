@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.actuate.health.Status;
 
@@ -60,5 +61,20 @@ class OrderReadinessIntegrationTests {
         assertThat(ageQueried).isFalse();
         assertThat(health.getDetails()).containsEntry("outboxBacklog", 0L)
                 .containsEntry("outboxOldestPendingAgeSeconds", 0.0d);
+    }
+
+    @Test
+    void exposesManualReviewAndOldestSagaStepAsNonGatingDiagnostics() {
+        OrderReadinessHealthIndicator indicator = new OrderReadinessHealthIndicator(
+                () -> true, () -> false, () -> 2L, () -> Duration.ofSeconds(10),
+                () -> Map.of("PAYMENT_PENDING", 4L, "MANUAL_REVIEW", 2L),
+                () -> Duration.ofSeconds(75), OrderObservability.noop());
+
+        var health = indicator.health();
+
+        assertThat(health.getStatus()).isEqualTo(Status.UP);
+        assertThat(health.getDetails()).containsEntry("consumer", "down")
+                .containsEntry("sagaManualReviewCount", 2L)
+                .containsEntry("sagaOldestStepAgeSeconds", 75.0d);
     }
 }

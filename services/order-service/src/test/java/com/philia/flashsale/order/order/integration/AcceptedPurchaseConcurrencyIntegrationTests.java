@@ -22,10 +22,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 
-/** Proves transaction-scoped identity arbitration across concurrent service workers. */
+/** Proves transaction-scoped Order/Saga identity arbitration across concurrent service workers. */
 @SpringBootTest(properties = {
         "spring.jpa.hibernate.ddl-auto=validate",
-        "spring.kafka.bootstrap-servers=localhost:19092"
+        "spring.kafka.bootstrap-servers=localhost:19092",
+        "order.runtime.outbox-publisher-enabled=false",
+        "order.runtime.accepted-purchase-consumer-enabled=false",
+        "spring.datasource.hikari.maximum-pool-size=24"
 })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class AcceptedPurchaseConcurrencyIntegrationTests extends PostgreSqlIntegrationTestSupport {
@@ -62,6 +65,8 @@ class AcceptedPurchaseConcurrencyIntegrationTests extends PostgreSqlIntegrationT
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_consumer_inbox WHERE purchase_request_id = ?",
                 Long.class, base.purchaseRequestId())).isEqualTo(1L);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_outbox_events WHERE aggregate_id = ?", Long.class,
+                orderId)).isEqualTo(2L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM purchase_sagas WHERE order_id = ?", Long.class,
                 orderId)).isEqualTo(1L);
     }
 
@@ -91,6 +96,8 @@ class AcceptedPurchaseConcurrencyIntegrationTests extends PostgreSqlIntegrationT
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_lines WHERE order_id = ?", Long.class, orderId))
                 .isEqualTo(1L);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM order_outbox_events WHERE aggregate_id = ?", Long.class,
+                orderId)).isEqualTo(2L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM purchase_sagas WHERE order_id = ?", Long.class,
                 orderId)).isEqualTo(1L);
     }
 

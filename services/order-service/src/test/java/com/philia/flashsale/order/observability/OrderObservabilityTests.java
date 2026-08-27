@@ -7,6 +7,8 @@ import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
 import java.util.concurrent.atomic.AtomicReference;
+import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
@@ -81,5 +83,28 @@ class OrderObservabilityTests {
         assertThat(postgresDown.health().getStatus()).isEqualTo(Status.DOWN);
         assertThat(postgresDown.health().getDetails())
                 .containsEntry("unavailableDependencies", java.util.List.of("postgres"));
+    }
+
+    @Test
+    void recordsSagaStateAgeConsumerOutcomesAndDltWithoutBusinessIdentifiers() {
+        observability.recordSagaDiagnostics(Map.of("PAYMENT_PENDING", 3L, "MANUAL_REVIEW", 1L),
+                Duration.ofSeconds(45));
+        observability.recordConsumerOutcome(OrderObservability.ConsumerBoundary.PAYMENT_RESULTS,
+                "MANUAL_REVIEW");
+        observability.recordDltPublication(OrderObservability.ConsumerBoundary.RESERVATION_RESULTS);
+
+        assertThat(registry.get(OrderObservability.SAGA_STATE)
+                .tag("status", "PAYMENT_PENDING").gauge().value()).isEqualTo(3d);
+        assertThat(registry.get(OrderObservability.SAGA_STATE)
+                .tag("status", "MANUAL_REVIEW").gauge().value()).isEqualTo(1d);
+        assertThat(registry.get(OrderObservability.SAGA_OLDEST_STEP_AGE).gauge().value())
+                .isEqualTo(45d);
+        assertThat(registry.get(OrderObservability.CONSUMER_OUTCOME_TOTAL)
+                .tags("consumer", "payment_results", "outcome", "manual_review")
+                .counter().count()).isEqualTo(1d);
+        assertThat(registry.get(OrderObservability.DLT_PUBLICATION_TOTAL)
+                .tag("consumer", "reservation_results").counter().count()).isEqualTo(1d);
+        assertThat(registry.getMeters()).flatExtracting(meter -> meter.getId().getTags())
+                .allSatisfy(tag -> assertThat(tag.getValue()).doesNotContain("orderId", "sagaId", "secret"));
     }
 }

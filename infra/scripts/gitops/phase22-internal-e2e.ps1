@@ -798,7 +798,8 @@ function Invoke-StripeCloudSmoke {
   param(
     [Parameter(Mandatory)][string]$BaseUri,
     [Parameter(Mandatory)][string]$ShopperToken,
-    [Parameter(Mandatory)][object]$Order
+    [Parameter(Mandatory)][object]$Order,
+    [Parameter(Mandatory)][object]$Reservation
   )
   $secrets = Get-StripeRuntimeSecrets
   $script:StripePaymentResponse = $null
@@ -894,14 +895,33 @@ function Invoke-StripeCloudSmoke {
   }
   Write-Output "Kafka Payment event: PASS (flashsale.payment.events.v1 advanced)"
 
-  $orderHeaders = New-OperationHeaders $ShopperToken (New-TraceId)
-  $orderResponse = Invoke-Api -Method GET -Uri "$BaseUri/api/v1/orders/$($Order.id)" -Headers $orderHeaders
-  Assert-ApiStatus $orderResponse @(200) "Order final query"
-  $finalOrder = Get-ApiData $orderResponse.Body
+  $script:FinalOrderResponse = $null
+  Wait-Condition -Description "confirmed Order convergence" -Condition {
+    $script:FinalOrderResponse = Invoke-Api -Method GET -Uri "$BaseUri/api/v1/orders/$($Order.id)" `
+      -Headers (New-OperationHeaders $ShopperToken (New-TraceId))
+    if ($script:FinalOrderResponse.StatusCode -ne 200) { return $false }
+    return [string](Get-PropertyValue (Get-ApiData $script:FinalOrderResponse.Body) "status") -eq "CONFIRMED"
+  }
+  $finalOrder = Get-ApiData $script:FinalOrderResponse.Body
   if ([string](Get-PropertyValue $finalOrder "purchaseRequestId") -ne [string]$Order.purchaseRequestId) {
     throw "Order final query changed purchaseRequestId."
   }
-  Write-Output "Order Saga boundary: PASS (orderId=$($Order.id) status=$([string](Get-PropertyValue $finalOrder 'status')))"
+
+  $script:FinalReservationResponse = $null
+  Wait-Condition -Description "confirmed reservation convergence" -Condition {
+    $script:FinalReservationResponse = Invoke-Api -Method GET `
+      -Uri "$BaseUri/api/v1/flash-sales/reservations/$($Reservation.Accepted.reservationId)" `
+      -Headers (New-OperationHeaders $ShopperToken (New-TraceId))
+    if ($script:FinalReservationResponse.StatusCode -ne 200) { return $false }
+    return [string](Get-PropertyValue (Get-ApiData $script:FinalReservationResponse.Body) "status") -eq "CONFIRMED"
+  }
+  $finalReservation = Get-ApiData $script:FinalReservationResponse.Body
+  if ([string](Get-PropertyValue $finalReservation "purchaseRequestId") -ne
+      [string]$Reservation.Accepted.purchaseRequestId) {
+    throw "Reservation final query changed purchaseRequestId."
+  }
+  Write-Output "Order Saga boundary: PASS (orderId=$($Order.id) status=CONFIRMED)"
+  Write-Output "Reservation finalization: PASS (reservationId=$($Reservation.Accepted.reservationId) status=CONFIRMED)"
 }
 
 if (-not (Test-Path $OverlayPath)) { throw "Cloud overlay not found: $OverlayPath" }
@@ -939,7 +959,7 @@ try {
   $elapsed = [int]((Get-Date) - $startedAt).TotalSeconds
   Write-Output "Phase 22 internal E2E: PASS (orderId=$($order.id) status=$($order.status) elapsedSeconds=$elapsed)"
   if ($RunStripeCloudSmoke) {
-    Invoke-StripeCloudSmoke -BaseUri $baseUri -ShopperToken $shopper.Token -Order $order
+    Invoke-StripeCloudSmoke -BaseUri $baseUri -ShopperToken $shopper.Token -Order $order -Reservation $reservation
     Write-Output "Phase 24 Stripe runtime smoke: PASS"
   }
   Write-Output "Manual cleanup: ProductId=$($product.ProductId) CampaignId=$($campaign.CampaignId) ShopperSubject=$($shopper.UserId)"

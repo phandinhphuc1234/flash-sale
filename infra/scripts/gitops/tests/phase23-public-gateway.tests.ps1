@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..\..")).Path
 $runner = Join-Path $repoRoot "infra\scripts\gitops\phase23-public-gateway.ps1"
-$patch = Join-Path $repoRoot "infra\k8s\overlays\cloud\patches\api-gateway-public-service.yaml"
+$patch = Join-Path $repoRoot "infra\k8s\overlays\cloud\patches\api-gateway-https-service.yaml"
 foreach ($path in @($runner, $patch)) {
   if (-not (Test-Path -LiteralPath $path)) { throw "Required Phase 23 file is missing: $path" }
 }

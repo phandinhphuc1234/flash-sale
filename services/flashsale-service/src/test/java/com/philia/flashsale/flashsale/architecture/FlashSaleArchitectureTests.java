@@ -24,6 +24,9 @@ class FlashSaleArchitectureTests {
         violations.addAll(findForbiddenImportsUnder("application", List.of(
                 ".adapter.", "org.springframework.data.", "jakarta.persistence.", "org.apache.kafka.",
                 "org.springframework.data.redis.", "org.springframework.cloud.openfeign.", "feign.")));
+        violations.addAll(findForbiddenImportsUnder("outbox/application", List.of(
+                ".adapter.", "org.springframework.", "jakarta.persistence.", "org.apache.kafka.",
+                "org.apache.avro.", "com.fasterxml.jackson.")));
         assertTrue(violations.isEmpty(), () -> "Clean/Hex violations:\n" + String.join("\n", violations));
     }
 

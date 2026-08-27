@@ -44,6 +44,10 @@ foreach ($marker in @(
   "Payment aggregate",
   "Webhook replay: PASS",
   "Kafka Payment event: PASS",
+  "confirmed Order convergence",
+  "confirmed reservation convergence",
+  "Reservation finalization: PASS",
+  "status=CONFIRMED",
   "Checkout URL",
   'Start-Process -FilePath $checkoutUrl'
 )) {

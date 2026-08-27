@@ -1,6 +1,7 @@
 package com.philia.flashsale.order.order.application.model;
 
 import com.philia.flashsale.order.order.domain.model.Order;
+import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -25,7 +26,20 @@ public record OrderCreationCandidate(
         String sourceTopic,
         int sourcePartition,
         long sourceOffset,
-        Instant createdAt) {
+        Instant createdAt,
+        PurchaseSaga purchaseSaga,
+        UUID paymentRequestedOutboxEventId) {
+
+    /** Backward-compatible constructor for Order-only callers and migration tests. */
+    public OrderCreationCandidate(UUID eventId, String eventType, int eventVersion, String producer,
+            String aggregateType, UUID aggregateId, long aggregateVersion, UUID correlationId,
+            UUID causationId, Instant occurredAt, Order order, UUID outboxEventId, String fingerprint,
+            String traceparent, String tracestate, String sourceTopic, int sourcePartition,
+            long sourceOffset, Instant createdAt) {
+        this(eventId, eventType, eventVersion, producer, aggregateType, aggregateId, aggregateVersion,
+                correlationId, causationId, occurredAt, order, outboxEventId, fingerprint, traceparent,
+                tracestate, sourceTopic, sourcePartition, sourceOffset, createdAt, null, null);
+    }
 
     public OrderCreationCandidate {
         Objects.requireNonNull(eventId, "eventId");

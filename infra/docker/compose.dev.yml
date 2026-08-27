@@ -18,10 +18,17 @@ services:
     # for the one-off Flash Sale schema process.
     ports:
       - "${FLASHSALE_SERVICE_PORT:-18084}:8080"
+    environment:
+      # Keep Feature 044 local behavior explicit while allowing ignored .env overrides.
+      FLASHSALE_RESERVATION_COMMANDS_ENABLED: ${FLASHSALE_RESERVATION_COMMANDS_ENABLED:-true}
+      FLASHSALE_RUNTIME_RECONCILIATION_ENABLED: ${FLASHSALE_RUNTIME_RECONCILIATION_ENABLED:-true}
 
   order-service:
     ports:
       - "${ORDER_SERVICE_PORT:-18085}:8080"
+    environment:
+      ORDER_PAYMENT_EVENTS_CONSUMER_ENABLED: ${ORDER_PAYMENT_EVENTS_CONSUMER_ENABLED:-true}
+      ORDER_PURCHASE_RESERVATION_RESULTS_CONSUMER_ENABLED: ${ORDER_PURCHASE_RESERVATION_RESULTS_CONSUMER_ENABLED:-true}
 
   payment-service:
     ports:

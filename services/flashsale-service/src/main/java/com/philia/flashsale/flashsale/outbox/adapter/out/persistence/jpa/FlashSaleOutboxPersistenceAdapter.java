@@ -35,7 +35,7 @@ public class FlashSaleOutboxPersistenceAdapter implements ClaimOutboxEventsPort,
         Instant claimUntil = now.plus(lease);
         List<OutboxEvent> due = jdbc.query("""
                 SELECT event_id, aggregate_type, aggregate_id, aggregate_version,
-                       event_type, event_version, payload::text AS payload, status,
+                       event_type, event_version, causation_id, payload::text AS payload, status,
                        attempt_count, next_attempt_at, claimed_by, claim_until,
                        published_at, last_error, created_at, updated_at
                   FROM flash_sale_outbox_events
@@ -55,6 +55,7 @@ public class FlashSaleOutboxPersistenceAdapter implements ClaimOutboxEventsPort,
         }
         return due.stream().map(event -> new OutboxEvent(event.eventId(), event.aggregateType(),
                 event.aggregateId(), event.aggregateVersion(), event.eventType(), event.eventVersion(),
+                event.causationId(),
                 event.payload(), "PROCESSING", event.attemptCount() + 1, claimUntil, workerId,
                 claimUntil, event.publishedAt(), event.lastError(), event.createdAt(), now)).toList();
     }
@@ -89,6 +90,7 @@ public class FlashSaleOutboxPersistenceAdapter implements ClaimOutboxEventsPort,
                 result.getLong("aggregate_version"),
                 result.getString("event_type"),
                 result.getInt("event_version"),
+                result.getObject("causation_id", UUID.class),
                 parsePayload(result.getString("payload")),
                 result.getString("status"),
                 result.getInt("attempt_count"),

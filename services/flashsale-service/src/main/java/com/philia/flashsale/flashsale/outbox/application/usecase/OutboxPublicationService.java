@@ -2,7 +2,7 @@ package com.philia.flashsale.flashsale.outbox.application.usecase;
 
 import com.philia.flashsale.flashsale.outbox.application.model.OutboxEvent;
 import com.philia.flashsale.flashsale.outbox.application.port.ClaimOutboxEventsPort;
-import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseAcceptedPort;
+import com.philia.flashsale.flashsale.outbox.application.port.PublishOutboxEventPort;
 import com.philia.flashsale.flashsale.outbox.application.port.UpdateOutboxPublicationPort;
 import java.time.Duration;
 import java.time.Instant;
@@ -12,13 +12,13 @@ import java.util.Objects;
 /** Claims, publishes, and retries durable events without holding a database transaction over Kafka. */
 public final class OutboxPublicationService {
     private final ClaimOutboxEventsPort claims;
-    private final PublishPurchaseAcceptedPort publisher;
+    private final PublishOutboxEventPort publisher;
     private final UpdateOutboxPublicationPort updates;
     private final OutboxRetryPolicy retryPolicy;
     private final int batchSize;
     private final Duration claimLease;
 
-    public OutboxPublicationService(ClaimOutboxEventsPort claims, PublishPurchaseAcceptedPort publisher,
+    public OutboxPublicationService(ClaimOutboxEventsPort claims, PublishOutboxEventPort publisher,
             UpdateOutboxPublicationPort updates, OutboxRetryPolicy retryPolicy, int batchSize,
             Duration claimLease) {
         this.claims = Objects.requireNonNull(claims, "claims");

@@ -13,6 +13,7 @@ public record OutboxEvent(
         long aggregateVersion,
         String eventType,
         int eventVersion,
+        UUID causationId,
         Map<String, Object> payload,
         String status,
         int attemptCount,
@@ -38,5 +39,15 @@ public record OutboxEvent(
             throw new IllegalArgumentException("attemptCount must not be negative");
         }
         payload = Map.copyOf(payload);
+    }
+
+    /** Compatibility constructor for legacy accepted-event callers without causation. */
+    public OutboxEvent(UUID eventId, String aggregateType, UUID aggregateId, long aggregateVersion,
+            String eventType, int eventVersion, Map<String, Object> payload, String status,
+            int attemptCount, Instant nextAttemptAt, String claimedBy, Instant claimUntil,
+            Instant publishedAt, String lastError, Instant createdAt, Instant updatedAt) {
+        this(eventId, aggregateType, aggregateId, aggregateVersion, eventType, eventVersion,
+                null, payload, status, attemptCount, nextAttemptAt, claimedBy, claimUntil,
+                publishedAt, lastError, createdAt, updatedAt);
     }
 }

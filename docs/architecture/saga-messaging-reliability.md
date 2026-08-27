@@ -2,8 +2,8 @@
 
 ## Status
 
-This is a proposed repository architecture guide derived from the Flash Sale Saga V2 review. It
-does not create or approve Kafka contracts. Existing approved feature contracts remain authoritative.
+This is the repository reliability guide derived from the Flash Sale Saga V2 review. It does not
+create or approve Kafka contracts. Existing approved feature contracts remain authoritative.
 
 In particular:
 
@@ -11,8 +11,10 @@ In particular:
   `campaign.lifecycle.v1`;
 - Schema Registry is available in local infrastructure, and the Feature 017 Avro SpecificRecord
   amendment is approved; runtime publisher/Registry smoke work remains separately tracked;
-- Purchase, Payment, Order, Campaign end, and cancellation messaging require future Spec Kit
-  artifacts and, where boundaries change, ADRs.
+- Feature 044 approves and implements the Order-owned Purchase/Payment/reservation Saga, including
+  its five main topics, three consumer DLTs, replay/reordering rules, and manual-review correction.
+- Campaign end and scheduled cancellation messaging still require future Spec Kit artifacts and,
+  where boundaries change, ADRs.
 
 ## 1. Architecture verdict
 
@@ -72,11 +74,11 @@ Rules:
 | Topic | Status | Purpose |
 |---|---|---|
 | `campaign.lifecycle.v1` | Two events approved by Feature 017; later final events candidate | Campaign lifecycle facts |
-| `flashsale.purchase.events.v1` | Candidate | Purchase acceptance and reservation results |
-| `flashsale.purchase.commands.v1` | Candidate | Confirm/release reservation commands consumed by Flash Sale |
-| `flashsale.payment.commands.v1` | Candidate | Payment commands consumed by Payment |
-| `flashsale.payment.events.v1` | Candidate | Payment results consumed by Order |
-| `flashsale.order.events.v1` | Candidate | Final Order lifecycle fan-out |
+| `flashsale.purchase.events.v1` | Approved Feature 019/044 | Purchase acceptance and reservation results |
+| `flashsale.purchase.commands.v1` | Approved Feature 044 | Confirm/release reservation commands consumed by Flash Sale |
+| `flashsale.payment.commands.v1` | Approved Feature 021/044 | Payment commands consumed by Payment |
+| `flashsale.payment.events.v1` | Approved Feature 021/044 | Payment results consumed by Order |
+| `flashsale.order.events.v1` | Approved Feature 020/044 | Final Order lifecycle fan-out |
 | `flashsale.campaign.commands.v1` | Candidate | Stop/disable projection commands consumed by Flash Sale |
 | `flashsale.campaign.results.v1` | Candidate | Stop/disable/drain results produced by Flash Sale |
 | `flashsale.inventory.commands.v1` | Candidate | Reconcile/release commands consumed by Inventory |
@@ -84,7 +86,9 @@ Rules:
 | `flashsale.product.events.v1` | Candidate | Product lifecycle choreography |
 
 Candidate names must not be provisioned or referenced by production code until the owning feature
-defines producer, consumers, schema subjects, authorization, rollout, retention, and recovery.
+defines producer, consumers, schema subjects, authorization, rollout, retention, retry/DLT, and
+recovery. The five Feature 044 topics and their DLTs are now defined by the approved feature
+artifacts.
 
 DLT names may follow `<source-topic>.dlt`, but each feature must define who can replay it and how a
 record returns to normal processing.
@@ -208,7 +212,7 @@ Required command behavior includes:
 
 ## 9. Minimum workflow state
 
-### Purchase Saga candidate states
+### Purchase Saga implemented states
 
 ```text
 STARTED
@@ -217,11 +221,12 @@ CONFIRMING_RESERVATION
 RELEASING_RESERVATION
 COMPLETED
 COMPENSATED
-FAILED_MANUAL_REVIEW
+MANUAL_REVIEW
 ```
 
-Order status and Saga status remain separate. The feature may add states only when they represent a
-recoverable business checkpoint rather than implementation detail.
+Order status and Saga status remain separate. Feature 044 keeps public Order status
+`PENDING_PAYMENT` during Saga `MANUAL_REVIEW`, and uses `CANCELLED`/`EXPIRED` only after a durable
+reservation release result.
 
 ### Campaign end candidate states
 

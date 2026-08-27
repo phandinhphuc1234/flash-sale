@@ -61,6 +61,10 @@ public class PaymentClientIdempotencyJpaEntity {
     }
 
     public void attachAttempt(PaymentAttemptJpaEntity attempt, String outcomeStatus, Instant updatedAt) {
+        if (this.attempt != null && this.attempt.getId().equals(attempt.getId())
+                && this.outcomeStatus.equals(outcomeStatus)) {
+            return;
+        }
         this.attempt = attempt;
         this.outcomeStatus = outcomeStatus;
         this.updatedAt = updatedAt;

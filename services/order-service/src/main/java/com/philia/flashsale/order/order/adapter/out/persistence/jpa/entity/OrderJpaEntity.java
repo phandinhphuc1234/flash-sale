@@ -92,4 +92,37 @@ public class OrderJpaEntity {
     public long getRowVersion() { return rowVersion; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+
+    /** Applies the Order terminal transition inside the enclosing database transaction. */
+    public void confirm(Instant confirmedAt) {
+        if (status != OrderStatus.PENDING_PAYMENT && status != OrderStatus.CONFIRMED) {
+            throw new IllegalStateException("Order is not awaiting payment confirmation");
+        }
+        status = OrderStatus.CONFIRMED;
+        updatedAt = confirmedAt;
+    }
+
+    /** Applies an unpaid terminal state after the Flash Sale release fact commits. */
+    public void terminalize(OrderStatus terminalStatus, Instant at) {
+        if (terminalStatus != OrderStatus.CANCELLED && terminalStatus != OrderStatus.EXPIRED) {
+            throw new IllegalArgumentException("unsupported unpaid terminal status");
+        }
+        if (status == terminalStatus) return;
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            throw new IllegalStateException("Order is not awaiting payment release");
+        }
+        status = terminalStatus;
+        updatedAt = at;
+    }
+
+    /** Reopens an unpaid terminal Order for a verified late payment manual review. */
+    public OrderStatus reopenForManualReview(Instant at) {
+        if (status != OrderStatus.CANCELLED && status != OrderStatus.EXPIRED) {
+            throw new IllegalStateException("Order is not an unpaid terminal state");
+        }
+        OrderStatus previous = status;
+        status = OrderStatus.PENDING_PAYMENT;
+        updatedAt = at;
+        return previous;
+    }
 }

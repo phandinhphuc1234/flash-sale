@@ -2,7 +2,7 @@ package com.philia.flashsale.order.outbox.application.usecase;
 
 import com.philia.flashsale.order.outbox.application.model.OrderOutboxEvent;
 import com.philia.flashsale.order.outbox.application.port.ClaimOrderOutboxEventsPort;
-import com.philia.flashsale.order.outbox.application.port.PublishOrderCreatedPort;
+import com.philia.flashsale.order.outbox.application.port.PublishOrderEventPort;
 import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
 import com.philia.flashsale.order.observability.OrderObservability;
 import java.time.Duration;
@@ -13,7 +13,7 @@ import java.util.Objects;
 /** Claims, publishes, and retries committed facts without holding a database transaction over Kafka. */
 public final class OrderOutboxPublicationService {
     private final ClaimOrderOutboxEventsPort claims;
-    private final PublishOrderCreatedPort publisher;
+    private final PublishOrderEventPort publisher;
     private final UpdateOrderOutboxPublicationPort updates;
     private final OrderOutboxRetryPolicy retryPolicy;
     private final int batchSize;
@@ -21,13 +21,13 @@ public final class OrderOutboxPublicationService {
     private final OrderObservability observability;
 
     public OrderOutboxPublicationService(ClaimOrderOutboxEventsPort claims,
-            PublishOrderCreatedPort publisher, UpdateOrderOutboxPublicationPort updates,
+            PublishOrderEventPort publisher, UpdateOrderOutboxPublicationPort updates,
             OrderOutboxRetryPolicy retryPolicy, int batchSize, Duration claimLease) {
         this(claims, publisher, updates, retryPolicy, batchSize, claimLease, OrderObservability.noop());
     }
 
     public OrderOutboxPublicationService(ClaimOrderOutboxEventsPort claims,
-            PublishOrderCreatedPort publisher, UpdateOrderOutboxPublicationPort updates,
+            PublishOrderEventPort publisher, UpdateOrderOutboxPublicationPort updates,
             OrderOutboxRetryPolicy retryPolicy, int batchSize, Duration claimLease,
             OrderObservability observability) {
         this.claims = Objects.requireNonNull(claims, "claims");

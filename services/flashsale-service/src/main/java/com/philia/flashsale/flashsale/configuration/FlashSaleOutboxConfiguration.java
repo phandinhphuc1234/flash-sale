@@ -4,10 +4,14 @@ import com.philia.flashsale.flashsale.outbox.adapter.in.scheduling.FlashSaleOutb
 import com.philia.flashsale.flashsale.outbox.adapter.out.persistence.jpa.FlashSaleOutboxPersistenceAdapter;
 import com.philia.flashsale.flashsale.outbox.application.port.ClaimOutboxEventsPort;
 import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseAcceptedPort;
+import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseReservationConfirmedPort;
+import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseReservationReleasedPort;
 import com.philia.flashsale.flashsale.outbox.application.port.UpdateOutboxPublicationPort;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxPublicationService;
 import com.philia.flashsale.flashsale.outbox.application.usecase.OutboxRetryPolicy;
+import com.philia.flashsale.flashsale.outbox.application.usecase.FlashSaleOutboxEventTypeDispatcher;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -31,10 +35,23 @@ public class FlashSaleOutboxConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({ClaimOutboxEventsPort.class, PublishPurchaseAcceptedPort.class,
+    @ConditionalOnBean({PublishPurchaseAcceptedPort.class, PublishPurchaseReservationConfirmedPort.class,
+            PublishPurchaseReservationReleasedPort.class})
+    FlashSaleOutboxEventTypeDispatcher flashSaleOutboxEventTypeDispatcher(
+            PublishPurchaseAcceptedPort acceptedPublisher,
+            PublishPurchaseReservationConfirmedPort confirmedPublisher,
+            PublishPurchaseReservationReleasedPort releasedPublisher) {
+        return new FlashSaleOutboxEventTypeDispatcher(Map.of(
+                "PurchaseAccepted", acceptedPublisher,
+                "PurchaseReservationConfirmed", confirmedPublisher,
+                "PurchaseReservationReleased", releasedPublisher));
+    }
+
+    @Bean
+    @ConditionalOnBean({ClaimOutboxEventsPort.class, FlashSaleOutboxEventTypeDispatcher.class,
             UpdateOutboxPublicationPort.class})
     OutboxPublicationService outboxPublicationService(ClaimOutboxEventsPort claims,
-            PublishPurchaseAcceptedPort publisher, UpdateOutboxPublicationPort updates,
+            FlashSaleOutboxEventTypeDispatcher publisher, UpdateOutboxPublicationPort updates,
             OutboxRetryPolicy retryPolicy, OutboxProperties properties) {
         return new OutboxPublicationService(claims, publisher, updates, retryPolicy,
                 properties.batchSize(), properties.claimLease());

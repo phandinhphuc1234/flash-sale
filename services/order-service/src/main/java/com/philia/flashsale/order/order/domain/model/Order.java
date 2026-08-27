@@ -39,7 +39,8 @@ public final class Order {
         this.acceptedAt = Objects.requireNonNull(acceptedAt, "acceptedAt");
         this.reservationExpiresAt = Objects.requireNonNull(reservationExpiresAt, "reservationExpiresAt");
         this.line = Objects.requireNonNull(line, "line");
-        if (status != OrderStatus.PENDING_PAYMENT) {
+        if (status != OrderStatus.PENDING_PAYMENT && status != OrderStatus.CONFIRMED
+                && status != OrderStatus.CANCELLED && status != OrderStatus.EXPIRED) {
             throw new InvalidOrderException("unsupported Order status");
         }
         if (!acceptedAt.isBefore(reservationExpiresAt)) {
@@ -57,6 +58,31 @@ public final class Order {
         Money amount = line.lineAmount();
         return new Order(id, orderNumber, purchaseRequestId, reservationId, campaignId, userId,
                 OrderStatus.PENDING_PAYMENT, currency, amount, amount, acceptedAt, reservationExpiresAt, line);
+    }
+
+    /** Returns the terminal paid state while preserving the accepted commercial snapshot. */
+    public Order confirm() {
+        if (status == OrderStatus.CONFIRMED) {
+            return this;
+        }
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            throw new InvalidOrderException("Order is not awaiting payment confirmation");
+        }
+        return new Order(id, orderNumber, purchaseRequestId, reservationId, campaignId, userId,
+                OrderStatus.CONFIRMED, currency, subtotal, total, acceptedAt, reservationExpiresAt, line);
+    }
+
+    /** Returns the unpaid terminal state after the reservation participant released the hold. */
+    public Order terminalize(OrderStatus terminalStatus) {
+        if (terminalStatus != OrderStatus.CANCELLED && terminalStatus != OrderStatus.EXPIRED) {
+            throw new InvalidOrderException("unsupported unpaid terminal status");
+        }
+        if (status == terminalStatus) return this;
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            throw new InvalidOrderException("Order is not awaiting payment release");
+        }
+        return new Order(id, orderNumber, purchaseRequestId, reservationId, campaignId, userId,
+                terminalStatus, currency, subtotal, total, acceptedAt, reservationExpiresAt, line);
     }
 
     private static <T> T require(T value, String name) {

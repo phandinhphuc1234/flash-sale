@@ -68,4 +68,38 @@ class OrderDomainTests {
                 UUID.randomUUID(), UUID.randomUUID(), "VND", line, ACCEPTED, ACCEPTED))
                 .isInstanceOf(InvalidOrderException.class);
     }
+
+    @Test
+    void confirmsAnOrderWithoutChangingItsCommercialSnapshot() {
+        UUID orderId = UUID.randomUUID();
+        UUID purchaseRequestId = UUID.randomUUID();
+        UUID reservationId = UUID.randomUUID();
+        OrderLine line = OrderLine.create(UUID.randomUUID(), UUID.randomUUID(), 1,
+                Money.of(new BigDecimal("10.0000")));
+        Order order = Order.create(orderId, "FS-20300101-" + orderId, purchaseRequestId, reservationId,
+                UUID.randomUUID(), UUID.randomUUID(), "VND", line, ACCEPTED, ACCEPTED.plusSeconds(300));
+
+        Order confirmed = order.confirm();
+
+        assertThat(confirmed.status()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(confirmed.total()).isEqualTo(order.total());
+        assertThat(confirmed.reservationId()).isEqualTo(reservationId);
+    }
+
+    @Test
+    void terminalizesAnUnpaidOrderOnlyToApprovedFailureStates() {
+        UUID orderId = UUID.randomUUID();
+        UUID purchaseRequestId = UUID.randomUUID();
+        UUID reservationId = UUID.randomUUID();
+        OrderLine line = OrderLine.create(UUID.randomUUID(), UUID.randomUUID(), 1,
+                Money.of(new BigDecimal("10.0000")));
+        Order order = Order.create(orderId, "FS-20300101-" + orderId, purchaseRequestId, reservationId,
+                UUID.randomUUID(), UUID.randomUUID(), "VND", line, ACCEPTED, ACCEPTED.plusSeconds(300));
+
+        assertThat(order.terminalize(OrderStatus.CANCELLED).status()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(order.terminalize(OrderStatus.EXPIRED).status()).isEqualTo(OrderStatus.EXPIRED);
+        assertThatThrownBy(() -> order.terminalize(OrderStatus.CONFIRMED))
+                .isInstanceOf(InvalidOrderException.class)
+                .hasMessageContaining("unsupported unpaid terminal status");
+    }
 }

@@ -2,13 +2,15 @@
 
 ## 1. Status
 
-Avro SpecificRecord is the approved Feature 017 lifecycle wire format. The protocol module is
-schema-first and Campaign runtime serializer wiring is implemented; live Registry publication is
-still validated only by the opt-in integration profile.
+Avro SpecificRecord is the repository's approved Kafka wire format. The protocol module remains
+schema-first: Feature 017 established Campaign lifecycle contracts, Features 019–021 added the
+accepted Purchase, Order, and Payment records, and Feature 044 adds reservation finalization plus
+terminal/review-required Order records. Runtime Registry publication remains controlled and is not
+performed by ordinary unit tests or application startup.
 
-Feature 017's baseline was an exact JSON contract for `CampaignScheduled.v1` and
-`CampaignActivated.v1` on `campaign.lifecycle.v1`. The approved amendment changes those payloads
-to Avro SpecificRecords; live serializer/Registry publication remains a separate runtime task.
+Feature 044 reuses `PaymentRequestedV1`, `PaymentSucceededV1`, and `PaymentFailedV1` unchanged and
+adds eight new records. It uses `TopicRecordNameStrategy`, `BACKWARD_TRANSITIVE` compatibility, and
+controlled registration for eight main subjects plus six DLT topic/record bindings.
 
 ## 2. Contract model
 
@@ -200,6 +202,10 @@ Subject shape:
 This keeps compatibility history per record type within a topic. Confluent's default
 `TopicNameStrategy` creates one `<topic>-value` subject and is simplest only when every value on the
 topic conforms to one compatible schema family.
+
+A DLT is a different topic, so it has a different subject even when it retains the original record
+type. Feature 044 therefore registers its three DLT families explicitly; DLT serialization must not
+depend on broker auto-creation or runtime schema auto-registration.
 
 The feature contract must explicitly choose the strategy; client configuration and Registry/CI
 registration must use the same subject names.

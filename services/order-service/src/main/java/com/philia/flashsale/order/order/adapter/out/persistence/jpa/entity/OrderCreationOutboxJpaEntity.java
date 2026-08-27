@@ -1,12 +1,18 @@
 package com.philia.flashsale.order.order.adapter.out.persistence.jpa.entity;
 
 import com.philia.flashsale.order.order.application.model.OrderCreationCandidate;
+import com.philia.flashsale.order.purchasesaga.application.command.PaymentSucceededCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.PaymentFailedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationConfirmedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationReleasedCommand;
+import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -14,6 +20,9 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Table(name = "order_outbox_events")
 public class OrderCreationOutboxJpaEntity {
+
+    private static final String ORDER_ID_JSON_FIELD = "\"orderId\":\"";
+    private static final String PURCHASE_SAGA_AGGREGATE_TYPE = "PURCHASE_SAGA";
 
     @Id
     @Column(name = "event_id", nullable = false)
@@ -66,33 +75,186 @@ public class OrderCreationOutboxJpaEntity {
     }
 
     public static OrderCreationOutboxJpaEntity from(OrderCreationCandidate candidate) {
+        return pendingEvent(candidate.outboxEventId(), "ORDER", candidate.order().id(), 1,
+                "OrderCreated", candidate.order().id().toString(), candidate.correlationId(),
+                candidate.causationId(), snapshotPayload(candidate), candidate.traceparent(), candidate.tracestate(),
+                candidate.createdAt(), candidate.occurredAt(), candidate.createdAt());
+    }
+
+    /** Creates the stable PaymentRequested command intent in the same local transaction. */
+    public static OrderCreationOutboxJpaEntity paymentRequested(OrderCreationCandidate candidate) {
+        if (candidate.purchaseSaga() == null || candidate.paymentRequestedOutboxEventId() == null) {
+            throw new IllegalArgumentException("PaymentRequested outbox identity is missing");
+        }
+        var saga = candidate.purchaseSaga();
+        var order = candidate.order();
+        return pendingEvent(candidate.paymentRequestedOutboxEventId(), PURCHASE_SAGA_AGGREGATE_TYPE, order.id(), 1,
+                "PaymentRequested", order.id().toString(), candidate.correlationId(), candidate.causationId(),
+                paymentRequestedPayload(order, saga), candidate.traceparent(), candidate.tracestate(),
+                candidate.createdAt(), candidate.occurredAt(), candidate.createdAt());
+    }
+
+    /** Creates the stable Flash Sale confirm command after a verified PaymentSucceeded fact. */
+    public static OrderCreationOutboxJpaEntity confirmReservation(PaymentSucceededCommand command,
+            PurchaseSaga saga, UUID commandId) {
+        String payload = "{"
+                + "\"sagaId\":\"" + saga.id() + "\","
+                + ORDER_ID_JSON_FIELD + saga.orderId() + "\","
+                + "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\","
+                + "\"reservationId\":\"" + saga.reservationId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"paidAt\":\"" + command.paidAt() + "\"}";
+        return pendingEvent(commandId, PURCHASE_SAGA_AGGREGATE_TYPE, saga.id(), saga.version(),
+                "ConfirmPurchaseReservation", saga.orderId().toString(), command.correlationId(),
+                command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
+                command.occurredAt(), command.occurredAt());
+    }
+
+    /** Creates the stable Flash Sale release command after a terminal PaymentFailed fact. */
+    public static OrderCreationOutboxJpaEntity releaseReservation(PaymentFailedCommand command,
+            PurchaseSaga saga, UUID commandId) {
+        String payload = "{" +
+                "\"sagaId\":\"" + saga.id() + "\"," +
+                ORDER_ID_JSON_FIELD + saga.orderId() + "\"," +
+                "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\"," +
+                "\"reservationId\":\"" + saga.reservationId() + "\"," +
+                "\"reason\":\"" + command.reason() + "\"}";
+        return pendingEvent(commandId, PURCHASE_SAGA_AGGREGATE_TYPE, saga.id(), saga.version(),
+                "ReleasePurchaseReservation", saga.orderId().toString(), command.correlationId(),
+                command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
+                command.occurredAt(), command.occurredAt());
+    }
+
+    /** Creates the terminal OrderConfirmed fact in the same local transaction as the state changes. */
+    public static OrderCreationOutboxJpaEntity orderConfirmed(PurchaseReservationConfirmedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-confirmed:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.confirmedAt();
+        String payload = "{"
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"reservationId\":\"" + order.getReservationId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"confirmedAt\":\"" + occurredAt + "\"}";
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderConfirmed",
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
+    /** Creates the terminal OrderCancelled/OrderExpired fact after reservation release. */
+    public static OrderCreationOutboxJpaEntity orderCancelled(PurchaseReservationReleasedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        return terminalRelease(command, saga, order, "OrderCancelled", "cancelledAt");
+    }
+
+    public static OrderCreationOutboxJpaEntity orderExpired(PurchaseReservationReleasedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        return terminalRelease(command, saga, order, "OrderExpired", "expiredAt");
+    }
+
+    /** Creates the stable correction fact for a verified late payment after release. */
+    public static OrderCreationOutboxJpaEntity orderPaymentReviewRequired(
+            PaymentSucceededCommand command, PurchaseSaga saga, OrderJpaEntity order,
+            String previousStatus) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-payment-review-required:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.paidAt();
+        String payload = "{"
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"reservationId\":\"" + order.getReservationId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"previousStatus\":\"" + previousStatus + "\","
+                + "\"reviewReason\":\"LATE_PAYMENT_RESERVATION_UNAVAILABLE\","
+                + "\"reviewRequiredAt\":\"" + occurredAt + "\"}";
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderPaymentReviewRequired",
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
+    /** Creates the same correction when the confirm attempt loses a release race. */
+    public static OrderCreationOutboxJpaEntity orderPaymentReviewRequired(
+            PurchaseReservationReleasedCommand command, PurchaseSaga saga, OrderJpaEntity order) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-payment-review-required:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.releasedAt();
+        String payload = "{"
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"reservationId\":\"" + order.getReservationId() + "\","
+                + "\"paymentId\":\"" + saga.paymentId() + "\","
+                + "\"previousStatus\":\"" + order.getStatus() + "\","
+                + "\"reviewReason\":\"LATE_PAYMENT_RESERVATION_UNAVAILABLE\","
+                + "\"reviewRequiredAt\":\"" + occurredAt + "\"}";
+        UUID causationId = saga.activeCommandId() == null ? command.eventId() : saga.activeCommandId();
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderPaymentReviewRequired",
+                order.getId().toString(), command.correlationId(), causationId, payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
+    private static OrderCreationOutboxJpaEntity terminalRelease(PurchaseReservationReleasedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order, String eventType, String timeField) {
+        UUID eventId = UUID.nameUUIDFromBytes((eventType + ":" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.releasedAt();
+        String payload = "{"
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"reservationId\":\"" + order.getReservationId() + "\","
+                + "\"reason\":\"" + command.reason() + "\","
+                + "\"" + timeField + "\":\"" + occurredAt + "\"}";
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), eventType,
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
+    private static OrderCreationOutboxJpaEntity pendingEvent(UUID eventId, String aggregateType,
+            UUID aggregateId, long aggregateVersion, String eventType, String eventKey,
+            UUID correlationId, UUID causationId, String payload, String traceparent, String tracestate,
+            Instant nextAttemptAt, Instant occurredAt, Instant createdAt) {
         OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = candidate.outboxEventId();
-        entity.aggregateType = "ORDER";
-        entity.aggregateId = candidate.order().id();
-        entity.aggregateVersion = 1;
-        entity.eventType = "OrderCreated";
+        entity.eventId = eventId;
+        entity.aggregateType = aggregateType;
+        entity.aggregateId = aggregateId;
+        entity.aggregateVersion = aggregateVersion;
+        entity.eventType = eventType;
         entity.eventVersion = 1;
-        entity.eventKey = candidate.order().id().toString();
-        entity.correlationId = candidate.correlationId();
-        entity.causationId = candidate.causationId();
-        entity.payload = snapshotPayload(candidate);
-        entity.traceparent = candidate.traceparent();
-        entity.tracestate = candidate.tracestate();
+        entity.eventKey = eventKey;
+        entity.correlationId = correlationId;
+        entity.causationId = causationId;
+        entity.payload = payload;
+        entity.traceparent = traceparent;
+        entity.tracestate = tracestate;
         entity.status = "PENDING";
         entity.attemptCount = 0;
-        entity.nextAttemptAt = candidate.createdAt();
-        entity.occurredAt = candidate.occurredAt();
-        entity.createdAt = candidate.createdAt();
-        entity.updatedAt = candidate.createdAt();
+        entity.nextAttemptAt = nextAttemptAt;
+        entity.occurredAt = occurredAt;
+        entity.createdAt = createdAt;
+        entity.updatedAt = createdAt;
         return entity;
+    }
+
+    private static String paymentRequestedPayload(
+            com.philia.flashsale.order.order.domain.model.Order order,
+            com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga saga) {
+        return "{"
+                + ORDER_ID_JSON_FIELD + order.id() + "\","
+                + "\"userId\":\"" + order.userId() + "\","
+                + "\"amount\":\"" + order.total().amount().toPlainString() + "\","
+                + "\"currency\":\"" + order.currency() + "\","
+                + "\"paymentDeadline\":\"" + saga.paymentDeadline() + "\"}";
     }
 
     private static String snapshotPayload(OrderCreationCandidate candidate) {
         var order = candidate.order();
         var line = order.line();
         return "{"
-                + "\"orderId\":\"" + order.id() + "\","
+                + ORDER_ID_JSON_FIELD + order.id() + "\","
                 + "\"orderNumber\":\"" + order.orderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.purchaseRequestId() + "\","
                 + "\"reservationId\":\"" + order.reservationId() + "\","

@@ -54,7 +54,11 @@ $TopicContracts = @(
   "flashsale.order.events.v1",
   "flashsale.payment.commands.v1",
   "flashsale.payment.events.v1",
-  "flashsale.payment.payment-requested.dlt.v1"
+  "flashsale.payment.payment-requested.dlt.v1",
+  "flashsale.purchase.commands.v1",
+  "flashsale.order.payment-result.dlt.v1",
+  "flashsale.flash-sale.purchase-command.dlt.v1",
+  "flashsale.order.purchase-reservation-result.dlt.v1"
 )
 $ApprovedInternalTopics = @("__consumer_offsets", "_schemas")
 
@@ -94,6 +98,62 @@ $SubjectContracts = @(
   [pscustomobject]@{
     Subject = "flashsale.payment.events.v1-com.philia.flashsale.contract.payment.event.v1.PaymentFailedV1"
     SchemaPath = Join-Path $SchemaRoot "flashsale.payment.events.v1\PaymentFailedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.purchase.commands.v1-com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservationV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.commands.v1\ConfirmPurchaseReservationV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.purchase.commands.v1-com.philia.flashsale.contract.purchase.command.v1.ReleasePurchaseReservationV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.commands.v1\ReleasePurchaseReservationV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.purchase.events.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseReservationConfirmedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.purchase.events.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationReleasedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseReservationReleasedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v1.OrderConfirmedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderConfirmedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v1.OrderCancelledV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderCancelledV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v1.OrderExpiredV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderExpiredV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v1.OrderPaymentReviewRequiredV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderPaymentReviewRequiredV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.payment-result.dlt.v1-com.philia.flashsale.contract.payment.event.v1.PaymentSucceededV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.payment.events.v1\PaymentSucceededV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.payment-result.dlt.v1-com.philia.flashsale.contract.payment.event.v1.PaymentFailedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.payment.events.v1\PaymentFailedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.flash-sale.purchase-command.dlt.v1-com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservationV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.commands.v1\ConfirmPurchaseReservationV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.flash-sale.purchase-command.dlt.v1-com.philia.flashsale.contract.purchase.command.v1.ReleasePurchaseReservationV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.commands.v1\ReleasePurchaseReservationV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.purchase-reservation-result.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseReservationConfirmedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.purchase-reservation-result.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationReleasedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseReservationReleasedV1.avsc"
   }
 )
 
@@ -101,7 +161,8 @@ $SchemaScripts = @(
   "register-campaign-schemas.ps1",
   "register-flashsale-schemas.ps1",
   "register-order-schemas.ps1",
-  "register-payment-schemas.ps1"
+  "register-payment-schemas.ps1",
+  "register-purchase-saga-schemas.ps1"
 )
 
 function Invoke-BoundedNativeProcess {
@@ -537,7 +598,8 @@ if ($Apply) {
     "infra/docker/schema-registry/register-campaign-schemas.ps1",
     "infra/docker/schema-registry/register-flashsale-schemas.ps1",
     "infra/docker/schema-registry/register-order-schemas.ps1",
-    "infra/docker/schema-registry/register-payment-schemas.ps1"
+    "infra/docker/schema-registry/register-payment-schemas.ps1",
+    "infra/docker/schema-registry/register-purchase-saga-schemas.ps1"
   )
   $phase20AssetPaths += @($SubjectContracts.SchemaPath | ForEach-Object {
       [IO.Path]::GetRelativePath($RepoRoot, $_).Replace('\', '/')
@@ -709,5 +771,5 @@ try {
 if ($Apply) {
   Wait-ApplicationHealthy -ExpectedRevision $expectedRevision
 }
-Write-Output "Phase 20 complete: topics=7 subjects=9 partitions=3 replication-factor=1 compatibility=$ExpectedCompatibility."
+Write-Output "Phase 20 complete: topics=$($TopicContracts.Count) subjects=$($SubjectContracts.Count) partitions=$ExpectedPartitions replication-factor=$ExpectedReplicationFactor compatibility=$ExpectedCompatibility."
 Write-Output "Secret values were not read or printed. Payment runtime flags remain disabled."
