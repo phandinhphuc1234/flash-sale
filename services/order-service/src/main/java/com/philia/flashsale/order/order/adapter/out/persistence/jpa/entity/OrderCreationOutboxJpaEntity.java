@@ -21,6 +21,8 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "order_outbox_events")
 public class OrderCreationOutboxJpaEntity {
 
+    private static final String ORDER_ID_JSON_FIELD = "\"orderId\":\"";
+
     @Id
     @Column(name = "event_id", nullable = false)
     private UUID eventId;
@@ -96,7 +98,7 @@ public class OrderCreationOutboxJpaEntity {
             PurchaseSaga saga, UUID commandId) {
         String payload = "{"
                 + "\"sagaId\":\"" + saga.id() + "\","
-                + "\"orderId\":\"" + saga.orderId() + "\","
+                + ORDER_ID_JSON_FIELD + saga.orderId() + "\","
                 + "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\","
                 + "\"reservationId\":\"" + saga.reservationId() + "\","
                 + "\"paymentId\":\"" + command.paymentId() + "\","
@@ -112,7 +114,7 @@ public class OrderCreationOutboxJpaEntity {
             PurchaseSaga saga, UUID commandId) {
         String payload = "{" +
                 "\"sagaId\":\"" + saga.id() + "\"," +
-                "\"orderId\":\"" + saga.orderId() + "\"," +
+                ORDER_ID_JSON_FIELD + saga.orderId() + "\"," +
                 "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\"," +
                 "\"reservationId\":\"" + saga.reservationId() + "\"," +
                 "\"reason\":\"" + command.reason() + "\"}";
@@ -129,7 +131,7 @@ public class OrderCreationOutboxJpaEntity {
                 .getBytes(StandardCharsets.UTF_8));
         Instant occurredAt = command.confirmedAt();
         String payload = "{"
-                + "\"orderId\":\"" + order.getId() + "\","
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
                 + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
                 + "\"reservationId\":\"" + order.getReservationId() + "\","
@@ -159,7 +161,7 @@ public class OrderCreationOutboxJpaEntity {
                 .getBytes(StandardCharsets.UTF_8));
         Instant occurredAt = command.paidAt();
         String payload = "{"
-                + "\"orderId\":\"" + order.getId() + "\","
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
                 + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
                 + "\"reservationId\":\"" + order.getReservationId() + "\","
@@ -179,7 +181,7 @@ public class OrderCreationOutboxJpaEntity {
                 .getBytes(StandardCharsets.UTF_8));
         Instant occurredAt = command.releasedAt();
         String payload = "{"
-                + "\"orderId\":\"" + order.getId() + "\","
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
                 + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
                 + "\"reservationId\":\"" + order.getReservationId() + "\","
@@ -199,7 +201,7 @@ public class OrderCreationOutboxJpaEntity {
                 .getBytes(StandardCharsets.UTF_8));
         Instant occurredAt = command.releasedAt();
         String payload = "{"
-                + "\"orderId\":\"" + order.getId() + "\","
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
                 + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
                 + "\"reservationId\":\"" + order.getReservationId() + "\","
@@ -240,7 +242,7 @@ public class OrderCreationOutboxJpaEntity {
             com.philia.flashsale.order.order.domain.model.Order order,
             com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga saga) {
         return "{"
-                + "\"orderId\":\"" + order.id() + "\","
+                + ORDER_ID_JSON_FIELD + order.id() + "\","
                 + "\"userId\":\"" + order.userId() + "\","
                 + "\"amount\":\"" + order.total().amount().toPlainString() + "\","
                 + "\"currency\":\"" + order.currency() + "\","
@@ -251,7 +253,7 @@ public class OrderCreationOutboxJpaEntity {
         var order = candidate.order();
         var line = order.line();
         return "{"
-                + "\"orderId\":\"" + order.id() + "\","
+                + ORDER_ID_JSON_FIELD + order.id() + "\","
                 + "\"orderNumber\":\"" + order.orderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.purchaseRequestId() + "\","
                 + "\"reservationId\":\"" + order.reservationId() + "\","
