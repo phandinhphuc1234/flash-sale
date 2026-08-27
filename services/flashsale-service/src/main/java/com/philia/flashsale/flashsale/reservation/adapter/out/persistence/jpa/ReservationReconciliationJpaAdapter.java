@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 /** Adapter that owns the durable finalization backlog and its completion marker. */
 @Component
 @ConditionalOnExpression("'${flashsale.runtime.enabled:true}' == 'true' && '${flashsale.runtime.reconciliation-enabled:true}' == 'true'")
-public final class ReservationReconciliationJpaAdapter implements LoadReservationReconciliationPort {
+public class ReservationReconciliationJpaAdapter implements LoadReservationReconciliationPort {
     private final FlashSaleReservationJpaRepository reservations;
 
     public ReservationReconciliationJpaAdapter(FlashSaleReservationJpaRepository reservations) {
