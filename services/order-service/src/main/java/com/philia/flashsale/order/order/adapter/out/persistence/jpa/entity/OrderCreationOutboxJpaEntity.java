@@ -22,6 +22,7 @@ import org.hibernate.type.SqlTypes;
 public class OrderCreationOutboxJpaEntity {
 
     private static final String ORDER_ID_JSON_FIELD = "\"orderId\":\"";
+    private static final String PURCHASE_SAGA_AGGREGATE_TYPE = "PURCHASE_SAGA";
 
     @Id
     @Column(name = "event_id", nullable = false)
@@ -87,7 +88,7 @@ public class OrderCreationOutboxJpaEntity {
         }
         var saga = candidate.purchaseSaga();
         var order = candidate.order();
-        return pendingEvent(candidate.paymentRequestedOutboxEventId(), "PURCHASE_SAGA", order.id(), 1,
+        return pendingEvent(candidate.paymentRequestedOutboxEventId(), PURCHASE_SAGA_AGGREGATE_TYPE, order.id(), 1,
                 "PaymentRequested", order.id().toString(), candidate.correlationId(), candidate.causationId(),
                 paymentRequestedPayload(order, saga), candidate.traceparent(), candidate.tracestate(),
                 candidate.createdAt(), candidate.occurredAt(), candidate.createdAt());
@@ -103,7 +104,7 @@ public class OrderCreationOutboxJpaEntity {
                 + "\"reservationId\":\"" + saga.reservationId() + "\","
                 + "\"paymentId\":\"" + command.paymentId() + "\","
                 + "\"paidAt\":\"" + command.paidAt() + "\"}";
-        return pendingEvent(commandId, "PURCHASE_SAGA", saga.id(), saga.version(),
+        return pendingEvent(commandId, PURCHASE_SAGA_AGGREGATE_TYPE, saga.id(), saga.version(),
                 "ConfirmPurchaseReservation", saga.orderId().toString(), command.correlationId(),
                 command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
                 command.occurredAt(), command.occurredAt());
@@ -118,7 +119,7 @@ public class OrderCreationOutboxJpaEntity {
                 "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\"," +
                 "\"reservationId\":\"" + saga.reservationId() + "\"," +
                 "\"reason\":\"" + command.reason() + "\"}";
-        return pendingEvent(commandId, "PURCHASE_SAGA", saga.id(), saga.version(),
+        return pendingEvent(commandId, PURCHASE_SAGA_AGGREGATE_TYPE, saga.id(), saga.version(),
                 "ReleasePurchaseReservation", saga.orderId().toString(), command.correlationId(),
                 command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
                 command.occurredAt(), command.occurredAt());

@@ -21,15 +21,21 @@ public final class PaymentFailedAvroMapper {
     private final String expectedTopic;
 
     @Autowired
-    public PaymentFailedAvroMapper(OrderKafkaProperties properties) { this(properties.paymentEventsTopic()); }
+    public PaymentFailedAvroMapper(OrderKafkaProperties properties) {
+        this(properties.paymentEventsTopic());
+    }
 
     PaymentFailedAvroMapper(String expectedTopic) {
-        if (expectedTopic == null || expectedTopic.isBlank()) throw new IllegalArgumentException("payment topic is blank");
+        if (expectedTopic == null || expectedTopic.isBlank()) {
+            throw new IllegalArgumentException("payment topic is blank");
+        }
         this.expectedTopic = expectedTopic;
     }
 
     public PaymentFailedCommand map(ConsumerRecord<String, PaymentFailedV1> record) {
-        if (record == null || !expectedTopic.equals(record.topic()) || record.value() == null) throw invalid("record or topic is invalid");
+        if (record == null || !expectedTopic.equals(record.topic()) || record.value() == null) {
+            throw invalid("record or topic is invalid");
+        }
         PaymentFailedV1 event = record.value();
         PaymentFailedDataV1 data = event.getData();
         if (data == null || event.getEventId() == null || event.getAggregateId() == null
@@ -39,18 +45,30 @@ public final class PaymentFailedAvroMapper {
         require(event.getEventType(), "PaymentFailed", "eventType");
         require(event.getProducer(), "payment-service", "producer");
         require(event.getAggregateType(), "PAYMENT", "aggregateType");
-        if (event.getEventVersion() != 1 || event.getAggregateVersion() <= 0) throw invalid("unsupported event or aggregate version");
+        if (event.getEventVersion() != 1 || event.getAggregateVersion() <= 0) {
+            throw invalid("unsupported event or aggregate version");
+        }
         UUID key = parseUuid(record.key(), "message key");
         UUID paymentId = require(data.getPaymentId(), "paymentId");
         UUID orderId = require(data.getOrderId(), "orderId");
-        if (!key.equals(orderId)) throw invalid("message key must equal data.orderId");
-        if (!key.equals(event.getCorrelationId())) throw invalid("event correlation must reference order key");
-        if (!paymentId.equals(event.getAggregateId())) throw invalid("aggregateId must equal paymentId");
+        if (!key.equals(orderId)) {
+            throw invalid("message key must equal data.orderId");
+        }
+        if (!key.equals(event.getCorrelationId())) {
+            throw invalid("event correlation must reference order key");
+        }
+        if (!paymentId.equals(event.getAggregateId())) {
+            throw invalid("aggregateId must equal paymentId");
+        }
         BigDecimal amount = normalizeAmount(data.getAmount());
-        if (data.getCurrency() == null || !data.getCurrency().matches("[A-Z]{3}")) throw invalid("currency must be three uppercase letters");
+        if (data.getCurrency() == null || !data.getCurrency().matches("[A-Z]{3}")) {
+            throw invalid("currency must be three uppercase letters");
+        }
         require(data.getFailedAt(), "failedAt");
         requireText(data.getReason(), "reason");
-        if (!PaymentFailedCommand.TERMINAL_REASONS.contains(data.getReason())) throw invalid("unsupported failure reason");
+        if (!PaymentFailedCommand.TERMINAL_REASONS.contains(data.getReason())) {
+            throw invalid("unsupported failure reason");
+        }
         requireTextNonBlank(data.getProvider(), "provider");
         return new PaymentFailedCommand(event.getEventId(), event.getEventType(), event.getEventVersion(), event.getProducer(),
                 event.getAggregateType(), event.getAggregateId(), event.getAggregateVersion(), event.getCorrelationId(),
@@ -65,20 +83,69 @@ public final class PaymentFailedAvroMapper {
                 event.getCorrelationId().toString(), event.getCausationId().toString(), event.getOccurredAt().toString(),
                 data.getPaymentId().toString(), data.getOrderId().toString(), normalizeAmount(data.getAmount()).toPlainString(),
                 data.getCurrency(), data.getFailedAt().toString(), data.getReason(), data.getProvider(), String.valueOf(data.getProviderSessionId()));
-        try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8))); }
-        catch (Exception exception) { throw new IllegalStateException("cannot fingerprint PaymentFailed", exception); }
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception exception) {
+            throw new IllegalStateException("cannot fingerprint PaymentFailed", exception);
+        }
     }
 
     private BigDecimal normalizeAmount(BigDecimal value) {
-        if (value == null) throw invalid("amount is missing");
-        try { BigDecimal normalized = value.setScale(4, RoundingMode.UNNECESSARY); if (normalized.signum() <= 0 || normalized.precision() > 19) throw invalid("amount is invalid"); return normalized; }
-        catch (ArithmeticException exception) { throw invalid("amount has invalid scale"); }
+        if (value == null) {
+            throw invalid("amount is missing");
+        }
+        try {
+            BigDecimal normalized = value.setScale(4, RoundingMode.UNNECESSARY);
+            if (normalized.signum() <= 0 || normalized.precision() > 19) {
+                throw invalid("amount is invalid");
+            }
+            return normalized;
+        } catch (ArithmeticException exception) {
+            throw invalid("amount has invalid scale");
+        }
     }
-    private UUID parseUuid(String value, String field) { try { if (value == null || value.isBlank()) throw new IllegalArgumentException(); return UUID.fromString(value); } catch (Exception e) { throw invalid(field + " is not a UUID"); } }
-    private <T> T require(T value, String field) { if (value == null) throw invalid(field + " is missing"); return value; }
-    private void require(String actual, String expected, String field) { if (!expected.equals(actual)) throw invalid(field + " is unsupported"); }
-    private void requireText(String value, String field) { if (value == null || value.isBlank()) throw invalid(field + " is missing"); }
-    private void requireTextNonBlank(String value, String field) { requireText(value, field); }
-    private String header(ConsumerRecord<String, PaymentFailedV1> record, String name) { var h = record.headers().lastHeader(name); return h == null ? null : new String(h.value(), StandardCharsets.UTF_8); }
-    private PaymentFailedRecordException invalid(String message) { return new PaymentFailedRecordException(message); }
+
+    private UUID parseUuid(String value, String field) {
+        try {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException();
+            }
+            return UUID.fromString(value);
+        } catch (Exception exception) {
+            throw invalid(field + " is not a UUID");
+        }
+    }
+
+    private <T> T require(T value, String field) {
+        if (value == null) {
+            throw invalid(field + " is missing");
+        }
+        return value;
+    }
+
+    private void require(String actual, String expected, String field) {
+        if (!expected.equals(actual)) {
+            throw invalid(field + " is unsupported");
+        }
+    }
+
+    private void requireText(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw invalid(field + " is missing");
+        }
+    }
+
+    private void requireTextNonBlank(String value, String field) {
+        requireText(value, field);
+    }
+
+    private String header(ConsumerRecord<String, PaymentFailedV1> record, String name) {
+        var header = record.headers().lastHeader(name);
+        return header == null ? null : new String(header.value(), StandardCharsets.UTF_8);
+    }
+
+    private PaymentFailedRecordException invalid(String message) {
+        return new PaymentFailedRecordException(message);
+    }
 }

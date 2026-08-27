@@ -19,6 +19,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public final class FlashSaleObservability {
+    private static final String OUTCOME_TAG = "outcome";
+
     public static final String OPERATION_DURATION = "flashsale.operation.duration";
     public static final String CONSUMER_OUTCOME_TOTAL = "flashsale.reservation.command.outcome.total";
     public static final String DLT_PUBLICATION_TOTAL = "flashsale.reservation.command.dlt.publication.total";
@@ -83,7 +85,7 @@ public final class FlashSaleObservability {
             observation.error(exception);
             throw exception;
         } finally {
-            observation.lowCardinalityKeyValue("outcome", outcome.tagValue());
+            observation.lowCardinalityKeyValue(OUTCOME_TAG, outcome.tagValue());
             observation.stop();
             sample.stop(timer(operation, outcome));
         }
@@ -113,7 +115,7 @@ public final class FlashSaleObservability {
         }
         Counter.builder(CONSUMER_OUTCOME_TOTAL)
                 .description("Flash Sale reservation command consumer results")
-                .tag("outcome", boundedOutcome(outcome))
+                .tag(OUTCOME_TAG, boundedOutcome(outcome))
                 .register(metrics)
                 .increment();
     }
@@ -148,7 +150,7 @@ public final class FlashSaleObservability {
         return Timer.builder(OPERATION_DURATION)
                 .description("Flash Sale runtime boundary duration")
                 .tags("operation", operation.tagValue(), "dependency", operation.dependency(),
-                        "outcome", outcome.tagValue())
+                        OUTCOME_TAG, outcome.tagValue())
                 .publishPercentiles(0.50d, 0.95d, 0.99d)
                 .publishPercentileHistogram()
                 .register(metrics);
