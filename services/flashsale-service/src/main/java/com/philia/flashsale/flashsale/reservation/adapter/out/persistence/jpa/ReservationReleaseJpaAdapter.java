@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** PostgreSQL boundary for atomic release, inbox, and released outcome publication. */
 @Component
 @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
-public final class ReservationReleaseJpaAdapter implements PersistReservationReleasePort {
+public class ReservationReleaseJpaAdapter implements PersistReservationReleasePort {
     private static final String RELEASED = "RELEASED";
     private static final String EXPIRED = "EXPIRED";
 
