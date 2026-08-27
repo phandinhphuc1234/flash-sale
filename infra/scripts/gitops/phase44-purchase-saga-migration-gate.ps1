@@ -184,8 +184,11 @@ function Assert-KubernetesContext {
 }
 
 function Assert-KubernetesPrerequisites {
-  $namespace = (Invoke-RequiredCommand -Command "kubectl" -Arguments @("get", "namespace", $Namespace, "-o", "name") -Description "Kubernetes namespace").StandardOutput
-  if ($namespace -ne "namespace/$Namespace") { throw "Namespace '$Namespace' is not available." }
+  # Keep the resource result separate from the `Namespace` parameter. PowerShell
+  # variable names are case-insensitive, so assigning `$namespace` would
+  # overwrite the parameter and make the comparison expect namespace/namespace/flash-sale.
+  $namespaceResource = (Invoke-RequiredCommand -Command "kubectl" -Arguments @("get", "namespace", $Namespace, "-o", "name") -Description "Kubernetes namespace").StandardOutput
+  if ($namespaceResource -ne "namespace/$Namespace") { throw "Namespace '$Namespace' is not available." }
 
   foreach ($resource in @("statefulset/postgres", "configmap/order-service-runtime-config", "configmap/flash-sale-service-runtime-config", "secret/order-secrets", "secret/flashsale-secrets")) {
     $null = Invoke-RequiredCommand -Command "kubectl" -Arguments @("-n", $Namespace, "get", $resource, "-o", "name") -Description "Migration prerequisite $resource"
