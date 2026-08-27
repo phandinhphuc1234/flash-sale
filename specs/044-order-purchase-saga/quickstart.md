@@ -183,7 +183,10 @@ The reviewed Phase 20 script will be extended to include:
 
 - `flashsale.purchase.commands.v1`;
 - three consumer DLTs;
-- eight new Avro record schemas plus seven DLT topic/record subject bindings (15 Registry subjects).
+- eight new Avro record schemas plus nine DLT topic/record subject bindings (17 Registry subjects).
+  The shared `flashsale.purchase.events.v1` source requires the Order DLT to accept the original
+  `PurchaseAcceptedV1`, `PurchaseReservationConfirmedV1`, and `PurchaseReservationReleasedV1`
+  SpecificRecord types when a consumer rejects a record it does not own.
 
 Run validation first, then explicit apply:
 

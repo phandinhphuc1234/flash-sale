@@ -17,9 +17,12 @@ The two records are additive to the existing `PurchaseAcceptedV1`; that accepted
 changed.
 
 Because this contract intentionally shares `flashsale.purchase.events.v1` with the existing
-`PurchaseAcceptedV1` consumer, the reservation-results DLT also registers a
-`PurchaseAcceptedV1` topic/record subject. The binding is only a poison-record serialization
-boundary; it does not add a new business event or change the accepted-purchase contract.
+`PurchaseAcceptedV1` consumer, both consumers can observe a record type that is not their own.
+Each consumer DLT therefore registers every SpecificRecord that can arrive from the shared source:
+the reservation-results DLT also registers `PurchaseAcceptedV1`, while the purchase-accepted DLT
+registers `PurchaseAcceptedV1`, `PurchaseReservationConfirmedV1`, and `PurchaseReservationReleasedV1`.
+These bindings are poison-record serialization boundaries only; they do not add business events or
+change the accepted-purchase contract.
 
 ## Common envelope
 

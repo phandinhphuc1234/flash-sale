@@ -31,10 +31,12 @@ The corrected full-system target is:
 The count excludes Kafka internal topics, Schema Registry's `_schemas`, retry topics, and DLTs.
 Those are operational artifacts rather than business message types.
 
-Feature 044 operational inventory: 5 approved main topics, 3 approved consumer DLTs, and 15
-Schema Registry subjects when the eight new main record subjects and seven DLT bindings are counted
-under `TopicRecordNameStrategy`. The seventh binding is `PurchaseAcceptedV1` under the reservation-
-results DLT because that consumer shares the existing purchase-events topic. Cart, Notification,
+Feature 044 operational inventory: 5 approved main topics, 3 approved consumer DLTs, and 17
+Schema Registry subjects when the eight new main record subjects and nine DLT bindings are counted
+under `TopicRecordNameStrategy`. The cross-boundary bindings are required because the purchase-events
+topic is shared: `PurchaseAcceptedV1` is registered under the reservation-results DLT, while
+`PurchaseReservationConfirmedV1` and `PurchaseReservationReleasedV1` are registered under the
+purchase-accepted DLT. Cart, Notification,
 Product lifecycle, Campaign end/cancellation,
 and Inventory reconciliation topics are not part of this feature's acceptance.
 
@@ -78,11 +80,12 @@ the Saga/correlation ID as metadata. This identity transition must be explicit i
 | `flashsale.order.payment-result.dlt.v1` | Order consumer recovery | `PaymentSucceededV1`, `PaymentFailedV1` |
 | `flashsale.flash-sale.purchase-command.dlt.v1` | Flash Sale consumer recovery | `ConfirmPurchaseReservationV1`, `ReleasePurchaseReservationV1` |
 | `flashsale.order.purchase-reservation-result.dlt.v1` | Order consumer recovery | `PurchaseReservationConfirmedV1`, `PurchaseReservationReleasedV1` |
+| `flashsale.order.purchase-accepted.dlt.v1` | Order consumer recovery | `PurchaseAcceptedV1`, `PurchaseReservationConfirmedV1`, `PurchaseReservationReleasedV1` |
 
 DLTs are operational evidence, not business failure facts. With `TopicRecordNameStrategy`, the eight
-new main record subjects plus seven DLT topic/record bindings produce 15 Registry subjects. The
-`PurchaseAcceptedV1` reservation-results DLT binding is required only because the source topic is
-shared; it does not introduce a new business event.
+new main record subjects plus nine DLT topic/record bindings produce 17 Registry subjects. The
+cross-boundary bindings are required only because the source topic is shared; they do not introduce
+new business events.
 
 ## 4. Correct purchase Saga
 

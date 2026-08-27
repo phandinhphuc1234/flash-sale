@@ -80,6 +80,14 @@ $SubjectContracts = @(
     SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseAcceptedV1.avsc"
   },
   [pscustomobject]@{
+    Subject = "flashsale.order.purchase-accepted.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseReservationConfirmedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.purchase-accepted.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationReleasedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseReservationReleasedV1.avsc"
+  },
+  [pscustomobject]@{
     Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v1.OrderCreatedV1"
     SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderCreatedV1.avsc"
   },

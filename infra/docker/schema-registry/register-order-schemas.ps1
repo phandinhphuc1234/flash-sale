@@ -3,6 +3,8 @@ param(
     [string]$SchemaRegistryUrl,
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\..\..\contracts\kafka-avro-contracts\src\main\avro\topics\flashsale.order.events.v1\OrderCreatedV1.avsc'),
     [string]$PurchaseAcceptedSchemaPath = (Join-Path $PSScriptRoot '..\..\..\contracts\kafka-avro-contracts\src\main\avro\topics\flashsale.purchase.events.v1\PurchaseAcceptedV1.avsc'),
+    [string]$PurchaseReservationConfirmedSchemaPath = (Join-Path $PSScriptRoot '..\..\..\contracts\kafka-avro-contracts\src\main\avro\topics\flashsale.purchase.events.v1\PurchaseReservationConfirmedV1.avsc'),
+    [string]$PurchaseReservationReleasedSchemaPath = (Join-Path $PSScriptRoot '..\..\..\contracts\kafka-avro-contracts\src\main\avro\topics\flashsale.purchase.events.v1\PurchaseReservationReleasedV1.avsc'),
     [switch]$CheckOnly
 )
 
@@ -28,6 +30,16 @@ $schemas = @(
         Topic = 'flashsale.order.purchase-accepted.dlt.v1'
         SchemaPath = $PurchaseAcceptedSchemaPath
         ExpectedRecord = 'com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1'
+    },
+    [pscustomobject]@{
+        Topic = 'flashsale.order.purchase-accepted.dlt.v1'
+        SchemaPath = $PurchaseReservationConfirmedSchemaPath
+        ExpectedRecord = 'com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1'
+    },
+    [pscustomobject]@{
+        Topic = 'flashsale.order.purchase-accepted.dlt.v1'
+        SchemaPath = $PurchaseReservationReleasedSchemaPath
+        ExpectedRecord = 'com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationReleasedV1'
     }
 )
 
@@ -168,6 +180,9 @@ foreach ($definition in $schemas) {
     $schemaDocument = $schema | ConvertTo-Json -Depth 100 -Compress
 
     # Order producers use TopicRecordNameStrategy: topic + fully-qualified record name.
+    # The purchase-events topic is shared by three record types. A poison record rejected by
+    # the PurchaseAccepted consumer is still published to its DLT with its original SpecificRecord,
+    # so the Order DLT must register every record type that can arrive from the shared source topic.
     $subject = "$($definition.Topic)-$recordName"
     $subjectPath = [Uri]::EscapeDataString($subject)
     $registrationPayload = @{ schema = $schemaDocument; schemaType = 'AVRO' } | ConvertTo-Json -Compress

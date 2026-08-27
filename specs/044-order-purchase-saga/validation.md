@@ -247,10 +247,29 @@ mandatory prerequisite of T072, not authorization to invent a destructive databa
 |---|---|---|
 | Payment safety precondition | PASS | `phase20-kafka-contracts.ps1` confirmed the live cloud ConfigMap has `7/7` Payment runtime flags disabled during provisioning. Stripe credentials remained in `payment-secrets` and were not read or changed. |
 | Kafka topic inventory | PASS | Phase 20 `-Apply` created the four missing Feature 044 topics/DLTs: `flashsale.purchase.commands.v1`, `flashsale.order.payment-result.dlt.v1`, `flashsale.flash-sale.purchase-command.dlt.v1`, and `flashsale.order.purchase-reservation-result.dlt.v1`. Existing approved topics were verified at partitions=3 and replication factor=1; broker automatic topic creation remained disabled. |
-| Schema Registry inventory | PASS | The Feature 044 Registry gate registered and verified 14 topic/record subjects with `BACKWARD_TRANSITIVE` compatibility. The overall cloud inventory is 11 topics and 23 subjects. |
+| Schema Registry inventory | PASS (initial inventory) | The initial Feature 044 Registry gate registered and verified 14 topic/record subjects with `BACKWARD_TRANSITIVE` compatibility. A later Order consumer log audit found that the shared purchase-events source also requires three cross-boundary DLT subjects; the corrected inventory is 17 subjects and is recorded below for re-provisioning. The overall cloud inventory was 11 topics and 23 subjects before that correction. |
 | Argo and workload gate | PASS | Argo `flash-sale-cloud` reconciled at `0876104f7c917b65254870c69227f8a891898cb0` with `Synced|Healthy`; Schema Registry rollout completed successfully. |
 | Failure/retry evidence | PASS | The first read-only attempt encountered Kafka pod restart and `kubectl` exit 137; after Kafka returned `Running/Ready`, the rerun completed validation and the explicit `-Apply` completed successfully. No topic, schema, database, PVC, image, or Secret was deleted. |
 | Command boundary | PASS | `pwsh -NoLogo -NoProfile -File .\\infra\\scripts\\gitops\\phase20-kafka-contracts.ps1 -Apply` completed with `Phase 20 complete`; no Secret values or provider payloads were printed. |
 
-T069 is complete. Payment runtime restoration is intentionally handled by a separate reviewed
-GitOps change before the Feature 044 migration gate and Stripe smoke.
+The initial T069 provisioning run is recorded above. Payment runtime restoration is intentionally
+handled by a separate reviewed GitOps change; the corrected shared-DLT subjects must be applied
+before treating the cloud contract inventory as current and before the Feature 044 migration gate
+and Stripe smoke.
+
+## Shared purchase-event DLT correction — 2026-08-27
+
+The first cloud run exposed a Schema Registry `40401 Subject not found` while Order attempted to
+dead-letter a `PurchaseReservationReleasedV1` record read from the shared
+`flashsale.purchase.events.v1` topic. This was an operational registration gap, not a new business
+event or a data-loss condition. The Order DLT must be able to serialize every SpecificRecord that
+can arrive from that shared source: `PurchaseAcceptedV1`, `PurchaseReservationConfirmedV1`, and
+`PurchaseReservationReleasedV1`. The corrected Phase 20 inventory and the idempotent local Order
+schema script now contain all three bindings; the reservation-results DLT retains its
+`PurchaseAcceptedV1` binding for the symmetric poison-record case.
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Static contract regression | PASS | `phase44-purchase-saga-cloud.tests.ps1` passed after asserting both missing Order DLT subjects, the three bindings in `register-order-schemas.ps1`, and the shared-source documentation. |
+| PowerShell syntax | PASS | Parser checked the corrected Phase 20 script, Order Schema Registry script, and Feature 044 cloud contract test with zero errors. |
+| Cloud re-provisioning | PENDING | Run the approved Phase 20 safety sequence after merging this correction: pause all seven Payment flags, wait for Argo/Payment rollout, run `phase20-kafka-contracts.ps1 -Apply`, restore Payment flags, then rerun Phase 22/24. No cloud state was changed by the correction itself. |
