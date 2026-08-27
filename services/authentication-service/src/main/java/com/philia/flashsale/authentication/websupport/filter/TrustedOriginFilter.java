@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.common.web.ApiErrorResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
@@ -28,6 +29,7 @@ public class TrustedOriginFilter extends OncePerRequestFilter {
     private final Set<String> trustedOrigins;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public TrustedOriginFilter(AuthenticationProperties properties) {
         this(properties, new ObjectMapper().findAndRegisterModules());
     }

@@ -6,6 +6,7 @@ import com.philia.flashsale.flashsale.reservation.adapter.out.persistence.jpa.re
 import java.time.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ public final class ReservationExpiryJob {
     private final ExpireReservationsUseCase expiry;
     private final Clock clock;
 
+    @Autowired
     public ReservationExpiryJob(ExpireReservationsUseCase expiry) {
         this(expiry, Clock.systemUTC());
     }

@@ -9,6 +9,7 @@ import io.micrometer.observation.ObservationRegistry;
 import java.util.Objects;
 import java.time.Duration;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -38,6 +39,7 @@ public final class FlashSaleObservability {
     private volatile double reconciliationBacklog;
     private volatile double reconciliationOldestAge;
 
+    @Autowired
     public FlashSaleObservability(ObservationRegistry observations, MeterRegistry metrics) {
         this.observations = Objects.requireNonNull(observations, "observations");
         this.metrics = Objects.requireNonNull(metrics, "metrics");

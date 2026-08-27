@@ -6,6 +6,7 @@ import com.philia.flashsale.flashsale.reservation.application.result.Reservation
 import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -25,6 +26,7 @@ public final class ReservationConfirmationRedisAdapter implements ReconcileReser
         this(redis, FlashSaleObservability.noop());
     }
 
+    @Autowired
     public ReservationConfirmationRedisAdapter(StringRedisTemplate redis,
             FlashSaleObservability observability) {
         this.redis = Objects.requireNonNull(redis, "redis");
