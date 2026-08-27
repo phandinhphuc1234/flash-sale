@@ -10,7 +10,9 @@ performed by ordinary unit tests or application startup.
 
 Feature 044 reuses `PaymentRequestedV1`, `PaymentSucceededV1`, and `PaymentFailedV1` unchanged and
 adds eight new records. It uses `TopicRecordNameStrategy`, `BACKWARD_TRANSITIVE` compatibility, and
-controlled registration for eight main subjects plus six DLT topic/record bindings.
+controlled registration for eight main subjects plus seven DLT topic/record bindings. The extra
+binding is the existing `PurchaseAcceptedV1` record under the reservation-results DLT because that
+consumer shares the `flashsale.purchase.events.v1` source topic.
 
 ## 2. Contract model
 

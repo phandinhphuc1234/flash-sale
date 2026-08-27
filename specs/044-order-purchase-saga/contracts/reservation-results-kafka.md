@@ -16,6 +16,11 @@
 The two records are additive to the existing `PurchaseAcceptedV1`; that accepted schema is not
 changed.
 
+Because this contract intentionally shares `flashsale.purchase.events.v1` with the existing
+`PurchaseAcceptedV1` consumer, the reservation-results DLT also registers a
+`PurchaseAcceptedV1` topic/record subject. The binding is only a poison-record serialization
+boundary; it does not add a new business event or change the accepted-purchase contract.
+
 ## Common envelope
 
 | Field | Rule |

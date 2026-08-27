@@ -8,9 +8,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Register the eight Feature 044 records under their main topics and the six topic/record bindings
-# needed by DeadLetterPublishingRecoverer. TopicRecordNameStrategy makes each topic part of the
-# subject name, so a DLT binding cannot silently reuse the source topic's subject.
+# Register the eight Feature 044 records under their main topics and the seven topic/record
+# bindings needed by DeadLetterPublishingRecoverer. The reservation-results consumer shares its
+# source topic with PurchaseAcceptedV1, so its DLT must also accept that record type. The
+# TopicRecordNameStrategy makes each topic part of the subject name, so a DLT binding cannot
+# silently reuse the source topic's subject.
 if ([string]::IsNullOrWhiteSpace($SchemaRegistryUrl)) {
     $SchemaRegistryUrl = if ($env:SCHEMA_REGISTRY_URL) { $env:SCHEMA_REGISTRY_URL } else { 'http://localhost:8081' }
 }
@@ -68,6 +70,8 @@ $schemas = @(
         'PurchaseReservationConfirmedV1.avsc' 'com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1'
     New-SchemaDefinition 'flashsale.order.purchase-reservation-result.dlt.v1' 'flashsale.purchase.events.v1' `
         'PurchaseReservationReleasedV1.avsc' 'com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationReleasedV1'
+    New-SchemaDefinition 'flashsale.order.purchase-reservation-result.dlt.v1' 'flashsale.purchase.events.v1' `
+        'PurchaseAcceptedV1.avsc' 'com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1'
 )
 
 function Add-GeneratedStringProperties {
