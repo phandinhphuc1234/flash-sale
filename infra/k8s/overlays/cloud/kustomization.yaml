@@ -72,13 +72,13 @@ images:
     newTag: release-f5a11de7dd40da24bb4c12e70fb2051b589fc066
   - name: authentication-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/authentication-service
-    newTag: release-f5a11de7dd40da24bb4c12e70fb2051b589fc066
+    newTag: release-a53a4e024dd965742f96eb13ac4c964b33d03071
   - name: campaign-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/campaign-service
     newTag: release-f5a11de7dd40da24bb4c12e70fb2051b589fc066
   - name: flash-sale-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/flash-sale-service
-    newTag: release-7f397b5ec47abb859b72b1220f835b370720dfab
+    newTag: release-a53a4e024dd965742f96eb13ac4c964b33d03071
   - name: inventory-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/inventory-service
     newTag: release-f5a11de7dd40da24bb4c12e70fb2051b589fc066
