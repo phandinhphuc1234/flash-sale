@@ -1,6 +1,8 @@
 package com.philia.flashsale.flashsale.outbox.application.model;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -38,7 +40,9 @@ public record OutboxEvent(
         if (attemptCount < 0) {
             throw new IllegalArgumentException("attemptCount must not be negative");
         }
-        payload = Map.copyOf(payload);
+        // JSONB payloads may contain JSON nulls for optional trace context such as tracestate.
+        // Keep the snapshot immutable without applying Map.copyOf's stricter non-null-value rule.
+        payload = Collections.unmodifiableMap(new LinkedHashMap<>(payload));
     }
 
     /** Compatibility constructor for legacy accepted-event callers without causation. */
