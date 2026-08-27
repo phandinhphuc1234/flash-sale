@@ -240,3 +240,17 @@ T074 implements the required release gate. Its positive live execution is intent
 
 T075 completes the rollback-compatibility asset and static evidence. Its read-only live result is a
 mandatory prerequisite of T072, not authorization to invent a destructive database rollback.
+
+## T069 — Cloud Kafka and Schema Registry provisioning — 2026-08-27
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Payment safety precondition | PASS | `phase20-kafka-contracts.ps1` confirmed the live cloud ConfigMap has `7/7` Payment runtime flags disabled during provisioning. Stripe credentials remained in `payment-secrets` and were not read or changed. |
+| Kafka topic inventory | PASS | Phase 20 `-Apply` created the four missing Feature 044 topics/DLTs: `flashsale.purchase.commands.v1`, `flashsale.order.payment-result.dlt.v1`, `flashsale.flash-sale.purchase-command.dlt.v1`, and `flashsale.order.purchase-reservation-result.dlt.v1`. Existing approved topics were verified at partitions=3 and replication factor=1; broker automatic topic creation remained disabled. |
+| Schema Registry inventory | PASS | The Feature 044 Registry gate registered and verified 14 topic/record subjects with `BACKWARD_TRANSITIVE` compatibility. The overall cloud inventory is 11 topics and 23 subjects. |
+| Argo and workload gate | PASS | Argo `flash-sale-cloud` reconciled at `0876104f7c917b65254870c69227f8a891898cb0` with `Synced|Healthy`; Schema Registry rollout completed successfully. |
+| Failure/retry evidence | PASS | The first read-only attempt encountered Kafka pod restart and `kubectl` exit 137; after Kafka returned `Running/Ready`, the rerun completed validation and the explicit `-Apply` completed successfully. No topic, schema, database, PVC, image, or Secret was deleted. |
+| Command boundary | PASS | `pwsh -NoLogo -NoProfile -File .\\infra\\scripts\\gitops\\phase20-kafka-contracts.ps1 -Apply` completed with `Phase 20 complete`; no Secret values or provider payloads were printed. |
+
+T069 is complete. Payment runtime restoration is intentionally handled by a separate reviewed
+GitOps change before the Feature 044 migration gate and Stripe smoke.
