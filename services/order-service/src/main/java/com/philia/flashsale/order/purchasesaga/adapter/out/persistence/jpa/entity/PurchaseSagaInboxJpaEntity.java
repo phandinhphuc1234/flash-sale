@@ -48,66 +48,47 @@ public class PurchaseSagaInboxJpaEntity {
     }
 
     public static PurchaseSagaInboxJpaEntity paymentSucceeded(PaymentSucceededCommand command) {
-        PurchaseSagaInboxJpaEntity entity = new PurchaseSagaInboxJpaEntity();
-        entity.eventId = command.eventId();
-        entity.eventType = command.eventType();
-        entity.eventVersion = command.eventVersion();
-        entity.producer = command.producer();
-        entity.aggregateId = command.aggregateId();
-        entity.aggregateVersion = command.aggregateVersion();
-        entity.orderId = command.orderId();
-        entity.payloadFingerprint = command.fingerprint();
-        entity.sourceTopic = command.sourceTopic();
-        entity.sourcePartition = command.sourcePartition();
-        entity.sourceOffset = command.sourceOffset();
-        entity.processedAt = command.occurredAt();
-        return entity;
+        return from(command.eventId(), command.eventType(), command.eventVersion(), command.producer(),
+                command.aggregateId(), command.aggregateVersion(), command.orderId(), command.fingerprint(),
+                command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), command.occurredAt());
     }
 
     public static PurchaseSagaInboxJpaEntity paymentFailed(PaymentFailedCommand command) {
-        PurchaseSagaInboxJpaEntity entity = new PurchaseSagaInboxJpaEntity();
-        entity.eventId = command.eventId();
-        entity.eventType = command.eventType();
-        entity.eventVersion = command.eventVersion();
-        entity.producer = command.producer();
-        entity.aggregateId = command.aggregateId();
-        entity.aggregateVersion = command.aggregateVersion();
-        entity.orderId = command.orderId();
-        entity.payloadFingerprint = command.fingerprint();
-        entity.sourceTopic = command.sourceTopic();
-        entity.sourcePartition = command.sourcePartition();
-        entity.sourceOffset = command.sourceOffset();
-        entity.processedAt = command.failedAt();
-        return entity;
+        return from(command.eventId(), command.eventType(), command.eventVersion(), command.producer(),
+                command.aggregateId(), command.aggregateVersion(), command.orderId(), command.fingerprint(),
+                command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), command.failedAt());
     }
 
     public static PurchaseSagaInboxJpaEntity purchaseReservationConfirmed(
             PurchaseReservationConfirmedCommand command) {
-        PurchaseSagaInboxJpaEntity entity = new PurchaseSagaInboxJpaEntity();
-        entity.eventId = command.eventId();
-        entity.eventType = command.eventType();
-        entity.eventVersion = command.eventVersion();
-        entity.producer = command.producer();
-        entity.aggregateId = command.aggregateId();
-        entity.aggregateVersion = command.aggregateVersion();
-        entity.orderId = command.orderId();
-        entity.payloadFingerprint = command.fingerprint();
-        entity.sourceTopic = command.sourceTopic();
-        entity.sourcePartition = command.sourcePartition();
-        entity.sourceOffset = command.sourceOffset();
-        entity.processedAt = command.confirmedAt();
-        return entity;
+        return from(command.eventId(), command.eventType(), command.eventVersion(), command.producer(),
+                command.aggregateId(), command.aggregateVersion(), command.orderId(), command.fingerprint(),
+                command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), command.confirmedAt());
     }
 
     public static PurchaseSagaInboxJpaEntity purchaseReservationReleased(
             PurchaseReservationReleasedCommand command) {
+        return from(command.eventId(), command.eventType(), command.eventVersion(), command.producer(),
+                command.aggregateId(), command.aggregateVersion(), command.orderId(), command.fingerprint(),
+                command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), command.releasedAt());
+    }
+
+    private static PurchaseSagaInboxJpaEntity from(UUID eventId, String eventType, int eventVersion,
+            String producer, UUID aggregateId, long aggregateVersion, UUID orderId, String payloadFingerprint,
+            String sourceTopic, int sourcePartition, long sourceOffset, Instant processedAt) {
         PurchaseSagaInboxJpaEntity entity = new PurchaseSagaInboxJpaEntity();
-        entity.eventId = command.eventId(); entity.eventType = command.eventType();
-        entity.eventVersion = command.eventVersion(); entity.producer = command.producer();
-        entity.aggregateId = command.aggregateId(); entity.aggregateVersion = command.aggregateVersion();
-        entity.orderId = command.orderId(); entity.payloadFingerprint = command.fingerprint();
-        entity.sourceTopic = command.sourceTopic(); entity.sourcePartition = command.sourcePartition();
-        entity.sourceOffset = command.sourceOffset(); entity.processedAt = command.releasedAt();
+        entity.eventId = eventId;
+        entity.eventType = eventType;
+        entity.eventVersion = eventVersion;
+        entity.producer = producer;
+        entity.aggregateId = aggregateId;
+        entity.aggregateVersion = aggregateVersion;
+        entity.orderId = orderId;
+        entity.payloadFingerprint = payloadFingerprint;
+        entity.sourceTopic = sourceTopic;
+        entity.sourcePartition = sourcePartition;
+        entity.sourceOffset = sourceOffset;
+        entity.processedAt = processedAt;
         return entity;
     }
 

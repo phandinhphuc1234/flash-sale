@@ -22,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @ConditionalOnProperty(name = "flashsale.runtime.enabled", havingValue = "true", matchIfMissing = true)
 public final class ReservationReleaseJpaAdapter implements PersistReservationReleasePort {
+    private static final String RELEASED = "RELEASED";
+    private static final String EXPIRED = "EXPIRED";
+
     private final FlashSaleReservationJpaRepository reservations;
     private final ReservationCommandInboxJpaRepository inbox;
     private final PurchaseEventOutboxJpaRepository outbox;
@@ -40,23 +43,42 @@ public final class ReservationReleaseJpaAdapter implements PersistReservationRel
         }
         var reservation = reservations.findWithLockById(command.reservationId()).orElseThrow(() -> new IllegalStateException("reservation does not exist"));
         if (!reservation.getPurchaseRequestId().equals(command.purchaseRequestId())) throw new IllegalStateException("purchase request does not own reservation");
-        Instant now = clock.instant(); String status;
+        Instant now = clock.instant();
+        String status;
         if (reservation.getStatus() == FlashSaleReservationJpaEntity.Status.RESERVED) {
-            if (!now.isBefore(reservation.getExpiresAt())) { reservation.expire(now); status = "EXPIRED"; }
-            else { reservation.release(now); status = "RELEASED"; }
-        } else if (reservation.getStatus() == FlashSaleReservationJpaEntity.Status.EXPIRED) status = "EXPIRED";
-        else if (reservation.getStatus() == FlashSaleReservationJpaEntity.Status.RELEASED) status = "RELEASED";
-        else throw new IllegalStateException("confirmed reservation cannot be released");
+            if (!now.isBefore(reservation.getExpiresAt())) {
+                reservation.expire(now);
+                status = EXPIRED;
+            } else {
+                reservation.release(now);
+                status = RELEASED;
+            }
+        } else if (reservation.getStatus() == FlashSaleReservationJpaEntity.Status.EXPIRED) {
+            status = EXPIRED;
+        } else if (reservation.getStatus() == FlashSaleReservationJpaEntity.Status.RELEASED) {
+            status = RELEASED;
+        } else {
+            throw new IllegalStateException("confirmed reservation cannot be released");
+        }
         UUID resultEventId = UUID.nameUUIDFromBytes(("purchase-reservation-released:" + command.commandId()).getBytes(StandardCharsets.UTF_8));
         inbox.save(ReservationCommandInboxJpaEntity.released(command, resultEventId, now));
         outbox.save(PurchaseEventOutboxJpaEntity.released(command, reservation, resultEventId, now, status));
         return result(command, reservation, resultEventId, status, now);
     }
     private ReservationReleaseResult result(ReleaseReservationCommand command, FlashSaleReservationJpaEntity r, UUID resultId, String status, Instant at) {
-        ReservationReleaseResult.Status value = "RELEASED".equals(status) ? ReservationReleaseResult.Status.RELEASED : ReservationReleaseResult.Status.EXPIRED;
-        if ("RELEASED".equals(status) && r.getFinalizedAt() != null && !r.getFinalizedAt().equals(at)) value = ReservationReleaseResult.Status.ALREADY_RELEASED;
-        if ("EXPIRED".equals(status) && r.getFinalizedAt() != null && r.getStatus() == FlashSaleReservationJpaEntity.Status.EXPIRED) value = ReservationReleaseResult.Status.ALREADY_EXPIRED;
+        ReservationReleaseResult.Status value = RELEASED.equals(status)
+                ? ReservationReleaseResult.Status.RELEASED
+                : ReservationReleaseResult.Status.EXPIRED;
+        if (RELEASED.equals(status) && r.getFinalizedAt() != null && !r.getFinalizedAt().equals(at)) {
+            value = ReservationReleaseResult.Status.ALREADY_RELEASED;
+        }
+        if (EXPIRED.equals(status) && r.getFinalizedAt() != null
+                && r.getStatus() == FlashSaleReservationJpaEntity.Status.EXPIRED) {
+            value = ReservationReleaseResult.Status.ALREADY_EXPIRED;
+        }
         return new ReservationReleaseResult(r.getId(), r.getCampaignId(), r.getUserId(), r.getVariantId(), r.getQuantity(), command.commandId(), resultId, value, command.reason(), at);
     }
-    private String statusFor(FlashSaleReservationJpaEntity r) { return r.getStatus() == FlashSaleReservationJpaEntity.Status.RELEASED ? "RELEASED" : "EXPIRED"; }
+    private String statusFor(FlashSaleReservationJpaEntity r) {
+        return r.getStatus() == FlashSaleReservationJpaEntity.Status.RELEASED ? RELEASED : EXPIRED;
+    }
 }

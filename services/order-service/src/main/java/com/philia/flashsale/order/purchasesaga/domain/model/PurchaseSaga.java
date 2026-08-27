@@ -8,6 +8,9 @@ import java.util.UUID;
 
 /** Order-owned durable workflow identity created with an accepted reservation. */
 public final class PurchaseSaga {
+    private static final String PAYMENT_ID_FIELD = "paymentId";
+    private static final String TRANSITIONED_AT_FIELD = "transitionedAt";
+
     private final UUID id;
     private final UUID orderId;
     private final UUID purchaseRequestId;
@@ -82,10 +85,10 @@ public final class PurchaseSaga {
     /** Applies one verified PaymentSucceeded fact and opens the confirm-reservation step. */
     public PurchaseSaga confirmReservation(UUID paymentId, long paymentVersion, Instant paidAt,
             UUID commandId, Instant transitionedAt) {
-        Objects.requireNonNull(paymentId, "paymentId");
+        Objects.requireNonNull(paymentId, PAYMENT_ID_FIELD);
         Objects.requireNonNull(paidAt, "paidAt");
         Objects.requireNonNull(commandId, "commandId");
-        Objects.requireNonNull(transitionedAt, "transitionedAt");
+        Objects.requireNonNull(transitionedAt, TRANSITIONED_AT_FIELD);
         if (paymentVersion <= 0) {
             throw new InvalidPurchaseSagaException("payment version must be positive");
         }
@@ -105,12 +108,12 @@ public final class PurchaseSaga {
     /** Applies one verified terminal PaymentFailed fact and opens reservation release. */
     public PurchaseSaga releaseReservation(UUID paymentId, long paymentVersion, String failureReason,
             String desiredStatus, Instant failedAt, UUID commandId, Instant transitionedAt) {
-        Objects.requireNonNull(paymentId, "paymentId");
+        Objects.requireNonNull(paymentId, PAYMENT_ID_FIELD);
         Objects.requireNonNull(failureReason, "failureReason");
         Objects.requireNonNull(desiredStatus, "desiredStatus");
         Objects.requireNonNull(failedAt, "failedAt");
         Objects.requireNonNull(commandId, "commandId");
-        Objects.requireNonNull(transitionedAt, "transitionedAt");
+        Objects.requireNonNull(transitionedAt, TRANSITIONED_AT_FIELD);
         if (paymentVersion <= 0) throw new InvalidPurchaseSagaException("payment version must be positive");
         if (!"CANCELLED".equals(desiredStatus) && !"EXPIRED".equals(desiredStatus)) {
             throw new InvalidPurchaseSagaException("invalid release target");
@@ -130,10 +133,10 @@ public final class PurchaseSaga {
     /** Records verified late payment when the reservation cannot be safely reacquired. */
     public PurchaseSaga enterManualReview(UUID paymentId, long paymentVersion, Instant paidAt,
             String reason, Instant transitionedAt) {
-        Objects.requireNonNull(paymentId, "paymentId");
+        Objects.requireNonNull(paymentId, PAYMENT_ID_FIELD);
         Objects.requireNonNull(paidAt, "paidAt");
         Objects.requireNonNull(reason, "reason");
-        Objects.requireNonNull(transitionedAt, "transitionedAt");
+        Objects.requireNonNull(transitionedAt, TRANSITIONED_AT_FIELD);
         if (paymentVersion <= 0) throw new InvalidPurchaseSagaException("payment version must be positive");
         if (status != PurchaseSagaStatus.COMPENSATED) {
             throw new InvalidPurchaseSagaException("Saga is not eligible for manual review correction");
@@ -149,7 +152,7 @@ public final class PurchaseSaga {
 
     /** Moves an in-flight success to manual review when Flash Sale reports the reservation gone. */
     public PurchaseSaga enterManualReviewAfterReservationFailure(Instant transitionedAt) {
-        Objects.requireNonNull(transitionedAt, "transitionedAt");
+        Objects.requireNonNull(transitionedAt, TRANSITIONED_AT_FIELD);
         if (status != PurchaseSagaStatus.CONFIRMING_RESERVATION
                 && status != PurchaseSagaStatus.RELEASING_RESERVATION) {
             throw new InvalidPurchaseSagaException("Saga is not awaiting reservation recovery");

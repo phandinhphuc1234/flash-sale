@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 @Component
 public final class PaymentSucceededAvroMapper {
     private static final Pattern CURRENCY = Pattern.compile("[A-Z]{3}");
+    private static final String MISSING_SUFFIX = " is missing";
     private final String expectedTopic;
 
     @Autowired
@@ -102,13 +103,13 @@ public final class PaymentSucceededAvroMapper {
     }
 
     private UUID parseUuid(String value, String field) {
-        if (value == null || value.isBlank()) throw invalid(field + " is missing");
+        if (value == null || value.isBlank()) throw invalid(field + MISSING_SUFFIX);
         try { return UUID.fromString(value); }
         catch (IllegalArgumentException exception) { throw invalid(field + " is not a UUID"); }
     }
 
     private <T> T require(T value, String field) {
-        if (value == null) throw invalid(field + " is missing");
+        if (value == null) throw invalid(field + MISSING_SUFFIX);
         return value;
     }
 
@@ -117,7 +118,7 @@ public final class PaymentSucceededAvroMapper {
     }
 
     private void requireTextNonBlank(String value, String field) {
-        if (value == null || value.isBlank()) throw invalid(field + " is missing");
+        if (value == null || value.isBlank()) throw invalid(field + MISSING_SUFFIX);
     }
 
     private String header(ConsumerRecord<String, PaymentSucceededV1> record, String name) {

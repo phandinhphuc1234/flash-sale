@@ -72,26 +72,10 @@ public class OrderCreationOutboxJpaEntity {
     }
 
     public static OrderCreationOutboxJpaEntity from(OrderCreationCandidate candidate) {
-        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = candidate.outboxEventId();
-        entity.aggregateType = "ORDER";
-        entity.aggregateId = candidate.order().id();
-        entity.aggregateVersion = 1;
-        entity.eventType = "OrderCreated";
-        entity.eventVersion = 1;
-        entity.eventKey = candidate.order().id().toString();
-        entity.correlationId = candidate.correlationId();
-        entity.causationId = candidate.causationId();
-        entity.payload = snapshotPayload(candidate);
-        entity.traceparent = candidate.traceparent();
-        entity.tracestate = candidate.tracestate();
-        entity.status = "PENDING";
-        entity.attemptCount = 0;
-        entity.nextAttemptAt = candidate.createdAt();
-        entity.occurredAt = candidate.occurredAt();
-        entity.createdAt = candidate.createdAt();
-        entity.updatedAt = candidate.createdAt();
-        return entity;
+        return pendingEvent(candidate.outboxEventId(), "ORDER", candidate.order().id(), 1,
+                "OrderCreated", candidate.order().id().toString(), candidate.correlationId(),
+                candidate.causationId(), snapshotPayload(candidate), candidate.traceparent(), candidate.tracestate(),
+                candidate.createdAt(), candidate.occurredAt(), candidate.createdAt());
     }
 
     /** Creates the stable PaymentRequested command intent in the same local transaction. */
@@ -101,87 +85,41 @@ public class OrderCreationOutboxJpaEntity {
         }
         var saga = candidate.purchaseSaga();
         var order = candidate.order();
-        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = candidate.paymentRequestedOutboxEventId();
-        entity.aggregateType = "PURCHASE_SAGA";
-        entity.aggregateId = order.id();
-        entity.aggregateVersion = 1;
-        entity.eventType = "PaymentRequested";
-        entity.eventVersion = 1;
-        entity.eventKey = order.id().toString();
-        entity.correlationId = candidate.correlationId();
-        entity.causationId = candidate.causationId();
-        entity.payload = paymentRequestedPayload(order, saga);
-        entity.traceparent = candidate.traceparent();
-        entity.tracestate = candidate.tracestate();
-        entity.status = "PENDING";
-        entity.attemptCount = 0;
-        entity.nextAttemptAt = candidate.createdAt();
-        entity.occurredAt = candidate.occurredAt();
-        entity.createdAt = candidate.createdAt();
-        entity.updatedAt = candidate.createdAt();
-        return entity;
+        return pendingEvent(candidate.paymentRequestedOutboxEventId(), "PURCHASE_SAGA", order.id(), 1,
+                "PaymentRequested", order.id().toString(), candidate.correlationId(), candidate.causationId(),
+                paymentRequestedPayload(order, saga), candidate.traceparent(), candidate.tracestate(),
+                candidate.createdAt(), candidate.occurredAt(), candidate.createdAt());
     }
 
     /** Creates the stable Flash Sale confirm command after a verified PaymentSucceeded fact. */
     public static OrderCreationOutboxJpaEntity confirmReservation(PaymentSucceededCommand command,
             PurchaseSaga saga, UUID commandId) {
-        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = commandId;
-        entity.aggregateType = "PURCHASE_SAGA";
-        entity.aggregateId = saga.id();
-        entity.aggregateVersion = saga.version();
-        entity.eventType = "ConfirmPurchaseReservation";
-        entity.eventVersion = 1;
-        entity.eventKey = saga.orderId().toString();
-        entity.correlationId = command.correlationId();
-        entity.causationId = command.eventId();
-        entity.payload = "{"
+        String payload = "{"
                 + "\"sagaId\":\"" + saga.id() + "\","
                 + "\"orderId\":\"" + saga.orderId() + "\","
                 + "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\","
                 + "\"reservationId\":\"" + saga.reservationId() + "\","
                 + "\"paymentId\":\"" + command.paymentId() + "\","
                 + "\"paidAt\":\"" + command.paidAt() + "\"}";
-        entity.traceparent = command.traceparent();
-        entity.tracestate = command.tracestate();
-        entity.status = "PENDING";
-        entity.attemptCount = 0;
-        entity.nextAttemptAt = command.occurredAt();
-        entity.occurredAt = command.occurredAt();
-        entity.createdAt = command.occurredAt();
-        entity.updatedAt = command.occurredAt();
-        return entity;
+        return pendingEvent(commandId, "PURCHASE_SAGA", saga.id(), saga.version(),
+                "ConfirmPurchaseReservation", saga.orderId().toString(), command.correlationId(),
+                command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
+                command.occurredAt(), command.occurredAt());
     }
 
     /** Creates the stable Flash Sale release command after a terminal PaymentFailed fact. */
     public static OrderCreationOutboxJpaEntity releaseReservation(PaymentFailedCommand command,
             PurchaseSaga saga, UUID commandId) {
-        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = commandId;
-        entity.aggregateType = "PURCHASE_SAGA";
-        entity.aggregateId = saga.id();
-        entity.aggregateVersion = saga.version();
-        entity.eventType = "ReleasePurchaseReservation";
-        entity.eventVersion = 1;
-        entity.eventKey = saga.orderId().toString();
-        entity.correlationId = command.correlationId();
-        entity.causationId = command.eventId();
-        entity.payload = "{" +
+        String payload = "{" +
                 "\"sagaId\":\"" + saga.id() + "\"," +
                 "\"orderId\":\"" + saga.orderId() + "\"," +
                 "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\"," +
                 "\"reservationId\":\"" + saga.reservationId() + "\"," +
                 "\"reason\":\"" + command.reason() + "\"}";
-        entity.traceparent = command.traceparent();
-        entity.tracestate = command.tracestate();
-        entity.status = "PENDING";
-        entity.attemptCount = 0;
-        entity.nextAttemptAt = command.occurredAt();
-        entity.occurredAt = command.occurredAt();
-        entity.createdAt = command.occurredAt();
-        entity.updatedAt = command.occurredAt();
-        return entity;
+        return pendingEvent(commandId, "PURCHASE_SAGA", saga.id(), saga.version(),
+                "ReleasePurchaseReservation", saga.orderId().toString(), command.correlationId(),
+                command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
+                command.occurredAt(), command.occurredAt());
     }
 
     /** Creates the terminal OrderConfirmed fact in the same local transaction as the state changes. */
@@ -190,32 +128,16 @@ public class OrderCreationOutboxJpaEntity {
         UUID eventId = UUID.nameUUIDFromBytes(("order-confirmed:" + command.eventId())
                 .getBytes(StandardCharsets.UTF_8));
         Instant occurredAt = command.confirmedAt();
-        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = eventId;
-        entity.aggregateType = "ORDER";
-        entity.aggregateId = order.getId();
-        entity.aggregateVersion = saga.version();
-        entity.eventType = "OrderConfirmed";
-        entity.eventVersion = 1;
-        entity.eventKey = order.getId().toString();
-        entity.correlationId = command.correlationId();
-        entity.causationId = command.eventId();
-        entity.payload = "{"
+        String payload = "{"
                 + "\"orderId\":\"" + order.getId() + "\","
                 + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
                 + "\"reservationId\":\"" + order.getReservationId() + "\","
                 + "\"paymentId\":\"" + command.paymentId() + "\","
                 + "\"confirmedAt\":\"" + occurredAt + "\"}";
-        entity.traceparent = command.traceparent();
-        entity.tracestate = command.tracestate();
-        entity.status = "PENDING";
-        entity.attemptCount = 0;
-        entity.nextAttemptAt = occurredAt;
-        entity.occurredAt = occurredAt;
-        entity.createdAt = occurredAt;
-        entity.updatedAt = occurredAt;
-        return entity;
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderConfirmed",
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
     }
 
     /** Creates the terminal OrderCancelled/OrderExpired fact after reservation release. */
@@ -236,17 +158,7 @@ public class OrderCreationOutboxJpaEntity {
         UUID eventId = UUID.nameUUIDFromBytes(("order-payment-review-required:" + command.eventId())
                 .getBytes(StandardCharsets.UTF_8));
         Instant occurredAt = command.paidAt();
-        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = eventId;
-        entity.aggregateType = "ORDER";
-        entity.aggregateId = order.getId();
-        entity.aggregateVersion = saga.version();
-        entity.eventType = "OrderPaymentReviewRequired";
-        entity.eventVersion = 1;
-        entity.eventKey = order.getId().toString();
-        entity.correlationId = command.correlationId();
-        entity.causationId = command.eventId();
-        entity.payload = "{"
+        String payload = "{"
                 + "\"orderId\":\"" + order.getId() + "\","
                 + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
@@ -255,15 +167,9 @@ public class OrderCreationOutboxJpaEntity {
                 + "\"previousStatus\":\"" + previousStatus + "\","
                 + "\"reviewReason\":\"LATE_PAYMENT_RESERVATION_UNAVAILABLE\","
                 + "\"reviewRequiredAt\":\"" + occurredAt + "\"}";
-        entity.traceparent = command.traceparent();
-        entity.tracestate = command.tracestate();
-        entity.status = "PENDING";
-        entity.attemptCount = 0;
-        entity.nextAttemptAt = occurredAt;
-        entity.occurredAt = occurredAt;
-        entity.createdAt = occurredAt;
-        entity.updatedAt = occurredAt;
-        return entity;
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderPaymentReviewRequired",
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
     }
 
     /** Creates the same correction when the confirm attempt loses a release race. */
@@ -272,17 +178,7 @@ public class OrderCreationOutboxJpaEntity {
         UUID eventId = UUID.nameUUIDFromBytes(("order-payment-review-required:" + command.eventId())
                 .getBytes(StandardCharsets.UTF_8));
         Instant occurredAt = command.releasedAt();
-        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = eventId;
-        entity.aggregateType = "ORDER";
-        entity.aggregateId = order.getId();
-        entity.aggregateVersion = saga.version();
-        entity.eventType = "OrderPaymentReviewRequired";
-        entity.eventVersion = 1;
-        entity.eventKey = order.getId().toString();
-        entity.correlationId = command.correlationId();
-        entity.causationId = saga.activeCommandId() == null ? command.eventId() : saga.activeCommandId();
-        entity.payload = "{"
+        String payload = "{"
                 + "\"orderId\":\"" + order.getId() + "\","
                 + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
@@ -291,15 +187,10 @@ public class OrderCreationOutboxJpaEntity {
                 + "\"previousStatus\":\"" + order.getStatus() + "\","
                 + "\"reviewReason\":\"LATE_PAYMENT_RESERVATION_UNAVAILABLE\","
                 + "\"reviewRequiredAt\":\"" + occurredAt + "\"}";
-        entity.traceparent = command.traceparent();
-        entity.tracestate = command.tracestate();
-        entity.status = "PENDING";
-        entity.attemptCount = 0;
-        entity.nextAttemptAt = occurredAt;
-        entity.occurredAt = occurredAt;
-        entity.createdAt = occurredAt;
-        entity.updatedAt = occurredAt;
-        return entity;
+        UUID causationId = saga.activeCommandId() == null ? command.eventId() : saga.activeCommandId();
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderPaymentReviewRequired",
+                order.getId().toString(), command.correlationId(), causationId, payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
     }
 
     private static OrderCreationOutboxJpaEntity terminalRelease(PurchaseReservationReleasedCommand command,
@@ -307,21 +198,41 @@ public class OrderCreationOutboxJpaEntity {
         UUID eventId = UUID.nameUUIDFromBytes((eventType + ":" + command.eventId())
                 .getBytes(StandardCharsets.UTF_8));
         Instant occurredAt = command.releasedAt();
-        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
-        entity.eventId = eventId; entity.aggregateType = "ORDER"; entity.aggregateId = order.getId();
-        entity.aggregateVersion = saga.version(); entity.eventType = eventType; entity.eventVersion = 1;
-        entity.eventKey = order.getId().toString(); entity.correlationId = command.correlationId();
-        entity.causationId = command.eventId();
-        entity.payload = "{"
+        String payload = "{"
                 + "\"orderId\":\"" + order.getId() + "\","
                 + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
                 + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
                 + "\"reservationId\":\"" + order.getReservationId() + "\","
                 + "\"reason\":\"" + command.reason() + "\","
                 + "\"" + timeField + "\":\"" + occurredAt + "\"}";
-        entity.traceparent = command.traceparent(); entity.tracestate = command.tracestate();
-        entity.status = "PENDING"; entity.attemptCount = 0; entity.nextAttemptAt = occurredAt;
-        entity.occurredAt = occurredAt; entity.createdAt = occurredAt; entity.updatedAt = occurredAt;
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), eventType,
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
+    private static OrderCreationOutboxJpaEntity pendingEvent(UUID eventId, String aggregateType,
+            UUID aggregateId, long aggregateVersion, String eventType, String eventKey,
+            UUID correlationId, UUID causationId, String payload, String traceparent, String tracestate,
+            Instant nextAttemptAt, Instant occurredAt, Instant createdAt) {
+        OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
+        entity.eventId = eventId;
+        entity.aggregateType = aggregateType;
+        entity.aggregateId = aggregateId;
+        entity.aggregateVersion = aggregateVersion;
+        entity.eventType = eventType;
+        entity.eventVersion = 1;
+        entity.eventKey = eventKey;
+        entity.correlationId = correlationId;
+        entity.causationId = causationId;
+        entity.payload = payload;
+        entity.traceparent = traceparent;
+        entity.tracestate = tracestate;
+        entity.status = "PENDING";
+        entity.attemptCount = 0;
+        entity.nextAttemptAt = nextAttemptAt;
+        entity.occurredAt = occurredAt;
+        entity.createdAt = createdAt;
+        entity.updatedAt = createdAt;
         return entity;
     }
 
