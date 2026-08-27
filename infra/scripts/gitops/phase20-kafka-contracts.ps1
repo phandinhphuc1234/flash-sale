@@ -155,6 +155,13 @@ $SubjectContracts = @(
     Subject = "flashsale.order.purchase-reservation-result.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationReleasedV1"
     SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseReservationReleasedV1.avsc"
   }
+  # The reservation-results consumer shares flashsale.purchase.events.v1 with the
+  # PurchaseAccepted consumer. If it rejects an accepted-purchase record, the
+  # DeadLetterPublishingRecoverer serializes that record under this DLT subject.
+  [pscustomobject]@{
+    Subject = "flashsale.order.purchase-reservation-result.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseAcceptedV1.avsc"
+  }
 )
 
 $SchemaScripts = @(

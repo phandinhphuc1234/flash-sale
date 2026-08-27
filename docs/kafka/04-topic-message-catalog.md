@@ -31,9 +31,11 @@ The corrected full-system target is:
 The count excludes Kafka internal topics, Schema Registry's `_schemas`, retry topics, and DLTs.
 Those are operational artifacts rather than business message types.
 
-Feature 044 operational inventory: 5 approved main topics, 3 approved consumer DLTs, and 14
-Schema Registry subjects when the eight new main record subjects and six DLT bindings are counted
-under `TopicRecordNameStrategy`. Cart, Notification, Product lifecycle, Campaign end/cancellation,
+Feature 044 operational inventory: 5 approved main topics, 3 approved consumer DLTs, and 15
+Schema Registry subjects when the eight new main record subjects and seven DLT bindings are counted
+under `TopicRecordNameStrategy`. The seventh binding is `PurchaseAcceptedV1` under the reservation-
+results DLT because that consumer shares the existing purchase-events topic. Cart, Notification,
+Product lifecycle, Campaign end/cancellation,
 and Inventory reconciliation topics are not part of this feature's acceptance.
 
 ## 2. Canonical topic catalog
@@ -78,7 +80,9 @@ the Saga/correlation ID as metadata. This identity transition must be explicit i
 | `flashsale.order.purchase-reservation-result.dlt.v1` | Order consumer recovery | `PurchaseReservationConfirmedV1`, `PurchaseReservationReleasedV1` |
 
 DLTs are operational evidence, not business failure facts. With `TopicRecordNameStrategy`, the eight
-new main record subjects plus six DLT topic/record bindings produce 14 Registry subjects.
+new main record subjects plus seven DLT topic/record bindings produce 15 Registry subjects. The
+`PurchaseAcceptedV1` reservation-results DLT binding is required only because the source topic is
+shared; it does not introduce a new business event.
 
 ## 4. Correct purchase Saga
 

@@ -26,6 +26,7 @@ foreach ($path in @($orderConfig, $flashSaleConfig, $phase20, $schemaScript, $ov
 $order = Get-Content -LiteralPath $orderConfig -Raw
 $flashSale = Get-Content -LiteralPath $flashSaleConfig -Raw
 $phase20Content = Get-Content -LiteralPath $phase20 -Raw
+$schemaScriptContent = Get-Content -LiteralPath $schemaScript -Raw
 
 foreach ($marker in @(
   'ORDER_PAYMENT_COMMANDS_TOPIC: "flashsale.payment.commands.v1"',
@@ -54,11 +55,20 @@ foreach ($marker in @(
   '"flashsale.order.payment-result.dlt.v1"',
   '"flashsale.flash-sale.purchase-command.dlt.v1"',
   '"flashsale.order.purchase-reservation-result.dlt.v1"',
+  '"flashsale.order.purchase-reservation-result.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1"',
   '"register-purchase-saga-schemas.ps1"',
   'topics=$($TopicContracts.Count)',
   'subjects=$($SubjectContracts.Count)'
 )) {
   if ($phase20Content.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) { throw "Phase 20 marker is missing: $marker" }
+}
+if ($schemaScriptContent.IndexOf(
+        "New-SchemaDefinition 'flashsale.order.purchase-reservation-result.dlt.v1' 'flashsale.purchase.events.v1'",
+        [StringComparison]::Ordinal) -lt 0 -or
+    $schemaScriptContent.IndexOf(
+        "'PurchaseAcceptedV1.avsc' 'com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1'",
+        [StringComparison]::Ordinal) -lt 0) {
+  throw "PurchaseAcceptedV1 reservation-results DLT schema binding is missing."
 }
 if ($phase20Content -match 'flashsale\.order\.payment-events\.dlt\.v1') {
   throw "Deprecated Payment DLT name remains in Phase 20."
