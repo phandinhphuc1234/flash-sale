@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.HexFormat;
 import java.util.UUID;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 public final class ConfirmReservationAvroMapper {
     private final String expectedTopic;
 
+    @Autowired
     public ConfirmReservationAvroMapper(ReservationCommandProperties properties) {
         this(properties.topic());
     }
