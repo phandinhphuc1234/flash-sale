@@ -6,9 +6,7 @@ import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.Purcha
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PurchaseReservationReleasedConflictException;
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PurchaseReservationReleasedRecordException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
-import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -24,8 +22,6 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.util.backoff.BackOff;
-import org.springframework.util.backoff.BackOffExecution;
 import com.philia.flashsale.order.observability.OrderObservability;
 
 /** Retry/DLT wiring for the Order-owned reservation confirmation boundary. */
@@ -64,7 +60,8 @@ public class OrderPurchaseReservationResultsConsumerConfiguration {
                     observability.recordDltPublication(OrderObservability.ConsumerBoundary.RESERVATION_RESULTS);
                     return new TopicPartition(properties.purchaseReservationResultsDltTopic(), record.partition());
                 });
-        var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
+        var handler = new DefaultErrorHandler(recoverer,
+                new OrderKafkaConsumerConfiguration.OrderKafkaRetryBackOff(properties.retryDelays()));
         handler.addNotRetryableExceptions(PurchaseReservationConfirmedRecordException.class,
                 PurchaseReservationConfirmedConflictException.class,
                 PurchaseReservationReleasedRecordException.class,
@@ -74,19 +71,4 @@ public class OrderPurchaseReservationResultsConsumerConfiguration {
         return handler;
     }
 
-    static final class RetryBackOff implements BackOff {
-        private final List<Duration> delays;
-
-        RetryBackOff(List<Duration> delays) { this.delays = List.copyOf(delays); }
-
-        @Override
-        public BackOffExecution start() {
-            return new BackOffExecution() {
-                private int index;
-                @Override public long nextBackOff() {
-                    return index < delays.size() ? delays.get(index++).toMillis() : STOP;
-                }
-            };
-        }
-    }
 }

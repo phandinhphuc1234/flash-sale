@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ public final class ReservationReleaseJpaAdapter implements PersistReservationRel
     private final Clock clock;
     public ReservationReleaseJpaAdapter(FlashSaleReservationJpaRepository reservations, ReservationCommandInboxJpaRepository inbox,
             PurchaseEventOutboxJpaRepository outbox) { this(reservations, inbox, outbox, Clock.systemUTC()); }
+    @Autowired
     public ReservationReleaseJpaAdapter(FlashSaleReservationJpaRepository reservations, ReservationCommandInboxJpaRepository inbox,
             PurchaseEventOutboxJpaRepository outbox, Clock clock) { this.reservations = Objects.requireNonNull(reservations); this.inbox = Objects.requireNonNull(inbox); this.outbox = Objects.requireNonNull(outbox); this.clock = Objects.requireNonNull(clock); }
     @Override @Transactional

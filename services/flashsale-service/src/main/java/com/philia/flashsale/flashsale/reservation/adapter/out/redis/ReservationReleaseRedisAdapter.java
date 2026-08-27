@@ -6,6 +6,7 @@ import com.philia.flashsale.flashsale.reservation.application.result.Reservation
 import com.philia.flashsale.flashsale.observability.FlashSaleObservability;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -21,6 +22,7 @@ public final class ReservationReleaseRedisAdapter implements ReconcileReservatio
     private final DefaultRedisScript<Long> script;
     private final FlashSaleObservability observability;
     public ReservationReleaseRedisAdapter(StringRedisTemplate redis) { this(redis, FlashSaleObservability.noop()); }
+    @Autowired
     public ReservationReleaseRedisAdapter(StringRedisTemplate redis, FlashSaleObservability observability) {
         this.redis = Objects.requireNonNull(redis, "redis"); this.observability = Objects.requireNonNull(observability, "observability");
         this.script = new DefaultRedisScript<>(); this.script.setScriptSource(new ResourceScriptSource(new ClassPathResource("redis/reservation/release-reservation.lua"))); this.script.setResultType(Long.class);

@@ -5,9 +5,7 @@ import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.Paymen
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PaymentFailedConflictException;
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.PaymentFailedRecordException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
-import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -23,8 +21,6 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.util.backoff.BackOff;
-import org.springframework.util.backoff.BackOffExecution;
 import com.philia.flashsale.order.observability.OrderObservability;
 
 /** Retry/DLT wiring for the Order-owned PaymentSucceeded boundary. */
@@ -63,7 +59,8 @@ public class OrderPaymentEventsConsumerConfiguration {
                     observability.recordDltPublication(OrderObservability.ConsumerBoundary.PAYMENT_RESULTS);
                     return new TopicPartition(properties.paymentEventsDltTopic(), record.partition());
                 });
-        var handler = new DefaultErrorHandler(recoverer, new RetryBackOff(properties.retryDelays()));
+        var handler = new DefaultErrorHandler(recoverer,
+                new OrderKafkaConsumerConfiguration.OrderKafkaRetryBackOff(properties.retryDelays()));
         handler.addNotRetryableExceptions(PaymentSucceededRecordException.class,
                 PaymentSucceededConflictException.class, PaymentFailedRecordException.class,
                 PaymentFailedConflictException.class);
@@ -72,16 +69,4 @@ public class OrderPaymentEventsConsumerConfiguration {
         return handler;
     }
 
-    static final class RetryBackOff implements BackOff {
-        private final List<Duration> delays;
-        RetryBackOff(List<Duration> delays) { this.delays = List.copyOf(delays); }
-        @Override public BackOffExecution start() {
-            return new BackOffExecution() {
-                private int index;
-                @Override public long nextBackOff() {
-                    return index < delays.size() ? delays.get(index++).toMillis() : STOP;
-                }
-            };
-        }
-    }
 }
