@@ -27,6 +27,12 @@ public final class OrderExpiredAvroMapper {
     }
     private UUID uuid(JsonNode root, String field) { try { return UUID.fromString(text(root, field)); } catch (RuntimeException exception) { throw invalid(field + " is not a UUID"); } }
     private Instant instant(JsonNode root, String field) { try { return Instant.parse(text(root, field)); } catch (RuntimeException exception) { throw invalid(field + " is not an instant"); } }
-    private String text(JsonNode root, String field) { JsonNode value = root == null ? null : root.get(field); if (value == null || !value.isTextual() || value.asText().isBlank()) throw invalid(field + " is missing"); return value.asText(); }
+    private String text(JsonNode root, String field) {
+        JsonNode value = root == null ? null : root.get(field);
+        if (value == null || !value.isTextual() || value.asText().isBlank()) {
+            throw invalid(field + " is missing");
+        }
+        return value.asText();
+    }
     private IllegalArgumentException invalid(String message) { return new IllegalArgumentException(message); }
 }

@@ -23,7 +23,10 @@ public final class PurchaseReservationReleasedAvroMapper {
         if (data == null || event.getEventId() == null || event.getAggregateId() == null || event.getCorrelationId() == null || event.getCausationId() == null || event.getOccurredAt() == null || data.getReleasedAt() == null) throw invalid("envelope or data is missing");
         require(event.getEventType(), "PurchaseReservationReleased", "eventType"); require(event.getProducer(), "flashsale-service", "producer"); require(event.getAggregateType(), "PURCHASE_RESERVATION", "aggregateType");
         if (event.getEventVersion() != 1 || event.getAggregateVersion() <= 0) throw invalid("unsupported event or aggregate version");
-        UUID key = parse(record.key(), "message key"); if (!key.equals(data.getOrderId())) throw invalid("message key must equal data.orderId");
+        UUID key = parse(record.key(), "message key");
+        if (!key.equals(data.getOrderId())) {
+            throw invalid("message key must equal data.orderId");
+        }
         if (!event.getAggregateId().equals(data.getReservationId())) throw invalid("aggregateId must equal data.reservationId");
         if (!event.getCorrelationId().equals(data.getSagaId()) || !data.getSagaId().equals(data.getPurchaseRequestId())) throw invalid("Saga identity does not match correlation or purchase request");
         if (!PurchaseReservationReleasedCommand.STATUSES.contains(data.getReservationStatus())) throw invalid("unsupported reservation status");

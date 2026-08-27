@@ -22,8 +22,14 @@ public final class ReleaseReservationAvroMapper {
         if (data == null || event.getEventId() == null || event.getAggregateId() == null || event.getCorrelationId() == null || event.getCausationId() == null || event.getOccurredAt() == null) throw invalid("envelope or data is missing");
         require(event.getEventType(), "ReleasePurchaseReservation", "eventType"); require(event.getProducer(), "order-service", "producer"); require(event.getAggregateType(), "PURCHASE_SAGA", "aggregateType");
         if (event.getEventVersion() != 1 || event.getAggregateVersion() <= 0) throw invalid("unsupported event or aggregate version");
-        UUID key = parse(record.key(), "message key"); if (!key.equals(data.getOrderId())) throw invalid("message key must equal data.orderId");
-        UUID sagaId = data.getSagaId(); if (sagaId == null || !sagaId.equals(event.getAggregateId())) throw invalid("aggregateId must equal sagaId");
+        UUID key = parse(record.key(), "message key");
+        if (!key.equals(data.getOrderId())) {
+            throw invalid("message key must equal data.orderId");
+        }
+        UUID sagaId = data.getSagaId();
+        if (sagaId == null || !sagaId.equals(event.getAggregateId())) {
+            throw invalid("aggregateId must equal sagaId");
+        }
         if (!ReleaseReservationCommand.REASONS.contains(data.getReason())) throw invalid("unsupported release reason");
         return new ReleaseReservationCommand(event.getEventId(), event.getEventType(), event.getEventVersion(), event.getProducer(), event.getAggregateType(),
                 sagaId, event.getAggregateVersion(), event.getCorrelationId(), event.getCausationId(), event.getOccurredAt(), data.getOrderId(), data.getPurchaseRequestId(), data.getReservationId(), data.getReason(), record.topic(), record.partition(), record.offset(), header(record, "traceparent"), header(record, "tracestate"), fingerprint(event, data));
