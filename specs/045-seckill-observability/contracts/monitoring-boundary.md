@@ -4,7 +4,9 @@
 
 - Protocol: HTTP inside the Kubernetes cluster.
 - Path: `/actuator/prometheus`.
-- Port: `8080` through each application ClusterIP Service.
+- Ports: `443` for the cloud `api-gateway` Service and `8080` for the other seven application
+  Services. The Gateway connection remains plain in-cluster HTTP: its Service port `443` forwards
+  to Pod port `8080`, while TLS is terminated only by the external NLB.
 - Targets: api-gateway, authentication-service, product-service, campaign-service,
   flash-sale-service, inventory-service, order-service, payment-service.
 - Interval: 15 seconds.

@@ -181,10 +181,18 @@ foreach ($deployment in @("prometheus", "grafana")) {
     "deployment/$deployment", "--timeout=${remaining}s") | Write-Output
 }
 
-$serviceTypes = Invoke-NativeText "kubectl" @("-n", $MonitoringNamespace, "get", "service",
-  "prometheus", "grafana", "-o", "jsonpath={range .items[*]}{.metadata.name}={.spec.type}{'`n'}{end}")
+$servicesJsonText = Invoke-NativeText "kubectl" @("-n", $MonitoringNamespace, "get", "service",
+  "prometheus", "grafana", "-o", "json")
+try {
+  $servicesJson = $servicesJsonText | ConvertFrom-Json
+} catch {
+  throw "kubectl returned invalid Service JSON: $($_.Exception.Message)"
+}
 foreach ($service in @("prometheus", "grafana")) {
-  if ($serviceTypes -notmatch "(?m)^$service=ClusterIP$") { throw "$service is not a private ClusterIP Service." }
+  $serviceResource = @($servicesJson.items | Where-Object { $_.metadata.name -eq $service })
+  if ($serviceResource.Count -ne 1 -or $serviceResource[0].spec.type -ne "ClusterIP") {
+    throw "$service is not a private ClusterIP Service."
+  }
 }
 
 $prometheusForward = $null
