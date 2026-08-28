@@ -317,8 +317,9 @@ remaining read-only; static regression tests and the live rerun both passed.
 | Drain snapshot | PASS WITH RECORDED DURABLE WORK | Order, Flash Sale, and Payment unpublished outbox counts were all zero; terminal Redis reconciliation backlog was zero. Two Saga rows remained in `CONFIRMING_RESERVATION` and were preserved without inspection or mutation. |
 | Kafka drain | PASS | Payment-result and reservation-result consumer groups reported aggregate lag zero. The paused PurchaseAccepted group had no active member and lag zero, proving no accepted message was stranded when intake stopped. |
 | Image-revert desired state | PREPARED | Order already uses the prior common `release-f5a11de7dd40da24bb4c12e70fb2051b589fc066` image. The second reviewed GitOps candidate changes only Flash Sale from its targeted hotfix tag back to that same prior immutable release; it does not touch schemas, data, topics, PVCs, or Secret references. |
+| Image rollback execution | SAFE STOP | PR `#118` merged as `852ec32cd0530437ecf9d0c81ce5d9d378d0923e`. Argo accepted the desired rollback revision, but the prior Flash Sale image failed Spring startup because `ConfirmReservationAvroMapper` had no default constructor. Kubernetes kept the existing hotfix pod available while the rollback pod entered `CrashLoopBackOff`; no database, Kafka, Registry, Redis, PVC, or Secret state was changed. |
+| Recovery desired state | PREPARED | The reviewed recovery candidate restores only Flash Sale to the previously verified immutable hotfix `release-486c6b110c843831a3c86a8f3c4f47af1e5adb61`. Order purchase intake remains paused until Argo reports `Synced/Healthy` and the preserved aggregate/outbox state is rechecked. |
 
-This is only the required read-only prerequisite. T072 remains open until a reviewed GitOps change
-pauses new Order purchase intake, outstanding Saga/outbox work is recorded, the Flash Sale image is
-restored to the prior common immutable tag, Argo verifies the rollback, and the preserved state is
-rechecked.
+This evidence records a safe failed rollback rather than falsely reporting image compatibility.
+T072 remains open until the reviewed recovery restores Flash Sale health, the preserved state is
+rechecked, and Order purchase intake is re-enabled through a separate reviewed GitOps change.
