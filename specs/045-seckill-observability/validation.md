@@ -30,7 +30,7 @@ JWTs, Checkout URLs, or public infrastructure credentials here.
 | Script parsers | PASS | PowerShell parser returned zero syntax errors for the runner and static test. |
 | Seckill service regression boundary | PASS | `mvnw.cmd --batch-mode --no-transfer-progress -pl services/flashsale-service,services/order-service,services/payment-service -am -DskipTests compile`: 6 reactor modules, `BUILD SUCCESS`, 0 compilation failures. |
 | Whitespace hygiene | PASS | `git diff --check` exited 0; only local LF/CRLF advisory warnings were emitted by Git status. |
-| Live apply boundary | PENDING AFTER MERGE | Argo reconciliation, secure Secret creation, 8/8 live targets, loaded live rules, and Grafana health are intentionally deferred until this reviewed branch is merged to `develop`. |
+| Live apply boundary | PASS | Argo reconciliation, secure Secret reuse, 8/8 live targets, loaded live rules, Grafana health, and private Services were verified on `flash-sale-dev` at revision `c44a223`. |
 
 No Java production source, database migration, Kafka topic/schema, Payment flag, ECR image, or
 application Deployment was changed by Feature 045 source validation.
@@ -45,3 +45,9 @@ application Deployment was changed by Feature 045 source validation.
 | Gateway scrape target | FIXED | Prometheus reported `context deadline exceeded` for `api-gateway...:8080`. The live Gateway Service exposes only port `443` and forwards it to Pod port `8080`; an in-cluster request to `http://api-gateway...:443/actuator/prometheus` returned HTTP 200. The target and contract now use Service port `443`; the other seven targets remain on `8080`. |
 
 The correction does not modify either Deployment, monitoring credentials, or application state.
+
+## Scoped prune correction — 2026-08-28
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Hashed ConfigMap lifecycle | FIXED | `flash-sale-observability` now enables prune so obsolete generated ConfigMaps do not leave the Application `OutOfSync`. The `monitoring` Namespace has `Prune=false`, and the manually supplied `grafana-admin` Secret is not part of Argo desired state. |

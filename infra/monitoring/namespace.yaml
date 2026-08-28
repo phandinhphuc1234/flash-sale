@@ -5,3 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: flash-sale
     app.kubernetes.io/component: observability
+  annotations:
+    # The monitoring Application may prune disposable ConfigMaps/Deployments, but must never
+    # delete the Namespace and cascade the manually supplied Grafana Secret.
+    argocd.argoproj.io/sync-options: Prune=false

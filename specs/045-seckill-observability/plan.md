@@ -73,8 +73,9 @@ explicit demo trade-off and keeps the stack small and recoverable from Git.
 ### D4 — Separate Argo ownership
 
 `flash-sale-observability` owns only `infra/monitoring`. It is separate from `flash-sale-cloud`, so a
-monitoring failure cannot block or prune application resources. Automated self-heal is enabled and
-pruning remains disabled.
+monitoring failure cannot block or prune application resources. Automated self-heal and pruning are
+enabled for this disposable monitoring subtree so stale hashed ConfigMaps are removed; the
+Namespace is explicitly protected from prune and the manual Grafana Secret is not Argo-managed.
 
 ### D5 — Manual Secret boundary
 
