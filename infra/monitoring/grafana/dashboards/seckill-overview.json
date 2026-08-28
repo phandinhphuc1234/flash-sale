@@ -1,0 +1,127 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 7}, {"color": "green", "value": 8}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(up{job=~\"api-gateway|authentication-service|product-service|campaign-service|flash-sale-service|inventory-service|order-service|payment-service\"})", "instant": true, "legendFormat": "Healthy targets", "range": false, "refId": "A"}],
+      "title": "Application Targets UP / 8",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "id": 2,
+      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(ALERTS{alertstate=\"firing\"}) or vector(0)", "instant": true, "legendFormat": "Firing", "range": false, "refId": "A"}],
+      "title": "Firing Seckill Rules",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 3,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"editorMode": "code", "expr": "sum by (job) (rate(http_server_requests_seconds_count{job=~\"flash-sale-service|order-service|payment-service\"}[5m]))", "legendFormat": "{{job}}", "range": true, "refId": "A"}],
+      "title": "Seckill HTTP Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 60}, {"color": "red", "value": 120}]}, "unit": "s"}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 5},
+      "id": 4,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "order_saga_oldest_step_age_seconds", "instant": true, "legendFormat": "Oldest step", "range": false, "refId": "A"}],
+      "title": "Order Saga Oldest Active Step",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
+      "id": 5,
+      "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true},
+      "targets": [{"editorMode": "code", "expr": "order_saga_state", "format": "table", "instant": true, "legendFormat": "{{status}}", "range": false, "refId": "A"}],
+      "title": "Durable Order Saga States",
+      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "instance": true, "job": true}, "indexByName": {}, "renameByName": {"Value": "Count", "status": "Saga state"}}}],
+      "type": "table"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 6,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "flashsale_outbox_backlog", "legendFormat": "Flash Sale outbox", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "order_outbox_backlog", "legendFormat": "Order outbox", "range": true, "refId": "B"},
+        {"editorMode": "code", "expr": "payment_recovery_queue_size", "legendFormat": "Payment recovery", "range": true, "refId": "C"},
+        {"editorMode": "code", "expr": "flashsale_redis_reconciliation_backlog", "legendFormat": "Redis reconciliation", "range": true, "refId": "D"}
+      ],
+      "title": "Durable Backlogs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18},
+      "id": 7,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "flashsale_outbox_oldest_pending_age_seconds", "legendFormat": "Flash Sale outbox", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "order_outbox_oldest_pending_age_seconds", "legendFormat": "Order outbox", "range": true, "refId": "B"},
+        {"editorMode": "code", "expr": "payment_outbox_lag_seconds", "legendFormat": "Payment outbox", "range": true, "refId": "C"},
+        {"editorMode": "code", "expr": "flashsale_redis_reconciliation_oldest_age_seconds", "legendFormat": "Redis reconciliation", "range": true, "refId": "D"}
+      ],
+      "title": "Oldest Durable Work Age",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisPlacement": "auto", "drawStyle": "bars", "fillOpacity": 35, "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18},
+      "id": 8,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "increase(flashsale_reservation_command_dlt_publication_total[5m])", "legendFormat": "Flash Sale DLT", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "increase(order_saga_dlt_publication_total[5m])", "legendFormat": "Order DLT", "range": true, "refId": "B"},
+        {"editorMode": "code", "expr": "payment_recovery_manual_review_count", "legendFormat": "Payment manual review", "range": true, "refId": "C"}
+      ],
+      "title": "DLT and Manual Review Signals",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 41,
+  "tags": ["flash-sale", "seckill", "saga"],
+  "templating": {"list": []},
+  "time": {"from": "now-30m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Flash Sale - Seckill Overview",
+  "uid": "seckill-overview",
+  "version": 1,
+  "weekStart": ""
+}
