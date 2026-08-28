@@ -257,7 +257,7 @@ function Post-SignedStripeWebhook {
   }
 }
 
-function Get-KafkaTopicEndOffset {
+function Get-KafkaTopicTotalEndOffset {
   $result = Invoke-BoundedNativeProcess -Command "kubectl" -Arguments @(
     "-n", $Namespace, "exec", "kafka-0", "--", "/opt/kafka/bin/kafka-get-offsets.sh",
     "--bootstrap-server", "localhost:9092", "--topic", "flashsale.payment.events.v1"
@@ -266,7 +266,9 @@ function Get-KafkaTopicEndOffset {
   $offsets = @($result.StandardOutput -split "`r?`n" |
     ForEach-Object { if ($_ -match ':([0-9]+)$') { [long]$Matches[1] } })
   if ($offsets.Count -eq 0) { throw "Kafka offset query returned no partitions." }
-  return ($offsets | Measure-Object -Maximum).Maximum
+  # A record can land on any partition. Comparing only the maximum misses progress when another
+  # partition already has the same or a greater end offset.
+  return [long](($offsets | Measure-Object -Sum).Sum)
 }
 
 function Get-ApiErrorCode {
@@ -813,7 +815,7 @@ function Invoke-StripeCloudSmoke {
   if ($paymentId -eq [guid]::Empty) { throw "Payment query returned an empty Payment id." }
   Write-Output "Payment aggregate: PASS (paymentId=$paymentId status=$([string](Get-PropertyValue $payment 'status')))"
 
-  $offsetBefore = Get-KafkaTopicEndOffset
+  $offsetBefore = Get-KafkaTopicTotalEndOffset
   $checkoutKey = "phase24-stripe-$([guid]::NewGuid().ToString('N'))"
   $checkoutResponse = $null
   $checkoutData = $null
@@ -891,7 +893,7 @@ function Invoke-StripeCloudSmoke {
   Write-Output "Webhook replay: PASS (first and duplicate delivery acknowledged with HTTP 204)"
 
   Wait-Condition -Description "PaymentSucceeded Kafka outbox publication" -Condition {
-    return (Get-KafkaTopicEndOffset) -gt $offsetBefore
+    return (Get-KafkaTopicTotalEndOffset) -gt $offsetBefore
   }
   Write-Output "Kafka Payment event: PASS (flashsale.payment.events.v1 advanced)"
 
