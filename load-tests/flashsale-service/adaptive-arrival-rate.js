@@ -36,7 +36,9 @@ export const options = {
       duration: `${stageDurationSeconds}s`,
       preAllocatedVUs,
       maxVUs,
-      gracefulStop: '0s',
+      // Let an iteration that started before the stage deadline finish its idempotency replay.
+      // The PowerShell parent still enforces a bounded process deadline and kills a hung child.
+      gracefulStop: '30s',
     },
   },
   thresholds: {

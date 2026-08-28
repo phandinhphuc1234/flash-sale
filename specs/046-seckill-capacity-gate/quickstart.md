@@ -17,9 +17,9 @@ Use a disposable campaign/variant with allocation above the planned request coun
 Gateway URL. Before `-Run`, provide an ignored JSON array of disposable shopper access tokens at
 `load-tests/flashsale-service/shopper-tokens.json` (copy the shape of
 `shopper-tokens.example.json`). The runner requires one distinct token per arrival across the full
-ladder; it does not create users or print tokens. For a short rehearsal, reduce the stage duration
-and cap so the token requirement stays small. It writes a sanitized report under the ignored
-results directory:
+ladder plus one second of scheduling headroom per stage; it does not create users or print tokens.
+For a short rehearsal, reduce the stage duration and cap so the token requirement stays small. It
+writes a sanitized report under the ignored results directory:
 
 ```powershell
 pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase26-seckill-capacity.ps1 `

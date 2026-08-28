@@ -119,11 +119,25 @@ function Get-StageRates {
   return @($rates)
 }
 
+function Get-StageTokenBudget([int]$Rate, [int]$Duration) {
+  # constant-arrival-rate may start one boundary iteration while the configured duration expires.
+  # Reserve one extra scheduling second so adjacent stages never reuse a shopper identity.
+  $budget = [long]$Rate * ([long]$Duration + 1)
+  if ($budget -gt [int]::MaxValue) { throw 'Stage token budget exceeds the supported integer range.' }
+  return [int]$budget
+}
+
 function Get-RequiredTokenCount([int[]]$Rates) {
-  $required = [long]$WarmupRate * $WarmupDurationSeconds
-  foreach ($rate in $Rates) { $required += [long]$rate * $StageDurationSeconds }
+  $required = [long](Get-StageTokenBudget $WarmupRate $WarmupDurationSeconds)
+  foreach ($rate in $Rates) { $required += [long](Get-StageTokenBudget $rate $StageDurationSeconds) }
   if ($required -gt [int]::MaxValue) { throw 'Required token count exceeds the supported integer range.' }
   return [int]$required
+}
+
+function Test-K6CompletedWithSummary([int]$ExitCode) {
+  # k6 uses 99 when a threshold fails but still writes the summary. The runner must parse that
+  # evidence so its own consecutive-breach and immediate-danger rules remain authoritative.
+  return $ExitCode -in @(0, 99)
 }
 
 function Read-TokenCount {
@@ -369,7 +383,7 @@ try {
   Write-Output "Warm-up: $WarmupRate RPS for ${WarmupDurationSeconds}s."
   $warmupResult = Invoke-BoundedK6 -Rate $WarmupRate -Duration $WarmupDurationSeconds -TokenOffset $tokenOffset `
     -SummaryFile $warmupSummary -RunLabel $warmupLabel
-  if ($warmupResult.ExitCode -ne 0) {
+  if (-not (Test-K6CompletedWithSummary $warmupResult.ExitCode)) {
     $stopReason = "warmup_k6_exit_$($warmupResult.ExitCode)"
     $outcome = 'stopped_on_danger'
     throw "Warm-up k6 exited with code $($warmupResult.ExitCode)."
@@ -377,12 +391,16 @@ try {
   if (-not (Test-Path -LiteralPath $warmupSummary -PathType Leaf)) { throw 'Warm-up did not produce a summary.' }
   $warmup = Get-Content -Raw -LiteralPath $warmupSummary | ConvertFrom-Json
   $warmupStage = Convert-StageSummary $warmup $WarmupRate $WarmupDurationSeconds 'warmup'
+  if ($warmupResult.ExitCode -eq 99 -and $warmupStage.dangerReasons.Count -eq 0 `
+      -and $warmupStage.breachReasons.Count -eq 0) {
+    throw 'Warm-up reported an unclassified k6 threshold breach.'
+  }
   if ($warmupStage.dangerReasons.Count -gt 0) {
     $stopReason = "warmup_danger:$($warmupStage.dangerReasons -join ',')"
     $outcome = 'stopped_on_danger'
     throw "Warm-up danger signal: $($warmupStage.dangerReasons -join ', ')."
   }
-  $tokenOffset += $WarmupRate * $WarmupDurationSeconds
+  $tokenOffset += Get-StageTokenBudget $WarmupRate $WarmupDurationSeconds
   if ($CooldownSeconds -gt 0) { Start-Sleep -Seconds ([Math]::Min($CooldownSeconds, (Get-RemainingSeconds))) }
 
   foreach ($rate in $rates) {
@@ -393,7 +411,7 @@ try {
     Write-Output "Stage: $rate RPS for ${StageDurationSeconds}s."
     $stageResult = Invoke-BoundedK6 -Rate $rate -Duration $StageDurationSeconds -TokenOffset $tokenOffset `
       -SummaryFile $summaryFile -RunLabel $label
-    if ($stageResult.ExitCode -ne 0) {
+    if (-not (Test-K6CompletedWithSummary $stageResult.ExitCode)) {
       $stopReason = "k6_exit_$($stageResult.ExitCode)"
       $outcome = 'stopped_on_danger'
       throw "Stage $rate RPS k6 exited with code $($stageResult.ExitCode)."
@@ -405,11 +423,15 @@ try {
     }
     $summary = Get-Content -Raw -LiteralPath $summaryFile | ConvertFrom-Json
     $stage = Convert-StageSummary $summary $rate $StageDurationSeconds $label
+    if ($stageResult.ExitCode -eq 99 -and $stage.dangerReasons.Count -eq 0 `
+        -and $stage.breachReasons.Count -eq 0) {
+      throw "Stage $rate RPS reported an unclassified k6 threshold breach."
+    }
     $stageResults.Add($stage)
     Write-Output ("Stage result: rate={0} requests={1} winners={2} replays={3} p95={4}ms p99={5}ms errors={6} dropped={7} breaches={8} danger={9}." -f $rate, $stage.requests, $stage.winners,
       $stage.replays, $stage.p95Ms, $stage.p99Ms, $stage.unexpectedErrors, $stage.droppedIterations,
       ($stage.breachReasons -join ','), ($stage.dangerReasons -join ','))
-    $tokenOffset += $rate * $StageDurationSeconds
+    $tokenOffset += Get-StageTokenBudget $rate $StageDurationSeconds
 
     if ($stage.dangerReasons.Count -gt 0) {
       $firstBreachRate = $rate
@@ -452,4 +474,8 @@ try {
     -RawStageSummariesRemoved $rawSummariesRemoved
 }
 
+if ($outcome -eq 'stopped_on_danger') {
+  Write-Error "Phase 26 adaptive capacity probe: FAIL ($stopReason)."
+  exit 2
+}
 Write-Output "Phase 26 adaptive capacity probe: PASS ($outcome)."
