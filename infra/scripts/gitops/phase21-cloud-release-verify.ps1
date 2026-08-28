@@ -5,8 +5,9 @@
 .DESCRIPTION
   Phase 21 treats the EKS cloud environment as the staging-equivalent target. It verifies Argo
   ownership/health, eight application Deployments, ECR manifest digests versus running Pod image IDs,
-  disabled Payment flags, and the existing localhost-only Gateway smoke contract. It never reads
-  Kubernetes Secret values and has no -Apply mode.
+  the explicitly expected Payment runtime state, and the existing localhost-only Gateway smoke
+  contract. Before Stripe enablement the expected state is disabled; after the reviewed Phase 24
+  rollout it may be enabled. The script never reads Kubernetes Secret values and has no -Apply mode.
 ##>
 [CmdletBinding()]
 param(
@@ -16,6 +17,8 @@ param(
   [string]$Namespace = "flash-sale",
   [string]$ArgoNamespace = "argocd",
   [string]$ArgoApplication = "flash-sale-cloud",
+  [ValidateSet("disabled", "enabled")]
+  [string]$PaymentRuntimeState = "disabled",
   [ValidateRange(1024, 65535)]
   [int]$SmokePort = 28080,
   [ValidateRange(60, 1800)]
@@ -268,16 +271,17 @@ function Assert-ArgoApplication {
 }
 
 function Assert-PaymentFlags {
+  $expectedValue = if ($PaymentRuntimeState -eq "enabled") { "true" } else { "false" }
   $config = Get-NativeJson -Command "kubectl" -Arguments @(
     "-n", $Namespace, "get", "configmap", "payment-service-runtime-config", "-o", "json"
   ) -Description "Payment runtime ConfigMap"
   foreach ($flag in $ExpectedPaymentFlags) {
     $value = [string](Get-JsonPropertyValue $config.data $flag)
-    if ($value.ToLowerInvariant() -ne "false") {
-      throw "Payment runtime flag $flag is '$value'; Phase 21 requires false."
+    if ($value.ToLowerInvariant() -ne $expectedValue) {
+      throw "Payment runtime flag $flag is '$value'; Phase 21 expected the reviewed '$PaymentRuntimeState' state."
     }
   }
-  Write-Output "Payment flags: $($ExpectedPaymentFlags.Count)/$($ExpectedPaymentFlags.Count) disabled."
+  Write-Output "Payment flags: $($ExpectedPaymentFlags.Count)/$($ExpectedPaymentFlags.Count) $PaymentRuntimeState."
 }
 
 if (-not (Test-Path -LiteralPath $CloudOverlayPath)) { throw "Cloud overlay not found: $CloudOverlayPath" }

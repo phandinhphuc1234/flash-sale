@@ -258,7 +258,8 @@ kubectl -n argocd get application flash-sale-cloud --watch
 kubectl -n flash-sale rollout status deployment/order-service --timeout=300s
 kubectl -n flash-sale rollout status deployment/flash-sale-service --timeout=300s
 
-.\infra\scripts\gitops\phase21-cloud-release-verify.ps1
+.\infra\scripts\gitops\phase21-cloud-release-verify.ps1 `
+  -PaymentRuntimeState enabled
 ```
 
 Verify actual Deployment images use the reviewed immutable release tag.
@@ -314,6 +315,11 @@ The rehearsal changes nothing. It verifies that the prior images still exist in 
 expanded Feature 044 schema, and reads only aggregate terminal-state counts from the two owning
 databases. It requires at least one representative terminal Order and Reservation row, but never
 prints IDs, customer data, credentials, or SQL result payloads.
+
+The active Order and Flash Sale tags may differ after a reviewed single-service hotfix. That does
+not weaken the gate: each active Deployment must still use an immutable `release-<SHA>` image, and
+the rollback target remains the exact previous common release identified above. A service already
+running that target tag is left unchanged by the later GitOps image revert.
 
 - `PASS` means the prior images understand every observed terminal status. It is still only a
   compatibility prerequisite: follow the five rollback steps above and verify Argo after the

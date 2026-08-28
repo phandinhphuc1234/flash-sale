@@ -33,6 +33,11 @@ if ($errors.Count -gt 0) {
 $content = Get-Content -LiteralPath $rehearsal -Raw
 foreach ($marker in @(
   "PriorReleaseSha",
+  "exactly one scalar account ID",
+  'enum\s+',
+  '(?m)^\s*',
+  '-split "\r?\n"',
+  '-split "\|", 2',
   "release-",
   "flash-sale/order-service",
   "flash-sale/flash-sale-service",
@@ -43,6 +48,7 @@ foreach ($marker in @(
   "flashsale_db",
   "purchase_sagas",
   "reservation_command_inbox",
+  "reviewed per-service releases after targeted hotfix promotion",
   "Incompatible persisted terminal state",
   "return to spec/plan approval",
   "No Kubernetes Deployment, ConfigMap, Git, database, Kafka, Schema Registry, Redis, or ECR state was changed"

@@ -24,7 +24,9 @@ data:
   ORDER_JWT_JWK_SET_URI: "http://authentication-service:8080/.well-known/jwks.json"
   ORDER_JWT_AUDIENCE: "flash-sale-api"
   ORDER_JWT_TYPE: "at+jwt"
-  ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED: "true"
+  # T072 rollback rehearsal pauses only new PurchaseAccepted intake first. Existing Payment and
+  # reservation-result consumers plus the outbox publisher remain enabled so in-flight Sagas drain.
+  ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED: "false"
   ORDER_PAYMENT_EVENTS_CONSUMER_ENABLED: "true"
   ORDER_PURCHASE_RESERVATION_RESULTS_CONSUMER_ENABLED: "true"
   ORDER_OUTBOX_PUBLISHER_ENABLED: "true"

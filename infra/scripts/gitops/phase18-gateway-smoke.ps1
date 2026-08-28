@@ -70,6 +70,23 @@ function Assert-LocalPortAvailable {
   }
 }
 
+function Resolve-GatewayServicePort {
+  $serviceJson = & kubectl -n $Namespace get "service/$ServiceName" -o json
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($serviceJson -join ""))) {
+    throw "Could not read service/$ServiceName ports."
+  }
+  try {
+    $service = ($serviceJson -join [Environment]::NewLine) | ConvertFrom-Json
+  } catch {
+    throw "service/$ServiceName returned invalid JSON while resolving the port-forward target."
+  }
+  $ports = @($service.spec.ports | ForEach-Object { [int]$_.port })
+  foreach ($candidate in @(8080, 443)) {
+    if ($ports -contains $candidate) { return $candidate }
+  }
+  throw "service/$ServiceName exposes neither the bootstrap port 8080 nor the Phase 24 port 443."
+}
+
 if (-not (Test-Path $OverlayPath)) {
   throw "Cloud overlay not found: $OverlayPath"
 }
@@ -90,6 +107,8 @@ if (-not $Run) {
 }
 
 Assert-LocalPortAvailable $LocalPort
+$GatewayServicePort = Resolve-GatewayServicePort
+Write-Output "Gateway port-forward target: service port $GatewayServicePort (localhost only)."
 
 $TempBase = Join-Path ([IO.Path]::GetTempPath()) ("flash-sale-gateway-" + [guid]::NewGuid().ToString("N"))
 $StdoutPath = "$TempBase.out.log"
@@ -97,7 +116,7 @@ $StderrPath = "$TempBase.err.log"
 $PortForward = $null
 
 try {
-  $PortForward = Start-Process -FilePath "kubectl" -ArgumentList @("-n", $Namespace, "port-forward", "--address", "127.0.0.1", "service/$ServiceName", ("{0}:8080" -f $LocalPort)) -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath -WindowStyle Hidden -PassThru
+  $PortForward = Start-Process -FilePath "kubectl" -ArgumentList @("-n", $Namespace, "port-forward", "--address", "127.0.0.1", "service/$ServiceName", ("{0}:{1}" -f $LocalPort, $GatewayServicePort)) -RedirectStandardOutput $StdoutPath -RedirectStandardError $StderrPath -WindowStyle Hidden -PassThru
 
   $Deadline = (Get-Date).AddSeconds($TimeoutSeconds)
   $BaseUri = "http://127.0.0.1:$LocalPort"
