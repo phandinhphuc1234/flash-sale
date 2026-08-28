@@ -24,12 +24,15 @@ public final class PurchaseReservationConfirmedAvroMapper {
         UUID purchaseRequestId = uuid(payload, "purchaseRequestId");
         UUID reservationId = uuid(payload, "reservationId");
         UUID paymentId = uuid(payload, "paymentId");
+        if (!sagaId.equals(purchaseRequestId)) {
+            throw new IllegalArgumentException("confirmed outcome Saga identity mismatch");
+        }
         if (!event.aggregateId().equals(reservationId)) {
             throw new IllegalArgumentException("confirmed outcome aggregate identity mismatch");
         }
         return new PurchaseReservationConfirmedV1(event.eventId(), event.eventType(), event.eventVersion(),
                 "flashsale-service", event.aggregateType(), event.aggregateId(), event.aggregateVersion(),
-                orderId, event.causationId(), event.createdAt(),
+                sagaId, event.causationId(), event.createdAt(),
                 new PurchaseReservationConfirmedDataV1(sagaId, orderId, purchaseRequestId, reservationId,
                         paymentId, instant(payload, "confirmedAt")));
     }
