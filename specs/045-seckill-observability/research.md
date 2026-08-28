@@ -24,10 +24,14 @@ GitOps reconciliation repeatable and avoid `latest` drift.
 
 ## Decision 3 — Static service targets
 
-**Decision**: Configure exactly eight targets using `<service>.flash-sale.svc.cluster.local:8080`.
+**Decision**: Configure exactly eight targets using stable Service DNS. The cloud Gateway target
+uses Service port `443`, which forwards plain in-cluster HTTP to Pod port `8080`; the other seven
+targets use Service port `8080`.
 
 **Rationale**: Kubernetes DNS is the repository-approved discovery mechanism. Static targets are
-easy to explain, need no cluster-wide RBAC, and match the current single-replica model.
+easy to explain, need no cluster-wide RBAC, and match the current single-replica model. Prometheus
+must address the Service port rather than the container target port; the public NLB is the only TLS
+termination boundary.
 
 ## Decision 4 — Internal access only
 

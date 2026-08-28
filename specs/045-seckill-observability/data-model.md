@@ -8,7 +8,7 @@ aggregates.
 | Field | Type | Rules |
 |---|---|---|
 | job | string | One of the eight approved application service names |
-| address | Kubernetes DNS + port | Must end in `.flash-sale.svc.cluster.local:8080` |
+| address | Kubernetes DNS + port | Gateway uses `:443`; the other seven Services use `:8080` |
 | metricsPath | string | Always `/actuator/prometheus` |
 | interval | duration | 15 seconds |
 | health | runtime enum | `up`, `down`, or `unknown`; observed by Prometheus |

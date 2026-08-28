@@ -41,12 +41,18 @@ Assert-True ($rendered -match 'name: GF_SECURITY_ADMIN_PASSWORD') "Grafana passw
 Assert-True ($rendered -notmatch '(?i)admin-password:\s+[^\s]') "a Grafana password value appears in desired state"
 
 $prometheusConfig = Get-Content -LiteralPath $prometheusConfigPath -Raw
-$expectedServices = @(
-  "api-gateway", "authentication-service", "product-service", "campaign-service",
-  "flash-sale-service", "inventory-service", "order-service", "payment-service"
-)
-foreach ($service in $expectedServices) {
-  Assert-True ($prometheusConfig -match [regex]::Escape("$service.flash-sale.svc.cluster.local:8080")) "missing target $service"
+$expectedTargets = @{
+  "api-gateway" = "api-gateway.flash-sale.svc.cluster.local:443"
+  "authentication-service" = "authentication-service.flash-sale.svc.cluster.local:8080"
+  "product-service" = "product-service.flash-sale.svc.cluster.local:8080"
+  "campaign-service" = "campaign-service.flash-sale.svc.cluster.local:8080"
+  "flash-sale-service" = "flash-sale-service.flash-sale.svc.cluster.local:8080"
+  "inventory-service" = "inventory-service.flash-sale.svc.cluster.local:8080"
+  "order-service" = "order-service.flash-sale.svc.cluster.local:8080"
+  "payment-service" = "payment-service.flash-sale.svc.cluster.local:8080"
+}
+foreach ($service in $expectedTargets.Keys) {
+  Assert-True ($prometheusConfig -match [regex]::Escape($expectedTargets[$service])) "missing target $service"
 }
 Assert-True (($prometheusConfig | Select-String -Pattern 'job_name:' -AllMatches).Matches.Count -eq 8) "expected exactly eight scrape jobs"
 Assert-True ($prometheusConfig -match 'scrape_interval:\s*15s') "scrape interval must be 15 seconds"
@@ -74,6 +80,7 @@ $runnerText = Get-Content -LiteralPath $runnerPath -Raw
 Assert-True ($runnerText -match '\[switch\]\$Apply') "runner must require explicit Apply"
 Assert-True ($runnerText -match 'Read-Host.+-AsSecureString') "runner must read the password securely"
 Assert-True ($runnerText -match 'Validation-only mode') "runner must document no-mutation default"
+Assert-True ($runnerText -notmatch 'jsonpath=\{range') "runner must parse Service JSON instead of shell-sensitive multiline JSONPath"
 Assert-True ($runnerText -notmatch '(?i)whsec_|sk_(test|live)_|password\s*=\s*["''][^"'']+["'']') "runner contains a credential-like literal"
 
 Write-Output "PHASE_25_STATIC=PASS"

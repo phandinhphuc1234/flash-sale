@@ -34,3 +34,14 @@ JWTs, Checkout URLs, or public infrastructure credentials here.
 
 No Java production source, database migration, Kafka topic/schema, Payment flag, ECR image, or
 application Deployment was changed by Feature 045 source validation.
+
+## Live apply correction — 2026-08-28
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Prometheus rollout | PASS | Live Phase 25 execution reported `deployment "prometheus" successfully rolled out`. |
+| Grafana rollout | PASS | Live Phase 25 execution reported `deployment "grafana" successfully rolled out`. |
+| Private-Service verification regression | FIXED | PowerShell expanded the newline escape inside a kubectl JSONPath expression, producing an unterminated quoted string after successful rollouts. The runner now requests Service JSON and validates the two `ClusterIP` types with `ConvertFrom-Json`; a static regression assertion prohibits the shell-sensitive JSONPath form. |
+| Gateway scrape target | FIXED | Prometheus reported `context deadline exceeded` for `api-gateway...:8080`. The live Gateway Service exposes only port `443` and forwards it to Pod port `8080`; an in-cluster request to `http://api-gateway...:443/actuator/prometheus` returned HTTP 200. The target and contract now use Service port `443`; the other seven targets remain on `8080`. |
+
+The correction does not modify either Deployment, monitoring credentials, or application state.

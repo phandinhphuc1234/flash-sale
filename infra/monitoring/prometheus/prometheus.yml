@@ -9,7 +9,9 @@ scrape_configs:
   - job_name: api-gateway
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: [api-gateway.flash-sale.svc.cluster.local:8080]
+      # The cloud Service exposes port 443 and forwards plain in-cluster HTTP to container port 8080.
+      # TLS termination belongs to the external NLB, not to the Gateway Pod.
+      - targets: [api-gateway.flash-sale.svc.cluster.local:443]
   - job_name: authentication-service
     metrics_path: /actuator/prometheus
     static_configs:
