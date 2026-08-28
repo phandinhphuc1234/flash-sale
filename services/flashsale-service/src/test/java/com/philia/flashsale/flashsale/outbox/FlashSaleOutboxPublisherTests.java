@@ -7,9 +7,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1;
+import com.philia.flashsale.contract.purchase.event.v1.PurchaseReservationConfirmedV1;
 import com.philia.flashsale.flashsale.configuration.OutboxProperties;
 import com.philia.flashsale.flashsale.outbox.adapter.out.messaging.kafka.KafkaPurchaseAcceptedPublisher;
 import com.philia.flashsale.flashsale.outbox.adapter.out.messaging.kafka.PurchaseAcceptedAvroMapper;
+import com.philia.flashsale.flashsale.outbox.adapter.out.messaging.kafka.PurchaseReservationConfirmedAvroMapper;
 import com.philia.flashsale.flashsale.outbox.application.model.OutboxEvent;
 import com.philia.flashsale.flashsale.outbox.application.port.ClaimOutboxEventsPort;
 import com.philia.flashsale.flashsale.outbox.application.port.PublishPurchaseAcceptedPort;
@@ -70,6 +72,53 @@ class FlashSaleOutboxPublisherTests {
         assertThat(((PurchaseAcceptedV1) record.value()).getData().getUnitPrice().toPlainString()).isEqualTo("19.9900");
         assertThat(record.headers().lastHeader("traceparent").value())
                 .isEqualTo("00-0123456789abcdef0123456789abcdef-0123456789abcdef-01".getBytes());
+    }
+
+    @Test
+    void mapsConfirmedReservationWithSagaCorrelationIdentity() {
+        UUID sagaId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID reservationId = UUID.randomUUID();
+        UUID paymentId = UUID.randomUUID();
+        UUID commandId = UUID.randomUUID();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("sagaId", sagaId.toString());
+        payload.put("orderId", orderId.toString());
+        payload.put("purchaseRequestId", sagaId.toString());
+        payload.put("reservationId", reservationId.toString());
+        payload.put("paymentId", paymentId.toString());
+        payload.put("confirmedAt", NOW.toString());
+        OutboxEvent outbox = new OutboxEvent(UUID.randomUUID(), "PURCHASE_RESERVATION",
+                reservationId, 2, "PurchaseReservationConfirmed", 1, commandId, payload,
+                "PENDING", 0, NOW, null, null, null, null, NOW, NOW);
+
+        PurchaseReservationConfirmedV1 event = new PurchaseReservationConfirmedAvroMapper().map(outbox);
+
+        assertThat(event.getCorrelationId()).isEqualTo(sagaId);
+        assertThat(event.getData().getSagaId()).isEqualTo(sagaId);
+        assertThat(event.getData().getPurchaseRequestId()).isEqualTo(sagaId);
+        assertThat(event.getData().getOrderId()).isEqualTo(orderId);
+        assertThat(event.getCausationId()).isEqualTo(commandId);
+    }
+
+    @Test
+    void rejectsConfirmedReservationWithDifferentSagaAndPurchaseRequestIdentities() {
+        UUID reservationId = UUID.randomUUID();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("sagaId", UUID.randomUUID().toString());
+        payload.put("orderId", UUID.randomUUID().toString());
+        payload.put("purchaseRequestId", UUID.randomUUID().toString());
+        payload.put("reservationId", reservationId.toString());
+        payload.put("paymentId", UUID.randomUUID().toString());
+        payload.put("confirmedAt", NOW.toString());
+        OutboxEvent outbox = new OutboxEvent(UUID.randomUUID(), "PURCHASE_RESERVATION",
+                reservationId, 2, "PurchaseReservationConfirmed", 1, UUID.randomUUID(), payload,
+                "PENDING", 0, NOW, null, null, null, null, NOW, NOW);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> new PurchaseReservationConfirmedAvroMapper().map(outbox))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("confirmed outcome Saga identity mismatch");
     }
 
     @Test
