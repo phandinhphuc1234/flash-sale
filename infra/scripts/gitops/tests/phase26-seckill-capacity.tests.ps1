@@ -42,6 +42,8 @@ foreach ($marker in @(
     '[switch]$Run',
     'constant-arrival-rate',
     'Get-StageRates',
+    'Get-StageTokenBudget',
+    'Test-K6CompletedWithSummary',
     'ConsecutiveBreaches',
     'firstBreachRate',
     'lastGoodRate',
@@ -60,6 +62,7 @@ foreach ($marker in @(
 
 foreach ($marker in @(
     "executor: 'constant-arrival-rate'",
+    "gracefulStop: '30s'",
     "adaptive_unexpected_errors",
     "dropped_iterations: ['count==0']",
     "adaptive_expected_outcome_rate",
@@ -76,9 +79,13 @@ foreach ($marker in @(
 
 Assert-True ($profile.IndexOf('adaptive_dropped_iterations', [StringComparison]::Ordinal) -lt 0) `
   'k6 profile must use the built-in dropped_iterations metric rather than an undefined custom metric'
+Assert-True ($profile.IndexOf("gracefulStop: '0s'", [StringComparison]::Ordinal) -lt 0) `
+  'k6 profile must not abort an in-flight winner before its idempotency replay'
 Assert-True ($runner.IndexOf('$metricValueProperty = $values.PSObject.Properties[$Property]',
     [StringComparison]::Ordinal) -ge 0) `
   'metric parser must not collide with its case-insensitive typed Property parameter'
+Assert-True ($runner.IndexOf("if (`$outcome -eq 'stopped_on_danger')", [StringComparison]::Ordinal) -ge 0) `
+  'correctness danger must produce the non-zero exit required by SC-002'
 
 foreach ($pattern in @(
     '(?i)kubectl\s+(?:apply|delete|patch|replace|rollout)',

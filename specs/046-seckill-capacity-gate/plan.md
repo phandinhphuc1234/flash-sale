@@ -45,9 +45,11 @@ does not require kubectl, Prometheus, Docker, or a database connection.
 ### Runner flow
 
 1. Validate parameters and parse the ignored token file; user creation remains an explicit fixture
-   preparation step outside the capacity runner.
+   preparation step outside the capacity runner. Reserve one extra second of token headroom per
+   constant-arrival-rate stage so a boundary iteration cannot reuse the next stage's identity.
 2. Run warm-up at a low rate and discard it from capacity conclusions.
-3. For each stage, invoke k6 with `constant-arrival-rate`, unique idempotency keys, and replay checks.
+3. For each stage, invoke k6 with `constant-arrival-rate`, unique idempotency keys, replay checks,
+   and a bounded graceful-stop window so an in-flight winner can complete its replay.
 4. Parse the stage summary. Platform health and Kafka lag are recorded by the existing Phase 25
    dashboard and verification gates rather than making the load generator depend on a second endpoint.
 5. Apply immediate danger checks, then consecutive latency/error checks.
