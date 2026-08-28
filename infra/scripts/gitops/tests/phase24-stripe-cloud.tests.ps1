@@ -40,7 +40,8 @@ foreach ($marker in @(
   "Get-StripeRuntimeSecrets",
   "STRIPE_WEBHOOK_SECRET",
   "Post-SignedStripeWebhook",
-  "Get-KafkaTopicEndOffset",
+  "Get-KafkaTopicTotalEndOffset",
+  "Measure-Object -Sum",
   "Payment aggregate",
   "Webhook replay: PASS",
   "Kafka Payment event: PASS",
@@ -54,6 +55,10 @@ foreach ($marker in @(
   if ($runnerContent.IndexOf($marker, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
     throw "Stripe cloud smoke marker is missing: $marker"
   }
+}
+
+if ($runnerContent -match 'Measure-Object\s+-Maximum') {
+  throw "Kafka publication gate must aggregate all partition end offsets instead of comparing only the maximum."
 }
 
 foreach ($pattern in @(
