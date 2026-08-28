@@ -303,7 +303,7 @@ T071 is complete. Phase 21 originally assumed all Payment flags remained disable
 assumed Service port 8080. The gates now explicitly support the reviewed post-Phase-24 state while
 remaining read-only; static regression tests and the live rerun both passed.
 
-## T072 precondition — rollback compatibility — 2026-08-28
+## T072 — rollback compatibility, safe stop, and recovery — 2026-08-28
 
 | Check | Result | Evidence / boundary |
 |---|---|---|
@@ -322,7 +322,9 @@ remaining read-only; static regression tests and the live rerun both passed.
 | Recovery live | PASS | PR `#119` merged as `a1073e71b4bbab4fb6fc7712dab0af6bba828707`; Argo reported `Synced/Healthy` and Flash Sale returned to `1/1` on the verified hotfix image. The failed rollback pod was removed by the rolling Deployment without deleting or rewriting durable state. |
 | Post-recovery drain recheck | PASS WITH RECORDED DURABLE WORK | Aggregate counts matched the pre-rollback snapshot: Order and Flash Sale unpublished outboxes remained zero, Payment unpublished outbox remained zero, terminal Redis backlog remained zero, and two `CONFIRMING_RESERVATION` Saga rows remained preserved. Payment-result and reservation-result groups had lag zero; paused PurchaseAccepted had no active member and lag zero. |
 | Intake-resume desired state | PREPARED | A separate reviewed GitOps candidate restores only `ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED=true`. No image, schema, topic, database row, Redis key, PVC, or Secret reference changes with this candidate. |
+| Intake resume live | PASS | PR `#120` merged as `4f189d1fcc9a7a92c50bf8cbf371a398094d8b69`; Argo reported `Synced/Healthy`. After the required rolling restart, the ready Order pod reported `ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED=true`, the Deployment was `1/1`, and `order-purchase-accepted-v1` had an active member with lag zero on all three partitions. |
+| Final outcome | PASS WITH SAFE ROLLBACK REJECTION | T072 proved the operational order: pause intake, drain and record durable work, attempt the reviewed immutable rollback, let Kubernetes retain the healthy pod when the prior image failed startup, recover through GitOps, recheck preserved state, and resume intake. The failed prior image was not reported as compatible; no durable data, topic, schema, PVC, Redis state, ECR artifact, or Secret was deleted or rewritten. |
 
-This evidence records a safe failed rollback rather than falsely reporting image compatibility.
-T072 remains open until the separate reviewed intake-resume change is reconciled and the restarted
-Order pod plus PurchaseAccepted consumer group are verified live.
+T072 is complete. The rehearsal demonstrated both rollback safety and recovery behavior: an
+application-incompatible prior image was rejected without downtime or destructive data rollback,
+and normal PurchaseAccepted processing was restored through reviewed GitOps desired state.
