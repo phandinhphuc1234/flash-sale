@@ -42,7 +42,8 @@ rollback/rehearsal.
   rollout requires -Apply. A failed rollout preserves Pods for inspection.
 - Phase 18 validates the internal API Gateway by default; -Run creates only a temporary local
   port-forward and checks readiness, public catalog routing, and protected admin routing. It rejects
-  occupied local ports and verifies the listener belongs to its kubectl child process.
+  occupied local ports, selects bootstrap Service port 8080 or the HTTPS-only Phase 24 Service port
+  443, and verifies the listener belongs to its kubectl child process.
 - Phase 19 validates the full-cloud Argo CD ownership handoff by default. -Apply is accepted only
   after the reviewed Phase 19 desired state exists on origin/develop. It suspends the Product pilot,
   waits for the full-cloud owner to become Synced/Healthy, verifies eight Deployments and the Product
@@ -54,9 +55,10 @@ rollback/rehearsal.
   recreates a topic or subject, and it expands a one-partition topic only while its total end offset
   is still zero.
 - Phase 21 verifies the cloud release artifact as the staging-equivalent gate. It checks the canonical
-  Argo Application, all eight Deployment/ECR/Pod image digests, disabled Payment flags, and reuses the
-  localhost-only Gateway smoke. It is read-only: it does not build, push, reconcile, update images, or
-  read Kubernetes Secrets.
+  Argo Application, all eight Deployment/ECR/Pod image digests, the explicitly expected Payment
+  runtime state, and reuses the localhost-only Gateway smoke. The default expects `disabled`; after
+  reviewed Phase 24 Stripe enablement pass `-PaymentRuntimeState enabled`. It is read-only: it does
+  not build, push, reconcile, update images, or read Kubernetes Secrets.
 - Phase 22 verifies cloud ownership and configuration boundaries. It checks the EKS context, cloud
   overlay, Argo source/policy, application ConfigMap/Secret references, platform Secret references,
   private Services, Kafka safety settings, and disabled Payment flags. It is read-only and queries
@@ -193,7 +195,8 @@ publishes only affected service images (or all eight for shared changes), propos
 overlay PR, and leaves reconciliation to `flash-sale-cloud`. After that PR is merged, the read-only
 Phase 21 cloud release verification helper resolves the selected ECR tags, compares manifest digests
 with running Pod image IDs, checks Argo Synced/Healthy and the seven disabled Payment flags, then
-runs the existing Phase 18 Gateway smoke.
+runs the existing Phase 18 Gateway smoke. Once Phase 24 has intentionally enabled Stripe, invoke the
+same verifier with `-PaymentRuntimeState enabled`; the digest and Argo gates are unchanged.
 
 ## Required local tools
 

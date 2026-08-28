@@ -265,11 +265,55 @@ dead-letter a `PurchaseReservationReleasedV1` record read from the shared
 event or a data-loss condition. The Order DLT must be able to serialize every SpecificRecord that
 can arrive from that shared source: `PurchaseAcceptedV1`, `PurchaseReservationConfirmedV1`, and
 `PurchaseReservationReleasedV1`. The corrected Phase 20 inventory and the idempotent local Order
-schema script now contain all three bindings; the reservation-results DLT retains its
+schema script contain all three bindings; the reservation-results DLT retains its
 `PurchaseAcceptedV1` binding for the symmetric poison-record case.
 
 | Check | Result | Evidence / boundary |
 |---|---|---|
 | Static contract regression | PASS | `phase44-purchase-saga-cloud.tests.ps1` passed after asserting both missing Order DLT subjects, the three bindings in `register-order-schemas.ps1`, and the shared-source documentation. |
 | PowerShell syntax | PASS | Parser checked the corrected Phase 20 script, Order Schema Registry script, and Feature 044 cloud contract test with zero errors. |
-| Cloud re-provisioning | PENDING | Run the approved Phase 20 safety sequence after merging this correction: pause all seven Payment flags, wait for Argo/Payment rollout, run `phase20-kafka-contracts.ps1 -Apply`, restore Payment flags, then rerun Phase 22/24. No cloud state was changed by the correction itself. |
+| Cloud re-provisioning | PASS | The reviewed pause/apply/restore sequence completed: Phase 20 registered the corrected subjects idempotently while Payment was `7/7 disabled`; a second reviewed GitOps change restored `7/7 enabled`, and the final Phase 24 flow passed. No topic, schema, receipt, database row, PVC, or Secret was deleted. |
+
+## T070 — Immutable service delivery and promotion — 2026-08-28
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Feature release workflow | PASS | GitHub Actions Eight-Service GitOps Delivery run `33058503531` completed successfully at source SHA `f5a11de7dd40da24bb4c12e70fb2051b589fc066`; the reviewed shared-change run verified and published the eight deployable services, including the affected Order and Flash Sale images. |
+| Base image promotion | PASS | Promotion PR `#99` merged commit `c74051d6a48a6de1e883f148c6742d6f0b35f289`; the desired-state change used immutable `release-f5a11de7dd40da24bb4c12e70fb2051b589fc066` tags. |
+| Selective corrective delivery | PASS | The final Flash Sale correlation correction was detected as the only changed deployable service. Run `33130893478` completed at source SHA `486c6b110c843831a3c86a8f3c4f47af1e5adb61`, and promotion PR `#114` merged commit `b208bc8296e1cd19024f930175fe6c0176587b22`. |
+| Live immutable artifacts | PASS | Phase 21 resolved the running Order image `release-f5a11de7dd40da24bb4c12e70fb2051b589fc066` to ECR digest `sha256:af7153081ff2e0877b547000fd9acb8a5ffee5012d806e131e598fb699477e3a` and the running Flash Sale hotfix `release-486c6b110c843831a3c86a8f3c4f47af1e5adb61` to digest `sha256:17f5e7fd47c72e903d09487997ec87b8c3bd32fb6c4505a801fa4d06e151252e`; ready Pod image IDs matched those ECR digests. |
+| Release shape | PASS | The baseline shared release was followed by reviewed single-service promotions. Mixed immutable per-service SHAs are expected for selective delivery; no mutable tag is present. |
+
+T070 is complete. Workflow and PR links are retained by GitHub; the ledger records immutable IDs
+only and contains no credential, Secret, Checkout URL, customer identity, or provider payload.
+
+## T071 — Argo, release, and Stripe runtime verification — 2026-08-28
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Argo ownership and health | PASS | `flash-sale-cloud` reported `Synced/Healthy`, target `develop`, revision `a35d69a029144d226ad48c27a86cb3cac9826cb1`. |
+| Eight artifact gate | PASS | `phase21-cloud-release-verify.ps1 -PaymentRuntimeState enabled` verified 8/8 available Deployments, immutable ECR tags, and exact running Pod digests. Payment runtime reported `7/7 enabled`. |
+| Gateway boundary | PASS | Phase 18 selected the current HTTPS-only Service port `443` for its localhost-only port-forward and returned readiness `200`, catalog `200`, anonymous admin `401`; Phase 21 ended with `PASS`. |
+| Purchase and Checkout | PASS | The approved Phase 24 runner created an authenticated shopper and owned fixtures, accepted and replayed one reservation, produced one Order in `PENDING_PAYMENT`, found the Payment aggregate in `PENDING`, and received Checkout `201` plus idempotent replay `200`. Identities and Checkout URL were not copied into this ledger. |
+| Stripe webhook and replay | PASS | Stripe test Checkout completed; Payment reached `SUCCEEDED`; the first valid signed webhook and duplicate delivery were both acknowledged with HTTP `204`, proving durable provider receipt/idempotent processing without recording signature or payload. |
+| Kafka and Saga completion | PASS | The Payment event topic aggregate offset advanced, Order reached `CONFIRMED`, the reservation reached `CONFIRMED`, and the runner emitted `Phase 24 Stripe runtime smoke: PASS`. |
+| Secret/data boundary | PASS | No Secret value, JWT, Authorization header, Checkout URL, Stripe identifier/signature/body, customer identity, or fixture UUID is recorded here. |
+
+T071 is complete. Phase 21 originally assumed all Payment flags remained disabled and Phase 18
+assumed Service port 8080. The gates now explicitly support the reviewed post-Phase-24 state while
+remaining read-only; static regression tests and the live rerun both passed.
+
+## T072 precondition — rollback compatibility — 2026-08-28
+
+| Check | Result | Evidence / boundary |
+|---|---|---|
+| Prior common release | PASS | The predecessor reviewed common Order/Flash Sale target is `release-f5a11de7dd40da24bb4c12e70fb2051b589fc066`; both ECR digests resolved. |
+| Active release shape | PASS | The rehearsal accepted reviewed immutable per-service active tags after targeted Flash Sale hotfixes; it does not require unrelated services to be rebuilt solely to manufacture one common current SHA. |
+| Enum/schema compatibility | PASS | Prior Order and Reservation enum surfaces each contained four states; the additive Feature 044 Order and Flash Sale schema was present. |
+| Representative terminal data | PASS | Read-only aggregate queries found two Order terminal-state groups and two reservation terminal-state groups; no row identity or SQL payload was printed. All observed terminal values are readable by the prior images. |
+| Mutation boundary | PASS | The compatibility rehearsal changed no Deployment, ConfigMap, Git ref, database row, Kafka topic, Registry subject, Redis key, ECR artifact, PVC, or Secret. |
+
+This is only the required read-only prerequisite. T072 remains open until a reviewed GitOps change
+pauses new Order purchase intake, outstanding Saga/outbox work is recorded, the Flash Sale image is
+restored to the prior common immutable tag, Argo verifies the rollback, and the preserved state is
+rechecked.

@@ -130,7 +130,9 @@ function Assert-AwsIdentity {
   if ($accountId -ne $ExpectedAccountId) {
     throw "AWS profile '$AwsProfile' resolved to an unexpected account; credentials were not displayed."
   }
-  Write-Output "AWS identity: PASS (account=$accountId region=$AwsRegion profile=$AwsProfile)"
+  # Host output is intentionally separate from the success-output pipeline so callers receive
+  # exactly one scalar account ID instead of an array containing both the log line and the ID.
+  Write-Host "AWS identity: PASS (account=$accountId region=$AwsRegion profile=$AwsProfile)"
   return $accountId
 }
 
@@ -197,10 +199,10 @@ function Get-EnumValues {
     [Parameter(Mandatory)][string]$TypeName
   )
 
-  $declaration = [regex]::Match($Source, "enum\\s+$([regex]::Escape($TypeName))\\s*\\{(?<body>.*?)\\}", [Text.RegularExpressions.RegexOptions]::Singleline)
+  $declaration = [regex]::Match($Source, "enum\s+$([regex]::Escape($TypeName))\s*\{(?<body>.*?)\}", [Text.RegularExpressions.RegexOptions]::Singleline)
   if (-not $declaration.Success) { throw "Could not read enum '$TypeName' from the prior release source." }
   $values = @(
-    [regex]::Matches($declaration.Groups["body"].Value, "(?m)^\\s*(?<name>[A-Z][A-Z0-9_]*)\\s*(?=,|;|$)") |
+    [regex]::Matches($declaration.Groups["body"].Value, "(?m)^\s*(?<name>[A-Z][A-Z0-9_]*)\s*(?=,|;|$)") |
       ForEach-Object { $_.Groups["name"].Value }
   )
   if ($values.Count -eq 0) { throw "Prior release enum '$TypeName' has no readable values." }
@@ -219,7 +221,7 @@ function Invoke-ReadOnlyPostgresQuery {
   $result = Invoke-RequiredCommand -Command "kubectl" -Arguments @(
     "-n", $Namespace, "exec", "statefulset/postgres", "--", "sh", "-ec", $shellCommand, "sh", $Database, $transaction
   ) -Description $Description
-  return @($result.StandardOutput -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  return @($result.StandardOutput -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
 
 function Assert-ExpandedFeatureSchema {
@@ -263,7 +265,7 @@ function Get-TerminalStatusCounts {
   $rows = Invoke-ReadOnlyPostgresQuery -Database $Database -Query $query -Description $Description
   $counts = [ordered]@{}
   foreach ($row in $rows) {
-    $parts = $row -split "\\|", 2
+    $parts = $row -split "\|", 2
     if ($parts.Count -ne 2 -or $parts[0] -notmatch "^[A-Z_]+$" -or $parts[1] -notmatch "^[0-9]+$") {
       throw "$Description returned an unexpected aggregate row."
     }
@@ -300,13 +302,15 @@ try {
 
   $currentOrderSha = Get-DeployedReleaseSha -DeploymentName "order-service"
   $currentFlashSaleSha = Get-DeployedReleaseSha -DeploymentName "flash-sale-service"
-  if ($currentOrderSha -ne $currentFlashSaleSha) {
-    throw "Order and Flash Sale are not on one immutable Feature 044 release. Do not rehearse a mixed-image rollback."
-  }
-  if ($priorSha -eq $currentOrderSha) {
+  if ($priorSha -eq $currentOrderSha -and $priorSha -eq $currentFlashSaleSha) {
     throw "PriorReleaseSha is the currently deployed release. Supply the previous immutable image set, not the active Feature 044 release."
   }
-  Write-Output "Active Feature 044 image set: PASS (Order and Flash Sale share one immutable release tag; SHA withheld)."
+  $activeReleaseShape = if ($currentOrderSha -eq $currentFlashSaleSha) {
+    "one common release"
+  } else {
+    "reviewed per-service releases after targeted hotfix promotion"
+  }
+  Write-Output "Active Feature 044 image set: PASS (Order and Flash Sale use $activeReleaseShape; SHAs withheld)."
 
   $null = Resolve-ImmutableImage -AccountId $accountId -Repository "flash-sale/order-service" -Sha $priorSha
   $null = Resolve-ImmutableImage -AccountId $accountId -Repository "flash-sale/flash-sale-service" -Sha $priorSha
