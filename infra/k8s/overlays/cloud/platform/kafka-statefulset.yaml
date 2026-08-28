@@ -74,30 +74,25 @@ spec:
             - name: KAFKA_LOG_DIRS
               value: /var/lib/kafka/data/kafka-logs
           startupProbe:
-            exec:
-              command:
-                - sh
-                - -c
-                - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
+            tcpSocket:
+              port: broker
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 2
             failureThreshold: 36
+          # Keep recurring probes native and inexpensive. Launching kafka-topics.sh starts a JVM;
+          # under broker load it can exceed the probe timeout and trigger a false liveness restart.
           readinessProbe:
-            exec:
-              command:
-                - sh
-                - -c
-                - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
-            periodSeconds: 15
-            timeoutSeconds: 5
+            tcpSocket:
+              port: broker
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
           livenessProbe:
-            exec:
-              command:
-                - sh
-                - -c
-                - /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1
+            tcpSocket:
+              port: broker
             periodSeconds: 30
-            timeoutSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 5
           resources:
             requests:
               cpu: 250m
