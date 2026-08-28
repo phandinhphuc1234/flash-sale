@@ -312,6 +312,7 @@ remaining read-only; static regression tests and the live rerun both passed.
 | Enum/schema compatibility | PASS | Prior Order and Reservation enum surfaces each contained four states; the additive Feature 044 Order and Flash Sale schema was present. |
 | Representative terminal data | PASS | Read-only aggregate queries found two Order terminal-state groups and two reservation terminal-state groups; no row identity or SQL payload was printed. All observed terminal values are readable by the prior images. |
 | Mutation boundary | PASS | The compatibility rehearsal changed no Deployment, ConfigMap, Git ref, database row, Kafka topic, Registry subject, Redis key, ECR artifact, PVC, or Secret. |
+| Intake-pause desired state | PREPARED | The reviewed GitOps candidate sets only `ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED=false`; Payment-result and reservation-result consumers plus the Order outbox publisher stay enabled so already accepted Sagas can drain. This row is not live evidence until the PR is merged and Argo reconciles it. |
 
 This is only the required read-only prerequisite. T072 remains open until a reviewed GitOps change
 pauses new Order purchase intake, outstanding Saga/outbox work is recorded, the Flash Sale image is
