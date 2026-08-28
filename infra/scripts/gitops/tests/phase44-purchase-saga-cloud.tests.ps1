@@ -36,7 +36,7 @@ foreach ($marker in @(
   'ORDER_PAYMENT_EVENTS_DLT_TOPIC: "flashsale.order.payment-result.dlt.v1"',
   'ORDER_PURCHASE_COMMANDS_TOPIC: "flashsale.purchase.commands.v1"',
   'ORDER_PURCHASE_RESERVATION_RESULTS_DLT_TOPIC: "flashsale.order.purchase-reservation-result.dlt.v1"',
-  'ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED: "false"',
+  'ORDER_ACCEPTED_PURCHASE_CONSUMER_ENABLED: "true"',
   'ORDER_PAYMENT_EVENTS_CONSUMER_ENABLED: "true"',
   'ORDER_PURCHASE_RESERVATION_RESULTS_CONSUMER_ENABLED: "true"',
   'ORDER_OUTBOX_PUBLISHER_ENABLED: "true"'
