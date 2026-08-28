@@ -206,7 +206,7 @@ labels, then verify one immutable cloud release and final Stripe/Order result.
 - [x] T069 After implementation PR merge and local PASS, run Phase 20 validation/apply for the new EKS topic/DLTs/subjects and record sanitized inventory in `specs/044-order-purchase-saga/validation.md`
 - [x] T070 Trigger one selective GitHub Actions delivery for the affected services, review/merge one immutable image-promotion PR, and record workflow/PR/SHA/ECR tags in `specs/044-order-purchase-saga/validation.md`
 - [x] T071 Verify Argo `Synced/Healthy`, affected Deployment images/rollouts, Phase 21 release gate, and Phase 24 HTTPS/Stripe Checkout/webhook/replay/final-Order PASS; record sanitized live evidence in `specs/044-order-purchase-saga/validation.md`
-- [ ] T072 Rehearse rollback by disabling Order command production first and restoring prior immutable tags while preserving topics, schemas, PVCs, Saga/inbox/outbox/payment/reservation rows; record recovery evidence in `specs/044-order-purchase-saga/validation.md`
+- [x] T072 Rehearse rollback by disabling Order command production first and restoring prior immutable tags while preserving topics, schemas, PVCs, Saga/inbox/outbox/payment/reservation rows; record recovery evidence in `specs/044-order-purchase-saga/validation.md`
 
 ---
 
