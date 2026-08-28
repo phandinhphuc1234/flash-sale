@@ -32,7 +32,7 @@
 ## Phase 6: Polish and verification
 
 - [x] T013 Run PowerShell parser/static tests and k6 profile inspection.
-- [ ] T014 Run a disposable local adaptive test and record sanitized evidence.
+- [x] T014 Run a disposable local adaptive test and record sanitized evidence.
 - [x] T015 Run `git diff --check` and reconcile spec/plan/tasks/validation status.
 
 ## Dependencies

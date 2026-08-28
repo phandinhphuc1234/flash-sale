@@ -227,9 +227,11 @@ function Get-MetricValues([object]$Summary, [string]$Name) {
 function Get-MetricNumber([object]$Summary, [string]$Name, [string]$Property, [double]$Default = 0) {
   $values = Get-MetricValues $Summary $Name
   if ($null -eq $values) { return $Default }
-  $property = $values.PSObject.Properties[$Property]
-  if ($null -eq $property) { return $Default }
-  return [double]$property.Value
+  # PowerShell variable names are case-insensitive. Do not name this local `$property`, because it
+  # would overwrite the typed `$Property` parameter and coerce PSPropertyInfo back to a string.
+  $metricValueProperty = $values.PSObject.Properties[$Property]
+  if ($null -eq $metricValueProperty) { return $Default }
+  return [double]$metricValueProperty.Value
 }
 
 function Convert-StageSummary([object]$Summary, [int]$Rate, [int]$Duration, [string]$RunLabel) {

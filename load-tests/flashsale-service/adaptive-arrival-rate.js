@@ -41,7 +41,7 @@ export const options = {
   },
   thresholds: {
     adaptive_unexpected_errors: ['count==0'],
-    adaptive_dropped_iterations: ['count==0'],
+    dropped_iterations: ['count==0'],
     adaptive_expected_outcome_rate: [`rate>=${expectedOutcomeRate}`],
     adaptive_successful_winners: [`count<=${expectedAllocation}`],
   },

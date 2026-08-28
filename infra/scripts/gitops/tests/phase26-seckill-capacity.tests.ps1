@@ -61,7 +61,7 @@ foreach ($marker in @(
 foreach ($marker in @(
     "executor: 'constant-arrival-rate'",
     "adaptive_unexpected_errors",
-    "adaptive_dropped_iterations",
+    "dropped_iterations: ['count==0']",
     "adaptive_expected_outcome_rate",
     "adaptive_successful_winners",
     'FLASHSALE_TOKEN_OFFSET',
@@ -73,6 +73,12 @@ foreach ($marker in @(
   )) {
   Assert-True ($profile.IndexOf($marker, [StringComparison]::Ordinal) -ge 0) "k6 marker is missing: $marker"
 }
+
+Assert-True ($profile.IndexOf('adaptive_dropped_iterations', [StringComparison]::Ordinal) -lt 0) `
+  'k6 profile must use the built-in dropped_iterations metric rather than an undefined custom metric'
+Assert-True ($runner.IndexOf('$metricValueProperty = $values.PSObject.Properties[$Property]',
+    [StringComparison]::Ordinal) -ge 0) `
+  'metric parser must not collide with its case-insensitive typed Property parameter'
 
 foreach ($pattern in @(
     '(?i)kubectl\s+(?:apply|delete|patch|replace|rollout)',
