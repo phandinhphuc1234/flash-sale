@@ -46,11 +46,11 @@ parses k6 threshold exit code 99, and returns non-zero for `stopped_on_danger` a
 
 ## Controlled local ladder through 200 RPS
 
-The following runs used the merged runner, a 5 RPS / 3 second warm-up, a 5 second stage, 2 second
-cooldown, `ConsecutiveBreaches=1`, and pre-allocated VUs (200 through 50 RPS, 400 at 100 RPS, and
-800 at 200 RPS). Each stage used a disposable campaign/variant and a fresh token batch; values below
-are sanitized report metrics. Each arrival performs one winner request and one same-key replay, so
-the HTTP request count is approximately twice the arrival count.
+The following single-stage runs used the merged runner, a 5 RPS / 3 second warm-up, a 5 second
+stage, 2 second cooldown, `ConsecutiveBreaches=1`, and pre-allocated VUs (200 through 50 RPS, 400
+at 100 RPS, and 800 at 200 RPS). Each run used a disposable campaign/variant and a fresh token
+batch; values below are sanitized report metrics. Each arrival performs one winner request and one
+same-key replay, so the HTTP request count is approximately twice the arrival count.
 
 | Rate | HTTP requests | Winners | Replays | p95 | p99 | HTTP/unexpected errors | Dropped | Outcome |
 |---:|---:|---:|---:|---:|---:|---:|---:|---|
@@ -65,10 +65,13 @@ the HTTP request count is approximately twice the arrival count.
 | 100 RPS | 1,000 | 500 | 500 | 54.563 ms | 101.426 ms | 0 | 0 | PASS |
 | 200 RPS | 2,002 | 1,001 | 1,001 | 397.220 ms | 594.515 ms | 0 | 0 | STOP: p95 breach |
 
-The 200 RPS stage is the first official guardrail breach (`p95LimitMs=300`); its p99 remained below
-700 ms and correctness remained intact. Therefore the truthful result is `lastGoodRate=100 RPS`
-and `firstBreachRate=200 RPS` for this short local profile—not a claim that the service's absolute
-capacity is 100 RPS. No 300/500/750/1,000 RPS stage was run after the breach.
+The 200 RPS stage is the first official guardrail breach (`p95LimitMs=300`); both winner and replay
+requests contributed to the p95 (424.946 ms and 354.840 ms respectively), while p99 remained below
+700 ms and correctness remained intact. Therefore the aggregate ladder result is
+`lastGoodRate=100 RPS` and `firstBreachRate=200 RPS` for this short local profile—not a claim that
+the service's absolute capacity is 100 RPS. The 50/100/200 values are separate controlled runs, so
+the non-monotonic p95 values are a reason to repeat longer stages before making a capacity claim.
+No 300/500/750/1,000 RPS stage was run after the breach.
 
 Two earlier exploratory attempts (50 RPS with 17 dropped iterations and 35 RPS with an Order Kafka
 backlog) are excluded from the table: the first exposed insufficient VU pre-allocation, and the
