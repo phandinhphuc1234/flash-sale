@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+resources:
+  - namespace.yaml
+  - k8s/prometheus-deployment.yaml
+  - k8s/prometheus-service.yaml
+  - k8s/grafana-deployment.yaml
+  - k8s/grafana-service.yaml
+
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus.yml=prometheus/prometheus.yml
+  - name: prometheus-rules
+    files:
+      - purchase-saga-alerts.yml=prometheus/rules/purchase-saga-alerts.yml
+      - payment-service-alerts.yml=prometheus/rules/payment-service-alerts.yml
+  - name: grafana-datasources
+    files:
+      - prometheus.yaml=grafana/provisioning/datasources/prometheus.yaml
+  - name: grafana-dashboard-provider
+    files:
+      - provider.yaml=grafana/provisioning/dashboards/provider.yaml
+  - name: grafana-seckill-dashboard
+    files:
+      - seckill-overview.json=grafana/dashboards/seckill-overview.json
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: flash-sale
+      app.kubernetes.io/component: observability
