@@ -74,7 +74,9 @@ $argoText = Get-Content -LiteralPath (Join-Path $argoPath "application-observabi
 Assert-True ($argoText -match 'name:\s*flash-sale-observability') "Argo Application name is wrong"
 Assert-True ($argoText -match 'targetRevision:\s*develop') "Argo must target develop"
 Assert-True ($argoText -match 'path:\s*infra/monitoring') "Argo source ownership is wrong"
-Assert-True ($argoText -match 'prune:\s*false') "Argo prune must remain disabled"
+Assert-True ($argoText -match 'prune:\s*true') "Argo must prune stale hashed monitoring ConfigMaps"
+$namespaceText = Get-Content -LiteralPath (Join-Path $monitoringPath "namespace.yaml") -Raw
+Assert-True ($namespaceText -match 'argocd\.argoproj\.io/sync-options:\s*Prune=false') "monitoring Namespace must be protected from prune"
 
 $runnerText = Get-Content -LiteralPath $runnerPath -Raw
 Assert-True ($runnerText -match '\[switch\]\$Apply') "runner must require explicit Apply"

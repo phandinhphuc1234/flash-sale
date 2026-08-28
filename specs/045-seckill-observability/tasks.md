@@ -30,7 +30,7 @@ Secret values, and no unsupported observability component.
 
 **Purpose**: Reconcile and verify monitoring without coupling it to application ownership.
 
-- [x] T007 [P] [US3] Add the isolated `flash-sale-observability` Argo Application under `infra/k8s/argocd/observability/` with source `develop`, path `infra/monitoring`, self-heal enabled, and prune disabled
+- [x] T007 [P] [US3] Add the isolated `flash-sale-observability` Argo Application under `infra/k8s/argocd/observability/` with source `develop`, path `infra/monitoring`, self-heal and scoped prune enabled, and Namespace prune protection
 - [x] T008 [US3] Add `infra/scripts/gitops/phase25-seckill-observability.ps1` with PowerShell 7 validation-only default, context/merge/manifest gates, secure Grafana Secret provisioning, bounded Argo/rollout waits, target/rule/dashboard verification, and redacted output
 - [x] T009 [P] [US3] Add `infra/scripts/gitops/tests/phase25-seckill-observability.tests.ps1` to reject public Services, floating images, forbidden components, missing targets/panels/rules, unbounded waits, or unsafe Secret handling
 - [x] T010 [US3] Update `infra/monitoring/README.md` and the quickstart with architecture, access, troubleshooting, known ephemeral-storage trade-offs, and rollback boundaries
