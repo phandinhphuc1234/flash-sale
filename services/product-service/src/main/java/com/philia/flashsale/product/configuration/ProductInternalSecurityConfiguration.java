@@ -12,7 +12,6 @@ import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.authorization.AuthorizationDecision;
-import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -26,14 +25,38 @@ import org.springframework.security.web.SecurityFilterChain;
 public class ProductInternalSecurityConfiguration {
     @Bean
     @Order(1)
-    SecurityFilterChain productInternalSecurityFilterChain(HttpSecurity http,
+    SecurityFilterChain productCartInternalSecurityFilterChain(HttpSecurity http,
+            @Qualifier("productCartInternalJwtDecoder") JwtDecoder productCartInternalJwtDecoder,
+            ProductCartInternalJwtProperties properties,
+            ProductInternalSecurityFailureHandler failureHandler) throws Exception {
+        return http.securityMatcher("/internal/v1/catalog/variants/display-details")
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authorize -> authorize
+                        .anyRequest().access((authentication, context) -> authorizeInternal(
+                                authentication, properties.subject(), properties.requiredScope())))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(failureHandler)
+                        .accessDeniedHandler(failureHandler))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(failureHandler)
+                        .accessDeniedHandler(failureHandler)
+                        .jwt(jwt -> jwt.decoder(productCartInternalJwtDecoder)
+                                .jwtAuthenticationConverter(internalJwtAuthenticationConverter(
+                                        properties.subject()))))
+                .build();
+    }
+
+    @Bean
+    @Order(2)
+    SecurityFilterChain productCampaignInternalSecurityFilterChain(HttpSecurity http,
             @Qualifier("productInternalJwtDecoder") JwtDecoder productInternalJwtDecoder,
             ProductInternalJwtProperties properties,
             ProductInternalSecurityFailureHandler failureHandler) throws Exception {
         return http.securityMatcher("/internal/v1/catalog/variants/campaign-validation")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .anyRequest().access((authentication, context) -> authorizeInternal(authentication, properties)))
+                        .anyRequest().access((authentication, context) -> authorizeInternal(
+                                authentication, properties.subject(), properties.requiredScope())))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(failureHandler)
                         .accessDeniedHandler(failureHandler))
@@ -41,24 +64,34 @@ public class ProductInternalSecurityConfiguration {
                         .authenticationEntryPoint(failureHandler)
                         .accessDeniedHandler(failureHandler)
                         .jwt(jwt -> jwt.decoder(productInternalJwtDecoder)
-                                .jwtAuthenticationConverter(internalJwtAuthenticationConverter(properties))))
+                                .jwtAuthenticationConverter(internalJwtAuthenticationConverter(
+                                        properties.subject()))))
                 .build();
     }
 
     private AuthorizationDecision authorizeInternal(Supplier<Authentication> authentication,
-            ProductInternalJwtProperties properties) {
+            String requiredSubject, String requiredScope) {
         Authentication current = authentication.get();
         boolean subjectMatches = current.getPrincipal() instanceof Jwt jwt
-                && properties.subject().equals(jwt.getSubject());
+                && requiredSubject.equals(jwt.getSubject());
         boolean scopeMatches = current.getAuthorities().stream()
-                .anyMatch(authority -> ("SCOPE_" + properties.requiredScope()).equals(authority.getAuthority()));
+                .anyMatch(authority -> ("SCOPE_" + requiredScope).equals(authority.getAuthority()));
         return new AuthorizationDecision(subjectMatches && scopeMatches);
     }
 
     @Bean
     JwtAuthenticationConverter internalJwtAuthenticationConverter(ProductInternalJwtProperties properties) {
+        return internalJwtAuthenticationConverter(properties.subject());
+    }
+
+    @Bean
+    JwtAuthenticationConverter cartInternalJwtAuthenticationConverter(ProductCartInternalJwtProperties properties) {
+        return internalJwtAuthenticationConverter(properties.subject());
+    }
+
+    private JwtAuthenticationConverter internalJwtAuthenticationConverter(String requiredSubject) {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(new InternalScopeConverter(properties.subject()));
+        converter.setJwtGrantedAuthoritiesConverter(new InternalScopeConverter(requiredSubject));
         return converter;
     }
 

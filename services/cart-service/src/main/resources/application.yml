@@ -99,6 +99,7 @@ cart:
   product:
     base-url: ${PRODUCT_SERVICE_URL:http://product-service:8080}
     client-registration-id: cart-product
+    token-max-ttl-seconds: ${CART_PRODUCT_TOKEN_MAX_TTL_SECONDS:300}
   persistence:
     max-quantity: ${CART_MAX_QUANTITY:10}
 

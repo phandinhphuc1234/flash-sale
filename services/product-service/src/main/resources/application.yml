@@ -35,6 +35,14 @@ flashsale:
         audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
         subject: campaign-service
         required-scope: catalog.read
+      # Cart receives a separate machine identity and capability scope; it cannot call
+      # Campaign or Inventory endpoints with the same token.
+      cart-internal-jwt:
+        issuer: ${JWT_ISSUER_URI:http://authentication-service:8080}
+        jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+        audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+        subject: ${CART_CLIENT_ID:cart-service}
+        required-scope: catalog.variant-display.read
 
 server:
   port: ${SERVER_PORT:8080}

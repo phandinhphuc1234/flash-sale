@@ -8,6 +8,7 @@ import com.philia.flashsale.product.catalog.domain.CatalogPageRequest;
 import com.philia.flashsale.product.catalog.domain.CategorySummary;
 import com.philia.flashsale.product.catalog.domain.ProductDetail;
 import com.philia.flashsale.product.catalog.domain.ProductSummary;
+import com.philia.flashsale.product.catalog.application.result.VariantDisplayResult;
 
 public interface LoadCatalogPort {
 
@@ -16,4 +17,6 @@ public interface LoadCatalogPort {
     CatalogPage<ProductSummary> loadVisibleProducts(String categorySlug, CatalogPageRequest pageRequest);
 
     ProductDetail loadVisibleProduct(String slug);
+
+    List<VariantDisplayResult> loadVariantDisplays(List<UUID> variantIds);
 }

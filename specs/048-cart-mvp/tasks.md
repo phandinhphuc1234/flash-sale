@@ -1,6 +1,6 @@
 # Tasks: Authenticated Cart MVP
 
-**Status**: Implementing — G1 complete
+**Status**: Implementing — G2 complete
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/public-cart-http.md](contracts/public-cart-http.md),
@@ -41,55 +41,55 @@ mutation or enriched read can be implemented.
 `catalog.variant-display.read` scope can call the Product batch endpoint; wrong subject, audience,
 or scope is rejected, while the existing Campaign contract remains unchanged.
 
-- [ ] T005 [P] Add failing Product application tests for ordered de-duplication, found/missing
+- [x] T005 [P] Add Product application tests for ordered de-duplication, found/missing
   variants, sellability, current display fields, and empty input in
-  `services/product-service/src/test/java/com/philia/flashsale/product/catalog/ProductVariantDisplayQueryTests.java`.
-- [ ] T006 [P] Add failing Product HTTP/security contract tests for the exact method, path,
+  `services/product-service/src/test/java/com/philia/flashsale/product/catalog/application/service/ProductVariantDisplayQueryServiceTests.java`.
+- [x] T006 [P] Add Product HTTP/security contract tests for the exact method, path,
   envelopes, validation, trace header, audience, subject, and scope in
-  `services/product-service/src/test/java/com/philia/flashsale/product/catalog/ProductVariantDisplayHttpTests.java`.
-- [ ] T007 Define the Product input port, ordered result model, and query service in
+  `services/product-service/src/test/java/com/philia/flashsale/product/catalog/adapter/in/web/internal/ProductVariantDisplayHttpTests.java`.
+- [x] T007 Define the Product input port, ordered result model, and query service in
   `services/product-service/src/main/java/com/philia/flashsale/product/catalog/application/port/in/LookupVariantDisplaysUseCase.java`,
   `services/product-service/src/main/java/com/philia/flashsale/product/catalog/application/result/VariantDisplayResult.java`,
   and `services/product-service/src/main/java/com/philia/flashsale/product/catalog/application/service/ProductVariantDisplayQueryService.java`.
-- [ ] T008 Extend Product-owned batch loading without cross-service data access in
+- [x] T008 Extend Product-owned batch loading without cross-service data access in
   `services/product-service/src/main/java/com/philia/flashsale/product/catalog/application/port/out/LoadCatalogPort.java`,
   `services/product-service/src/main/java/com/philia/flashsale/product/catalog/adapter/out/persistence/ProductReadJpaRepository.java`,
   and `services/product-service/src/main/java/com/philia/flashsale/product/catalog/adapter/out/persistence/SpringDataJpaCatalogQueryAdapter.java`.
-- [ ] T009 Implement the internal request/response mapping and batch endpoint in
+- [x] T009 Implement the internal request/response mapping and batch endpoint in
   `services/product-service/src/main/java/com/philia/flashsale/product/catalog/adapter/in/web/internal/VariantDisplayBatchRequest.java`,
   `services/product-service/src/main/java/com/philia/flashsale/product/catalog/adapter/in/web/internal/VariantDisplayBatchResponse.java`,
   and `services/product-service/src/main/java/com/philia/flashsale/product/catalog/adapter/in/web/internal/ProductVariantDisplayController.java`.
-- [ ] T010 Add an endpoint-specific Cart subject/scope rule and safe 401/403 mapping while
+- [x] T010 Add an endpoint-specific Cart subject/scope rule and safe 401/403 mapping while
   preserving Campaign access in
   `services/product-service/src/main/java/com/philia/flashsale/product/configuration/ProductInternalSecurityConfiguration.java`,
   `services/product-service/src/main/java/com/philia/flashsale/product/configuration/ProductInternalSecurityFailureHandler.java`,
   and `services/product-service/src/main/resources/application.yml`.
-- [ ] T011 [P] Add failing Authentication contract tests proving `cart-service` receives only
+- [x] T011 [P] Add Authentication contract tests proving `cart-service` receives only
   `catalog.variant-display.read` and cannot obtain Campaign or Inventory scopes in
   `services/authentication-service/src/test/java/com/philia/flashsale/authentication/serviceclient/contract/CartServiceClientCredentialsTests.java`.
-- [ ] T012 Provision the Cart machine client through typed properties and the existing durable
+- [x] T012 Provision the Cart machine client through typed properties and the existing durable
   bootstrap flow in
   `services/authentication-service/src/main/java/com/philia/flashsale/authentication/configuration/ServiceClientsProperties.java`,
   `services/authentication-service/src/main/java/com/philia/flashsale/authentication/serviceclient/adapter/in/oauth/ServiceClientBootstrapper.java`,
   and `services/authentication-service/src/main/resources/application.yml`.
-- [ ] T013 Define Cart-owned Product capability types and failure semantics in
+- [x] T013 Define Cart-owned Product capability types and failure semantics in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/port/out/LoadProductDisplaysPort.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/result/ProductDisplay.java`,
   and `services/cart-service/src/main/java/com/philia/flashsale/cart/application/result/ProductDisplayBatch.java`.
-- [ ] T014 [P] Add failing Cart outbound contract tests for one batch call, response identity
+- [x] T014 [P] Add Cart outbound contract tests for one batch call, response identity
   validation, stable order, trace propagation, no shopper-token relay, no retry, and mapping of
   timeout/connect/401/403/5xx/malformed responses in
-  `services/cart-service/src/test/java/com/philia/flashsale/cart/adapter/out/client/product/ProductDisplayClientContractTests.java`.
-- [ ] T015 Implement the Feign wire DTO/client and safe provider-to-capability mapping in
+  `services/cart-service/src/test/java/com/philia/flashsale/cart/adapter/out/client/product/ProductDisplayClientAdapterTests.java`.
+- [x] T015 Implement the Feign wire DTO/client and safe provider-to-capability mapping in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/client/product/ProductDisplayFeignClient.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/client/product/ProductDisplayClientAdapter.java`,
   and `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/client/product/ProductDisplayWireModels.java`.
-- [ ] T016 Implement cached client-credentials token acquisition, `Retryer.NEVER_RETRY`, explicit
+- [x] T016 Implement cached client-credentials token acquisition, `Retryer.NEVER_RETRY`, explicit
   300 ms connect/600 ms read timeouts, safe logging, and trace propagation in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/configuration/CartProductClientConfiguration.java`.
-- [ ] T017 Add failing Cart JWT/owner-boundary tests first, then implement issuer, audience, token
+- [x] T017 Add Cart JWT/owner-boundary tests and implement issuer, audience, token
   type, nonblank UUID subject, authenticated request rules, and safe 401 handling in
-  `services/cart-service/src/test/java/com/philia/flashsale/cart/security/CartSecurityContractTests.java`,
+  `services/cart-service/src/test/java/com/philia/flashsale/cart/security/AuthenticatedShopperTests.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/security/AuthenticatedShopper.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/configuration/CartJwtTrustConfiguration.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/configuration/CartSecurityConfiguration.java`,
