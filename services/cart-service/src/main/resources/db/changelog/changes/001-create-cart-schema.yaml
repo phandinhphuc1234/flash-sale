@@ -1,0 +1,43 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-cart-schema
+      author: philia
+      dbms: postgresql
+      runInTransaction: true
+      preConditions:
+        - onFail: HALT
+        - onError: HALT
+        - dbms:
+            type: postgresql
+        - sqlCheck:
+            expectedResult: cart_db
+            sql: SELECT current_database()
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              CREATE TABLE carts (
+                  id UUID NOT NULL,
+                  owner_id UUID NOT NULL,
+                  created_at TIMESTAMPTZ NOT NULL,
+                  updated_at TIMESTAMPTZ NOT NULL,
+                  CONSTRAINT pk_carts PRIMARY KEY (id),
+                  CONSTRAINT uq_carts_owner_id UNIQUE (owner_id)
+              );
+
+              CREATE TABLE cart_items (
+                  cart_id UUID NOT NULL,
+                  variant_id UUID NOT NULL,
+                  quantity INTEGER NOT NULL,
+                  created_at TIMESTAMPTZ NOT NULL,
+                  updated_at TIMESTAMPTZ NOT NULL,
+                  CONSTRAINT pk_cart_items PRIMARY KEY (cart_id, variant_id),
+                  CONSTRAINT fk_cart_items_cart FOREIGN KEY (cart_id)
+                      REFERENCES carts (id) ON DELETE CASCADE,
+                  CONSTRAINT ck_cart_items_quantity CHECK (quantity BETWEEN 1 AND 10)
+              );
+      rollback:
+        - sql:
+            sql: |
+              DROP TABLE cart_items;
+              DROP TABLE carts;

@@ -1,6 +1,6 @@
 # Tasks: Authenticated Cart MVP
 
-**Status**: Implementing — G2 complete
+**Status**: Implementing — G3 complete
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/public-cart-http.md](contracts/public-cart-http.md),
@@ -113,52 +113,52 @@ or outage.
 
 ### Tests for User Story 1
 
-- [ ] T018 [P] [US1] Add failing domain tests for quantity 1–10 and one item per variant in
+- [x] T018 [P] [US1] Add failing domain tests for quantity 1–10 and one item per variant in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/domain/CartTests.java`.
-- [ ] T019 [P] [US1] Add failing application tests proving Product validation precedes persistence,
+- [x] T019 [P] [US1] Add failing application tests proving Product validation precedes persistence,
   same-request replay is idempotent, remove is a no-op when absent, and dependency/not-found/
   not-sellable failures preserve prior state in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/application/MaintainCartUseCaseTests.java`.
-- [ ] T020 [P] [US1] Add failing PostgreSQL integration tests for owner uniqueness, composite item
+- [x] T020 [P] [US1] Add failing PostgreSQL integration tests for owner uniqueness, composite item
   uniqueness, quantity checks, concurrent first write, same-quantity replay, different-quantity
   serial outcomes, forward migration re-run, and compatibility of the pre-feature Cart shell with
   the expanded schema in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/adapter/out/persistence/CartPersistenceIntegrationTests.java`
   and
   `services/cart-service/src/test/java/com/philia/flashsale/cart/adapter/out/persistence/CartMigrationCompatibilityIntegrationTests.java`.
-- [ ] T021 [P] [US1] Add failing web/security contract tests for authenticated PUT/item DELETE,
+- [x] T021 [P] [US1] Add failing web/security contract tests for authenticated PUT/item DELETE,
   200/204 envelopes, 400/401/404/409/503/500 mappings, empty 204 bodies, no owner input, no-store,
   and trace headers in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/adapter/in/web/CartMutationHttpTests.java`.
 
 ### Implementation for User Story 1
 
-- [ ] T022 [P] [US1] Implement the framework-free Cart aggregate, item entity, and validated
+- [x] T022 [P] [US1] Implement the framework-free Cart aggregate, item entity, and validated
   quantity value object in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/domain/model/Cart.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/domain/model/CartItem.java`, and
   `services/cart-service/src/main/java/com/philia/flashsale/cart/domain/valueobject/CartQuantity.java`.
-- [ ] T023 [P] [US1] Define set/remove commands, input ports, and intent-focused persistence ports in
+- [x] T023 [P] [US1] Define set/remove commands, input ports, and intent-focused persistence ports in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/command/SetCartItemCommand.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/command/RemoveCartItemCommand.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/port/in/SetCartItemUseCase.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/port/in/RemoveCartItemUseCase.java`, and
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/port/out/MaintainCartPort.java`.
-- [ ] T024 [US1] Implement Product-before-transaction set behavior and idempotent remove behavior in
+- [x] T024 [US1] Implement Product-before-transaction set behavior and idempotent remove behavior in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/usecase/MaintainCartService.java`.
-- [ ] T025 [US1] Add the expand-only `carts`/`cart_items` Liquibase changeset and include it from
+- [x] T025 [US1] Add the expand-only `carts`/`cart_items` Liquibase changeset and include it from
   `services/cart-service/src/main/resources/db/changelog/changes/001-create-cart-schema.yaml` and
   `services/cart-service/src/main/resources/db/changelog/db.changelog-master.yaml`.
-- [ ] T026 [US1] Implement Cart-owned JPA entities and repositories without Product fields after
+- [x] T026 [US1] Implement Cart-owned JPA entities and repositories without Product fields after
   T025 fixes the accepted migration shape in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/entity/CartJpaEntity.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/entity/CartItemJpaEntity.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/repository/CartJpaRepository.java`,
   and `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/repository/CartItemJpaRepository.java`.
-- [ ] T027 [US1] Implement the persistence adapter with short transactions and PostgreSQL atomic
+- [x] T027 [US1] Implement the persistence adapter with short transactions and PostgreSQL atomic
   owner/item upserts inside the adapter boundary in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/CartPersistenceAdapter.java`.
-- [ ] T028 [US1] Implement mutation request/response DTOs, explicit mapper, controller methods, and
+- [x] T028 [US1] Implement mutation request/response DTOs, explicit mapper, controller methods, and
   stable Cart exception mapping in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/SetCartItemRequest.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartItemResponse.java`,
@@ -166,7 +166,7 @@ or outage.
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartController.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/websupport/error/CartErrorCode.java`, and
   `services/cart-service/src/main/java/com/philia/flashsale/cart/websupport/error/CartHttpExceptionHandler.java`.
-- [ ] T029 [US1] Run the US1 domain, application, persistence, and web tests with
+- [x] T029 [US1] Run the US1 domain, application, persistence, and web tests with
   `./mvnw -pl services/cart-service -am verify` and record the checkpoint in
   `specs/048-cart-mvp/validation.md`.
 
