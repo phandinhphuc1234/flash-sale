@@ -14,6 +14,10 @@ $env:INVENTORY_API_DOCS_ENABLED = "true"
 .\mvnw.cmd -pl services/inventory-service -am spring-boot:run
 ```
 
+The shared local switch `API_DOCS_ENABLED=true` also enables Inventory and is the recommended option
+when using the unified Gateway catalog. `INVENTORY_API_DOCS_ENABLED` remains available as a
+service-only override.
+
 Then open:
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
@@ -83,6 +87,7 @@ Authentication failures (`401`/`403`) are produced by Spring Security at the ser
 
 ## Related source-of-truth files
 
+- [Unified 40-endpoint API catalog](../api/README.md)
 - [Feature 016 HTTP contract](../../specs/016-inventory-service/contracts/http.md)
 - [Feature 016 specification](../../specs/016-inventory-service/spec.md)
 - [Shared response types](../../libs/common-web/src/main/java/com/philia/flashsale/common/web/)
