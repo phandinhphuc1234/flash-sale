@@ -4,18 +4,21 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
@@ -24,7 +27,8 @@ public class GatewaySecurityConfiguration {
     @Bean
     SecurityWebFilterChain gatewaySecurityWebFilterChain(
             ServerHttpSecurity http,
-            GatewaySecurityErrorHandler securityErrorHandler) {
+            GatewaySecurityErrorHandler securityErrorHandler,
+            @Value("${springdoc.api-docs.enabled:false}") boolean apiDocsEnabled) {
         // Gateway is the first public security boundary; product-service still revalidates admin access.
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
@@ -38,6 +42,9 @@ public class GatewaySecurityConfiguration {
                                 "/actuator/info",
                                 "/actuator/prometheus")
                         .permitAll()
+                        .pathMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
+                                "/v3/api-docs.yaml", "/openapi/**")
+                        .access((authentication, context) -> documentationAccess(apiDocsEnabled))
                         .pathMatchers("/api/v1/catalog/**").permitAll()
                         .pathMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout").permitAll()
@@ -59,6 +66,10 @@ public class GatewaySecurityConfiguration {
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(
                                 gatewayJwtAuthenticationConverter())))
                 .build();
+    }
+
+    static Mono<AuthorizationDecision> documentationAccess(boolean apiDocsEnabled) {
+        return Mono.just(new AuthorizationDecision(apiDocsEnabled));
     }
 
     @Bean

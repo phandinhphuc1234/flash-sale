@@ -123,3 +123,10 @@ order:
     enabled: ${ORDER_CREATION_ENABLED:true}
   query:
     enabled: ${ORDER_QUERY_ENABLED:true}
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /swagger-ui.html

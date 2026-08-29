@@ -9,6 +9,50 @@ spring:
       server:
         webflux:
           routes:
+            # Documentation routes are exact JSON proxies only. Gateway security denies them unless
+            # API_DOCS_ENABLED=true, and no internal business route is exposed here.
+            - id: openapi-authentication-service
+              uri: ${AUTHENTICATION_SERVICE_URL:http://authentication-service:8080}
+              predicates:
+                - Path=/openapi/authentication-service
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-product-service
+              uri: ${PRODUCT_SERVICE_URL:http://product-service:8080}
+              predicates:
+                - Path=/openapi/product-service
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-campaign-service
+              uri: ${CAMPAIGN_SERVICE_URL:http://campaign-service:8080}
+              predicates:
+                - Path=/openapi/campaign-service
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-flashsale-service
+              uri: ${FLASHSALE_SERVICE_URL:http://flashsale-service:8080}
+              predicates:
+                - Path=/openapi/flashsale-service
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-inventory-service
+              uri: ${INVENTORY_SERVICE_URL:http://inventory-service:8080}
+              predicates:
+                - Path=/openapi/inventory-service
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-order-service
+              uri: ${ORDER_SERVICE_URL:http://order-service:8080}
+              predicates:
+                - Path=/openapi/order-service
+              filters:
+                - SetPath=/v3/api-docs
+            - id: openapi-payment-service
+              uri: ${PAYMENT_SERVICE_URL:http://payment-service:8080}
+              predicates:
+                - Path=/openapi/payment-service
+              filters:
+                - SetPath=/v3/api-docs
             - id: authentication-login
               uri: ${AUTHENTICATION_SERVICE_URL:http://authentication-service:8080}
               predicates:
@@ -155,6 +199,30 @@ management:
     distribution:
       percentiles:
         gateway.rate.limit.acquire: 0.5,0.95,0.99
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    urls-primary-name: Authentication Service
+    urls:
+      - name: Authentication Service
+        url: /openapi/authentication-service
+      - name: Product Service
+        url: /openapi/product-service
+      - name: Campaign Service
+        url: /openapi/campaign-service
+      - name: Flash Sale Service
+        url: /openapi/flashsale-service
+      - name: Inventory Service
+        url: /openapi/inventory-service
+      - name: Order Service
+        url: /openapi/order-service
+      - name: Payment Service
+        url: /openapi/payment-service
 
 info:
   app:

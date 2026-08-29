@@ -46,7 +46,8 @@ public class FlashSaleSecurityConfiguration {
     SecurityFilterChain flashSaleDenyByDefaultSecurityChain(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus")
+                        .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus",
+                                "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs.yaml")
                         .permitAll()
                         .anyRequest().denyAll())
                 .build();

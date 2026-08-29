@@ -107,7 +107,11 @@ public class CampaignSecurityConfiguration {
                         .requestMatchers(
                                 "/actuator/health/**",
                                 "/actuator/info",
-                                "/actuator/prometheus")
+                                "/actuator/prometheus",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml")
                         .permitAll()
                         .anyRequest().denyAll())
                 .build();
