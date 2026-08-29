@@ -55,7 +55,7 @@ public class CartHttpExceptionHandler {
 
     @ExceptionHandler(InvalidCartPrincipalException.class)
     ResponseEntity<ApiErrorResponse> principal(HttpServletRequest request) {
-        return error(CartErrorCode.CART_VALIDATION_ERROR, request, null);
+        return error(CartErrorCode.UNAUTHENTICATED, request, null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

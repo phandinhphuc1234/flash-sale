@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.philia.flashsale.cart.application.exception.CartVariantNotFoundException;
 import com.philia.flashsale.cart.application.exception.CartVariantNotSellableException;
 import com.philia.flashsale.cart.application.exception.ProductDisplayDependencyException;
+import com.philia.flashsale.cart.application.port.in.GetCartUseCase;
 import com.philia.flashsale.cart.application.port.in.RemoveCartItemUseCase;
 import com.philia.flashsale.cart.application.port.in.SetCartItemUseCase;
 import com.philia.flashsale.cart.application.result.CartItemResult;
@@ -33,13 +34,14 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 class CartMutationHttpTests {
     private final SetCartItemUseCase setCartItem = mock(SetCartItemUseCase.class);
     private final RemoveCartItemUseCase removeCartItem = mock(RemoveCartItemUseCase.class);
+    private final GetCartUseCase getCart = mock(GetCartUseCase.class);
     private MockMvc mvc;
     private JwtAuthenticationToken shopper;
 
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.standaloneSetup(new CartController(setCartItem, removeCartItem,
-                        new CartWebMapper()))
+                        getCart, new CartWebMapper()))
                 .setControllerAdvice(new CartHttpExceptionHandler())
                 .setValidator(new LocalValidatorFactoryBean())
                 .build();

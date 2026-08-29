@@ -1,6 +1,6 @@
 # Tasks: Authenticated Cart MVP
 
-**Status**: Implementing — G3 complete
+**Status**: Implementing — G4 complete
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/public-cart-http.md](contracts/public-cart-http.md),
@@ -185,33 +185,33 @@ saved identities/quantities with `detailsAvailable=false`.
 
 ### Tests for User Story 2
 
-- [ ] T030 [P] [US2] Add failing application tests for empty Cart, one ordered batch lookup,
+- [x] T030 [P] [US2] Add failing application tests for empty Cart, one ordered batch lookup,
   current-detail refresh, missing/non-sellable variants, and fail-soft dependency behavior in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/application/GetCartUseCaseTests.java`.
-- [ ] T031 [P] [US2] Add failing GET contract tests for `CartResponse`, stable item order, aggregate
+- [x] T031 [P] [US2] Add failing GET contract tests for `CartResponse`, stable item order, aggregate
   counts, nullable Product fields, unavailable reasons, no-store, 401, trace header, and no durable
   row creation for an absent Cart in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/adapter/in/web/GetCartHttpTests.java`.
 
 ### Implementation for User Story 2
 
-- [ ] T032 [P] [US2] Define the query, input/output ports, and Cart read result types in
+- [x] T032 [P] [US2] Define the query, input/output ports, and Cart read result types in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/query/GetCartQuery.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/port/in/GetCartUseCase.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/port/out/LoadCartPort.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/result/CartResult.java`, and
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/result/CartItemResult.java`.
-- [ ] T033 [US2] Implement Cart loading, empty-call avoidance, one-batch enrichment, stable order,
+- [x] T033 [US2] Implement Cart loading, empty-call avoidance, one-batch enrichment, stable order,
   and missing/non-sellable/dependency-unavailable mapping in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/usecase/GetCartService.java`.
-- [ ] T034 [US2] Extend the persistence adapter with owner-scoped read ordering in
+- [x] T034 [US2] Extend the persistence adapter with owner-scoped read ordering in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/CartPersistenceAdapter.java`.
-- [ ] T035 [US2] Add GET response mapping and the public GET endpoint without exposing Cart/owner
+- [x] T035 [US2] Add GET response mapping and the public GET endpoint without exposing Cart/owner
   identifiers in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartResponse.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartWebMapper.java`, and
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartController.java`.
-- [ ] T036 [US2] Run the US2 application/web tests and the Product client contract tests with
+- [x] T036 [US2] Run the US2 application/web tests and the Product client contract tests with
   `./mvnw -pl services/cart-service,services/product-service -am verify` and record the checkpoint
   in `specs/048-cart-mvp/validation.md`.
 

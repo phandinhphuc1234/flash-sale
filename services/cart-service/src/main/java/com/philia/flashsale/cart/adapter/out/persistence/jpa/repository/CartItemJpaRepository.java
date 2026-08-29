@@ -3,6 +3,7 @@ package com.philia.flashsale.cart.adapter.out.persistence.jpa.repository;
 import com.philia.flashsale.cart.adapter.out.persistence.jpa.entity.CartItemJpaEntity;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -12,6 +13,10 @@ import org.springframework.data.repository.query.Param;
 /** Spring Data boundary for composite Cart item identity and atomic quantity replacement. */
 public interface CartItemJpaRepository extends JpaRepository<CartItemJpaEntity, CartItemJpaEntity.CartItemId> {
     Optional<CartItemJpaEntity> findByIdCartIdAndIdVariantId(UUID cartId, UUID variantId);
+
+    @Query("select item from CartItemJpaEntity item where item.id.cartId = :cartId "
+            + "order by item.updatedAt desc, item.id.variantId asc")
+    List<CartItemJpaEntity> findByCartIdOrderByUpdatedAtDescVariantIdAsc(@Param("cartId") UUID cartId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """

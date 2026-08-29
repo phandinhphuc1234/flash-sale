@@ -1,6 +1,6 @@
 # Validation Evidence: Authenticated Cart MVP
 
-This ledger records G1 through G3 validation. Secret values, access tokens, Authorization headers, and
+This ledger records G1 through G4 validation. Secret values, access tokens, Authorization headers, and
 private response bodies must never be copied here.
 
 | Task | Command / scope | Result | CI/PR reference |
@@ -20,6 +20,10 @@ private response bodies must never be copied here.
 | T025-T027 | `CartMigrationCompatibilityIntegrationTests` and `CartPersistenceIntegrationTests` in the Cart module test gate | PASS (3 Testcontainers PostgreSQL tests, 0 failures, 0 errors); Liquibase created `carts`/`cart_items`, schema history was recorded, owner/item upserts were idempotent, and owner isolation/remove-no-op passed | Local |
 | T028 | `CartMutationHttpTests` in the Cart module test gate | PASS (3 MockMvc contract tests, 0 failures, 0 errors); authenticated PUT/DELETE, validation/error mapping, empty 204 body, no-store, and trace header covered | Local |
 | T029 / G3 gate | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am verify` | PASS (BUILD SUCCESS, exit 0; Cart 20 tests + common-web 9 tests, 0 failures, 0 errors); JAR/package verification completed | Local |
+| T030/T032/T033 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am '-Dtest=GetCartUseCaseTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` | PASS (5 application tests, 0 failures, 0 errors); absent/empty carts avoid Product calls, populated carts use one ordered batch, details refresh on every read, and dependency/missing/non-sellable states fail soft | Local |
+| T031/T035 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am '-Dtest=GetCartHttpTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` | PASS (3 MockMvc tests, 0 failures, 0 errors); GET response/enrichment, empty response, no-store and trace headers, and unauthenticated 401 mapping covered | Local |
+| T034 | Cart persistence integration test in the Cart module gate | PASS (owner-scoped read test included; 3 Cart persistence tests and 1 migration compatibility test, 0 failures, 0 errors); ordered reads do not create a missing Cart row | Local |
+| T036 / G4 gate | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service,services/product-service -am verify` | PASS (BUILD SUCCESS, exit 0; Product 43 tests, Cart 29 tests, common-web 9 tests, 0 failures/errors; Cart JAR/package verification completed) | Local |
 
 ## Evidence rules
 
@@ -34,3 +38,8 @@ private response bodies must never be copied here.
   transaction; PostgreSQL remains the Cart source of truth, and native upserts clear the JPA
   persistence context so repeated writes return the committed quantity. GET/clear, Gateway/Compose,
   Kafka, Redis, outbox, and cloud deployment remain deferred.
+- G4 adds only the authenticated Cart read path. Saved Cart identities and quantities are loaded
+  from Cart-owned PostgreSQL state, then enriched with one Product batch lookup; Product failures
+  preserve saved intent with `detailsAvailable=false` and an explicit unavailable reason. Empty or
+  absent Carts do not call Product or create durable rows. Clear, Gateway/Compose, Kafka, Redis,
+  outbox, and cloud deployment remain deferred.

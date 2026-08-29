@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 
 /** Stable public error vocabulary for Cart mutation endpoints. */
 public enum CartErrorCode {
+    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required"),
     CART_VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Cart request is invalid"),
     CART_VARIANT_NOT_FOUND(HttpStatus.NOT_FOUND, "Cart variant was not found"),
     CART_VARIANT_NOT_SELLABLE(HttpStatus.CONFLICT, "Cart variant is not sellable"),

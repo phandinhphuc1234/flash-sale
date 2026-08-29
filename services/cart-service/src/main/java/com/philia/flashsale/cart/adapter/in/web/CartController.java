@@ -2,8 +2,10 @@ package com.philia.flashsale.cart.adapter.in.web;
 
 import com.philia.flashsale.cart.application.command.RemoveCartItemCommand;
 import com.philia.flashsale.cart.application.command.SetCartItemCommand;
+import com.philia.flashsale.cart.application.port.in.GetCartUseCase;
 import com.philia.flashsale.cart.application.port.in.RemoveCartItemUseCase;
 import com.philia.flashsale.cart.application.port.in.SetCartItemUseCase;
+import com.philia.flashsale.cart.application.query.GetCartQuery;
 import com.philia.flashsale.cart.security.AuthenticatedShopper;
 import com.philia.flashsale.common.web.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -21,23 +24,34 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Public authenticated Cart mutation adapter; owner identity is always derived from JWT. */
+/** Public authenticated Cart web adapter; owner identity is always derived from JWT. */
 @RestController
 @RequestMapping("/api/v1/cart")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnBean(SetCartItemUseCase.class)
+@ConditionalOnBean({SetCartItemUseCase.class, RemoveCartItemUseCase.class, GetCartUseCase.class})
 public class CartController {
     public static final String TRACE_HEADER = "X-Trace-Id";
 
     private final SetCartItemUseCase setCartItem;
     private final RemoveCartItemUseCase removeCartItem;
+    private final GetCartUseCase getCart;
     private final CartWebMapper mapper;
 
     public CartController(SetCartItemUseCase setCartItem, RemoveCartItemUseCase removeCartItem,
-            CartWebMapper mapper) {
+            GetCartUseCase getCart, CartWebMapper mapper) {
         this.setCartItem = setCartItem;
         this.removeCartItem = removeCartItem;
+        this.getCart = getCart;
         this.mapper = mapper;
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<CartResponse>> get(Authentication authentication,
+            HttpServletRequest httpRequest) {
+        AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
+        var result = getCart.get(new GetCartQuery(shopper.subject(), traceId(httpRequest)));
+        return ResponseEntity.ok().headers(headers(httpRequest))
+                .body(ApiResponse.success(mapper.toResponse(result)));
     }
 
     @PutMapping("/items/{variantId}")

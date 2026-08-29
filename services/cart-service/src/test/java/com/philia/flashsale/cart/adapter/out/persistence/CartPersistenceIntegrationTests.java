@@ -72,4 +72,24 @@ class CartPersistenceIntegrationTests {
         assertThat(carts.findByOwnerId(firstOwner)).isPresent();
         assertThat(items.count()).isEqualTo(1);
     }
+
+    @Test
+    void loadRestoresOwnerItemsInUpdatedOrderWithoutCreatingAbsentCart() {
+        UUID owner = UUID.randomUUID();
+        UUID olderVariant = UUID.randomUUID();
+        UUID newerVariant = UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-29T00:00:00Z");
+        adapter.upsertItem(owner, olderVariant, CartQuantity.of(1), now);
+        adapter.upsertItem(owner, newerVariant, CartQuantity.of(2), now.plusSeconds(1));
+
+        var loaded = adapter.load(owner).orElseThrow();
+
+        assertThat(loaded.ownerId()).isEqualTo(owner);
+        assertThat(loaded.items()).extracting(item -> item.variantId())
+                .containsExactly(newerVariant, olderVariant);
+        assertThat(loaded.items()).extracting(item -> item.quantity().value()).containsExactly(2, 1);
+        UUID absentOwner = UUID.randomUUID();
+        assertThat(adapter.load(absentOwner)).isEmpty();
+        assertThat(carts.findByOwnerId(absentOwner)).isEmpty();
+    }
 }

@@ -22,12 +22,14 @@ public record CartItemResult(
         Instant updatedAt) {
 
     public static CartItemResult from(CartItemState state, ProductDisplay display) {
-        boolean details = display != null;
-        boolean found = details && display.found();
-        String unavailable = !found ? "PRODUCT_NOT_FOUND"
+        boolean found = display != null && display.found();
+        boolean dependencyUnavailable = display == null
+                || (!display.found() && display.sellable() == null);
+        String unavailable = dependencyUnavailable ? "PRODUCT_DETAILS_UNAVAILABLE"
+                : !found ? "PRODUCT_NOT_FOUND"
                 : Boolean.FALSE.equals(display.sellable()) ? "PRODUCT_NOT_SELLABLE" : null;
-        return new CartItemResult(state.variantId(), state.quantity().value(), details,
-                details ? display.sellable() : null, unavailable,
+        return new CartItemResult(state.variantId(), state.quantity().value(), found,
+                dependencyUnavailable ? null : display.sellable(), unavailable,
                 found ? display.productId() : null,
                 found ? display.productSlug() : null,
                 found ? display.productName() : null,

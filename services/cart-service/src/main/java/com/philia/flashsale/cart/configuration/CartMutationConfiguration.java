@@ -1,15 +1,15 @@
 package com.philia.flashsale.cart.configuration;
 
-import com.philia.flashsale.cart.application.port.out.LoadProductDisplaysPort;
-import com.philia.flashsale.cart.application.port.out.MaintainCartPort;
 import com.philia.flashsale.cart.application.port.in.RemoveCartItemUseCase;
 import com.philia.flashsale.cart.application.port.in.SetCartItemUseCase;
+import com.philia.flashsale.cart.application.port.out.LoadProductDisplaysPort;
+import com.philia.flashsale.cart.application.port.out.MaintainCartPort;
 import com.philia.flashsale.cart.application.usecase.MaintainCartService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Composition root for Cart mutation use cases. */
+/** Composition root for Cart item mutation use cases. */
 @Configuration(proxyBeanMethods = false)
 public class CartMutationConfiguration {
     @Bean
