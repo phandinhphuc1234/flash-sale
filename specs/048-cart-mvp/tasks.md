@@ -1,6 +1,6 @@
 # Tasks: Authenticated Cart MVP
 
-**Status**: Implementing — G4 complete
+**Status**: Implementing — G5 complete
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/public-cart-http.md](contracts/public-cart-http.md),
@@ -229,26 +229,26 @@ reject unauthenticated calls, and prove no request field can select another owne
 
 ### Tests for User Story 3
 
-- [ ] T037 [P] [US3] Add failing application tests for idempotent clear and authenticated-owner
+- [x] T037 [P] [US3] Add failing application tests for idempotent clear and authenticated-owner
   isolation across read, set, remove, and clear in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/application/CartOwnershipUseCaseTests.java`.
-- [ ] T038 [P] [US3] Add failing PostgreSQL isolation tests for two owners and owner-scoped clear in
+- [x] T038 [P] [US3] Add failing PostgreSQL isolation tests for two owners and owner-scoped clear in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/adapter/out/persistence/CartOwnerIsolationIntegrationTests.java`.
-- [ ] T039 [P] [US3] Extend the existing security/web contract tests with two authenticated shoppers,
+- [x] T039 [P] [US3] Extend the existing security/web contract tests with two authenticated shoppers,
   forged owner fields in path/query/body, cross-owner read/mutation attempts, unauthenticated
   non-disclosure, and repeatable DELETE `/api/v1/cart` in
   `services/cart-service/src/test/java/com/philia/flashsale/cart/security/CartSecurityContractTests.java`.
 
 ### Implementation for User Story 3
 
-- [ ] T040 [P] [US3] Define the owner-scoped clear command and input port in
+- [x] T040 [P] [US3] Define the owner-scoped clear command and input port in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/command/ClearCartCommand.java`,
   and `services/cart-service/src/main/java/com/philia/flashsale/cart/application/port/in/ClearCartUseCase.java`.
-- [ ] T041 [US3] Implement owner-scoped clear in
+- [x] T041 [US3] Implement owner-scoped clear in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/application/usecase/MaintainCartService.java`,
   `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/CartPersistenceAdapter.java`,
   and `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartController.java`.
-- [ ] T042 [US3] Run the complete US3 ownership/security test set with
+- [x] T042 [US3] Run the complete US3 ownership/security test set with
   `./mvnw -pl services/cart-service -am verify` and record the two-shopper isolation checkpoint in
   `specs/048-cart-mvp/validation.md`.
 

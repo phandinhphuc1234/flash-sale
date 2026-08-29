@@ -54,6 +54,16 @@ public class CartPersistenceAdapter implements MaintainCartPort, LoadCartPort {
     }
 
     @Override
+    @Transactional
+    public void clearItems(UUID ownerId, Instant now) {
+        Objects.requireNonNull(ownerId, "ownerId");
+        carts.findByOwnerId(ownerId).ifPresent(cart -> {
+            items.deleteByCartId(cart.getId());
+            carts.touchOwner(ownerId, now);
+        });
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Optional<Cart> load(UUID ownerId) {
         Objects.requireNonNull(ownerId, "ownerId");

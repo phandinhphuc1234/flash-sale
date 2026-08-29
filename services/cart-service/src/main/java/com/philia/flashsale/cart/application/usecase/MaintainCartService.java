@@ -1,10 +1,12 @@
 package com.philia.flashsale.cart.application.usecase;
 
+import com.philia.flashsale.cart.application.command.ClearCartCommand;
 import com.philia.flashsale.cart.application.command.RemoveCartItemCommand;
 import com.philia.flashsale.cart.application.command.SetCartItemCommand;
 import com.philia.flashsale.cart.application.exception.CartVariantNotFoundException;
 import com.philia.flashsale.cart.application.exception.CartVariantNotSellableException;
 import com.philia.flashsale.cart.application.exception.ProductDisplayDependencyException;
+import com.philia.flashsale.cart.application.port.in.ClearCartUseCase;
 import com.philia.flashsale.cart.application.port.in.RemoveCartItemUseCase;
 import com.philia.flashsale.cart.application.port.in.SetCartItemUseCase;
 import com.philia.flashsale.cart.application.port.out.LoadProductDisplaysPort;
@@ -18,7 +20,8 @@ import java.util.List;
 import java.util.Objects;
 
 /** Orchestrates Cart mutation while keeping Product verification outside the Cart transaction. */
-public final class MaintainCartService implements SetCartItemUseCase, RemoveCartItemUseCase {
+public final class MaintainCartService
+        implements SetCartItemUseCase, RemoveCartItemUseCase, ClearCartUseCase {
     private final LoadProductDisplaysPort products;
     private final MaintainCartPort cart;
     private final Clock clock;
@@ -56,5 +59,11 @@ public final class MaintainCartService implements SetCartItemUseCase, RemoveCart
     public void remove(RemoveCartItemCommand command) {
         Objects.requireNonNull(command, "command");
         cart.removeItem(command.ownerId(), command.variantId(), Instant.now(clock));
+    }
+
+    @Override
+    public void clear(ClearCartCommand command) {
+        Objects.requireNonNull(command, "command");
+        cart.clearItems(command.ownerId(), Instant.now(clock));
     }
 }

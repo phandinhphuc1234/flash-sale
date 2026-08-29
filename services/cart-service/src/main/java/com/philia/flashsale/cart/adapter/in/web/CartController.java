@@ -1,7 +1,9 @@
 package com.philia.flashsale.cart.adapter.in.web;
 
+import com.philia.flashsale.cart.application.command.ClearCartCommand;
 import com.philia.flashsale.cart.application.command.RemoveCartItemCommand;
 import com.philia.flashsale.cart.application.command.SetCartItemCommand;
+import com.philia.flashsale.cart.application.port.in.ClearCartUseCase;
 import com.philia.flashsale.cart.application.port.in.GetCartUseCase;
 import com.philia.flashsale.cart.application.port.in.RemoveCartItemUseCase;
 import com.philia.flashsale.cart.application.port.in.SetCartItemUseCase;
@@ -28,19 +30,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/cart")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnBean({SetCartItemUseCase.class, RemoveCartItemUseCase.class, GetCartUseCase.class})
+@ConditionalOnBean({SetCartItemUseCase.class, RemoveCartItemUseCase.class, ClearCartUseCase.class,
+        GetCartUseCase.class})
 public class CartController {
     public static final String TRACE_HEADER = "X-Trace-Id";
 
     private final SetCartItemUseCase setCartItem;
     private final RemoveCartItemUseCase removeCartItem;
+    private final ClearCartUseCase clearCart;
     private final GetCartUseCase getCart;
     private final CartWebMapper mapper;
 
     public CartController(SetCartItemUseCase setCartItem, RemoveCartItemUseCase removeCartItem,
-            GetCartUseCase getCart, CartWebMapper mapper) {
+            ClearCartUseCase clearCart, GetCartUseCase getCart, CartWebMapper mapper) {
         this.setCartItem = setCartItem;
         this.removeCartItem = removeCartItem;
+        this.clearCart = clearCart;
         this.getCart = getCart;
         this.mapper = mapper;
     }
@@ -70,6 +75,13 @@ public class CartController {
             Authentication authentication, HttpServletRequest httpRequest) {
         AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
         removeCartItem.remove(new RemoveCartItemCommand(shopper.subject(), variantId));
+        return ResponseEntity.noContent().headers(headers(httpRequest)).build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> clear(Authentication authentication, HttpServletRequest httpRequest) {
+        AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
+        clearCart.clear(new ClearCartCommand(shopper.subject()));
         return ResponseEntity.noContent().headers(headers(httpRequest)).build();
     }
 

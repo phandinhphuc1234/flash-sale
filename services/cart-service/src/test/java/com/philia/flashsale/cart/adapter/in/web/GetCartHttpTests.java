@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.philia.flashsale.cart.application.port.in.GetCartUseCase;
+import com.philia.flashsale.cart.application.port.in.ClearCartUseCase;
 import com.philia.flashsale.cart.application.query.GetCartQuery;
 import com.philia.flashsale.cart.application.result.CartItemResult;
 import com.philia.flashsale.cart.application.result.CartResult;
@@ -31,14 +32,15 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class GetCartHttpTests {
     private final SetCartItemUseCase setCartItem = mock(SetCartItemUseCase.class);
     private final RemoveCartItemUseCase removeCartItem = mock(RemoveCartItemUseCase.class);
+    private final ClearCartUseCase clearCart = mock(ClearCartUseCase.class);
     private final GetCartUseCase getCart = mock(GetCartUseCase.class);
     private MockMvc mvc;
     private JwtAuthenticationToken shopper;
 
     @BeforeEach
     void setUp() {
-        mvc = MockMvcBuilders.standaloneSetup(new CartController(setCartItem, removeCartItem, getCart,
-                        new CartWebMapper()))
+        mvc = MockMvcBuilders.standaloneSetup(new CartController(setCartItem, removeCartItem,
+                        clearCart, getCart, new CartWebMapper()))
                 .setControllerAdvice(new CartHttpExceptionHandler())
                 .build();
         UUID owner = UUID.randomUUID();

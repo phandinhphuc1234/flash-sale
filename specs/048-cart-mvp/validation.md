@@ -1,6 +1,6 @@
 # Validation Evidence: Authenticated Cart MVP
 
-This ledger records G1 through G4 validation. Secret values, access tokens, Authorization headers, and
+This ledger records G1 through G5 validation. Secret values, access tokens, Authorization headers, and
 private response bodies must never be copied here.
 
 | Task | Command / scope | Result | CI/PR reference |
@@ -24,6 +24,11 @@ private response bodies must never be copied here.
 | T031/T035 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am '-Dtest=GetCartHttpTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` | PASS (3 MockMvc tests, 0 failures, 0 errors); GET response/enrichment, empty response, no-store and trace headers, and unauthenticated 401 mapping covered | Local |
 | T034 | Cart persistence integration test in the Cart module gate | PASS (owner-scoped read test included; 3 Cart persistence tests and 1 migration compatibility test, 0 failures, 0 errors); ordered reads do not create a missing Cart row | Local |
 | T036 / G4 gate | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service,services/product-service -am verify` | PASS (BUILD SUCCESS, exit 0; Product 43 tests, Cart 29 tests, common-web 9 tests, 0 failures/errors; Cart JAR/package verification completed) | Local |
+| T037 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am "-Dtest=CartOwnershipUseCaseTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS (1 application test, 0 failures, 0 errors); repeated clear calls remain owner-scoped and do not invoke Product | Local |
+| T038 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am "-Dtest=CartOwnerIsolationIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS (1 Testcontainers PostgreSQL test, 0 failures, 0 errors); clear deletes only the selected owner's items, retains both Cart shells, and an absent owner creates no row | Local |
+| T039 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am "-Dtest=CartSecurityContractTests,CartMutationHttpTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS (6 web/security tests, 0 failures, 0 errors); clear returns empty 204, requires JWT, ignores forged owner input, and existing mutation contracts remain green | Local |
+| T040/T041 | Cart application, configuration, controller, and persistence implementation reviewed under the approved G5 plan | PASS; clear command/use case, owner-scoped adapter deletion, and public DELETE `/api/v1/cart` are wired without Product/Kafka/Redis calls | Local |
+| T042 / G5 gate | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am verify` | PASS (BUILD SUCCESS, exit 0; Cart 34 tests + common-web 9 tests, 0 failures/errors; Cart JAR/package verification completed) | Local |
 
 ## Evidence rules
 
@@ -43,3 +48,7 @@ private response bodies must never be copied here.
   preserve saved intent with `detailsAvailable=false` and an explicit unavailable reason. Empty or
   absent Carts do not call Product or create durable rows. Clear, Gateway/Compose, Kafka, Redis,
   outbox, and cloud deployment remain deferred.
+- G5 adds only owner-scoped Cart clearing. The authenticated JWT subject selects the Cart; clearing
+  deletes its item rows and advances the retained Cart shell timestamp, while an absent Cart is a
+  successful no-op. No schema migration, Product lookup, Kafka, Redis, outbox, or cloud behavior was
+  introduced.

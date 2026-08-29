@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.philia.flashsale.cart.application.exception.CartVariantNotFoundException;
 import com.philia.flashsale.cart.application.exception.CartVariantNotSellableException;
 import com.philia.flashsale.cart.application.exception.ProductDisplayDependencyException;
+import com.philia.flashsale.cart.application.port.in.ClearCartUseCase;
 import com.philia.flashsale.cart.application.port.in.GetCartUseCase;
 import com.philia.flashsale.cart.application.port.in.RemoveCartItemUseCase;
 import com.philia.flashsale.cart.application.port.in.SetCartItemUseCase;
@@ -34,6 +35,7 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 class CartMutationHttpTests {
     private final SetCartItemUseCase setCartItem = mock(SetCartItemUseCase.class);
     private final RemoveCartItemUseCase removeCartItem = mock(RemoveCartItemUseCase.class);
+    private final ClearCartUseCase clearCart = mock(ClearCartUseCase.class);
     private final GetCartUseCase getCart = mock(GetCartUseCase.class);
     private MockMvc mvc;
     private JwtAuthenticationToken shopper;
@@ -41,7 +43,7 @@ class CartMutationHttpTests {
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.standaloneSetup(new CartController(setCartItem, removeCartItem,
-                        getCart, new CartWebMapper()))
+                        clearCart, getCart, new CartWebMapper()))
                 .setControllerAdvice(new CartHttpExceptionHandler())
                 .setValidator(new LocalValidatorFactoryBean())
                 .build();
@@ -91,6 +93,16 @@ class CartMutationHttpTests {
         mvc.perform(put("/api/v1/cart/items/{variantId}", variant).principal(shopper)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"quantity\":1}"))
                 .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    void clearReturnsEmpty204() throws Exception {
+        mvc.perform(delete("/api/v1/cart").principal(shopper)
+                        .header("X-Trace-Id", "trace-clear"))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("X-Trace-Id", "trace-clear"));
     }
 
     @Test

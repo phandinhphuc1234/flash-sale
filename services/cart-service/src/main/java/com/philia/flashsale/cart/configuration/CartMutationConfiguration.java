@@ -1,5 +1,6 @@
 package com.philia.flashsale.cart.configuration;
 
+import com.philia.flashsale.cart.application.port.in.ClearCartUseCase;
 import com.philia.flashsale.cart.application.port.in.RemoveCartItemUseCase;
 import com.philia.flashsale.cart.application.port.in.SetCartItemUseCase;
 import com.philia.flashsale.cart.application.port.out.LoadProductDisplaysPort;
@@ -27,6 +28,12 @@ public class CartMutationConfiguration {
     @Bean
     @ConditionalOnBean(MaintainCartService.class)
     RemoveCartItemUseCase removeCartItemUseCase(MaintainCartService service) {
+        return service;
+    }
+
+    @Bean
+    @ConditionalOnBean(MaintainCartService.class)
+    ClearCartUseCase clearCartUseCase(MaintainCartService service) {
         return service;
     }
 }

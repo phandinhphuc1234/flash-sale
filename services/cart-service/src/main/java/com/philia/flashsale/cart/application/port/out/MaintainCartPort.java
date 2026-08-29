@@ -10,4 +10,6 @@ public interface MaintainCartPort {
     CartItemState upsertItem(UUID ownerId, UUID variantId, CartQuantity quantity, Instant now);
 
     void removeItem(UUID ownerId, UUID variantId, Instant now);
+
+    void clearItems(UUID ownerId, Instant now);
 }
