@@ -32,8 +32,8 @@ $catalogPath = Join-Path $repoRoot "docs\api\README.md"
 $catalogLines = Get-Content -LiteralPath $catalogPath
 $endpointRows = @($catalogLines | Where-Object { $_ -match '^\| API-\d{3} \|' })
 
-if ($endpointRows.Count -ne 40) {
-    Fail "expected 40 endpoint rows, found $($endpointRows.Count)"
+if ($endpointRows.Count -ne 45) {
+    Fail "expected 45 endpoint rows, found $($endpointRows.Count)"
 }
 
 $endpoints = @($endpointRows | ForEach-Object {
@@ -50,10 +50,10 @@ $endpoints = @($endpointRows | ForEach-Object {
     }
 })
 
-$expectedIds = 1..40 | ForEach-Object { 'API-{0:D3}' -f $_ }
+$expectedIds = 1..45 | ForEach-Object { 'API-{0:D3}' -f $_ }
 $idDifferences = @(Compare-Object -ReferenceObject $expectedIds -DifferenceObject $endpoints.Id)
 if ($idDifferences.Count -ne 0) {
-    Fail "endpoint IDs must be the complete API-001 through API-040 sequence"
+    Fail "endpoint IDs must be the complete API-001 through API-045 sequence"
 }
 
 $duplicateKeys = @($endpoints |
@@ -64,8 +64,8 @@ if ($duplicateKeys.Count -gt 0) {
 }
 
 $expectedBoundaries = @{
-    'Gateway-public' = 33
-    'Internal'       = 6
+    'Gateway-public' = 37
+    'Internal'       = 7
     'Identity trust' = 1
 }
 foreach ($entry in $expectedBoundaries.GetEnumerator()) {
@@ -77,13 +77,13 @@ foreach ($entry in $expectedBoundaries.GetEnumerator()) {
 
 $expectedOwners = [ordered]@{
     'Authentication' = 7
-    'Product'        = 11
+    'Product'        = 12
     'Campaign'       = 8
     'Inventory'      = 6
     'Flash Sale'     = 2
     'Order'          = 2
     'Payment'        = 4
-    'Cart'           = 0
+    'Cart'           = 4
     'Notification'   = 0
 }
 foreach ($entry in $expectedOwners.GetEnumerator()) {
@@ -113,6 +113,7 @@ $services = [ordered]@{
     'inventory-service'      = 'springdoc-openapi-starter-webmvc-ui'
     'order-service'          = 'springdoc-openapi-starter-webmvc-ui'
     'payment-service'        = 'springdoc-openapi-starter-webmvc-ui'
+    'cart-service'           = 'springdoc-openapi-starter-webmvc-ui'
 }
 foreach ($entry in $services.GetEnumerator()) {
     $pom = Read-RepositoryFile "services\$($entry.Key)\pom.xml"
@@ -126,7 +127,8 @@ $applicationServices = @(
     'flashsale-service',
     'inventory-service',
     'order-service',
-    'payment-service'
+    'payment-service',
+    'cart-service'
 )
 foreach ($service in $applicationServices) {
     $application = Read-RepositoryFile "services\$service\src\main\resources\application.yml"
@@ -142,7 +144,8 @@ $documentNames = @(
     'flashsale-service',
     'inventory-service',
     'order-service',
-    'payment-service'
+    'payment-service',
+    'cart-service'
 )
 foreach ($documentName in $documentNames) {
     Assert-Contains $gateway "Path=/openapi/$documentName" "Gateway $documentName OpenAPI route"
@@ -178,4 +181,4 @@ $securityTest = Read-RepositoryFile "services\api-gateway\src\test\java\com\phil
 Assert-Contains $securityTest 'documentationAccess(false)' "Gateway default-deny test"
 Assert-Contains $securityTest 'documentationAccess(true)' "Gateway opt-in test"
 
-Write-Host "API_DOCUMENTATION=PASS (40 supported endpoints; 7 service documents; defaults disabled)"
+Write-Host "API_DOCUMENTATION=PASS (45 supported endpoints; 8 service documents; defaults disabled)"

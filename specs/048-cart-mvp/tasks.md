@@ -1,6 +1,6 @@
 # Tasks: Authenticated Cart MVP
 
-**Status**: Implementing — G6 complete
+**Status**: Implementing — G7 complete
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/public-cart-http.md](contracts/public-cart-http.md),
@@ -292,17 +292,17 @@ repeatably testable.
 **Purpose**: Publish the accepted contract and user flow so the frontend does not infer ownership,
 price, stock, or checkout behavior.
 
-- [ ] T050 [P] Add all four public Cart endpoints, authentication, error codes, and the internal
+- [x] T050 [P] Add all four public Cart endpoints, authentication, error codes, and the internal
   Product endpoint to `docs/api/README.md` while keeping public/internal counts explicit.
-- [ ] T051 [P] Add frontend Cart payloads, `detailsAvailable` handling, unavailable states,
+- [x] T051 [P] Add frontend Cart payloads, `detailsAvailable` handling, unavailable states,
   idempotent PUT/DELETE behavior, no-store expectations, and the boundary to the existing purchase
   flow in `docs/api/frontend-integration-guide.md`.
-- [ ] T052 Run `git diff --check` and the unresolved-marker scan from
+- [x] T052 Run `git diff --check` and the unresolved-marker scan from
   `specs/048-cart-mvp/quickstart.md`; record results in `specs/048-cart-mvp/validation.md`.
-- [ ] T053 Run the affected module gate
+- [x] T053 Run the affected module gate
   `./mvnw -pl services/cart-service,services/product-service,services/authentication-service,services/api-gateway -am verify`
   and record test counts/exit status in `specs/048-cart-mvp/validation.md`.
-- [ ] T054 Run `docker compose --env-file infra/docker/.env -f infra/docker/compose.yml config`
+- [x] T054 Run `docker compose --env-file infra/docker/.env -f infra/docker/compose.yml config`
   and verify Cart, migration, Gateway, Product, Authentication, database, and secret references
   render without exposing values; record the result in `specs/048-cart-mvp/validation.md`.
 

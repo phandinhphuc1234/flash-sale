@@ -35,6 +35,12 @@ private response bodies must never be copied here.
 | T048 | `pwsh -NoLogo -NoProfile -File .\\infra\\docker\\smoke\\tests\\feature-048-cart.tests.ps1` | PASS (`PHASE_048_STATIC=PASS`); bounded parameters, secret-name-only checks, cleanup/evidence markers, Gateway wiring, Compose migration, and OpenAPI guardrails verified | Local |
 | T049 | PowerShell parse/static validation of `infra/docker/smoke/feature-048-cart.ps1` plus affected module gate | PASS; bounded local fixture/CRUD/replay/isolation/Product-degradation runner implemented; live execution is intentionally deferred to G8/T055-T056 | Local |
 | G6 gate | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service,services/api-gateway -am verify` | PASS (BUILD SUCCESS, exit 0; API Gateway 200 tests and Cart 34 tests, 0 failures/errors; total 4m16s) | Local |
+| T050 | `pwsh -NoLogo -NoProfile -File .\\infra\\scripts\\docs\\verify-api-documentation.ps1` | PASS (`API_DOCUMENTATION=PASS`; 45 supported endpoint rows, 8 service documents, defaults disabled) | Local |
+| T051 | Review of `docs/api/frontend-integration-guide.md` against the approved Cart contracts | PASS; API-041 through API-044 include request/response payloads, `detailsAvailable` and unavailable states, idempotent PUT/DELETE behavior, `Cache-Control: no-store`, error codes, and the purchase-flow boundary. API-045 is explicitly marked service-to-service and not frontend-facing | Local |
+| T052 | `git diff --check`; unresolved-marker scan from `specs/048-cart-mvp/quickstart.md` across spec/plan/research/data-model/contracts | PASS (no whitespace errors; `UNRESOLVED_MARKERS=PASS`) | Local |
+| T053 / G7 module gate | `./mvnw.cmd --batch-mode --no-transfer-progress -pl "services/cart-service,services/product-service,services/authentication-service,services/api-gateway" -am verify` | PASS (BUILD SUCCESS, exit 0; API Gateway, Authentication, Product, and Cart tests all passed with 0 failures/errors; Cart 34 tests, Product 43 tests, Authentication 65 tests) | Local |
+| T054 | `docker compose --env-file infra/docker/.env -f infra/docker/compose.yml config --quiet` | PASS (`COMPOSE_CONFIG=PASS`; Cart, migration, Gateway, Product, Authentication, database, OAuth, health-check, and secret references rendered without displaying values) | Local |
+| G7 gate | T050-T054 documentation, static, module, and Compose checks | PASS; the public Cart/frontend handoff and internal Product display contract are documented. Live Cart execution remains deferred to G8/T055-T056 | Local |
 
 ## Evidence rules
 
@@ -64,3 +70,9 @@ private response bodies must never be copied here.
   Liquibase disabled. The local smoke runner includes security, CRUD, replay, owner isolation,
   Product outage/recovery, and read-p95 checks with bounded execution and secret-safe output. No
   cloud/Kubernetes, Kafka, Redis, or outbox changes were introduced; live execution remains G8.
+- G7 publishes the accepted 45-endpoint API inventory (37 Gateway-public, 7 internal, and 1
+  identity endpoint), including Cart API-041 through API-044 and the internal Product API-045.
+  The frontend handoff documents complete Cart payloads, fail-soft Product enrichment, ownership,
+  idempotency, cache policy, and the purchase boundary. Documentation verification, whitespace and
+  unresolved-marker scans, the affected module gate, and Compose rendering all passed. No runtime
+  secret was read or changed, and live Cart smoke remains deferred to G8.
