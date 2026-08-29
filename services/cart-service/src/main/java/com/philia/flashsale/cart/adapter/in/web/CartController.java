@@ -25,10 +25,13 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /** Public authenticated Cart web adapter; owner identity is always derived from JWT. */
 @RestController
 @RequestMapping("/api/v1/cart")
+@Tag(name = "Cart", description = "Authenticated shopper cart intent")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnBean({SetCartItemUseCase.class, RemoveCartItemUseCase.class, ClearCartUseCase.class,
         GetCartUseCase.class})
@@ -51,6 +54,7 @@ public class CartController {
     }
 
     @GetMapping
+    @Operation(summary = "View my cart", description = "Returns saved quantities with current Product display data.")
     public ResponseEntity<ApiResponse<CartResponse>> get(Authentication authentication,
             HttpServletRequest httpRequest) {
         AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
@@ -60,6 +64,7 @@ public class CartController {
     }
 
     @PutMapping("/items/{variantId}")
+    @Operation(summary = "Set a cart item quantity", description = "Idempotently replaces the desired quantity from 1 through 10.")
     public ResponseEntity<ApiResponse<CartItemResponse>> set(
             @PathVariable UUID variantId, @Valid @RequestBody SetCartItemRequest request,
             Authentication authentication, HttpServletRequest httpRequest) {
@@ -71,6 +76,7 @@ public class CartController {
     }
 
     @DeleteMapping("/items/{variantId}")
+    @Operation(summary = "Remove a cart item", description = "Removes one item; repeating the request is a successful no-op.")
     public ResponseEntity<Void> remove(@PathVariable UUID variantId,
             Authentication authentication, HttpServletRequest httpRequest) {
         AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
@@ -79,6 +85,7 @@ public class CartController {
     }
 
     @DeleteMapping
+    @Operation(summary = "Clear my cart", description = "Removes all items owned by the authenticated shopper.")
     public ResponseEntity<Void> clear(Authentication authentication, HttpServletRequest httpRequest) {
         AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
         clearCart.clear(new ClearCartCommand(shopper.subject()));

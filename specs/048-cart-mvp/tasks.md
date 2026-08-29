@@ -1,6 +1,6 @@
 # Tasks: Authenticated Cart MVP
 
-**Status**: Implementing — G5 complete
+**Status**: Implementing — G6 complete
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/public-cart-http.md](contracts/public-cart-http.md),
@@ -261,23 +261,23 @@ reject unauthenticated calls, and prove no request field can select another owne
 **Purpose**: Expose Cart through the approved ingress and make the complete local journey
 repeatable without expanding cloud deployment scope.
 
-- [ ] T043 [P] Add failing Gateway route/security/OpenAPI tests for authenticated
+- [x] T043 [P] Add failing Gateway route/security/OpenAPI tests for authenticated
   `/api/v1/cart/**`, no internal Product route, and default-disabled documentation in
   `services/api-gateway/src/test/java/com/philia/flashsale/gateway/CartGatewayRouteConfigurationTests.java`.
-- [ ] T044 Add the Cart service route, service URL, and opt-in OpenAPI proxy/definition while
+- [x] T044 Add the Cart service route, service URL, and opt-in OpenAPI proxy/definition while
   preserving unknown-path deny rules in `services/api-gateway/src/main/resources/application.yml`
   and `services/api-gateway/src/main/java/com/philia/flashsale/gateway/security/GatewaySecurityConfiguration.java`.
-- [ ] T045 [P] Add the Cart OpenAPI title/security metadata and public endpoint documentation in
+- [x] T045 [P] Add the Cart OpenAPI title/security metadata and public endpoint documentation in
   `services/cart-service/src/main/java/com/philia/flashsale/cart/configuration/CartOpenApiConfiguration.java`.
-- [ ] T046 [P] Document `CART_CLIENT_ID`, an empty `CART_CLIENT_SECRET` placeholder, Product URL,
+- [x] T046 [P] Document `CART_CLIENT_ID`, an empty `CART_CLIENT_SECRET` placeholder, Product URL,
   Cart database/runtime image, and Cart port without a real secret in `infra/docker/.env.example`.
-- [ ] T047 Add the one-off `cart-migration` profile and local Cart runtime wiring, health checks,
+- [x] T047 Add the one-off `cart-migration` profile and local Cart runtime wiring, health checks,
   service OAuth variables, and Gateway Cart URL to `infra/docker/compose.yml`; keep runtime
   Liquibase disabled.
-- [ ] T048 [P] Add static/Pester coverage for bounded timeouts, secret-name-only validation,
+- [x] T048 [P] Add static/Pester coverage for bounded timeouts, secret-name-only validation,
   repeatability, cleanup, and expected evidence markers in
   `infra/docker/smoke/tests/feature-048-cart.tests.ps1`.
-- [ ] T049 Implement the bounded local fixture/CRUD/replay/isolation/Product-outage/recovery/read-p95
+- [x] T049 Implement the bounded local fixture/CRUD/replay/isolation/Product-outage/recovery/read-p95
   runner in `infra/docker/smoke/feature-048-cart.ps1`; verify Cart liveness, readiness, Prometheus
   endpoint availability, and Gateway-to-Cart-to-Product trace propagation without printing JWTs,
   secrets, Authorization headers, or Product response bodies.

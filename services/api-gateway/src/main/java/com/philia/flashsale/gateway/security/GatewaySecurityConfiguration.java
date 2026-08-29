@@ -54,6 +54,7 @@ public class GatewaySecurityConfiguration {
                         .pathMatchers("/api/v1/admin/campaigns/**").hasAuthority("SCOPE_CAMPAIGN_ADMIN")
                         .pathMatchers("/api/v1/orders/**").authenticated()
                         .pathMatchers("/api/v1/flash-sales/**").authenticated()
+                        .pathMatchers("/api/v1/cart/**").authenticated()
                         .pathMatchers(HttpMethod.POST, "/webhooks/v1/payments/stripe").permitAll()
                         .pathMatchers("/api/v1/payments/**").authenticated()
                         .anyExchange().denyAll())

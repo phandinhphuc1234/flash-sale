@@ -29,6 +29,12 @@ private response bodies must never be copied here.
 | T039 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am "-Dtest=CartSecurityContractTests,CartMutationHttpTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS (6 web/security tests, 0 failures, 0 errors); clear returns empty 204, requires JWT, ignores forged owner input, and existing mutation contracts remain green | Local |
 | T040/T041 | Cart application, configuration, controller, and persistence implementation reviewed under the approved G5 plan | PASS; clear command/use case, owner-scoped adapter deletion, and public DELETE `/api/v1/cart` are wired without Product/Kafka/Redis calls | Local |
 | T042 / G5 gate | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am verify` | PASS (BUILD SUCCESS, exit 0; Cart 34 tests + common-web 9 tests, 0 failures/errors; Cart JAR/package verification completed) | Local |
+| T043 | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/api-gateway,services/cart-service -am '-Dtest=CartGatewayRouteConfigurationTests' '-Dsurefire.failIfNoSpecifiedTests=false' test` | PASS (4 Gateway tests, 0 failures/errors); Cart route target, OpenAPI proxy, authenticated boundary, and absence of an internal Product route verified | Local |
+| T044/T045 | Gateway/Cart compile plus `CartGatewayRouteConfigurationTests`; Cart controller/OpenAPI metadata review | PASS; `/api/v1/cart/**` and `/openapi/cart-service` are wired at the Gateway, Cart docs are opt-in, and the bearer security scheme is declared | Local |
+| T046/T047 | `docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml -f infra/docker/compose.dev.yml --profile apps config --quiet` | PASS (exit 0); Cart runtime, one-off `cart-migration`, Gateway URL, database URL, OAuth variables, and health check render without secret values | Local |
+| T048 | `pwsh -NoLogo -NoProfile -File .\\infra\\docker\\smoke\\tests\\feature-048-cart.tests.ps1` | PASS (`PHASE_048_STATIC=PASS`); bounded parameters, secret-name-only checks, cleanup/evidence markers, Gateway wiring, Compose migration, and OpenAPI guardrails verified | Local |
+| T049 | PowerShell parse/static validation of `infra/docker/smoke/feature-048-cart.ps1` plus affected module gate | PASS; bounded local fixture/CRUD/replay/isolation/Product-degradation runner implemented; live execution is intentionally deferred to G8/T055-T056 | Local |
+| G6 gate | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service,services/api-gateway -am verify` | PASS (BUILD SUCCESS, exit 0; API Gateway 200 tests and Cart 34 tests, 0 failures/errors; total 4m16s) | Local |
 
 ## Evidence rules
 
@@ -52,3 +58,9 @@ private response bodies must never be copied here.
   deletes its item rows and advances the retained Cart shell timestamp, while an absent Cart is a
   successful no-op. No schema migration, Product lookup, Kafka, Redis, outbox, or cloud behavior was
   introduced.
+- G6 integrates the completed Cart feature into the local ingress/runtime only. The Gateway routes
+  authenticated `/api/v1/cart/**` requests and exposes an opt-in `/openapi/cart-service` proxy; the
+  Cart runtime uses its own PostgreSQL database and a one-off `cart-migration` profile with runtime
+  Liquibase disabled. The local smoke runner includes security, CRUD, replay, owner isolation,
+  Product outage/recovery, and read-p95 checks with bounded execution and secret-safe output. No
+  cloud/Kubernetes, Kafka, Redis, or outbox changes were introduced; live execution remains G8.
