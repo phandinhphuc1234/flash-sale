@@ -150,3 +150,10 @@ payment:
     max-attempts: ${PAYMENT_RECOVERY_MAX_ATTEMPTS:10}
     retry-backoff: ${PAYMENT_RECOVERY_RETRY_BACKOFF:1s,3s,10s,30s,60s}
     safe-replay-window: ${PAYMENT_RECOVERY_SAFE_REPLAY_WINDOW:23h}
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /swagger-ui.html

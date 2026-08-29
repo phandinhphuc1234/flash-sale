@@ -30,6 +30,8 @@ public class ProductAdminSecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         // Public catalog stays open; admin catalog requires the CATALOG_ADMIN authority.
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
+                                "/v3/api-docs.yaml").permitAll()
                         .requestMatchers("/api/v1/catalog/**").permitAll()
                         .requestMatchers("/api/v1/admin/catalog/**").hasAuthority("CATALOG_ADMIN")
                         .anyRequest().denyAll())

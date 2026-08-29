@@ -137,3 +137,10 @@ management:
 info:
   app:
     name: ${spring.application.name}
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /swagger-ui.html

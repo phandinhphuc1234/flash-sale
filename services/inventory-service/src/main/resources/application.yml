@@ -26,9 +26,9 @@ spring:
 
 springdoc:
   api-docs:
-    enabled: ${INVENTORY_API_DOCS_ENABLED:false}
+    enabled: ${INVENTORY_API_DOCS_ENABLED:${API_DOCS_ENABLED:false}}
   swagger-ui:
-    enabled: ${INVENTORY_API_DOCS_ENABLED:false}
+    enabled: ${INVENTORY_API_DOCS_ENABLED:${API_DOCS_ENABLED:false}}
     path: /swagger-ui.html
 
 flashsale:

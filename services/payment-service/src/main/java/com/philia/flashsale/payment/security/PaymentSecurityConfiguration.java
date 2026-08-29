@@ -55,7 +55,8 @@ public class PaymentSecurityConfiguration {
         // This chain must remain active while acceptance is disabled so Kubernetes can probe the
         // process without accidentally exposing any Payment business endpoint.
         return http.authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus")
+                .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus",
+                        "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs.yaml")
                 .permitAll().anyRequest().denyAll()).build();
     }
 }
