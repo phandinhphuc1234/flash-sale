@@ -1,9 +1,57 @@
 spring:
   application:
     name: cart-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cart_db}
+    username: ${SPRING_DATASOURCE_USERNAME:flashsale}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    hikari:
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT:2000}
+      validation-timeout: ${SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT:1000}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
   liquibase:
-    enabled: ${LIQUIBASE_ENABLED:true}
+    # Cart schema is applied by the one-off migration process before the app starts.
+    enabled: ${SPRING_LIQUIBASE_ENABLED:false}
     change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://authentication-service:8080}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+      client:
+        provider:
+          authentication:
+            token-uri: ${OAUTH_TOKEN_URI:http://authentication-service:8080/oauth2/token}
+        registration:
+          cart-product:
+            provider: authentication
+            client-id: ${CART_CLIENT_ID:cart-service}
+            client-secret: ${CART_CLIENT_SECRET:}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope:
+              - catalog.variant-display.read
+
+  cloud:
+    openfeign:
+      client:
+        config:
+          cart-product:
+            connectTimeout: ${CART_PRODUCT_CONNECT_TIMEOUT_MS:300}
+            readTimeout: ${CART_PRODUCT_READ_TIMEOUT_MS:600}
+            loggerLevel: basic
 
 server:
   port: ${SERVER_PORT:8080}
@@ -23,11 +71,43 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        liveness:
+          include:
+            - livenessState
+        readiness:
+          include:
+            - readinessState
+            - db
+      validate-group-membership: false
   health:
     livenessstate:
       enabled: true
     readinessstate:
       enabled: true
+  tracing:
+    propagation:
+      type: w3c
+
+cart:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER_URI:http://authentication-service:8080}
+      audience: ${JWT_AUDIENCE:flash-sale-api}
+      type: ${JWT_TYPE:at+jwt}
+      jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+  product:
+    base-url: ${PRODUCT_SERVICE_URL:http://product-service:8080}
+    client-registration-id: cart-product
+  persistence:
+    max-quantity: ${CART_MAX_QUANTITY:10}
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /swagger-ui.html
 
 info:
   app:
