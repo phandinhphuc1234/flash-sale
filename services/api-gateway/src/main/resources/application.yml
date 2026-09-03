@@ -113,7 +113,10 @@ spring:
             - id: cart-api
               uri: ${CART_SERVICE_URL:http://cart-service:8080}
               predicates:
-                - Path=/api/v1/cart/**
+                # Cart exposes both the collection URL and item sub-resources.
+                # Keep the exact collection path routable; `/api/v1/cart/**`
+                # alone does not match the collection URL in every Gateway matcher.
+                - Path=/api/v1/cart,/api/v1/cart/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:

@@ -4,7 +4,7 @@
 
 **Input**: Approved feature specification from `specs/048-cart-mvp/spec.md`
 
-**Status**: Approved — implementation tasks may be generated
+**Status**: Complete — G8 local validation passed
 
 ## Summary
 

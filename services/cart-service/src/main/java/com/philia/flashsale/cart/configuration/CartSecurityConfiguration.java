@@ -26,7 +26,9 @@ public class CartSecurityConfiguration {
             @Qualifier("cartJwtDecoder") JwtDecoder decoder,
             @Qualifier("cartJwtAuthenticationConverter") Converter<Jwt, AbstractAuthenticationToken> converter,
             CartSecurityErrorHandler errorHandler) throws Exception {
-        return http.securityMatcher("/api/v1/cart/**")
+        // The collection endpoint is exactly /api/v1/cart; include it alongside
+        // item sub-resources so it does not fall through to the deny-by-default chain.
+        return http.securityMatcher("/api/v1/cart", "/api/v1/cart/**")
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions

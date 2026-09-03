@@ -76,3 +76,21 @@ private response bodies must never be copied here.
   idempotency, cache policy, and the purchase boundary. Documentation verification, whitespace and
   unresolved-marker scans, the affected module gate, and Compose rendering all passed. No runtime
   secret was read or changed, and live Cart smoke remains deferred to G8.
+- G8 validates the local runtime without adding cloud scope: the Cart client secret is checked by
+  name/nonblank status only, the additive Liquibase migration is repeatable, the expanded schema is
+  compatible with the pre-feature persistence shell, and the bounded smoke proves health, trace,
+  security, CRUD, replay, owner isolation, Product outage/recovery, and read latency. The final
+  full reactor gate and static audits passed. No Cart data was dropped and no secret value was
+  printed or recorded.
+
+## G8 — Live local validation and closure
+
+| Task | Command / scope | Result | CI/PR reference |
+|------|-----------------|--------|-----------------|
+| T055 | `infra/docker/smoke/feature-048-cart.ps1 -Scenario All -TimeoutSeconds 900` Cart client-credential preflight | PASS; `CART_CLIENT_SECRET` was confirmed nonblank by the runner in process memory only. The value was not printed, copied, persisted, or recorded | Local |
+| T056 migration | `docker compose --env-file infra/docker/.env -f infra/docker/compose.yml -f infra/docker/compose.dev.yml --profile migrations run --build --rm --no-deps cart-migration --spring.main.web-application-type=none` (executed twice) | PASS; both Liquibase runs exited 0 and were repeatable without destructive changes. The long-running Cart service keeps Liquibase disabled | Local |
+| T056 compatibility | `CartMigrationCompatibilityIntegrationTests` in the full reactor gate | PASS; expanded `carts`/`cart_items` schema and Liquibase history were accepted by the compatibility test, with no table or data drop | Local |
+| T056 smoke | `infra/docker/smoke/feature-048-cart.ps1 -Scenario All -TimeoutSeconds 900` | PASS; `FEATURE_048_MODULES`, `SECURITY`, `CRUD`, `REPLAY` (100 replacements), `OWNERSHIP`, `PRODUCT_DEGRADATION`, `PERFORMANCE` (20 reads, p95 112.1 ms), and `LOCAL_GATE` all passed. Fixtures were cleaned up | Local |
+| T057 reactor | `./mvnw.cmd clean verify` | PASS (`BUILD SUCCESS`, exit 0; all 13 reactor modules completed with no test failures or errors; Cart 34 tests passed) | Local |
+| T057 audit | `git diff --check`; `feature-048-cart.tests.ps1`; `verify-api-documentation.ps1`; `docker compose ... config --quiet`; Cart dependency/log/trace review | PASS; whitespace/static/docs/Compose gates passed, no Kafka/Redis/outbox/cloud change was introduced by Cart, and no secret/token/Authorization value was recorded | Local |
+| G8 gate | T055-T057 closure | PASS; Cart MVP is locally validated and remains intentionally out of cloud deployment scope | Local |

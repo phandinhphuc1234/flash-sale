@@ -7,6 +7,7 @@ import com.philia.flashsale.cart.application.usecase.GetCartService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 /** Composition root for the Cart read use case and its enrichment capability. */
 @Configuration(proxyBeanMethods = false)
@@ -19,7 +20,7 @@ public class CartQueryConfiguration {
 
     @Bean
     @ConditionalOnBean(GetCartService.class)
-    GetCartUseCase getCartUseCase(GetCartService service) {
+    GetCartUseCase getCartUseCase(@Qualifier("getCartService") GetCartService service) {
         return service;
     }
 }

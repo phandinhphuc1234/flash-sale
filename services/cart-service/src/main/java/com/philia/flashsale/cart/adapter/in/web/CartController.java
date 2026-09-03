@@ -13,8 +13,9 @@ import com.philia.flashsale.common.web.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -33,8 +34,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequestMapping("/api/v1/cart")
 @Tag(name = "Cart", description = "Authenticated shopper cart intent")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnBean({SetCartItemUseCase.class, RemoveCartItemUseCase.class, ClearCartUseCase.class,
-        GetCartUseCase.class})
+@ConditionalOnProperty(name = "cart.persistence.enabled", havingValue = "true", matchIfMissing = true)
 public class CartController {
     public static final String TRACE_HEADER = "X-Trace-Id";
 
@@ -44,8 +44,10 @@ public class CartController {
     private final GetCartUseCase getCart;
     private final CartWebMapper mapper;
 
-    public CartController(SetCartItemUseCase setCartItem, RemoveCartItemUseCase removeCartItem,
-            ClearCartUseCase clearCart, GetCartUseCase getCart, CartWebMapper mapper) {
+    public CartController(@Qualifier("setCartItemUseCase") SetCartItemUseCase setCartItem,
+            @Qualifier("removeCartItemUseCase") RemoveCartItemUseCase removeCartItem,
+            @Qualifier("clearCartUseCase") ClearCartUseCase clearCart,
+            @Qualifier("getCartUseCase") GetCartUseCase getCart, CartWebMapper mapper) {
         this.setCartItem = setCartItem;
         this.removeCartItem = removeCartItem;
         this.clearCart = clearCart;

@@ -37,6 +37,10 @@ $requiredMarkers = @(
   'variants = @(@{ id = $null',
   '$CampaignPrice -ge $ProductBasePrice',
   'campaignPrice = $CampaignPrice',
+  '$endAt = $startAt.AddMinutes($CampaignDurationMinutes)',
+  'quantity = $ReservationQuantity',
+  'if ($FixtureOnly)',
+  'Phase 26 capacity fixture: PASS',
   'Write-Host "Campaign fixture: PASS',
   'Product composition detail',
   'deployment/inventory-service',
@@ -61,6 +65,7 @@ foreach ($marker in $requiredMarkers) {
 foreach ($marker in @(
   'Read-Host "Existing ROLE_ADMIN password (memory only)" -AsSecureString',
   '-AdminPassword $securePassword',
+  '-FixtureOnly:$FixtureOnly',
   '$securePassword.Dispose()'
 )) {
   if ($wrapperContent.IndexOf($marker, [StringComparison]::Ordinal) -lt 0) {

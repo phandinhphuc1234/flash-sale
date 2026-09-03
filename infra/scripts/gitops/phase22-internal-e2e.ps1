@@ -19,8 +19,13 @@ param(
   [int]$LocalPort = 28082,
   [ValidateRange(60, 1800)]
   [int]$TimeoutSeconds = 600,
-  [ValidateRange(1, 100)]
+  [ValidateRange(1, 100000)]
   [int]$InventoryQuantity = 1,
+  [ValidateRange(1, 100)]
+  [int]$ReservationQuantity = 1,
+  [ValidateRange(5, 60)]
+  [int]$CampaignDurationMinutes = 5,
+  [switch]$FixtureOnly,
   [switch]$AllowPaymentEnabled,
   [switch]$RunStripeCloudSmoke,
   [string]$StripeGatewayBaseUri = "https://api.flashsale123.tech"
@@ -31,6 +36,9 @@ $ErrorActionPreference = "Stop"
 
 if ($PSVersionTable.PSVersion.Major -lt 7) {
   throw "Phase 22 requires PowerShell 7 or newer."
+}
+if ($ReservationQuantity -gt $InventoryQuantity) {
+  throw "ReservationQuantity must not exceed InventoryQuantity."
 }
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
@@ -670,7 +678,7 @@ function Invoke-CampaignFixture {
   param([Parameter(Mandatory)][string]$BaseUri, [Parameter(Mandatory)][string]$AdminToken, [Parameter(Mandatory)][object]$Product)
   $suffix = $Product.Label
   $startAt = [DateTimeOffset]::UtcNow.AddSeconds(25)
-  $endAt = $startAt.AddMinutes(5)
+  $endAt = $startAt.AddMinutes($CampaignDurationMinutes)
   $format = "yyyy-MM-dd'T'HH:mm:ss.fff'Z'"
   $common = New-OperationHeaders $AdminToken (New-TraceId)
   $create = Invoke-Api -Method POST -Uri "$BaseUri/api/v1/admin/campaigns" -Headers $common -Body @{
@@ -726,7 +734,7 @@ function Invoke-ReservationWithRetry {
   $trace = New-TraceId
   $headers = New-OperationHeaders $ShopperToken $trace
   $headers["Idempotency-Key"] = $key
-  $body = @{ variantId = $Product.VariantId; quantity = $InventoryQuantity }
+  $body = @{ variantId = $Product.VariantId; quantity = $ReservationQuantity }
   do {
     $response = Invoke-Api -Method POST -Uri "$BaseUri/api/v1/flash-sales/$($Campaign.CampaignId)/reservations" -Headers $headers -Body $body
     if ($response.StatusCode -eq 202) { break }
@@ -947,12 +955,19 @@ try {
   Assert-AnonymousAdminRejected $baseUri
   $adminToken = Invoke-AdminLogin $baseUri
   Write-Output "Authentication: PASS (admin authorities verified)"
-  $shopper = Invoke-ShopperRegistration $baseUri
-  Write-Output "Shopper registration/login: PASS (subject=$($shopper.UserId))"
+  if (-not $FixtureOnly) {
+    $shopper = Invoke-ShopperRegistration $baseUri
+    Write-Output "Shopper registration/login: PASS (subject=$($shopper.UserId))"
+  }
   $product = Invoke-ProductFixture $baseUri $adminToken
   Write-Output "Product fixture: PASS (productId=$($product.ProductId) variantId=$($product.VariantId))"
   Invoke-InventoryFixture $product
   $campaign = Invoke-CampaignFixture $baseUri $adminToken $product
+  if ($FixtureOnly) {
+    Write-Output "Phase 26 capacity fixture: PASS (campaignId=$($campaign.CampaignId) variantId=$($product.VariantId) allocation=$InventoryQuantity durationMinutes=$CampaignDurationMinutes)"
+    Write-Output "Manual cleanup: ProductId=$($product.ProductId) CampaignId=$($campaign.CampaignId)"
+    return
+  }
   $reservation = Invoke-ReservationWithRetry $baseUri $shopper.Token $campaign $product
   Write-Output "Reservation: PASS (purchaseRequestId=$($reservation.Accepted.purchaseRequestId) reservationId=$($reservation.Accepted.reservationId))"
   $ownerReservation = Assert-ReservationReplayAndOwner $baseUri $shopper.Token $reservation

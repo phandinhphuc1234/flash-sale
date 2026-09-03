@@ -1,6 +1,6 @@
 # Tasks: Authenticated Cart MVP
 
-**Status**: Implementing — G7 complete
+**Status**: Complete — G8 validated locally
 
 **Input**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md),
 [data-model.md](data-model.md), [contracts/public-cart-http.md](contracts/public-cart-http.md),
@@ -313,18 +313,18 @@ price, stock, or checkout behavior.
 **Purpose**: Prove the approved behavior once, then close the ledger without deploying Cart to
 cloud.
 
-- [ ] T055 Stop before live smoke and ask the user to place `CART_CLIENT_SECRET` in the ignored
+- [x] T055 Stop before live smoke and ask the user to place `CART_CLIENT_SECRET` in the ignored
   `infra/docker/.env`; automation may parse the value in process memory only to assert it is
   nonblank, while the agent and evidence must never inspect, print, commit, or copy the value into
   `specs/048-cart-mvp/validation.md`.
-- [ ] T056 Run the Cart migration twice, start the pre-feature Cart shell against the expanded
+- [x] T056 Run the Cart migration twice, start the pre-feature Cart shell against the expanded
   schema to prove non-destructive application rollback compatibility, restore the new Cart image,
   start the local topology, and execute
   `infra/docker/smoke/feature-048-cart.ps1 -Scenario All -TimeoutSeconds 900`; record migration,
   rollback compatibility, liveness, readiness, Prometheus, trace propagation, security, CRUD,
   100-replay, owner-isolation, Product degradation/recovery, and p95 evidence in
   `specs/048-cart-mvp/validation.md` without dropping Cart data.
-- [ ] T057 Run `./mvnw clean verify`, audit trace propagation/safe logs/package dependencies and
+- [x] T057 Run `./mvnw clean verify`, audit trace propagation/safe logs/package dependencies and
   the absence of Kafka/Redis/outbox/cloud changes, then update completion status in
   `specs/048-cart-mvp/spec.md`, `specs/048-cart-mvp/plan.md`, and
   `specs/048-cart-mvp/tasks.md` only after every required gate passes.

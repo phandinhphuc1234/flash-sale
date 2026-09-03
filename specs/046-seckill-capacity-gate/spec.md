@@ -17,6 +17,8 @@ stage without claiming a production SLA.
 - Warm-up and rate-based measurement stages with a configurable hard cap.
 - Automatic stop on repeated performance/correctness breaches or immediate platform danger signs.
 - Separate evidence for last-good and first-breach stages, including business invariants.
+- A fixture-only cloud preparation mode that creates a disposable Product, initializes Inventory,
+  and activates a sufficiently sized Campaign without consuming the allocation as one purchase.
 - Redacted result files and cleanup of temporary token material.
 - Local-first operation with an explicit opt-in for live execution.
 
@@ -104,6 +106,9 @@ JSON and working tree for absence of tokens, passwords, and untracked result fil
 - **FR-007**: The runner MUST NOT query another service's database or print passwords, Secret values, JWTs, tokens, or Checkout data.
 - **FR-008**: Temporary token and result files MUST remain ignored by Git and be removed where possible after the run.
 - **FR-009**: The runner MUST support local-first execution and make cloud execution an explicit operator choice through the base URL and run switch.
+- **FR-010**: Cloud fixture preparation MUST keep Inventory allocation separate from the one-item
+  smoke purchase quantity and MUST support an active window long enough for just-in-time token issue
+  and the bounded stage.
 
 ### Non-Functional Requirements
 

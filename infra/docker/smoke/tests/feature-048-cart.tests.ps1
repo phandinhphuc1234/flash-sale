@@ -62,11 +62,11 @@ Assert-True ($runner -notmatch '(?i)CART_CLIENT_SECRET\s*=\s*[''"''][^''"'']+[''
 Assert-True ($runner -match 'TimeoutSec|TimeoutSeconds') 'runner must use bounded HTTP/process timeouts'
 Assert-True ($runner -match 'Remove-Item.+Fixture|archive|cleanup') 'runner must clean up its fixture'
 
-foreach ($marker in @('id: cart-api', 'Path=/api/v1/cart/**', 'id: openapi-cart-service',
+foreach ($marker in @('id: cart-api', 'Path=/api/v1/cart,/api/v1/cart/**', 'id: openapi-cart-service',
         'Path=/openapi/cart-service', 'CART_SERVICE_URL')) {
     Assert-True ($gateway.Contains($marker)) "Gateway marker is missing: $marker"
 }
-Assert-True ($security.Contains('.pathMatchers("/api/v1/cart/**").authenticated()')) 'Cart route is not authenticated at Gateway'
+Assert-True ($security.Contains('.pathMatchers("/api/v1/cart", "/api/v1/cart/**").authenticated()')) 'Cart route is not authenticated at Gateway'
 Assert-True ($gateway -notmatch '/internal/v1/catalog/variants/display-details') 'Product internal path leaked into Gateway routes'
 Assert-True ($openApi.Contains('Flash Sale Cart API')) 'Cart OpenAPI title is missing'
 Assert-True ($compose.Contains('cart-migration:')) 'Cart migration service is missing'

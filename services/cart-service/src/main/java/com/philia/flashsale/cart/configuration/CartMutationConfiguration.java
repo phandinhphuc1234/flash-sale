@@ -9,6 +9,7 @@ import com.philia.flashsale.cart.application.usecase.MaintainCartService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 /** Composition root for Cart item mutation use cases. */
 @Configuration(proxyBeanMethods = false)
@@ -21,19 +22,19 @@ public class CartMutationConfiguration {
 
     @Bean
     @ConditionalOnBean(MaintainCartService.class)
-    SetCartItemUseCase setCartItemUseCase(MaintainCartService service) {
+    SetCartItemUseCase setCartItemUseCase(@Qualifier("maintainCartService") MaintainCartService service) {
         return service;
     }
 
     @Bean
     @ConditionalOnBean(MaintainCartService.class)
-    RemoveCartItemUseCase removeCartItemUseCase(MaintainCartService service) {
+    RemoveCartItemUseCase removeCartItemUseCase(@Qualifier("maintainCartService") MaintainCartService service) {
         return service;
     }
 
     @Bean
     @ConditionalOnBean(MaintainCartService.class)
-    ClearCartUseCase clearCartUseCase(MaintainCartService service) {
+    ClearCartUseCase clearCartUseCase(@Qualifier("maintainCartService") MaintainCartService service) {
         return service;
     }
 }

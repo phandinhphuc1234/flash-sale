@@ -66,7 +66,9 @@ function Invoke-Compose([string[]] $arguments) {
 }
 
 function Invoke-ComposeMigration {
-    & docker compose --env-file $envFile -f $composeFile --profile migrations run --rm --no-deps `
+    # Build the migration image before running it; otherwise a stale local Cart image can
+    # report a clean process exit while the current schema changeset is still absent.
+    & docker compose --env-file $envFile -f $composeFile --profile migrations run --build --rm --no-deps `
         cart-migration --spring.main.web-application-type=none
     if ($LASTEXITCODE -ne 0) { throw 'Cart Liquibase migration failed.' }
 }
@@ -86,8 +88,18 @@ function Wait-Until([scriptblock] $condition, [string] $description, [int] $seco
 }
 
 function Invoke-Json([string] $uri, [string] $method, [hashtable] $headers, [object] $body = $null) {
+    # A deliberate Product outage can spend several seconds in container DNS/TCP
+    # teardown before Feign returns its bounded dependency failure. Keep the smoke
+    # client timeout above that boundary so we assert the Cart fail-soft response
+    # instead of cancelling the request from the harness.
     $parameters = @{ Uri = $uri; Method = $method; Headers = $headers; UseBasicParsing = $true
-        TimeoutSec = 8; SkipHttpErrorCheck = $true }
+        TimeoutSec = 30; SkipHttpErrorCheck = $true }
+    if ($headers.ContainsKey('If-Match')) {
+        # Product's admin contract carries the optimistic-lock version as a bare
+        # number. PowerShell's HTTP client rejects that RFC header shape unless
+        # validation is bypassed for this smoke request.
+        $parameters.SkipHeaderValidation = $true
+    }
     if ($null -ne $body) {
         $parameters.ContentType = 'application/json'
         $parameters.Body = $body
@@ -113,6 +125,20 @@ function Wait-Http([string] $uri, [int[]] $expected = @(200), [int] $seconds = 1
     Wait-Until -Description $uri -Seconds $seconds -Condition {
         $response = Invoke-WebRequest -Uri $uri -UseBasicParsing -TimeoutSec 5 -SkipHttpErrorCheck
         return $expected -contains [int]$response.StatusCode
+    }
+}
+
+function Wait-AuthenticationRoute {
+    # Service readiness alone does not prove that the Gateway has finished wiring
+    # the authentication routes. Probe validation with an intentionally invalid
+    # registration payload; HTTP 400 means the route is reachable without
+    # creating a disposable account. This removes a startup race that otherwise
+    # makes the first real registration intermittently return HTTP 503.
+    Wait-Until -Description "$gatewayBase/api/v1/auth/register route" -Seconds 180 -Condition {
+        $probe = Invoke-Json "$gatewayBase/api/v1/auth/register" 'Post' `
+            @{ 'X-Trace-Id' = 'feature048-auth-route-probe' } `
+            (@{ email = ''; username = ''; password = '' } | ConvertTo-Json -Compress)
+        return [int]$probe.StatusCode -in @(400, 422)
     }
 }
 
@@ -338,6 +364,7 @@ try {
     Wait-Http "$cartBase/actuator/health/readiness" @(200) 180
     Wait-Http "$cartBase/actuator/health/liveness" @(200) 120
     Wait-Http "$cartBase/actuator/prometheus" @(200) 120
+    Wait-AuthenticationRoute
     Write-Output 'FEATURE_048_MODULES=PASS'
 
     $admin = New-User 'admin' 'ROLE_ADMIN'
