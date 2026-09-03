@@ -88,3 +88,34 @@ Representative sanitized reports:
 Platform recovery checks after the ladder: Gateway readiness 200, Flash Sale readiness 200,
 Schema Registry `/subjects` 200, and Order consumer lag 0. The token file and all JSON reports stay
 Git-ignored; no token, password, Secret value, or Authorization header was recorded.
+
+## Controlled cloud 300 RPS probe
+
+The explicit cloud run used the public HTTPS Gateway, a disposable 2,000-unit fixture with a
+30-minute active window, and 1,840 just-in-time shopper access tokens. Account registration was
+completed before the fixture; tokens were issued in a separate final pass because shopper JWTs
+expire after 900 seconds. Credential material stayed outside Git, the shared test password was
+stored only as a Windows DPAPI-protected value, and no token or password was printed.
+
+Command profile: 10 RPS warm-up for 3 seconds, one 300 RPS stage for 5 seconds, zero cooldown,
+1,200 pre-allocated VUs, 2,400 maximum VUs, allocation 2,000, and the approved 300/700 ms p95/p99
+guardrails. The validation-only preflight required exactly 1,840 tokens and passed before k6 ran.
+
+| Rate | HTTP requests | Winners | Replays | p95 | p99 | HTTP errors | Dropped | Outcome |
+|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 300 RPS | 1,772 | 424 | 7 | 8,645.050 ms | 8,960.726 ms | 1,341 | 153 | STOP: immediate danger |
+
+The sanitized report is
+`load-tests/flashsale-service/results/adaptive-20260828T232745Z-46d0d144.json`. The runner exited
+non-zero with `unexpected_response`, `dropped_iterations`, and `replay_count_mismatch`; latency,
+HTTP error rate, and expected-outcome rate also breached. No oversell was reported, but the replay
+count could not converge because the workload had already exceeded the single Flash Sale pod's
+safe resource envelope.
+
+During the stage, `flash-sale-service` reached its 768 MiB container memory limit and Kubernetes
+recorded `OOMKilled` / exit 137 with one restart. The guardrail started no later stage. Recovery
+evidence: the same Deployment returned to 1/1 Ready, Argo returned to `Synced/Healthy`, public
+Gateway readiness returned HTTP 200, and the relevant Flash Sale, Order, and Payment consumer lag
+was zero. Therefore this topology has `firstBreachRate=300 RPS` and no cloud last-good rate from
+this single-stage run. A lower cloud stage must be measured before claiming a safe cloud ceiling;
+500/750/1,000 RPS are prohibited until the memory/resource decision and a lower-stage ladder pass.

@@ -47,13 +47,16 @@ does not require kubectl, Prometheus, Docker, or a database connection.
 1. Validate parameters and parse the ignored token file; user creation remains an explicit fixture
    preparation step outside the capacity runner. Reserve one extra second of token headroom per
    constant-arrival-rate stage so a boundary iteration cannot reuse the next stage's identity.
-2. Run warm-up at a low rate and discard it from capacity conclusions.
-3. For each stage, invoke k6 with `constant-arrival-rate`, unique idempotency keys, replay checks,
+2. Prepare the disposable cloud fixture through the existing Gateway and Inventory-owned Job. The
+   fixture-only path separates physical/campaign allocation from reservation quantity and extends
+   the active window without changing a service contract or business rule.
+3. Run warm-up at a low rate and discard it from capacity conclusions.
+4. For each stage, invoke k6 with `constant-arrival-rate`, unique idempotency keys, replay checks,
    and a bounded graceful-stop window so an in-flight winner can complete its replay.
-4. Parse the stage summary. Platform health and Kafka lag are recorded by the existing Phase 25
+5. Parse the stage summary. Platform health and Kafka lag are recorded by the existing Phase 25
    dashboard and verification gates rather than making the load generator depend on a second endpoint.
-5. Apply immediate danger checks, then consecutive latency/error checks.
-6. On a green stage, cooldown and increase rate; on breach, stop, write the final report, and clean temporary files.
+6. Apply immediate danger checks, then consecutive latency/error checks.
+7. On a green stage, cooldown and increase rate; on breach, stop, write the final report, and clean temporary files.
 
 ### Guardrails
 
@@ -73,6 +76,8 @@ does not require kubectl, Prometheus, Docker, or a database connection.
 load-tests/flashsale-service/adaptive-arrival-rate.js
 infra/scripts/gitops/phase26-seckill-capacity.ps1
 infra/scripts/gitops/tests/phase26-seckill-capacity.tests.ps1
+infra/scripts/gitops/phase22-internal-e2e.ps1
+infra/scripts/gitops/phase22-internal-e2e-memory.ps1
 specs/046-seckill-capacity-gate/{spec,plan,research,data-model,quickstart,validation,tasks}.md
 specs/046-seckill-capacity-gate/contracts/capacity-runner.md
 ```
@@ -83,6 +88,7 @@ specs/046-seckill-capacity-gate/contracts/capacity-runner.md
 |---|---|---|
 | Invoke one bounded k6 process per stage | Allows the PowerShell runner to decide whether to continue | A single static k6 scenario cannot stop based on prior stage evidence |
 | Pre-created ignored token file | Keeps identity setup and cleanup outside the capacity probe | Creating thousands of users inside the runner would couple load generation to Auth and leak fixture state |
+| Reuse the Phase 22 fixture boundary in fixture-only mode | Preserves Gateway and Inventory service ownership while allowing a larger disposable allocation | Direct SQL, cross-service database access, or one giant smoke purchase would invalidate the evidence |
 
 ## Verification Strategy
 

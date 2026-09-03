@@ -58,6 +58,11 @@ status, header, or security change. One endpoint is one unique `HTTP method + no
 | API-038 | Payment | Gateway-public | GET | `/api/v1/payments/{paymentId}` | Authenticated owner | Read one owned payment |
 | API-039 | Payment | Gateway-public | GET | `/api/v1/payments/by-order/{orderId}` | Authenticated owner | Read an owned payment by order identity |
 | API-040 | Payment | Gateway-public | POST | `/webhooks/v1/payments/stripe` | Valid Stripe signature | Accept a raw Stripe webhook receipt |
+| API-041 | Cart | Gateway-public | GET | `/api/v1/cart` | Authenticated shopper | Read the authenticated shopper's Cart |
+| API-042 | Cart | Gateway-public | PUT | `/api/v1/cart/items/{variantId}` | Authenticated shopper | Set or replace one desired variant quantity |
+| API-043 | Cart | Gateway-public | DELETE | `/api/v1/cart/items/{variantId}` | Authenticated shopper | Remove one owned Cart item idempotently |
+| API-044 | Cart | Gateway-public | DELETE | `/api/v1/cart` | Authenticated shopper | Clear all owned Cart items idempotently |
+| API-045 | Product | Internal | POST | `/internal/v1/catalog/variants/display-details` | Cart service subject/scope | Batch-read current Product display details for Cart |
 
 ## Totals by owner
 
@@ -65,17 +70,17 @@ status, header, or security change. One endpoint is one unique `HTTP method + no
 |---|---:|---:|---:|---:|
 | API Gateway | 0 | 0 | 0 | 0 (routing/edge owner only) |
 | Authentication | 5 | 1 | 1 | 7 |
-| Product | 10 | 1 | 0 | 11 |
+| Product | 10 | 2 | 0 | 12 |
 | Campaign | 7 | 1 | 0 | 8 |
 | Inventory | 3 | 3 | 0 | 6 |
 | Flash Sale | 2 | 0 | 0 | 2 |
 | Order | 2 | 0 | 0 | 2 |
 | Payment | 4 | 0 | 0 | 4 |
-| Cart | 0 | 0 | 0 | 0 |
+| Cart | 4 | 0 | 0 | 4 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **33** | **6** | **1** | **40** |
+| **Total** | **37** | **7** | **1** | **45** |
 
-## Documentation endpoints (excluded from the 40)
+## Documentation endpoints (excluded from the 45)
 
 When explicitly enabled, each documented service owns:
 

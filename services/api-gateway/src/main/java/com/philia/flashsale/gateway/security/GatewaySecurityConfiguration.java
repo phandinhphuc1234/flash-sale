@@ -54,6 +54,9 @@ public class GatewaySecurityConfiguration {
                         .pathMatchers("/api/v1/admin/campaigns/**").hasAuthority("SCOPE_CAMPAIGN_ADMIN")
                         .pathMatchers("/api/v1/orders/**").authenticated()
                         .pathMatchers("/api/v1/flash-sales/**").authenticated()
+                        // Cart has an exact collection endpoint as well as item sub-resources.
+                        // Match both forms so /api/v1/cart is not denied by the fallback chain.
+                        .pathMatchers("/api/v1/cart", "/api/v1/cart/**").authenticated()
                         .pathMatchers(HttpMethod.POST, "/webhooks/v1/payments/stripe").permitAll()
                         .pathMatchers("/api/v1/payments/**").authenticated()
                         .anyExchange().denyAll())

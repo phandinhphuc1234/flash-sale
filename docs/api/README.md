@@ -1,7 +1,12 @@
 # Flash Sale HTTP API catalog
 
 This is the reader-facing catalog for the HTTP surface currently supported by the monorepo.
-There are **40 unique endpoints**, counted by `HTTP method + normalized path`.
+There are **45 unique endpoints**, counted by `HTTP method + normalized path`.
+
+Frontend developers should use the Vietnamese
+[`frontend-integration-guide.md`](frontend-integration-guide.md), which adds complete request/response
+payload examples, authentication/session rules, shopper/admin flows, polling guidance, and known
+contract gaps.
 
 ## What is counted
 
@@ -12,7 +17,8 @@ There are **40 unique endpoints**, counted by `HTTP method + normalized path`.
 - `Gateway-public` means API Gateway has a route for the endpoint. Authentication and authorization
   still apply.
 - `Internal` endpoints are service-to-service contracts and must not be exposed through Gateway.
-- Cart Service and Notification Service currently own no supported HTTP endpoints.
+- Cart Service owns four authenticated shopper endpoints. Notification Service currently owns no
+  supported HTTP endpoints.
 
 ## Summary
 
@@ -20,15 +26,15 @@ There are **40 unique endpoints**, counted by `HTTP method + normalized path`.
 |---|---:|---:|---:|---:|
 | API Gateway | 0 | 0 | 0 | 0 (routing only) |
 | Authentication | 5 | 1 | 1 | 7 |
-| Product | 10 | 1 | 0 | 11 |
+| Product | 10 | 2 | 0 | 12 |
 | Campaign | 7 | 1 | 0 | 8 |
 | Inventory | 3 | 3 | 0 | 6 |
 | Flash Sale | 2 | 0 | 0 | 2 |
 | Order | 2 | 0 | 0 | 2 |
 | Payment | 4 | 0 | 0 | 4 |
-| Cart | 0 | 0 | 0 | 0 |
+| Cart | 4 | 0 | 0 | 4 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **33** | **6** | **1** | **40** |
+| **Total** | **37** | **7** | **1** | **45** |
 
 ## Endpoint inventory
 
@@ -74,6 +80,32 @@ There are **40 unique endpoints**, counted by `HTTP method + normalized path`.
 | API-038 | Payment | Gateway-public | GET | `/api/v1/payments/{paymentId}` | Authenticated owner | Read one owned payment |
 | API-039 | Payment | Gateway-public | GET | `/api/v1/payments/by-order/{orderId}` | Authenticated owner | Read an owned payment by order identity |
 | API-040 | Payment | Gateway-public | POST | `/webhooks/v1/payments/stripe` | Valid Stripe signature | Accept a raw Stripe webhook receipt |
+| API-041 | Cart | Gateway-public | GET | `/api/v1/cart` | Authenticated shopper | Read the authenticated shopper's Cart |
+| API-042 | Cart | Gateway-public | PUT | `/api/v1/cart/items/{variantId}` | Authenticated shopper | Set or replace one desired variant quantity |
+| API-043 | Cart | Gateway-public | DELETE | `/api/v1/cart/items/{variantId}` | Authenticated shopper | Remove one owned Cart item idempotently |
+| API-044 | Cart | Gateway-public | DELETE | `/api/v1/cart` | Authenticated shopper | Clear all owned Cart items idempotently |
+| API-045 | Product | Internal | POST | `/internal/v1/catalog/variants/display-details` | Cart service subject/scope | Batch-read current Product display details for Cart |
+
+### Cart contract notes
+
+API-041 through API-044 require a shopper JWT. The authenticated JWT subject is the only owner
+selector; clients must not send `ownerId` or `cartId`. Cart responses carry `Cache-Control:
+no-store`. PUT uses absolute quantity replacement (1–10) and is safe to retry with the same body;
+both DELETE operations are idempotent and return `204 No Content`.
+
+| Status | Cart error codes | Meaning |
+|---:|---|---|
+| 400 | `CART_VALIDATION_ERROR` | Invalid UUID, body, or quantity |
+| 401 | `UNAUTHENTICATED` | Missing or invalid shopper JWT |
+| 404 | `CART_VARIANT_NOT_FOUND` | Product variant does not exist |
+| 409 | `CART_VARIANT_NOT_SELLABLE` | Variant is not currently sellable |
+| 503 | `CART_PRODUCT_UNAVAILABLE` | Product display dependency unavailable |
+| 500 | `CART_INTERNAL_ERROR` | Unexpected Cart failure |
+
+API-045 is not a frontend endpoint. Cart calls it with a service token whose subject is
+`cart-service`, audience is `flash-sale-internal-api`, and scope is
+`catalog.variant-display.read`; missing/invalid credentials map to `401`/`403`, malformed input to
+`400`, and Product returns ordered display results with explicit missing/non-sellable entries.
 
 ## Read the APIs in Swagger UI
 
@@ -95,9 +127,9 @@ For local Docker Compose only:
 3. Open `http://localhost:8080/swagger-ui.html` and select a service from the top-right document
    selector.
 
-The Gateway catalog contains seven service-owned documents: Authentication, Product, Campaign,
-Flash Sale, Inventory, Order, and Payment. Cart and Notification are not listed because they do not
-currently own supported HTTP controllers.
+The Gateway catalog contains eight service-owned documents: Authentication, Product, Campaign,
+Flash Sale, Inventory, Order, Payment, and Cart. Notification is not listed because it does not
+currently own a supported HTTP controller.
 
 ### Direct service documents
 
@@ -112,6 +144,7 @@ When a service runs directly on its local host port with `API_DOCS_ENABLED=true`
 | Order | `http://localhost:18085/swagger-ui.html` | `http://localhost:18085/v3/api-docs` |
 | Payment | `http://localhost:18086/swagger-ui.html` | `http://localhost:18086/v3/api-docs` |
 | Inventory | `http://localhost:18088/swagger-ui.html` | `http://localhost:18088/v3/api-docs` |
+| Cart | `http://localhost:18089/swagger-ui.html` | `http://localhost:18089/v3/api-docs` |
 
 Swagger's **Authorize** button accepts a bearer JWT for secured APIs. Internal APIs additionally
 require the approved service identity/scope and are not reachable through Gateway. The OAuth token

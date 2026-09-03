@@ -14,18 +14,28 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 @Configuration
-@EnableConfigurationProperties(ProductInternalJwtProperties.class)
+@EnableConfigurationProperties({ProductInternalJwtProperties.class, ProductCartInternalJwtProperties.class})
 public class ProductInternalJwtTrustConfiguration {
     @Bean(name = "productInternalJwtDecoder")
     @ConditionalOnMissingBean(name = "productInternalJwtDecoder")
     JwtDecoder productInternalJwtDecoder(ProductInternalJwtProperties properties) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri())
+        return decoder(properties.issuer(), properties.jwkSetUri(), properties.audience(), properties.subject());
+    }
+
+    @Bean(name = "productCartInternalJwtDecoder")
+    @ConditionalOnMissingBean(name = "productCartInternalJwtDecoder")
+    JwtDecoder productCartInternalJwtDecoder(ProductCartInternalJwtProperties properties) {
+        return decoder(properties.issuer(), properties.jwkSetUri(), properties.audience(), properties.subject());
+    }
+
+    private JwtDecoder decoder(String issuer, String jwkSetUri, String audience, String subject) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
                 .validateType(false)
                 .build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(properties.issuer()),
-                token -> has(token, "aud", properties.audience(), "Required internal audience is missing"),
-                token -> has(token, "sub", properties.subject(), "Required internal subject is missing"),
+                JwtValidators.createDefaultWithIssuer(issuer),
+                token -> has(token, "aud", audience, "Required internal audience is missing"),
+                token -> has(token, "sub", subject, "Required internal subject is missing"),
                 token -> "at+jwt".equals(token.getHeaders().get("typ"))
                         ? OAuth2TokenValidatorResult.success()
                         : failure("Required JWT type is missing")));

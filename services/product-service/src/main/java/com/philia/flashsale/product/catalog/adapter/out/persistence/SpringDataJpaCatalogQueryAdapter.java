@@ -11,6 +11,7 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import com.philia.flashsale.product.catalog.application.port.out.LoadCatalogPort;
+import com.philia.flashsale.product.catalog.application.result.VariantDisplayResult;
 import com.philia.flashsale.product.catalog.application.service.CategoryNotFoundException;
 import com.philia.flashsale.product.catalog.application.service.ProductNotFoundException;
 import com.philia.flashsale.product.catalog.domain.CatalogPage;
@@ -115,6 +116,36 @@ class SpringDataJpaCatalogQueryAdapter implements LoadCatalogPort {
                 variantsByProductId(productIds).getOrDefault(product.getId(), List.of()),
                 categoriesByProductId(productIds).getOrDefault(product.getId(), List.of()),
                 mediaByProductId(productIds).getOrDefault(product.getId(), List.of()));
+    }
+
+    @Override
+    // Batch loading keeps Cart reads to one Product query and returns missing ids as explicit data outcomes.
+    public List<VariantDisplayResult> loadVariantDisplays(List<UUID> variantIds) {
+        if (variantIds.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, VariantDisplayResult> found = productRepository
+                .findVariantDisplaysByIds(variantIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ProductReadJpaRepository.VariantDisplayRow::getVariantId,
+                        row -> new VariantDisplayResult(
+                                row.getVariantId(),
+                                true,
+                                row.isSellable(),
+                                row.getProductId(),
+                                row.getProductSlug(),
+                                row.getProductName(),
+                                row.getVariantName(),
+                                row.getSku(),
+                                row.getBasePrice(),
+                                row.getCurrency(),
+                                row.getPrimaryImageUrl()),
+                        (first, ignored) -> first,
+                        LinkedHashMap::new));
+        return variantIds.stream()
+                .map(id -> found.getOrDefault(id, VariantDisplayResult.missing(id)))
+                .toList();
     }
 
     // Batch helpers preserve ordering from repository queries while grouping rows by their owning product id.

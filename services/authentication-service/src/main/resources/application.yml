@@ -53,6 +53,11 @@ flashsale:
         client-secret: ${FLASHSALE_CLIENT_SECRET:}
         allowed-scopes:
           - campaign.snapshot.read
+      cart:
+        client-id: ${CART_CLIENT_ID:cart-service}
+        client-secret: ${CART_CLIENT_SECRET:}
+        allowed-scopes:
+          - catalog.variant-display.read
   authentication:
     # Enables the internal OAuth2 client-credentials endpoint in deployed environments.
     runtime-enabled: ${AUTH_RUNTIME_ENABLED:true}

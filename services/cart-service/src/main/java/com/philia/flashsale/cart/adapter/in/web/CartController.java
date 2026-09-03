@@ -1,0 +1,108 @@
+package com.philia.flashsale.cart.adapter.in.web;
+
+import com.philia.flashsale.cart.application.command.ClearCartCommand;
+import com.philia.flashsale.cart.application.command.RemoveCartItemCommand;
+import com.philia.flashsale.cart.application.command.SetCartItemCommand;
+import com.philia.flashsale.cart.application.port.in.ClearCartUseCase;
+import com.philia.flashsale.cart.application.port.in.GetCartUseCase;
+import com.philia.flashsale.cart.application.port.in.RemoveCartItemUseCase;
+import com.philia.flashsale.cart.application.port.in.SetCartItemUseCase;
+import com.philia.flashsale.cart.application.query.GetCartQuery;
+import com.philia.flashsale.cart.security.AuthenticatedShopper;
+import com.philia.flashsale.common.web.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+/** Public authenticated Cart web adapter; owner identity is always derived from JWT. */
+@RestController
+@RequestMapping("/api/v1/cart")
+@Tag(name = "Cart", description = "Authenticated shopper cart intent")
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnProperty(name = "cart.persistence.enabled", havingValue = "true", matchIfMissing = true)
+public class CartController {
+    public static final String TRACE_HEADER = "X-Trace-Id";
+
+    private final SetCartItemUseCase setCartItem;
+    private final RemoveCartItemUseCase removeCartItem;
+    private final ClearCartUseCase clearCart;
+    private final GetCartUseCase getCart;
+    private final CartWebMapper mapper;
+
+    public CartController(@Qualifier("setCartItemUseCase") SetCartItemUseCase setCartItem,
+            @Qualifier("removeCartItemUseCase") RemoveCartItemUseCase removeCartItem,
+            @Qualifier("clearCartUseCase") ClearCartUseCase clearCart,
+            @Qualifier("getCartUseCase") GetCartUseCase getCart, CartWebMapper mapper) {
+        this.setCartItem = setCartItem;
+        this.removeCartItem = removeCartItem;
+        this.clearCart = clearCart;
+        this.getCart = getCart;
+        this.mapper = mapper;
+    }
+
+    @GetMapping
+    @Operation(summary = "View my cart", description = "Returns saved quantities with current Product display data.")
+    public ResponseEntity<ApiResponse<CartResponse>> get(Authentication authentication,
+            HttpServletRequest httpRequest) {
+        AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
+        var result = getCart.get(new GetCartQuery(shopper.subject(), traceId(httpRequest)));
+        return ResponseEntity.ok().headers(headers(httpRequest))
+                .body(ApiResponse.success(mapper.toResponse(result)));
+    }
+
+    @PutMapping("/items/{variantId}")
+    @Operation(summary = "Set a cart item quantity", description = "Idempotently replaces the desired quantity from 1 through 10.")
+    public ResponseEntity<ApiResponse<CartItemResponse>> set(
+            @PathVariable UUID variantId, @Valid @RequestBody SetCartItemRequest request,
+            Authentication authentication, HttpServletRequest httpRequest) {
+        AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
+        var result = setCartItem.set(new SetCartItemCommand(shopper.subject(), variantId,
+                request.quantity(), traceId(httpRequest)));
+        return ResponseEntity.ok().headers(headers(httpRequest))
+                .body(ApiResponse.success("Cart item saved", mapper.toResponse(result)));
+    }
+
+    @DeleteMapping("/items/{variantId}")
+    @Operation(summary = "Remove a cart item", description = "Removes one item; repeating the request is a successful no-op.")
+    public ResponseEntity<Void> remove(@PathVariable UUID variantId,
+            Authentication authentication, HttpServletRequest httpRequest) {
+        AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
+        removeCartItem.remove(new RemoveCartItemCommand(shopper.subject(), variantId));
+        return ResponseEntity.noContent().headers(headers(httpRequest)).build();
+    }
+
+    @DeleteMapping
+    @Operation(summary = "Clear my cart", description = "Removes all items owned by the authenticated shopper.")
+    public ResponseEntity<Void> clear(Authentication authentication, HttpServletRequest httpRequest) {
+        AuthenticatedShopper shopper = AuthenticatedShopper.from(authentication);
+        clearCart.clear(new ClearCartCommand(shopper.subject()));
+        return ResponseEntity.noContent().headers(headers(httpRequest)).build();
+    }
+
+    private HttpHeaders headers(HttpServletRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.CACHE_CONTROL, "no-store");
+        headers.set(TRACE_HEADER, traceId(request));
+        return headers;
+    }
+
+    private String traceId(HttpServletRequest request) {
+        String value = request.getHeader(TRACE_HEADER);
+        return value == null || value.isBlank() ? UUID.randomUUID().toString() : value.trim();
+    }
+}

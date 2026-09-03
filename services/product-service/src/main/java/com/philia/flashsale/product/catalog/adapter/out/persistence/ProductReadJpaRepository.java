@@ -137,6 +137,43 @@ interface ProductReadJpaRepository extends JpaRepository<ProductJpaEntity, UUID>
             nativeQuery = true)
     List<VariantRow> findActiveVariantsByProductIds(@Param("productIds") Collection<UUID> productIds);
 
+    @Query(value = """
+            SELECT v.id AS variantId,
+                   p.id AS productId,
+                   p.slug AS productSlug,
+                   p.name AS productName,
+                   v.name AS variantName,
+                   v.sku AS sku,
+                   v.base_price AS basePrice,
+                   v.currency AS currency,
+                   CASE WHEN p.status = 'ACTIVE'
+                              AND p.published_at IS NOT NULL
+                              AND p.published_at <= CURRENT_TIMESTAMP
+                              AND v.status = 'ACTIVE'
+                              AND v.base_price IS NOT NULL
+                              AND v.base_price > 0
+                              AND v.currency = 'VND'
+                        THEN true ELSE false END AS sellable,
+                   COALESCE(
+                       (SELECT m.url
+                          FROM product_media m
+                         WHERE m.variant_id = v.id
+                           AND m.status = 'ACTIVE'
+                         ORDER BY m.sort_order, m.id
+                         LIMIT 1),
+                       (SELECT m.url
+                          FROM product_media m
+                         WHERE m.product_id = p.id
+                           AND m.variant_id IS NULL
+                           AND m.status = 'ACTIVE'
+                         ORDER BY m.sort_order, m.id
+                         LIMIT 1)) AS primaryImageUrl
+            FROM product_variants v
+            JOIN products p ON p.id = v.product_id
+            WHERE v.id IN (:variantIds)
+            """, nativeQuery = true)
+    List<VariantDisplayRow> findVariantDisplaysByIds(@Param("variantIds") Collection<UUID> variantIds);
+
     @Query(
             value = """
                     SELECT pc.product_id AS productId,
@@ -196,6 +233,28 @@ interface ProductReadJpaRepository extends JpaRepository<ProductJpaEntity, UUID>
         BigDecimal getBasePrice();
 
         String getCurrency();
+    }
+
+    interface VariantDisplayRow {
+        UUID getVariantId();
+
+        UUID getProductId();
+
+        String getProductSlug();
+
+        String getProductName();
+
+        String getVariantName();
+
+        String getSku();
+
+        BigDecimal getBasePrice();
+
+        String getCurrency();
+
+        boolean isSellable();
+
+        String getPrimaryImageUrl();
     }
 
     interface ProductCategoryRow {

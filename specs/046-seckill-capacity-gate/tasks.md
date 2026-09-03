@@ -35,8 +35,18 @@
 - [x] T014 Run a disposable local adaptive test and record sanitized evidence.
 - [x] T015 Run `git diff --check` and reconcile spec/plan/tasks/validation status.
 
+## Phase 7: Controlled cloud execution
+
+- [x] T016 Extend the approved Phase 22 operator runner with a fixture-only mode, separate
+  reservation quantity, and configurable Campaign window in
+  `infra/scripts/gitops/phase22-internal-e2e.ps1` and its secure wrapper/tests.
+- [x] T017 Prepare just-in-time cloud shopper tokens outside Git and create a disposable allocation
+  sized above the bounded request budget.
+- [x] T018 Run one guarded 300 RPS cloud stage through the public Gateway, verify platform recovery,
+  and record sanitized evidence in `specs/046-seckill-capacity-gate/validation.md`.
+
 ## Dependencies
 
-`T001–T005` → `T006–T010` → `T011–T012` → `T013–T015`.
+`T001–T005` → `T006–T010` → `T011–T012` → `T013–T015` → `T016–T018`.
 
 Cloud execution is optional and must occur only after local evidence and explicit operator choice.

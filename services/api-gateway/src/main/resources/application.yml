@@ -53,6 +53,12 @@ spring:
                 - Path=/openapi/payment-service
               filters:
                 - SetPath=/v3/api-docs
+            - id: openapi-cart-service
+              uri: ${CART_SERVICE_URL:http://cart-service:8080}
+              predicates:
+                - Path=/openapi/cart-service
+              filters:
+                - SetPath=/v3/api-docs
             - id: authentication-login
               uri: ${AUTHENTICATION_SERVICE_URL:http://authentication-service:8080}
               predicates:
@@ -104,6 +110,13 @@ spring:
               predicates:
                 - Path=/api/v1/payments/**
                 - Method=GET,POST
+            - id: cart-api
+              uri: ${CART_SERVICE_URL:http://cart-service:8080}
+              predicates:
+                # Cart exposes both the collection URL and item sub-resources.
+                # Keep the exact collection path routable; `/api/v1/cart/**`
+                # alone does not match the collection URL in every Gateway matcher.
+                - Path=/api/v1/cart,/api/v1/cart/**
           globalcors:
             add-to-simple-url-handler-mapping: true
             cors-configurations:
@@ -223,6 +236,8 @@ springdoc:
         url: /openapi/order-service
       - name: Payment Service
         url: /openapi/payment-service
+      - name: Cart Service
+        url: /openapi/cart-service
 
 info:
   app:

@@ -15,8 +15,13 @@ param(
   [int]$LocalPort = 28082,
   [ValidateRange(60, 1800)]
   [int]$TimeoutSeconds = 600,
+  [ValidateRange(1, 100000)]
+  [int]$InventoryQuantity = 1,
   [ValidateRange(1, 100)]
-  [int]$InventoryQuantity = 1
+  [int]$ReservationQuantity = 1,
+  [ValidateRange(5, 60)]
+  [int]$CampaignDurationMinutes = 5,
+  [switch]$FixtureOnly
 )
 
 Set-StrictMode -Version Latest
@@ -40,7 +45,10 @@ try {
     -AdminPassword $securePassword `
     -LocalPort $LocalPort `
     -TimeoutSeconds $TimeoutSeconds `
-    -InventoryQuantity $InventoryQuantity
+    -InventoryQuantity $InventoryQuantity `
+    -ReservationQuantity $ReservationQuantity `
+    -CampaignDurationMinutes $CampaignDurationMinutes `
+    -FixtureOnly:$FixtureOnly
 } finally {
   if ($null -ne $securePassword) {
     $securePassword.Dispose()

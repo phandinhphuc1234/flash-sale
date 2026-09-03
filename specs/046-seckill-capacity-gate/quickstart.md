@@ -36,6 +36,20 @@ pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase26-seckill-capacity.ps
 Only after Phase 21/22/24/25 health gates pass, use the HTTPS Gateway and a low cap. Do not start
 with 500 RPS:
 
+Create a disposable capacity fixture first. The secure wrapper prompts once for the existing admin
+password, creates no shopper/order in fixture-only mode, and leaves the Product/Campaign IDs in
+sanitized output:
+
+```powershell
+pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase22-internal-e2e-memory.ps1 `
+  -AdminLogin "admin@flashsale.test" `
+  -InventoryQuantity 2000 `
+  -ReservationQuantity 1 `
+  -CampaignDurationMinutes 30 `
+  -FixtureOnly `
+  -TimeoutSeconds 900
+```
+
 ```powershell
 pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase26-seckill-capacity.ps1 `
   -CampaignId <CAMPAIGN_UUID> `
