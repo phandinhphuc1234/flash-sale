@@ -9,10 +9,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
@@ -33,6 +36,9 @@ class CartGatewayRouteConfigurationTests {
 
     @Autowired
     private WebTestClient webTestClient;
+
+    @LocalServerPort
+    private int serverPort;
 
     @DynamicPropertySource
     static void cartServiceUrl(DynamicPropertyRegistry registry) {
@@ -65,6 +71,47 @@ class CartGatewayRouteConfigurationTests {
                 .expectStatus().isUnauthorized()
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
                 .expectBody().jsonPath("$.errorCode").isEqualTo("UNAUTHENTICATED");
+    }
+
+    @Test
+    void protectedApiCorsPreflightsDoNotRequireAuthentication() {
+        expectAllowedPreflight("/api/v1/cart", HttpMethod.GET);
+        expectAllowedPreflight("/api/v1/orders", HttpMethod.GET);
+        expectAllowedPreflight("/api/v1/auth/logout-all", HttpMethod.POST);
+    }
+
+    @Test
+    void corsPreflightRejectsAnUntrustedOrigin() {
+        webTestClient.options().uri(absoluteUri("/api/v1/cart"))
+                .header(HttpHeaders.ORIGIN, "http://127.0.0.1:3000")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, HttpMethod.GET.name())
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "authorization,x-trace-id")
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectHeader().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN);
+    }
+
+    private void expectAllowedPreflight(String path, HttpMethod method) {
+        webTestClient.options().uri(absoluteUri(path))
+                .header(HttpHeaders.ORIGIN, "http://localhost:3000")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, method.name())
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS,
+                        "authorization,content-type,x-trace-id")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,
+                        "http://localhost:3000")
+                .expectHeader().valueEquals(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,
+                        methods -> assertThat(methods).contains(method.name()))
+                .expectHeader().value(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,
+                        headers -> assertThat(headers)
+                                .containsIgnoringCase("authorization")
+                                .containsIgnoringCase("x-trace-id"));
+    }
+
+    private String absoluteUri(String path) {
+        return "http://localhost:" + serverPort + path;
     }
 
     @Test

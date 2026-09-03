@@ -1,6 +1,7 @@
 package com.philia.flashsale.gateway.security;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -18,6 +19,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -28,11 +32,17 @@ public class GatewaySecurityConfiguration {
     SecurityWebFilterChain gatewaySecurityWebFilterChain(
             ServerHttpSecurity http,
             GatewaySecurityErrorHandler securityErrorHandler,
+            CorsConfigurationSource corsConfigurationSource,
             @Value("${springdoc.api-docs.enabled:false}") boolean apiDocsEnabled) {
         // Gateway is the first public security boundary; product-service still revalidates admin access.
         return http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(authorize -> authorize
+                        // Browser CORS preflight never carries the shopper JWT. Permit only the
+                        // negotiation request here; the actual API call still reaches the
+                        // authenticated/authority matcher below.
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Shopper catalog is intentionally public, but catalog administration is privileged.
                         .pathMatchers(
                                 "/actuator",
@@ -69,6 +79,30 @@ public class GatewaySecurityConfiguration {
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(
                                 gatewayJwtAuthenticationConverter())))
                 .build();
+    }
+
+    @Bean
+    CorsConfigurationSource gatewayCorsConfigurationSource(
+            @Value("${GATEWAY_CORS_ALLOWED_ORIGINS:http://localhost:3000}") String allowedOrigins) {
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
+        if (origins.isEmpty()) {
+            throw new IllegalArgumentException("At least one Gateway CORS origin is required");
+        }
+
+        var configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        // Process CORS before authentication. This lets browsers negotiate protected routes
+        // without a JWT while the real request remains subject to the matchers above.
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     static Mono<AuthorizationDecision> documentationAccess(boolean apiDocsEnabled) {

@@ -117,15 +117,6 @@ spring:
                 # Keep the exact collection path routable; `/api/v1/cart/**`
                 # alone does not match the collection URL in every Gateway matcher.
                 - Path=/api/v1/cart,/api/v1/cart/**
-          globalcors:
-            add-to-simple-url-handler-mapping: true
-            cors-configurations:
-              '[/**]':
-                allowed-origins:
-                  - ${GATEWAY_CORS_ALLOWED_ORIGINS:http://localhost:3000}
-                allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
-                allowed-headers: "*"
-                allow-credentials: true
   security:
     oauth2:
       resourceserver:
