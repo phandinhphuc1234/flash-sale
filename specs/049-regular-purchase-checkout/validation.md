@@ -102,3 +102,21 @@ and compatible consumer images are reviewed.
   `order-service` machine identity and scope; it is not routed through Gateway.
 - Core confirmation is durable and atomic locally, but its Kafka command listener and fact outbox
   publisher are still disabled and remain the next checked tasks (T043–T044).
+
+## Phase 3B-2 — Inventory confirm inbox and fact outbox
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T043, strict inbound command mapping and inbox replay | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/inventory-service -am "-Dtest=ConfirmRegularHoldAvroMapperTest,RegularHoldCommandProcessingServiceTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — five focused tests validate exact Order envelope/key/source position, SHA-256 payload identity, conflict rejection, one local confirm, and duplicate-command requeue with the same result event identity. |
+| T044, fact outbox relay and schema compatibility | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/inventory-service -am "-Dtest=InventoryCleanArchitectureTest,InventoryRegularHoldKafkaConsumerConfigurationTests,ConfirmRegularHoldAvroMapperTest,RegularHoldCommandProcessingServiceTest,RegularHoldOutcomeAvroMapperTest,RegularHoldOutboxDispatchPersistenceAdapterTest,RegularHoldMigrationIntegrationTests,RegularStockHoldCompatibilityTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 19 tests cover the Clean/Hex boundary, consumer-specific DLT partition/routing and bounded retry, fresh Liquibase schema including normalized fingerprint columns, PostgreSQL hold compatibility/concurrency, regular-hold-only lease claim, and exact V1 confirmed fact mapping. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Inventory/Feature 049 changes. |
+
+### Phase 3B-2 safety boundary
+
+- The command consumer, outbox scheduler, and producer configuration remain disabled unless the
+  reviewed `flashsale.inventory.regular-hold.*` flags are explicitly enabled.
+- The inbox and fact outbox commit in the same local Inventory transaction as hold confirmation and
+  physical stock movement. A duplicate command requeues the existing fact with its original
+  `eventId`; it never creates another movement or another fact identity.
+- The regular-hold publisher claims only `REGULAR_STOCK_HOLD` outbox rows, so it cannot relay or
+  alter the existing Campaign allocation publisher's events.

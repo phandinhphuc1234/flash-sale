@@ -1,6 +1,7 @@
 package com.philia.flashsale.inventory.configuration;
 
 import java.time.Duration;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** Inventory-owned runtime policy for the disabled-by-default regular hold capability. */
@@ -16,6 +17,7 @@ public class InventoryRegularHoldProperties {
     private String eventsTopic;
     private String commandConsumerGroup;
     private String commandDltTopic;
+    private List<Duration> retryDelays = List.of(Duration.ofSeconds(1), Duration.ofSeconds(3), Duration.ofSeconds(10));
 
     public void validate() {
         if (!Duration.ofMinutes(5).equals(ttl)) {
@@ -23,6 +25,10 @@ public class InventoryRegularHoldProperties {
         }
         if (maxClockSkew == null || maxClockSkew.isNegative() || maxClockSkew.isZero()) {
             throw new IllegalArgumentException("Regular hold maxClockSkew must be positive");
+        }
+        if (retryDelays == null || retryDelays.isEmpty()
+                || retryDelays.stream().anyMatch(delay -> delay == null || delay.isNegative() || delay.isZero())) {
+            throw new IllegalArgumentException("Regular hold retry delays must be positive");
         }
     }
 
@@ -46,4 +52,6 @@ public class InventoryRegularHoldProperties {
     public void setCommandConsumerGroup(String commandConsumerGroup) { this.commandConsumerGroup = commandConsumerGroup; }
     public String getCommandDltTopic() { return commandDltTopic; }
     public void setCommandDltTopic(String commandDltTopic) { this.commandDltTopic = commandDltTopic; }
+    public List<Duration> getRetryDelays() { return List.copyOf(retryDelays); }
+    public void setRetryDelays(List<Duration> retryDelays) { this.retryDelays = List.copyOf(retryDelays); }
 }

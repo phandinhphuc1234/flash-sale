@@ -8,10 +8,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import java.sql.Types;
 import java.time.Instant;
 import java.util.UUID;
-import org.hibernate.annotations.JdbcTypeCode;
 
 @Entity
 @Table(name = "regular_stock_holds")
@@ -20,8 +18,7 @@ public class RegularStockHoldJpaEntity {
     @Column(name = "purchase_request_id", nullable = false, unique = true) private UUID purchaseRequestId;
     @Column(name = "order_id", nullable = false, unique = true) private UUID orderId;
     @Column(name = "shopper_id", nullable = false) private UUID shopperId;
-    @JdbcTypeCode(Types.CHAR)
-    @Column(name = "request_fingerprint", nullable = false, length = 64, columnDefinition = "char(64)")
+    @Column(name = "request_fingerprint", nullable = false, length = 64)
     private String requestFingerprint;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20) private RegularStockHoldStatus status;

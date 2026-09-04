@@ -45,6 +45,13 @@ class RegularHoldMigrationIntegrationTests {
         assertThat(jdbc.queryForObject(
                 "select count(*) from databasechangelog where id = 'inventory-002-add-regular-stock-holds'",
                 Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from databasechangelog where id = 'inventory-003-normalize-regular-hold-fingerprints'",
+                Integer.class)).isEqualTo(1);
+        assertThat(columnDataType("regular_stock_holds", "request_fingerprint"))
+                .isEqualTo("character varying");
+        assertThat(columnDataType("regular_hold_command_inbox", "payload_fingerprint"))
+                .isEqualTo("character varying");
     }
 
     private static int tableCount(String... names) {
@@ -59,5 +66,12 @@ class RegularHoldMigrationIntegrationTests {
                 select count(*) from information_schema.columns
                 where table_schema = 'public' and table_name = ? and column_name = any (?::text[])
                 """, Integer.class, table, "{" + String.join(",", names) + "}");
+    }
+
+    private static String columnDataType(String table, String column) {
+        return jdbc.queryForObject("""
+                select data_type from information_schema.columns
+                where table_schema = 'public' and table_name = ? and column_name = ?
+                """, String.class, table, column);
     }
 }
