@@ -11,6 +11,8 @@ import com.philia.flashsale.order.order.application.port.in.ListOwnedOrdersUseCa
 import com.philia.flashsale.order.order.application.result.OrderDetailsResult;
 import com.philia.flashsale.order.order.application.result.OrderPageResult;
 import com.philia.flashsale.order.order.domain.model.OrderStatus;
+import com.philia.flashsale.order.order.domain.model.PurchaseSource;
+import com.philia.flashsale.order.purchasesaga.domain.model.StockParticipantType;
 import com.philia.flashsale.order.websupport.context.OrderTraceIdResolver;
 import com.philia.flashsale.order.websupport.error.OrderHttpExceptionHandler;
 import java.math.BigDecimal;
@@ -66,9 +68,10 @@ class OrderQueryControllerTests {
     void detailUsesSharedEnvelopeTraceAndNoStoreWithoutLeakingOwner() throws Exception {
         OrderDetailsResult result = details();
         OrderDetailsResponse response = new OrderDetailsResponse(ORDER, "FS-001", result.purchaseRequestId(),
-                result.reservationId(), result.campaignId(), result.status(), result.currency(),
+                result.reservationId(), result.campaignId(), result.purchaseSource(),
+                result.stockParticipantType(), result.stockReferenceId(), result.status(), result.currency(),
                 result.subtotalAmount(), result.totalAmount(), result.acceptedAt(), result.reservationExpiresAt(),
-                List.of(), result.createdAt(), result.updatedAt());
+                result.stockHoldExpiresAt(), List.of(), result.createdAt(), result.updatedAt());
         when(getOwnedOrder.get(any())).thenReturn(result);
         when(mapper.toDetailsResponse(result)).thenReturn(response);
 
@@ -86,9 +89,10 @@ class OrderQueryControllerTests {
             OrderDetailsResult terminal = details(terminalStatus);
             OrderDetailsResponse terminalResponse = new OrderDetailsResponse(ORDER, "FS-001",
                     terminal.purchaseRequestId(), terminal.reservationId(), terminal.campaignId(),
+                    terminal.purchaseSource(), terminal.stockParticipantType(), terminal.stockReferenceId(),
                     terminal.status(), terminal.currency(), terminal.subtotalAmount(), terminal.totalAmount(),
-                    terminal.acceptedAt(), terminal.reservationExpiresAt(), List.of(), terminal.createdAt(),
-                    terminal.updatedAt());
+                    terminal.acceptedAt(), terminal.reservationExpiresAt(), terminal.stockHoldExpiresAt(),
+                    List.of(), terminal.createdAt(), terminal.updatedAt());
             when(getOwnedOrder.get(any())).thenReturn(terminal);
             when(mapper.toDetailsResponse(terminal)).thenReturn(terminalResponse);
 
@@ -132,8 +136,10 @@ class OrderQueryControllerTests {
 
     private static OrderDetailsResult details(OrderStatus status) {
         Instant now = Instant.parse("2030-01-01T10:00:00Z");
-        return new OrderDetailsResult(ORDER, "FS-001", UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
-                status, "VND", BigDecimal.TEN, BigDecimal.TEN, now, now.plusSeconds(300),
+        UUID reservationId = UUID.randomUUID();
+        return new OrderDetailsResult(ORDER, "FS-001", UUID.randomUUID(), reservationId, UUID.randomUUID(),
+                PurchaseSource.FLASH_SALE, StockParticipantType.FLASH_SALE_RESERVATION, reservationId,
+                status, "VND", BigDecimal.TEN, BigDecimal.TEN, now, now.plusSeconds(300), null,
                 List.of(), now, now);
     }
 

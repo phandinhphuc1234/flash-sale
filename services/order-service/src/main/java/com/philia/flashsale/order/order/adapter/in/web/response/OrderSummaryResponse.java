@@ -1,6 +1,7 @@
 package com.philia.flashsale.order.order.adapter.in.web.response;
 
 import com.philia.flashsale.order.order.domain.model.OrderStatus;
+import com.philia.flashsale.order.order.domain.model.PurchaseSource;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -10,6 +11,7 @@ public record OrderSummaryResponse(
         UUID id,
         String orderNumber,
         OrderStatus status,
+        PurchaseSource purchaseSource,
         String currency,
         BigDecimal totalAmount,
         Instant reservationExpiresAt,

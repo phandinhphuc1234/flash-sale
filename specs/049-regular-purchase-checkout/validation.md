@@ -197,3 +197,16 @@ and compatible consumer images are reviewed.
 - `RegularPurchaseCheckoutService` has no transaction annotation and calls only transactional persistence-port operations between synchronous Product/Inventory calls. It never holds an Order database transaction across the network.
 - A replay reuses the persisted Order and hold identities. An Inventory timeout remains `INVENTORY_HOLD_AMBIGUOUS`, so the application neither rejects it as out of stock nor generates a second hold identity.
 - T051 remains responsible for the public HTTP mapping, feature flag response, headers, and structured `PRICE_CHANGED` response; this phase adds no controller or new public route.
+
+## Phase 3C-7 — Buy Now HTTP boundary and compatible Order reads
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T051–T052, Buy Now web, Order read, security, and architecture regression | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=RegularPurchaseControllerTests,OrderQueryControllerTests,OrderQueryServiceTests,OrderPublicSecurityTests,OrderArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 16 selected tests passed with zero failures/errors. New Buy Now responses prove owner derivation from JWT, `201`/replay `200`, `Location`, idempotency/trace/no-store headers, safe price-conflict facts, and existing shared error envelopes. Order reads retain Flash Sale fields and add source/stock metadata; anonymous Buy Now is rejected by the existing Order bearer boundary. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Feature 049 changes. |
+
+### Phase 3C-7 safety boundary
+
+- The controller accepts only a shopper JWT subject and never accepts a shopper, Order, hold, Cart, provider, or secret identity from the browser body.
+- The only endpoint-specific error projection is the approved `PRICE_CHANGED` extension; all other failures remain the established Order `ApiErrorResponse` envelope with no raw downstream body.
+- The Order security matcher already covers every `/api/v1/orders/**` route; the new security regression proves Buy Now cannot bypass that bearer boundary. No Gateway routing or cloud state changed.
