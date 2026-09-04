@@ -77,6 +77,12 @@ flashsale:
         audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
         subject: campaign-service
         required-scope: inventory.campaign.allocate
+      regular-hold-jwt:
+        issuer: ${JWT_ISSUER_URI:http://authentication-service:8080}
+        jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+        audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+        subject: ${ORDER_CLIENT_ID:order-service}
+        required-scope: inventory.regular-hold.write
     regular-hold:
       # Every Feature 049 runtime surface remains disabled through the setup and migration phases.
       api-enabled: ${INVENTORY_REGULAR_HOLD_API_ENABLED:false}

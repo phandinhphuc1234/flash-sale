@@ -7,3 +7,6 @@ databaseChangeLog:
   - include:
       file: changes/001-create-cart-schema.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/002-add-checkout-revisions-and-inbox.yaml
+      relativeToChangelogFile: true

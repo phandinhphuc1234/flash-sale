@@ -21,7 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class InventorySecurityConfiguration {
     @Bean
-    @Order(2)
+    @Order(3)
     SecurityFilterChain inventorySecurity(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth

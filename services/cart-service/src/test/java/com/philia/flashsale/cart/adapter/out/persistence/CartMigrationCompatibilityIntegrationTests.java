@@ -39,14 +39,23 @@ class CartMigrationCompatibilityIntegrationTests {
     void expandedSchemaIsForwardCompatibleAndLiquibaseHistoryIsRecorded() throws Exception {
         try (var connection = dataSource.getConnection(); var statement = connection.createStatement()) {
             try (var result = statement.executeQuery(
-                    "select count(*) from information_schema.tables where table_name in ('carts','cart_items')")) {
+                    "select count(*) from information_schema.tables "
+                            + "where table_name in ('carts','cart_items','cart_reconciliation_inbox')")) {
+                result.next();
+                assertThat(result.getInt(1)).isEqualTo(3);
+            }
+            try (var result = statement.executeQuery(
+                    "select count(*) from databasechangelog "
+                            + "where id in ('001-create-cart-schema','002-add-checkout-revisions-and-inbox')")) {
                 result.next();
                 assertThat(result.getInt(1)).isEqualTo(2);
             }
-            try (var result = statement.executeQuery(
-                    "select count(*) from databasechangelog where id = '001-create-cart-schema'")) {
+            try (var result = statement.executeQuery("""
+                    select count(*) from information_schema.columns
+                    where table_name in ('carts', 'cart_items') and column_name = 'version'
+                    """)) {
                 result.next();
-                assertThat(result.getInt(1)).isEqualTo(1);
+                assertThat(result.getInt(1)).isEqualTo(2);
             }
         }
     }

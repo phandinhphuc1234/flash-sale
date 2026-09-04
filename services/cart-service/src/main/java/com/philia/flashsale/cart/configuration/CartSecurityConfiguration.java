@@ -21,7 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class CartSecurityConfiguration {
 
     @Bean
-    @Order(1)
+    @Order(2)
     SecurityFilterChain cartApiSecurityChain(HttpSecurity http,
             @Qualifier("cartJwtDecoder") JwtDecoder decoder,
             @Qualifier("cartJwtAuthenticationConverter") Converter<Jwt, AbstractAuthenticationToken> converter,
@@ -42,7 +42,7 @@ public class CartSecurityConfiguration {
     }
 
     @Bean
-    @Order(2)
+    @Order(3)
     SecurityFilterChain cartDenyByDefaultSecurityChain(HttpSecurity http) throws Exception {
         return http.authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus",

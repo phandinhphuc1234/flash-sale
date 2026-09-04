@@ -27,7 +27,10 @@ class CartArchitectureTests {
                     "jakarta.persistence..",
                     "jakarta.servlet..",
                     "feign..",
-                    "org.springframework.cloud.openfeign..")
+                    "org.springframework.cloud.openfeign..",
+                    "org.apache.kafka..",
+                    "org.apache.avro..",
+                    "com.philia.flashsale.contract..")
             .because("Cart domain and application code must depend on business ports, not adapters or providers")
             .allowEmptyShould(true);
 

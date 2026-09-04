@@ -55,3 +55,20 @@ types, so the Inventory application context could not start. It is now a concret
 No broker, Schema Registry, consumer group, subject, or Kubernetes resource was changed by this
 sub-phase. Phase 20 `-Apply` remains an explicit, merge-gated operator action after all migrations
 and compatible consumer images are reviewed.
+
+## Phase 2B — expand-first migrations and machine trust
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T017–T022, Cart migration | `.\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am "-Dtest=CartMigrationCompatibilityIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — PostgreSQL Testcontainers migration test passed; Cart revisions and the reconciliation inbox are additive. |
+| T017–T022, Inventory migration | `.\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/inventory-service -am "-Dtest=RegularHoldMigrationIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — regular-hold tables, inbox, and additive outbox envelope fields applied on a fresh PostgreSQL schema. |
+| T017–T022, Order migration | `.\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=RegularPurchaseMigrationIntegrationTests,OrderSchemaMigrationIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — regular intake schema applied and seven existing schema compatibility tests passed. |
+| T023–T029, exact client and internal security | `.\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/authentication-service,services/cart-service,services/product-service,services/inventory-service,services/order-service -am "-Dtest=CartInternalSecurityConfigurationTests,ProductPurchaseQuoteSecurityTests,InventoryRegularHoldSecurityConfigurationTests,OrderServiceClientCredentialTests,OrderInternalClientConfigurationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — focused tests cover token claims, forbidden scopes, Order token propagation, and wrong/missing subject or scope at each future internal route. |
+| T030, static runtime gates | PowerShell parser for Feature 049 provisioning scripts; `docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml config --quiet`; `kubectl kustomize infra/k8s/overlays/cloud`; `git diff --check` | PASS — scripts parse, Compose and cloud manifests render, and no whitespace error exists in scoped changes. |
+
+### Phase 2B safety boundary
+
+- These migrations are expand-only. Existing Flash Sale fields remain available, new runtime flags
+  remain false, and no service starts a regular-purchase endpoint or consumer yet.
+- No live database, Kafka broker, Schema Registry subject, EKS resource, Secret value, or image was
+  created or changed during this phase.

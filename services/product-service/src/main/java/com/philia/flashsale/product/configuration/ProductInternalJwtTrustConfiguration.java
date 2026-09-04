@@ -14,7 +14,11 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 @Configuration
-@EnableConfigurationProperties({ProductInternalJwtProperties.class, ProductCartInternalJwtProperties.class})
+@EnableConfigurationProperties({
+        ProductInternalJwtProperties.class,
+        ProductCartInternalJwtProperties.class,
+        ProductOrderInternalJwtProperties.class
+})
 public class ProductInternalJwtTrustConfiguration {
     @Bean(name = "productInternalJwtDecoder")
     @ConditionalOnMissingBean(name = "productInternalJwtDecoder")
@@ -25,6 +29,12 @@ public class ProductInternalJwtTrustConfiguration {
     @Bean(name = "productCartInternalJwtDecoder")
     @ConditionalOnMissingBean(name = "productCartInternalJwtDecoder")
     JwtDecoder productCartInternalJwtDecoder(ProductCartInternalJwtProperties properties) {
+        return decoder(properties.issuer(), properties.jwkSetUri(), properties.audience(), properties.subject());
+    }
+
+    @Bean(name = "productOrderInternalJwtDecoder")
+    @ConditionalOnMissingBean(name = "productOrderInternalJwtDecoder")
+    JwtDecoder productOrderInternalJwtDecoder(ProductOrderInternalJwtProperties properties) {
         return decoder(properties.issuer(), properties.jwkSetUri(), properties.audience(), properties.subject());
     }
 
