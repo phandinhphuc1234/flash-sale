@@ -7,6 +7,7 @@ resources:
   - api-gateway-runtime-config.yaml
   - authentication-service-runtime-config.yaml
   - product-service-runtime-config.yaml
+  - cart-service-runtime-config.yaml
   - campaign-service-runtime-config.yaml
   - flash-sale-service-runtime-config.yaml
   - inventory-service-runtime-config.yaml

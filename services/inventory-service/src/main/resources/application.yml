@@ -17,6 +17,29 @@ spring:
     enabled: ${LIQUIBASE_ENABLED:true}
     change-log: classpath:/db/changelog/db.changelog-master.yaml
 
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        enable.idempotence: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        auto.register.schemas: ${KAFKA_AUTO_REGISTER_SCHEMAS:false}
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+    consumer:
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        specific.avro.reader: true
+    listener:
+      ack-mode: manual_immediate
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+
   security:
     oauth2:
       resourceserver:
@@ -54,6 +77,18 @@ flashsale:
         audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
         subject: campaign-service
         required-scope: inventory.campaign.allocate
+    regular-hold:
+      # Every Feature 049 runtime surface remains disabled through the setup and migration phases.
+      api-enabled: ${INVENTORY_REGULAR_HOLD_API_ENABLED:false}
+      command-consumer-enabled: ${INVENTORY_REGULAR_HOLD_COMMAND_CONSUMER_ENABLED:false}
+      outbox-publisher-enabled: ${INVENTORY_REGULAR_HOLD_OUTBOX_PUBLISHER_ENABLED:false}
+      expiry-enabled: ${INVENTORY_REGULAR_HOLD_EXPIRY_ENABLED:false}
+      ttl: ${INVENTORY_REGULAR_HOLD_TTL:5m}
+      commands-topic: ${INVENTORY_REGULAR_HOLD_COMMANDS_TOPIC:flashsale.inventory.regular-hold.commands.v1}
+      events-topic: ${INVENTORY_REGULAR_HOLD_EVENTS_TOPIC:flashsale.inventory.regular-hold.events.v1}
+      command-consumer-group: ${INVENTORY_REGULAR_HOLD_COMMAND_CONSUMER_GROUP:inventory-regular-hold-commands-v1}
+      command-dlt-topic: ${INVENTORY_REGULAR_HOLD_COMMAND_DLT_TOPIC:flashsale.inventory.regular-hold-command.dlt.v1}
+      retry-delays: ${INVENTORY_REGULAR_HOLD_RETRY_DELAYS:1s,3s,10s}
 
 server:
   port: ${SERVER_PORT:8080}

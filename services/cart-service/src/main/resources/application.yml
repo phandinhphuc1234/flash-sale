@@ -53,6 +53,20 @@ spring:
             readTimeout: ${CART_PRODUCT_READ_TIMEOUT_MS:600}
             loggerLevel: basic
 
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    consumer:
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        specific.avro.reader: true
+    listener:
+      ack-mode: manual_immediate
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+
 server:
   port: ${SERVER_PORT:8080}
 
@@ -102,6 +116,14 @@ cart:
     token-max-ttl-seconds: ${CART_PRODUCT_TOKEN_MAX_TTL_SECONDS:300}
   persistence:
     max-quantity: ${CART_MAX_QUANTITY:10}
+  checkout:
+    reconciliation:
+      # Feature 049 consumers stay off until contracts, migrations, and compatible images exist.
+      consumer-enabled: ${CART_CHECKOUT_RECONCILIATION_CONSUMER_ENABLED:false}
+      topic: ${CART_CHECKOUT_RECONCILIATION_TOPIC:flashsale.cart.checkout.commands.v1}
+      consumer-group: ${CART_CHECKOUT_RECONCILIATION_CONSUMER_GROUP:cart-checkout-reconciliation-v1}
+      dlt-topic: ${CART_CHECKOUT_RECONCILIATION_DLT_TOPIC:flashsale.cart.checkout-reconciliation.dlt.v1}
+      retry-delays: ${CART_CHECKOUT_RECONCILIATION_RETRY_DELAYS:1s,3s,10s}
 
 springdoc:
   api-docs:

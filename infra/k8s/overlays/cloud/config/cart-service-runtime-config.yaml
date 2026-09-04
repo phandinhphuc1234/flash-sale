@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cart-service-runtime-config
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/cart_db"
+  SPRING_LIQUIBASE_ENABLED: "false"
+  JWT_ISSUER_URI: "http://authentication-service:8080"
+  JWT_JWK_SET_URI: "http://authentication-service:8080/.well-known/jwks.json"
+  JWT_AUDIENCE: "flash-sale-api"
+  JWT_TYPE: "at+jwt"
+  INTERNAL_JWT_AUDIENCE: "flash-sale-internal-api"
+  OAUTH_TOKEN_URI: "http://authentication-service:8080/oauth2/token"
+  CART_CLIENT_ID: "cart-service"
+  PRODUCT_SERVICE_URL: "http://product-service:8080"
+  CART_PRODUCT_CONNECT_TIMEOUT_MS: "300"
+  CART_PRODUCT_READ_TIMEOUT_MS: "600"
+  CART_PRODUCT_TOKEN_MAX_TTL_SECONDS: "300"
+  CART_MAX_QUANTITY: "10"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+  CART_CHECKOUT_RECONCILIATION_CONSUMER_ENABLED: "false"
+  CART_CHECKOUT_RECONCILIATION_TOPIC: "flashsale.cart.checkout.commands.v1"
+  CART_CHECKOUT_RECONCILIATION_CONSUMER_GROUP: "cart-checkout-reconciliation-v1"
+  CART_CHECKOUT_RECONCILIATION_DLT_TOPIC: "flashsale.cart.checkout-reconciliation.dlt.v1"
+  CART_CHECKOUT_RECONCILIATION_RETRY_DELAYS: "1s,3s,10s"
