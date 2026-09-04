@@ -2,6 +2,8 @@ package com.philia.flashsale.order.order.adapter.out.persistence.jpa.entity;
 
 import com.philia.flashsale.order.order.domain.model.Order;
 import com.philia.flashsale.order.order.domain.model.OrderStatus;
+import com.philia.flashsale.order.order.domain.model.PurchaseSource;
+import com.philia.flashsale.order.purchasesaga.domain.model.StockParticipantType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -26,10 +28,22 @@ public class OrderJpaEntity {
     private String orderNumber;
     @Column(name = "purchase_request_id", nullable = false, unique = true)
     private UUID purchaseRequestId;
-    @Column(name = "reservation_id", nullable = false, unique = true)
+    @Column(name = "reservation_id", unique = true)
     private UUID reservationId;
-    @Column(name = "campaign_id", nullable = false)
+    @Column(name = "campaign_id")
     private UUID campaignId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "purchase_source", nullable = false, length = 16)
+    private PurchaseSource purchaseSource;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stock_participant_type", nullable = false, length = 32)
+    private StockParticipantType stockParticipantType;
+    @Column(name = "stock_reference_id")
+    private UUID stockReferenceId;
+    @Column(name = "cart_id")
+    private UUID cartId;
+    @Column(name = "cart_version")
+    private Long cartVersion;
     @Column(name = "user_id", nullable = false)
     private UUID userId;
     @Enumerated(EnumType.STRING)
@@ -64,6 +78,11 @@ public class OrderJpaEntity {
         entity.purchaseRequestId = order.purchaseRequestId();
         entity.reservationId = order.reservationId();
         entity.campaignId = order.campaignId();
+        entity.purchaseSource = order.purchaseSource();
+        entity.stockParticipantType = order.stockParticipantType();
+        entity.stockReferenceId = order.stockReferenceId();
+        entity.cartId = order.cartId();
+        entity.cartVersion = order.cartVersion();
         entity.userId = order.userId();
         entity.status = order.status();
         entity.currency = order.currency();
@@ -82,6 +101,11 @@ public class OrderJpaEntity {
     public UUID getPurchaseRequestId() { return purchaseRequestId; }
     public UUID getReservationId() { return reservationId; }
     public UUID getCampaignId() { return campaignId; }
+    public PurchaseSource getPurchaseSource() { return purchaseSource; }
+    public StockParticipantType getStockParticipantType() { return stockParticipantType; }
+    public UUID getStockReferenceId() { return stockReferenceId; }
+    public UUID getCartId() { return cartId; }
+    public Long getCartVersion() { return cartVersion; }
     public UUID getUserId() { return userId; }
     public OrderStatus getStatus() { return status; }
     public String getCurrency() { return currency; }

@@ -54,6 +54,9 @@ class RegularPurchaseMigrationIntegrationTests {
         assertThat(jdbc.queryForObject(
                 "select count(*) from databasechangelog where id = '004-allow-cart-intake-before-snapshot'",
                 Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from databasechangelog where id = '005-allow-regular-order-event-versions'",
+                Integer.class)).isEqualTo(1);
     }
 
     @Test
@@ -64,6 +67,16 @@ class RegularPurchaseMigrationIntegrationTests {
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         insertCartRequest("SNAPSHOT_VALIDATED", UUID.randomUUID(), 0L);
+    }
+
+    @Test
+    void keepsLegacyOutboxRowsAtV1AndAllowsOnlyDocumentedRegularV2Facts() {
+        UUID orderId = UUID.randomUUID();
+        insertOutbox(orderId, "OrderCreatedV2", 2);
+        assertThatThrownBy(() -> insertOutbox(UUID.randomUUID(), "OrderCreatedV2", 1))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> insertOutbox(UUID.randomUUID(), "OrderCreated", 2))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private static void insertCartRequest(String state, UUID cartId, Long cartVersion) {
@@ -77,6 +90,20 @@ class RegularPurchaseMigrationIntegrationTests {
                 """,
                 UUID.randomUUID(), UUID.randomUUID(), "key-" + UUID.randomUUID(), "a".repeat(64), state,
                 UUID.randomUUID(), UUID.randomUUID(), cartId, cartVersion, "{\"items\":[]}", now, now);
+    }
+
+    private static void insertOutbox(UUID eventId, String eventType, int eventVersion) {
+        OffsetDateTime now = OffsetDateTime.parse("2030-01-01T10:00:00Z");
+        UUID orderId = UUID.randomUUID();
+        jdbc.update("""
+                insert into order_outbox_events (
+                    event_id, aggregate_type, aggregate_id, aggregate_version, event_type, event_version,
+                    event_key, correlation_id, causation_id, payload, status, attempt_count, next_attempt_at,
+                    occurred_at, created_at, updated_at
+                ) values (?, 'ORDER', ?, 1, ?, ?, ?, ?, ?, ?::jsonb, 'PENDING', 0, ?, ?, ?, ?)
+                """,
+                eventId, orderId, eventType, eventVersion, orderId.toString(), UUID.randomUUID(), UUID.randomUUID(),
+                "{}", now, now, now, now);
     }
 
     private static boolean tableExists(String table) {

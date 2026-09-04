@@ -156,3 +156,17 @@ and compatible consumer images are reviewed.
 
 - The new aggregate is Java-only domain code. It does not make an HTTP call, depend on JPA, write a database row, publish Kafka, or expose a public endpoint.
 - Inventory remains the owner of the precise five-minute hold start on its own clock. Order records the returned expiry and derives the exact 30-second-earlier Payment deadline without treating an expired or ambiguous hold as a business rejection.
+
+## Phase 3C-4 — Regular purchase atomic persistence
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T047, regular persistence and Order regression | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=RegularPurchasePersistenceIntegrationTests,RegularPurchaseMigrationIntegrationTests,RegularPurchaseRequestDomainTests,RegularOrderDomainTests,RegularHoldPaidSagaTests,OrderArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 18 selected tests passed with zero failures/errors. PostgreSQL Testcontainers verifies an accepted Buy Now request atomically persists intake, Order/line, Saga, `OrderCreatedV2` (event version 2), and `PaymentRequestedV1`; a same shopper/idempotency key returns the existing intake without creating duplicate durable state. |
+| Forward-only migration constraint | `RegularPurchaseMigrationIntegrationTests` against PostgreSQL Testcontainers | PASS — changeset `005` accepts only `OrderCreatedV2` at event version 2 and retains version 1 for legacy `OrderCreated`/command event types. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Order/Feature 049 changes. |
+
+### Phase 3C-4 safety boundary
+
+- The acceptance transaction contains only Order-owned PostgreSQL writes. Product, Cart, Inventory, Payment, and Kafka calls remain outside it; Kafka publication stays an outbox responsibility.
+- Changeset `005` is additive and forward-only. It does not edit the previously applied version-1 check constraint, preserving Liquibase checksum safety for environments that already ran earlier changesets.
+- The idempotency advisory lock is scoped to the authenticated shopper and idempotency key. It prevents duplicate accepted state for that identity while preserving an existing request as the replay source.

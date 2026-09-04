@@ -94,6 +94,26 @@ public class OrderCreationOutboxJpaEntity {
                 candidate.createdAt(), candidate.occurredAt(), candidate.createdAt());
     }
 
+    /** Creates the additive V2 regular-Order fact without changing the Flash Sale V1 snapshot. */
+    public static OrderCreationOutboxJpaEntity regularOrderCreated(UUID eventId,
+            com.philia.flashsale.order.order.domain.model.Order order, PurchaseSaga saga,
+            UUID correlationId, UUID causationId, String traceparent, String tracestate, Instant occurredAt) {
+        return pendingEvent(eventId, "ORDER", order.id(), 1, "OrderCreatedV2", 2,
+                order.id().toString(), correlationId, causationId,
+                regularOrderCreatedPayload(order, saga), traceparent, tracestate,
+                occurredAt, occurredAt, occurredAt);
+    }
+
+    /** Reuses the established PaymentRequestedV1 contract for an accepted regular Order. */
+    public static OrderCreationOutboxJpaEntity paymentRequested(UUID eventId,
+            com.philia.flashsale.order.order.domain.model.Order order, PurchaseSaga saga,
+            UUID correlationId, UUID causationId, String traceparent, String tracestate, Instant occurredAt) {
+        return pendingEvent(eventId, PURCHASE_SAGA_AGGREGATE_TYPE, order.id(), 1,
+                "PaymentRequested", 1, order.id().toString(), correlationId, causationId,
+                paymentRequestedPayload(order, saga), traceparent, tracestate,
+                occurredAt, occurredAt, occurredAt);
+    }
+
     /** Creates the stable Flash Sale confirm command after a verified PaymentSucceeded fact. */
     public static OrderCreationOutboxJpaEntity confirmReservation(PaymentSucceededCommand command,
             PurchaseSaga saga, UUID commandId) {
@@ -217,13 +237,21 @@ public class OrderCreationOutboxJpaEntity {
             UUID aggregateId, long aggregateVersion, String eventType, String eventKey,
             UUID correlationId, UUID causationId, String payload, String traceparent, String tracestate,
             Instant nextAttemptAt, Instant occurredAt, Instant createdAt) {
+        return pendingEvent(eventId, aggregateType, aggregateId, aggregateVersion, eventType, 1, eventKey,
+                correlationId, causationId, payload, traceparent, tracestate, nextAttemptAt, occurredAt, createdAt);
+    }
+
+    private static OrderCreationOutboxJpaEntity pendingEvent(UUID eventId, String aggregateType,
+            UUID aggregateId, long aggregateVersion, String eventType, int eventVersion, String eventKey,
+            UUID correlationId, UUID causationId, String payload, String traceparent, String tracestate,
+            Instant nextAttemptAt, Instant occurredAt, Instant createdAt) {
         OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
         entity.eventId = eventId;
         entity.aggregateType = aggregateType;
         entity.aggregateId = aggregateId;
         entity.aggregateVersion = aggregateVersion;
         entity.eventType = eventType;
-        entity.eventVersion = 1;
+        entity.eventVersion = eventVersion;
         entity.eventKey = eventKey;
         entity.correlationId = correlationId;
         entity.causationId = causationId;
@@ -248,6 +276,45 @@ public class OrderCreationOutboxJpaEntity {
                 + "\"amount\":\"" + order.total().amount().toPlainString() + "\","
                 + "\"currency\":\"" + order.currency() + "\","
                 + "\"paymentDeadline\":\"" + saga.paymentDeadline() + "\"}";
+    }
+
+    private static String regularOrderCreatedPayload(
+            com.philia.flashsale.order.order.domain.model.Order order,
+            com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga saga) {
+        StringBuilder items = new StringBuilder();
+        for (var line : order.lines()) {
+            if (!items.isEmpty()) items.append(',');
+            items.append("{\"variantId\":\"").append(line.variantId()).append("\",")
+                    .append("\"quantity\":").append(line.quantity()).append(',')
+                    .append("\"unitPrice\":\"").append(line.unitPrice().amount().toPlainString()).append("\",")
+                    .append("\"lineAmount\":\"").append(line.lineAmount().amount().toPlainString()).append("\"}");
+        }
+        return "{"
+                + ORDER_ID_JSON_FIELD + order.id() + "\","
+                + "\"orderNumber\":\"" + order.orderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.purchaseRequestId() + "\","
+                + "\"userId\":\"" + order.userId() + "\","
+                + "\"purchaseSource\":\"" + order.purchaseSource() + "\","
+                + "\"stockParticipantType\":\"" + order.stockParticipantType() + "\","
+                + "\"stockReferenceId\":\"" + order.stockReferenceId() + "\","
+                + "\"cartId\":" + nullableUuid(order.cartId()) + ','
+                + "\"cartVersion\":" + nullableLong(order.cartVersion()) + ','
+                + "\"status\":\"" + order.status() + "\","
+                + "\"currency\":\"" + order.currency() + "\","
+                + "\"subtotalAmount\":\"" + order.subtotal().amount().toPlainString() + "\","
+                + "\"totalAmount\":\"" + order.total().amount().toPlainString() + "\","
+                + "\"acceptedAt\":\"" + order.acceptedAt() + "\","
+                + "\"stockHoldExpiresAt\":\"" + order.stockParticipantExpiresAt() + "\","
+                + "\"paymentDeadline\":\"" + saga.paymentDeadline() + "\","
+                + "\"items\":[" + items + "]}";
+    }
+
+    private static String nullableUuid(UUID value) {
+        return value == null ? "null" : "\"" + value + "\"";
+    }
+
+    private static String nullableLong(Long value) {
+        return value == null ? "null" : value.toString();
     }
 
     private static String snapshotPayload(OrderCreationCandidate candidate) {
