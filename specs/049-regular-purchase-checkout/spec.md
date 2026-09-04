@@ -70,6 +70,12 @@ frontend without a supported Cart checkout action.
   idempotency key to the authenticated shopper, replay the original result for the same payload,
   and reject reuse of the key with a different payload.
 
+### Session 2026-09-04
+
+- Q: How many distinct Cart lines may one regular checkout submit? → A: A regular checkout and its
+  Product purchase-quote batch may contain at most 20 distinct variant lines. This bounds
+  synchronous decision work while preserving the existing per-variant quantity limit of 10.
+
 ## Baseline References
 
 - `specs/048-cart-mvp/spec.md` — Cart is authenticated saved intent and explicitly has no checkout,
@@ -354,6 +360,9 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
   minutes, set the Payment deadline 30 seconds earlier, scope each client-supplied idempotency key
   to the authenticated shopper, replay the original result for equivalent content, and reject the
   same key with different content.
+- **HD-004 — Cart checkout line cap (decided 2026-09-04)**: One Cart checkout and its Product
+  purchase-quote batch may contain at most 20 distinct variant lines. This is separate from the
+  existing 1–10 quantity bound for each variant.
 
 | Priority | Why it blocks | Options and trade-offs | Owner | Decision deadline |
 |----------|---------------|------------------------|-------|-------------------|
@@ -362,6 +371,7 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
 | Decided | Price changes must not silently alter the amount the shopper agreed to pay. | Option A selected: reject before Order/Payment creation and require explicit resubmission against current pricing. | Project owner | Decided 2026-09-03 |
 | Decided | Concurrent Cart edits and cleanup must not delete later shopper intent. | Option A selected: immutable snapshot, no Cart lock, match-only cleanup after confirmed payment, and no cleanup for unpaid outcomes. | Project owner | Decided 2026-09-03 |
 | Decided | Stock-hold expiry and duplicate-request scope determine availability, payment deadlines, conflict behavior, and recovery tests. | Option A selected: 5-minute hold, 4-minute-30-second Payment deadline, shopper-scoped client key, equivalent replay, and conflicting-payload rejection. | Project owner | Decided 2026-09-03 |
+| Decided | The number of lines bounds synchronous Product/Inventory decision work and must agree across Cart checkout contracts. | Project owner selected a maximum of 20 distinct variant lines; each line retains the existing quantity bound of 1–10. | Project owner | Decided 2026-09-04 |
 
 ## Constitutional Constraints *(mandatory)*
 
@@ -398,6 +408,7 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
   resubmission.
 - 2026-09-03 — HD-003B Option A approved: Cart remains editable and cleanup preserves later intent.
 - 2026-09-03 — HD-003C Option A approved: five-minute stock hold and shopper-scoped idempotency.
+- 2026-09-04 — HD-004 approved: Cart checkout and Product purchase-quote batch are limited to 20 distinct variant lines.
 - 2026-09-03 — Project owner approved the clarified specification for planning.
 - 2026-09-03 — Project owner approved the implementation plan and authorized task generation.
 - 2026-09-03 — Project owner approved the generated task ledger and authorized Phase 1 implementation.

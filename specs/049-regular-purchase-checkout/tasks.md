@@ -94,7 +94,7 @@ Cart, and exact replay for the same shopper/key/body.
 
 ### Tests for User Story 1
 
-- [ ] T031 [P] [US1] Add Product purchase-quote application/HTTP/security tests for found, missing, unsellable, current price/currency/version, order preservation, and bounded batch input in `services/product-service/src/test/java/com/philia/flashsale/product/catalogquery/PurchaseQuoteTests.java`
+- [X] T031 [P] [US1] Add Product purchase-quote application/HTTP/security tests for found, missing, unsellable, current price/currency/version, order preservation, and bounded batch input in `services/product-service/src/test/java/com/philia/flashsale/product/catalogquery/PurchaseQuoteTests.java`
 - [ ] T032 [P] [US1] Add Inventory hold domain tests for five-minute TTL, availability equation, item canonicalization, hold confirmation, and illegal transitions in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/domain/RegularStockHoldTests.java`
 - [ ] T033 [P] [US1] Add Inventory atomic persistence/concurrency tests for same-request replay, conflict, deterministic row locking, one-line oversell prevention, and exact movement in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldPersistenceIntegrationTests.java`
 - [ ] T034 [P] [US1] Add Buy Now request/fingerprint, price/sellability/stock rejection, owner derivation, five-second budget, replay/conflict, and response contract tests in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/BuyNowUseCaseTests.java` and `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/BuyNowHttpTests.java`
@@ -103,8 +103,8 @@ Cart, and exact replay for the same shopper/key/body.
 
 ### Product authoritative quote
 
-- [ ] T037 [US1] Implement Product-owned purchase quote query/result/port/use case with no Cart or Order wire types in `services/product-service/src/main/java/com/philia/flashsale/product/catalogquery/application/PurchaseQuoteService.java`
-- [ ] T038 [US1] Implement the Order-only batch quote web DTOs/controller/mapper in `services/product-service/src/main/java/com/philia/flashsale/product/catalogquery/adapter/in/web/PurchaseQuoteController.java`
+- [X] T037 [US1] Implement Product-owned purchase quote query/result/port/use case with no Cart or Order wire types in `services/product-service/src/main/java/com/philia/flashsale/product/catalogquery/application/PurchaseQuoteService.java`
+- [X] T038 [US1] Implement the Order-only batch quote web DTOs/controller/mapper in `services/product-service/src/main/java/com/philia/flashsale/product/catalogquery/adapter/in/web/PurchaseQuoteController.java`
 
 ### Inventory hold creation and paid confirmation
 

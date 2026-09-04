@@ -72,3 +72,18 @@ and compatible consumer images are reviewed.
   remain false, and no service starts a regular-purchase endpoint or consumer yet.
 - No live database, Kafka broker, Schema Registry subject, EKS resource, Secret value, or image was
   created or changed during this phase.
+
+## Phase 3A — Product purchase quotes
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T031, focused Product quote tests | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/product-service -am -Dtest=PurchaseQuoteTests,PurchaseQuotePersistenceTests,PurchaseQuoteHttpTests,ProductPurchaseQuoteSecurityTests -Dsurefire.failIfNoSpecifiedTests=false test` | PASS — seven tests cover the 20-line bound, duplicate rejection, deterministic ID order, current price/currency/version, missing/unsellable decisions, and exact Order-only HTTP scope. |
+| T031, T037–T038, Product regression | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/product-service -am verify` | PASS — three-module reactor, 50 Product tests and 9 common-web tests, zero failures/errors. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in Feature 049/Product quote changes. |
+
+### Phase 3A safety boundary
+
+- Product only reads its own catalog tables and returns current quote decisions. It does not read Cart,
+  reserve Inventory, create an Order, emit an event, or expose the internal route through Gateway.
+- The Product endpoint accepts only the exact `order-service` machine identity and
+  `catalog.purchase-quote.read` scope. No existing Cart or Campaign capability was broadened.

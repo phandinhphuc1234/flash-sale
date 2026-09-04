@@ -104,7 +104,7 @@ Response `200`:
 
 Rules:
 
-- Input is non-empty, unique, and bounded to the approved Cart size; Order sorts IDs before call.
+- Input is non-empty, unique, and contains at most 20 variant IDs; Order sorts IDs before call.
 - Exactly one result is returned for each requested ID in deterministic ID order.
 - `found=false` uses null commercial fields and never leaks internal deletion/publication details.
 - `unitPrice/currency/sellable` are the only acceptance source; Cart values are ignored.

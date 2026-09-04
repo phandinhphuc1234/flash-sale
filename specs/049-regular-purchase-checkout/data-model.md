@@ -69,7 +69,7 @@ durable table.
 | `ownerId` | UUID | Must equal the authenticated shopper passed by trusted Order. |
 | `cartVersion` | BIGINT | Exact observed Cart version. |
 | `capturedAt` | Instant | UTC query time. |
-| `items` | list | Non-empty, sorted by variant ID for canonicalization. |
+| `items` | list | Non-empty, at most 20 distinct variant lines, and sorted by variant ID for canonicalization. |
 
 Each snapshot item contains `variantId`, positive `quantity`, and positive `itemVersion`. It contains
 no authoritative price or stock value.

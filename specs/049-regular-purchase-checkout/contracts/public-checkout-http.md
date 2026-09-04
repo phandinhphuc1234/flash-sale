@@ -110,7 +110,7 @@ Submits exactly the Cart snapshot the shopper reviewed. It does not lock the Car
 Rules:
 
 - `cartVersion` is non-negative and must equal the current owned Cart version at capture.
-- `items` is non-empty and contains each variant exactly once.
+- `items` is non-empty, contains each variant exactly once, and contains at most 20 distinct variant lines.
 - Every item matches the current Cart variant, quantity, and item version.
 - Every quantity is 1 through 10 and all currencies match.
 - Any missing/extra/changed Cart item rejects the whole submission as `CART_CHANGED`.
