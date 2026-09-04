@@ -120,3 +120,15 @@ and compatible consumer images are reviewed.
   `eventId`; it never creates another movement or another fact identity.
 - The regular-hold publisher claims only `REGULAR_STOCK_HOLD` outbox rows, so it cannot relay or
   alter the existing Campaign allocation publisher's events.
+
+## Phase 3C-1 — Order source and participant domain model
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T035, T045, Order and Saga domain regression | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=OrderDomainTests,RegularOrderDomainTests,PurchaseSagaDomainTests,PurchaseSagaLateSuccessTests,RegularHoldPaidSagaTests,OrderArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 23 selected Order tests passed with zero failures/errors: existing Flash Sale Order/Saga construction and late-success behavior remain intact; Buy Now is one line only; Cart lines are bounded, canonical, and immutable; regular hold payment moves through `CONFIRMING_STOCK` and completes only for the exact hold and Payment identity. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Order/Feature 049 changes. |
+
+### Phase 3C-1 safety boundary
+
+- This sub-phase is pure Order-domain preparation. It adds no public endpoint, JPA mapping, migration execution, Feign call, Kafka listener, outbox relay, or live infrastructure mutation.
+- Existing Flash Sale factories and reservation-specific Saga transitions retain their public signatures and state names. Regular orders use explicit `PurchaseSource` and `StockParticipantType`; their legacy campaign/reservation references are absent by invariant instead of being used to infer behavior.
