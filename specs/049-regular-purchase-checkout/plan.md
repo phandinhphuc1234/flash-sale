@@ -382,6 +382,12 @@ request and repeats only idempotent downstream operations. Inventory hold creati
 commit cannot oversell or duplicate: retry finds the same hold, while the five-minute Inventory
 expiry is the final orphan safety net.
 
+For `CART`, the initial durable `RECEIVED` intake has no `cartId`, because the browser may never
+choose one. The Cart internal snapshot returns that owner-bound identity; the Order persistence
+transition stores `cartId` and `cartVersion` together with `SNAPSHOT_VALIDATED`. The forward-only
+Order migration enforces this state-aware boundary, including the valid case of rejection before a
+Cart snapshot exists.
+
 ### Paid Cart path
 
 ```text

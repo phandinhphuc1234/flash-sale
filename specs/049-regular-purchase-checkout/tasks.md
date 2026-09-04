@@ -117,6 +117,7 @@ Cart, and exact replay for the same shopper/key/body.
 
 ### Order Buy Now intake and paid Saga
 
+- [X] T045A [US1] Add a forward-only Order Liquibase constraint correction so a Cart `RECEIVED` intake can persist before the internal snapshot, while later snapshot-bound states require the Cart reference, in `services/order-service/src/main/resources/db/changelog/changes/004-allow-cart-intake-before-snapshot.sql`
 - [X] T045 [US1] Generalize Order/OrderLine/PurchaseSaga domain models for purchase source, participant type/reference, non-empty line lists, and regular paid transition without changing Flash Sale semantics in `services/order-service/src/main/java/com/philia/flashsale/order/order/domain/model/Order.java` and `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/domain/model/PurchaseSaga.java`
 - [ ] T046 [US1] Implement canonical regular request, line/price, intake state, idempotency, and five-minute/deadline policies in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/domain/model/RegularPurchaseRequest.java`
 - [ ] T047 [US1] Implement regular-intake JPA entities/repositories/mappers and atomic accepted commit of intake, Order/lines, Saga, OrderCreatedV2, and PaymentRequestedV1 outbox in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/persistence/jpa/RegularPurchasePersistenceAdapter.java`

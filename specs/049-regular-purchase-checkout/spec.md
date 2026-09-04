@@ -417,6 +417,9 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
 - 2026-09-03 — HD-003C Option A approved: five-minute stock hold and shopper-scoped idempotency.
 - 2026-09-04 — HD-004 approved: Cart checkout and Product purchase-quote batch are limited to 20 distinct variant lines.
 - 2026-09-04 — HD-005 approved: Inventory accepts `requestedAt` within a configurable 90-second UTC clock-skew bound.
+- 2026-09-04 — HD-006 approved: a Cart request is persisted for shopper-scoped idempotency before
+  its Cart snapshot; `cartId`/`cartVersion` are attached only after the owner-bound Cart snapshot
+  succeeds, and a pre-snapshot rejection retains neither reference.
 - 2026-09-03 — Project owner approved the clarified specification for planning.
 - 2026-09-03 — Project owner approved the implementation plan and authorized task generation.
 - 2026-09-03 — Project owner approved the generated task ledger and authorized Phase 1 implementation.

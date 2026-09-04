@@ -227,7 +227,7 @@ New table: `regular_purchase_requests`
 | `state` | VARCHAR(32) | See state machine below. |
 | `proposed_order_id` | UUID | Allocated once. |
 | `proposed_hold_id` | UUID | Allocated once. |
-| `cart_id`, `cart_version` | nullable | Required only for Cart source. |
+| `cart_id`, `cart_version` | nullable | Both are absent while a `CART` request is durably `RECEIVED`, because the browser must not provide a Cart identity. The Order service attaches both atomically when the Cart snapshot succeeds. They are required from `SNAPSHOT_VALIDATED` onward; a request rejected before a snapshot may retain both as absent. |
 | `snapshot_payload` | JSONB | Canonical requested items/revisions/expected prices; contains no credentials. |
 | `hold_expires_at` | TIMESTAMPTZ nullable | Stored after Inventory acceptance. |
 | `order_id` | UUID nullable | Local FK after acceptance. |
@@ -259,6 +259,11 @@ non-terminal transient dependency failure
 `HOLD_ACQUIRED` may not become business `REJECTED`; Order must either finish the idempotent accepted
 commit or let/release the hold through an explicit safe recovery path. `ACCEPTED` has non-null
 Order/response; `REJECTED` has a stable rejection code.
+
+For a Cart submission, Order first persists the shopper/key/fingerprint intake row in `RECEIVED`
+without a Cart reference. It then calls the Cart-owned internal snapshot route and transitions to
+`SNAPSHOT_VALIDATED` only while storing the returned `cart_id` and `cart_version`. This preserves
+the crash/replay boundary without allowing a browser-selected Cart identity.
 
 ### Order changes
 

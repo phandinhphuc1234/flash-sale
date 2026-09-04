@@ -1,12 +1,16 @@
 package com.philia.flashsale.order.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.OffsetDateTime;
+import java.util.UUID;
 import javax.sql.DataSource;
 import liquibase.integration.spring.SpringLiquibase;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -47,6 +51,32 @@ class RegularPurchaseMigrationIntegrationTests {
         assertThat(jdbc.queryForObject(
                 "select count(*) from databasechangelog where id = '003-add-regular-purchase-checkout'",
                 Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from databasechangelog where id = '004-allow-cart-intake-before-snapshot'",
+                Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void allowsCartIdempotencyIntakeBeforeSnapshotButRequiresCartIdentityAfterward() {
+        insertCartRequest("RECEIVED", null, null);
+
+        assertThatThrownBy(() -> insertCartRequest("SNAPSHOT_VALIDATED", null, null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        insertCartRequest("SNAPSHOT_VALIDATED", UUID.randomUUID(), 0L);
+    }
+
+    private static void insertCartRequest(String state, UUID cartId, Long cartVersion) {
+        OffsetDateTime now = OffsetDateTime.parse("2030-01-01T10:00:00Z");
+        jdbc.update("""
+                insert into regular_purchase_requests (
+                    id, shopper_id, idempotency_key, request_fingerprint, source, state,
+                    proposed_order_id, proposed_hold_id, cart_id, cart_version, snapshot_payload,
+                    created_at, updated_at
+                ) values (?, ?, ?, ?, 'CART', ?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+                """,
+                UUID.randomUUID(), UUID.randomUUID(), "key-" + UUID.randomUUID(), "a".repeat(64), state,
+                UUID.randomUUID(), UUID.randomUUID(), cartId, cartVersion, "{\"items\":[]}", now, now);
     }
 
     private static boolean tableExists(String table) {

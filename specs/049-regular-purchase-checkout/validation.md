@@ -132,3 +132,15 @@ and compatible consumer images are reviewed.
 
 - This sub-phase is pure Order-domain preparation. It adds no public endpoint, JPA mapping, migration execution, Feign call, Kafka listener, outbox relay, or live infrastructure mutation.
 - Existing Flash Sale factories and reservation-specific Saga transitions retain their public signatures and state names. Regular orders use explicit `PurchaseSource` and `StockParticipantType`; their legacy campaign/reservation references are absent by invariant instead of being used to infer behavior.
+
+## Phase 3C-2 — Cart intake persistence correction
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T045A, forward-only Order migration | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=RegularPurchaseMigrationIntegrationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — two PostgreSQL Testcontainers tests applied changesets `003` and `004`; a Cart `RECEIVED` request may persist before Cart snapshot resolution, a `SNAPSHOT_VALIDATED` request without Cart identity is rejected, and a snapshot-bound request with Cart ID/version succeeds. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Order migration and Feature 049 artifacts. |
+
+### Phase 3C-2 safety boundary
+
+- Changeset `003` remains byte-for-byte unchanged, so any already-applied Liquibase checksum stays valid. Changeset `004` is forward-only and only replaces the check constraint.
+- The rule never accepts a browser-selected Cart ID. Order obtains Cart identity from the exact-subject internal Cart snapshot and records it only with the successful state transition.
