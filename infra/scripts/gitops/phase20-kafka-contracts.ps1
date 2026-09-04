@@ -58,7 +58,13 @@ $TopicContracts = @(
   "flashsale.purchase.commands.v1",
   "flashsale.order.payment-result.dlt.v1",
   "flashsale.flash-sale.purchase-command.dlt.v1",
-  "flashsale.order.purchase-reservation-result.dlt.v1"
+  "flashsale.order.purchase-reservation-result.dlt.v1",
+  "flashsale.inventory.regular-hold.commands.v1",
+  "flashsale.inventory.regular-hold.events.v1",
+  "flashsale.inventory.regular-hold-command.dlt.v1",
+  "flashsale.order.regular-hold-result.dlt.v1",
+  "flashsale.cart.checkout.commands.v1",
+  "flashsale.cart.checkout-reconciliation.dlt.v1"
 )
 $ApprovedInternalTopics = @("__consumer_offsets", "_schemas")
 
@@ -169,6 +175,70 @@ $SubjectContracts = @(
   [pscustomobject]@{
     Subject = "flashsale.order.purchase-reservation-result.dlt.v1-com.philia.flashsale.contract.purchase.event.v1.PurchaseAcceptedV1"
     SchemaPath = Join-Path $SchemaRoot "flashsale.purchase.events.v1\PurchaseAcceptedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.inventory.regular-hold.commands.v1-com.philia.flashsale.contract.regularhold.command.v1.ConfirmRegularStockHoldV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.commands.v1\ConfirmRegularStockHoldV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.inventory.regular-hold.commands.v1-com.philia.flashsale.contract.regularhold.command.v1.ReleaseRegularStockHoldV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.commands.v1\ReleaseRegularStockHoldV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.inventory.regular-hold.events.v1-com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldConfirmedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.events.v1\RegularStockHoldConfirmedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.inventory.regular-hold.events.v1-com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldReleasedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.events.v1\RegularStockHoldReleasedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.inventory.regular-hold.events.v1-com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldExpiredV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.events.v1\RegularStockHoldExpiredV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.inventory.regular-hold-command.dlt.v1-com.philia.flashsale.contract.regularhold.command.v1.ConfirmRegularStockHoldV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.commands.v1\ConfirmRegularStockHoldV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.inventory.regular-hold-command.dlt.v1-com.philia.flashsale.contract.regularhold.command.v1.ReleaseRegularStockHoldV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.commands.v1\ReleaseRegularStockHoldV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.regular-hold-result.dlt.v1-com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldConfirmedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.events.v1\RegularStockHoldConfirmedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.regular-hold-result.dlt.v1-com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldReleasedV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.events.v1\RegularStockHoldReleasedV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.regular-hold-result.dlt.v1-com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldExpiredV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.inventory.regular-hold.events.v1\RegularStockHoldExpiredV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.cart.checkout.commands.v1-com.philia.flashsale.contract.cart.command.v1.ReconcilePurchasedCartSnapshotV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.cart.checkout.commands.v1\ReconcilePurchasedCartSnapshotV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.cart.checkout-reconciliation.dlt.v1-com.philia.flashsale.contract.cart.command.v1.ReconcilePurchasedCartSnapshotV1"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.cart.checkout.commands.v1\ReconcilePurchasedCartSnapshotV1.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v2.OrderCreatedV2"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderCreatedV2.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v2.OrderConfirmedV2"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderConfirmedV2.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v2.OrderCancelledV2"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderCancelledV2.avsc"
+  },
+  [pscustomobject]@{
+    Subject = "flashsale.order.events.v1-com.philia.flashsale.contract.order.event.v2.OrderExpiredV2"
+    SchemaPath = Join-Path $SchemaRoot "flashsale.order.events.v1\OrderExpiredV2.avsc"
   }
 )
 
@@ -177,7 +247,8 @@ $SchemaScripts = @(
   "register-flashsale-schemas.ps1",
   "register-order-schemas.ps1",
   "register-payment-schemas.ps1",
-  "register-purchase-saga-schemas.ps1"
+  "register-purchase-saga-schemas.ps1",
+  "register-regular-purchase-schemas.ps1"
 )
 
 function Invoke-BoundedNativeProcess {
@@ -614,7 +685,8 @@ if ($Apply) {
     "infra/docker/schema-registry/register-flashsale-schemas.ps1",
     "infra/docker/schema-registry/register-order-schemas.ps1",
     "infra/docker/schema-registry/register-payment-schemas.ps1",
-    "infra/docker/schema-registry/register-purchase-saga-schemas.ps1"
+    "infra/docker/schema-registry/register-purchase-saga-schemas.ps1",
+    "infra/docker/schema-registry/register-regular-purchase-schemas.ps1"
   )
   $phase20AssetPaths += @($SubjectContracts.SchemaPath | ForEach-Object {
       [IO.Path]::GetRelativePath($RepoRoot, $_).Replace('\', '/')

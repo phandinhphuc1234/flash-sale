@@ -46,17 +46,17 @@ static infrastructure gates.
 
 ### Versioned Kafka contracts
 
-- [ ] T009 [P] Add `ConfirmRegularStockHoldV1.avsc` and `ReleaseRegularStockHoldV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.inventory.regular-hold.commands.v1/`
-- [ ] T010 [P] Add `RegularStockHoldConfirmedV1.avsc`, `RegularStockHoldReleasedV1.avsc`, and `RegularStockHoldExpiredV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.inventory.regular-hold.events.v1/`
-- [ ] T011 [P] Add `ReconcilePurchasedCartSnapshotV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.cart.checkout.commands.v1/`
-- [ ] T012 [P] Add regular-purchase `OrderCreatedV2.avsc`, `OrderConfirmedV2.avsc`, `OrderCancelledV2.avsc`, and `OrderExpiredV2.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.order.events.v1/` without modifying V1 schemas
-- [ ] T013 Add field/default, identity, logical-type, keying, and BACKWARD_TRANSITIVE compatibility tests for every Feature 049 record in `contracts/kafka-avro-contracts/src/test/java/com/philia/flashsale/contract/regularpurchase/RegularPurchaseSchemaTests.java`
+- [X] T009 [P] Add `ConfirmRegularStockHoldV1.avsc` and `ReleaseRegularStockHoldV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.inventory.regular-hold.commands.v1/`
+- [X] T010 [P] Add `RegularStockHoldConfirmedV1.avsc`, `RegularStockHoldReleasedV1.avsc`, and `RegularStockHoldExpiredV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.inventory.regular-hold.events.v1/`
+- [X] T011 [P] Add `ReconcilePurchasedCartSnapshotV1.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.cart.checkout.commands.v1/`
+- [X] T012 [P] Add regular-purchase `OrderCreatedV2.avsc`, `OrderConfirmedV2.avsc`, `OrderCancelledV2.avsc`, and `OrderExpiredV2.avsc` under `contracts/kafka-avro-contracts/src/main/avro/topics/flashsale.order.events.v1/` without modifying V1 schemas
+- [X] T013 Add field/default, identity, logical-type, keying, and BACKWARD_TRANSITIVE compatibility tests for every Feature 049 record in `contracts/kafka-avro-contracts/src/test/java/com/philia/flashsale/contract/regularpurchase/RegularPurchaseSchemaTests.java`
 
 ### Topic and Schema Registry provisioning
 
-- [ ] T014 [P] Add idempotent local creation for three main topics and three consumer-specific DLTs in `infra/docker/kafka/init-regular-purchase-topics.sh`
-- [ ] T015 [P] Add source and DLT TopicRecordNameStrategy registration/compatibility checks in `infra/docker/schema-registry/register-regular-purchase-schemas.ps1`
-- [ ] T016 Extend the reviewed cloud topic/subject inventory and validation/apply flow in `infra/scripts/gitops/phase20-kafka-contracts.ps1`
+- [X] T014 [P] Add idempotent local creation for three main topics and three consumer-specific DLTs in `infra/docker/kafka/init-regular-purchase-topics.sh`
+- [X] T015 [P] Add source and DLT TopicRecordNameStrategy registration/compatibility checks in `infra/docker/schema-registry/register-regular-purchase-schemas.ps1`
+- [X] T016 Extend the reviewed cloud topic/subject inventory and validation/apply flow in `infra/scripts/gitops/phase20-kafka-contracts.ps1`
 
 ### Expand-first database migrations
 

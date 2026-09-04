@@ -42,3 +42,16 @@ types, so the Inventory application context could not start. It is now a concret
 - The cloud overlay currently has no Cart Deployment/Service image workload. Its ConfigMap and
   Secret boundary are prepared in Phase 1; cloud workload/ECR/delivery ownership must be completed
   before the Phase 8 cloud rollout gate.
+
+## Phase 2A — additive Kafka contracts and provisioning inventory
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T009–T013, Avro contract compile and tests | `.\\mvnw.cmd --batch-mode --no-transfer-progress -pl contracts/kafka-avro-contracts test` | PASS — generated SpecificRecords and all contract tests pass; V1 schemas were not modified. |
+| T014, local topic script syntax | Git Bash `bash -n infra/docker/kafka/init-regular-purchase-topics.sh` | PASS — the script creates only six additive topics, never deletes a topic, and refuses an ordering-changing expansion after records exist. |
+| T015–T016, provisioning-script syntax | PowerShell parser for `register-regular-purchase-schemas.ps1` and `phase20-kafka-contracts.ps1` | PASS — source and DLT TopicRecordNameStrategy subjects are enumerated with `BACKWARD_TRANSITIVE` checks. |
+| Repository hygiene | scoped `git diff --check` | PASS — no whitespace error. |
+
+No broker, Schema Registry, consumer group, subject, or Kubernetes resource was changed by this
+sub-phase. Phase 20 `-Apply` remains an explicit, merge-gated operator action after all migrations
+and compatible consumer images are reviewed.
