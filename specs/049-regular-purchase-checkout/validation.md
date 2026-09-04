@@ -210,3 +210,16 @@ and compatible consumer images are reviewed.
 - The controller accepts only a shopper JWT subject and never accepts a shopper, Order, hold, Cart, provider, or secret identity from the browser body.
 - The only endpoint-specific error projection is the approved `PRICE_CHANGED` extension; all other failures remain the established Order `ApiErrorResponse` envelope with no raw downstream body.
 - The Order security matcher already covers every `/api/v1/orders/**` route; the new security regression proves Buy Now cannot bypass that bearer boundary. No Gateway routing or cloud state changed.
+
+## Phase 3C-8 — Regular Order outbox relay contracts
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T053, regular outbox mapper/dispatcher/architecture regression | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=OrderCreatedV2AvroMapperTests,ConfirmRegularStockHoldAvroMapperTests,OrderOutboxEventTypeDispatcherTests,PaymentRequestedPublisherTests,OrderArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 12 selected tests passed with zero failures/errors. Dispatcher routes additive `OrderCreatedV2` and `ConfirmRegularStockHold` independently; V2 validates regular source/hold/deadline/line snapshot facts, while `PaymentRequestedV1` remains unchanged. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Feature 049 changes. |
+
+### Phase 3C-8 safety boundary
+
+- V1 Flash Sale `OrderCreated` routing and mapper remain unchanged. `OrderCreatedV2` publishes to the same approved Order topic under its new Avro record-name subject.
+- The regular confirm publisher only relays an already durable outbox command and preserves the existing Order key, purchase-request correlation, payment causation, and trace headers. T054 owns writing that command after a verified Payment result.
+- No broker, Registry, consumer, scheduler, database, cloud resource, or runtime flag was changed.

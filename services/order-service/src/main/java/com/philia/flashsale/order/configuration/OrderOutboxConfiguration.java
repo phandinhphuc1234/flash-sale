@@ -2,7 +2,9 @@ package com.philia.flashsale.order.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.contract.order.event.v1.OrderCreatedV1;
+import com.philia.flashsale.contract.order.event.v2.OrderCreatedV2;
 import com.philia.flashsale.contract.payment.command.v1.PaymentRequestedV1;
+import com.philia.flashsale.contract.regularhold.command.v1.ConfirmRegularStockHoldV1;
 import com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservationV1;
 import com.philia.flashsale.contract.purchase.command.v1.ReleasePurchaseReservationV1;
 import com.philia.flashsale.contract.order.event.v1.OrderConfirmedV1;
@@ -11,11 +13,15 @@ import com.philia.flashsale.contract.order.event.v1.OrderExpiredV1;
 import com.philia.flashsale.contract.order.event.v1.OrderPaymentReviewRequiredV1;
 import com.philia.flashsale.order.outbox.adapter.in.scheduling.OrderOutboxPublisherJob;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderCreatedPublisher;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderCreatedV2Publisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedAvroMapper;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedV2AvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaPaymentRequestedPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.PaymentRequestedAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.ConfirmReservationAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaConfirmReservationPublisher;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaConfirmRegularStockHoldPublisher;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.ConfirmRegularStockHoldAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaReleaseReservationPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.ReleaseReservationAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderConfirmedAvroMapper;
@@ -70,6 +76,18 @@ public class OrderOutboxConfiguration {
     }
 
     @Bean
+    OrderCreatedV2AvroMapper orderCreatedV2AvroMapper(ObjectMapper objectMapper) {
+        return new OrderCreatedV2AvroMapper(objectMapper);
+    }
+
+    @Bean
+    KafkaOrderCreatedV2Publisher kafkaOrderCreatedV2Publisher(
+            KafkaTemplate<String, OrderCreatedV2> kafka, OrderCreatedV2AvroMapper mapper,
+            OrderKafkaProperties properties) {
+        return new KafkaOrderCreatedV2Publisher(kafka, mapper, properties);
+    }
+
+    @Bean
     PaymentRequestedAvroMapper paymentRequestedAvroMapper(ObjectMapper objectMapper) {
         return new PaymentRequestedAvroMapper(objectMapper);
     }
@@ -91,6 +109,18 @@ public class OrderOutboxConfiguration {
             KafkaTemplate<String, ConfirmPurchaseReservationV1> kafka,
             ConfirmReservationAvroMapper mapper, OrderKafkaProperties properties) {
         return new KafkaConfirmReservationPublisher(kafka, mapper, properties);
+    }
+
+    @Bean
+    ConfirmRegularStockHoldAvroMapper confirmRegularStockHoldAvroMapper(ObjectMapper objectMapper) {
+        return new ConfirmRegularStockHoldAvroMapper(objectMapper);
+    }
+
+    @Bean
+    KafkaConfirmRegularStockHoldPublisher kafkaConfirmRegularStockHoldPublisher(
+            KafkaTemplate<String, ConfirmRegularStockHoldV1> kafka,
+            ConfirmRegularStockHoldAvroMapper mapper, OrderKafkaProperties properties) {
+        return new KafkaConfirmRegularStockHoldPublisher(kafka, mapper, properties);
     }
 
     @Bean
@@ -156,8 +186,10 @@ public class OrderOutboxConfiguration {
     @Bean
     OrderOutboxEventTypeDispatcher orderOutboxEventTypeDispatcher(
             KafkaOrderCreatedPublisher orderCreatedPublisher,
+            KafkaOrderCreatedV2Publisher orderCreatedV2Publisher,
             KafkaPaymentRequestedPublisher paymentRequestedPublisher,
             KafkaConfirmReservationPublisher confirmReservationPublisher,
+            KafkaConfirmRegularStockHoldPublisher confirmRegularStockHoldPublisher,
             KafkaOrderConfirmedPublisher orderConfirmedPublisher,
             KafkaReleaseReservationPublisher releaseReservationPublisher,
             KafkaOrderCancelledPublisher orderCancelledPublisher,
@@ -165,8 +197,10 @@ public class OrderOutboxConfiguration {
             KafkaOrderPaymentReviewRequiredPublisher reviewPublisher) {
         return new OrderOutboxEventTypeDispatcher(Map.of(
                 "OrderCreated", orderCreatedPublisher,
+                "OrderCreatedV2", orderCreatedV2Publisher,
                 "PaymentRequested", paymentRequestedPublisher,
                 "ConfirmPurchaseReservation", confirmReservationPublisher,
+                "ConfirmRegularStockHold", confirmRegularStockHoldPublisher,
                 "OrderConfirmed", orderConfirmedPublisher,
                 "ReleasePurchaseReservation", releaseReservationPublisher,
                 "OrderCancelled", orderCancelledPublisher,
