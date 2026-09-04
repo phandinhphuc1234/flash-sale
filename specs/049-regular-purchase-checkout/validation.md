@@ -184,3 +184,16 @@ and compatible consumer images are reviewed.
 - Feign and remote DTOs are confined to `adapter/out/client`; the regular-purchase application ports expose only Order-owned records and sanitized failure classifications.
 - Neither adapter forwards a shopper/admin bearer token. The existing Order machine identity is added by its scoped interceptor; no secret or authorization header is logged.
 - The Inventory adapter never invents a new hold identity after an uncertain response. T050 recovery reuses the durable IDs already carried by the command.
+
+## Phase 3C-6 — Buy Now checkpoint orchestration
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T050, Buy Now workflow and dependent client/architecture regression | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=RegularPurchaseCheckoutServiceTests,ProductPurchaseQuoteClientAdapterTests,InventoryRegularHoldClientAdapterTests,OrderArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 13 selected tests passed with zero failures/errors. Buy Now persists `PRODUCT_VALIDATED` and `HOLD_ACQUIRED` checkpoints around the two HTTP decisions, then atomically accepts the Order/Saga/outbox. Accepted equivalent replays make no downstream call; price/stock business decisions become durable rejection before a hold; uncertain dependency outcomes keep their existing checkpoint for same-ID recovery. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Order/Feature 049 changes. |
+
+### Phase 3C-6 safety boundary
+
+- `RegularPurchaseCheckoutService` has no transaction annotation and calls only transactional persistence-port operations between synchronous Product/Inventory calls. It never holds an Order database transaction across the network.
+- A replay reuses the persisted Order and hold identities. An Inventory timeout remains `INVENTORY_HOLD_AMBIGUOUS`, so the application neither rejects it as out of stock nor generates a second hold identity.
+- T051 remains responsible for the public HTTP mapping, feature flag response, headers, and structured `PRICE_CHANGED` response; this phase adds no controller or new public route.
