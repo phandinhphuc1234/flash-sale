@@ -170,3 +170,17 @@ and compatible consumer images are reviewed.
 - The acceptance transaction contains only Order-owned PostgreSQL writes. Product, Cart, Inventory, Payment, and Kafka calls remain outside it; Kafka publication stays an outbox responsibility.
 - Changeset `005` is additive and forward-only. It does not edit the previously applied version-1 check constraint, preserving Liquibase checksum safety for environments that already ran earlier changesets.
 - The idempotency advisory lock is scoped to the authenticated shopper and idempotency key. It prevents duplicate accepted state for that identity while preserving an existing request as the replay source.
+
+## Phase 3C-5 — Order internal Product and Inventory clients
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T048, T049, client boundary and architecture regression | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=ProductPurchaseQuoteClientAdapterTests,InventoryRegularHoldClientAdapterTests,OrderInternalClientConfigurationTests,OrderArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 11 selected tests passed with zero failures/errors. Product requests are bounded, deduplicated, sorted batches and reject malformed/identity-mismatched results. Inventory preserves the same hold/purchase request/order identities and maps a transport timeout to an explicit ambiguous outcome instead of a stock rejection. |
+| Dependency/configuration scope | Existing Order OpenFeign/OAuth2 dependencies and `order-product`/`order-inventory` timeout configuration | PASS — no new dependency. Scoped clients use the existing Order client-credentials token registration, `X-Trace-Id`, 300 ms connect timeout, bounded read timeout, and `Retryer.NEVER_RETRY`. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Order/Feature 049 changes. |
+
+### Phase 3C-5 safety boundary
+
+- Feign and remote DTOs are confined to `adapter/out/client`; the regular-purchase application ports expose only Order-owned records and sanitized failure classifications.
+- Neither adapter forwards a shopper/admin bearer token. The existing Order machine identity is added by its scoped interceptor; no secret or authorization header is logged.
+- The Inventory adapter never invents a new hold identity after an uncertain response. T050 recovery reuses the durable IDs already carried by the command.

@@ -1,6 +1,9 @@
 package com.philia.flashsale.order.configuration;
 
+import com.philia.flashsale.order.regularpurchase.adapter.out.client.inventory.InventoryRegularHoldFeignClient;
+import com.philia.flashsale.order.regularpurchase.adapter.out.client.product.ProductPurchaseQuoteFeignClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
@@ -13,6 +16,10 @@ import feign.RequestInterceptor;
 
 /** Composition-root wiring for Order's one least-privilege client-credentials token. */
 @Configuration(proxyBeanMethods = false)
+@EnableFeignClients(clients = {
+        ProductPurchaseQuoteFeignClient.class,
+        InventoryRegularHoldFeignClient.class
+})
 public class OrderInternalClientConfiguration {
 
     @Bean
