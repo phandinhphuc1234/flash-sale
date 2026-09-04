@@ -90,6 +90,9 @@ flashsale:
       outbox-publisher-enabled: ${INVENTORY_REGULAR_HOLD_OUTBOX_PUBLISHER_ENABLED:false}
       expiry-enabled: ${INVENTORY_REGULAR_HOLD_EXPIRY_ENABLED:false}
       ttl: ${INVENTORY_REGULAR_HOLD_TTL:5m}
+      # `requestedAt` is Order audit evidence only. Inventory owns the acceptance window and
+      # always calculates the five-minute hold TTL from its own UTC clock.
+      max-clock-skew: ${INVENTORY_REGULAR_HOLD_MAX_CLOCK_SKEW:90s}
       commands-topic: ${INVENTORY_REGULAR_HOLD_COMMANDS_TOPIC:flashsale.inventory.regular-hold.commands.v1}
       events-topic: ${INVENTORY_REGULAR_HOLD_EVENTS_TOPIC:flashsale.inventory.regular-hold.events.v1}
       command-consumer-group: ${INVENTORY_REGULAR_HOLD_COMMAND_CONSUMER_GROUP:inventory-regular-hold-commands-v1}

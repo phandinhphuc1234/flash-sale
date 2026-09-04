@@ -257,7 +257,7 @@ Cart Kafka adapter -> conditional reconciliation use case
 | Public Order HTTP | Add `POST /api/v1/orders/buy-now` and `POST /api/v1/orders/cart-checkouts`; both require JWT and `Idempotency-Key`. Extend Order reads additively with purchase source and generic stock-hold metadata. |
 | Cart HTTP | Existing public Cart response adds `cartVersion` and `itemVersion`; add an Order-only internal checkout-snapshot endpoint. CRUD behavior remains unchanged. |
 | Product HTTP | Add an Order-only batch purchase-quote endpoint returning current sellability, price, currency, identity, and version. Existing Cart display endpoint remains unchanged. |
-| Inventory HTTP | Add an Order-only atomic regular-hold creation endpoint; it is idempotent by purchase request and fingerprint. |
+| Inventory HTTP | Add an Order-only atomic regular-hold creation endpoint; it is idempotent by purchase request and fingerprint. `requestedAt` is an audit value accepted only within the Inventory-owned, configurable 90-second clock-skew bound. |
 | Payment Kafka/HTTP | Reuse `PaymentRequestedV1`, Payment result events, Checkout Session, webhook, and query APIs unchanged. |
 | Regular hold Kafka | Add confirm/release commands and confirmed/released/expired facts, keyed by `orderId`; add Inventory-command and Order-result DLTs. |
 | Cart reconciliation Kafka | Add one conditional cleanup command keyed by `cartId`; add Cart consumer DLT. |

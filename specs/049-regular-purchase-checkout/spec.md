@@ -75,6 +75,10 @@ frontend without a supported Cart checkout action.
 - Q: How many distinct Cart lines may one regular checkout submit? → A: A regular checkout and its
   Product purchase-quote batch may contain at most 20 distinct variant lines. This bounds
   synchronous decision work while preserving the existing per-variant quantity limit of 10.
+- Q: How much clock skew may Inventory accept for the Order-provided `requestedAt` audit value? →
+  A: Accept a maximum skew of 90 seconds. The bound is an Inventory-owned environment setting so it
+  can be tightened later without changing the request contract; it never changes the five-minute
+  hold duration calculated from Inventory's own clock.
 
 ## Baseline References
 
@@ -363,6 +367,9 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
 - **HD-004 — Cart checkout line cap (decided 2026-09-04)**: One Cart checkout and its Product
   purchase-quote batch may contain at most 20 distinct variant lines. This is separate from the
   existing 1–10 quantity bound for each variant.
+- **HD-005 — Inventory request-time skew (decided 2026-09-04)**: Inventory accepts an Order
+  `requestedAt` audit timestamp only when it is within 90 seconds of Inventory's UTC clock. The
+  default is externally configurable and does not alter Inventory's five-minute hold TTL.
 
 | Priority | Why it blocks | Options and trade-offs | Owner | Decision deadline |
 |----------|---------------|------------------------|-------|-------------------|
@@ -409,6 +416,7 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
 - 2026-09-03 — HD-003B Option A approved: Cart remains editable and cleanup preserves later intent.
 - 2026-09-03 — HD-003C Option A approved: five-minute stock hold and shopper-scoped idempotency.
 - 2026-09-04 — HD-004 approved: Cart checkout and Product purchase-quote batch are limited to 20 distinct variant lines.
+- 2026-09-04 — HD-005 approved: Inventory accepts `requestedAt` within a configurable 90-second UTC clock-skew bound.
 - 2026-09-03 — Project owner approved the clarified specification for planning.
 - 2026-09-03 — Project owner approved the implementation plan and authorized task generation.
 - 2026-09-03 — Project owner approved the generated task ledger and authorized Phase 1 implementation.

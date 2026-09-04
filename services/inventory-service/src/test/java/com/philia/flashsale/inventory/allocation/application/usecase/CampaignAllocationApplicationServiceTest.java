@@ -15,6 +15,7 @@ import com.philia.flashsale.inventory.allocation.domain.model.CampaignStockAlloc
 import com.philia.flashsale.inventory.movement.application.port.out.RecordStockMovementPort;
 import com.philia.flashsale.inventory.movement.domain.model.MovementType;
 import com.philia.flashsale.inventory.movement.domain.model.StockMovement;
+import com.philia.flashsale.inventory.regularhold.application.port.out.LoadActiveRegularHoldQuantityPort;
 import com.philia.flashsale.inventory.stock.application.port.out.LoadInventoryItemPort;
 import com.philia.flashsale.inventory.stock.application.port.out.SaveInventoryItemPort;
 import com.philia.flashsale.inventory.stock.domain.model.InventoryItem;
@@ -33,9 +34,10 @@ class CampaignAllocationApplicationServiceTest {
         SaveCampaignStockAllocationPort saveAllocation = mock(SaveCampaignStockAllocationPort.class);
         RecordStockMovementPort recordMovement = mock(RecordStockMovementPort.class);
         RecordAllocationOutboxPort recordOutbox = mock(RecordAllocationOutboxPort.class);
+        LoadActiveRegularHoldQuantityPort activeRegularHolds = mock(LoadActiveRegularHoldQuantityPort.class);
         CampaignAllocationApplicationService service = new CampaignAllocationApplicationService(
                 loadInventory, saveInventory, loadAllocation, saveAllocation,
-                recordMovement, recordOutbox);
+                recordMovement, recordOutbox, activeRegularHolds);
 
         UUID requestId = UUID.randomUUID();
         UUID campaignId = UUID.randomUUID();
@@ -45,6 +47,7 @@ class CampaignAllocationApplicationServiceTest {
                 UUID.randomUUID(), variantId, "SKU-1", 100, 0, 0, now, now);
         when(loadAllocation.findByRequestId(requestId)).thenReturn(Optional.empty());
         when(loadInventory.findByVariantIdForUpdate(variantId)).thenReturn(Optional.of(item));
+        when(activeRegularHolds.activeHeldQuantity(eq(item.id()), any(Instant.class))).thenReturn(0L);
         when(saveInventory.save(item)).thenReturn(item);
         when(saveAllocation.save(any(CampaignStockAllocation.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

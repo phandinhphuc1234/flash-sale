@@ -26,7 +26,7 @@ purchase entry points and producers disabled by default.
 
 - [X] T001 Add the already governed OpenFeign/OAuth2 client dependencies to `services/order-service/pom.xml` and Kafka/Avro dependencies to `services/inventory-service/pom.xml` and `services/cart-service/pom.xml`
 - [X] T002 [P] Add disabled Cart reconciliation consumer/topic properties without Secret values in `services/cart-service/src/main/resources/application.yml`
-- [X] T003 [P] Add disabled regular-hold API, consumer, publisher, expiry, topic, and five-minute TTL properties in `services/inventory-service/src/main/resources/application.yml`
+- [X] T003 [P] Add disabled regular-hold API, consumer, publisher, expiry, topic, five-minute TTL, and configurable 90-second maximum clock-skew properties in `services/inventory-service/src/main/resources/application.yml`
 - [X] T004 [P] Add disabled regular-intake/recovery/producer properties plus Cart/Product/Inventory URLs, OAuth registration, timeouts, topics, and DLTs in `services/order-service/src/main/resources/application.yml`
 - [X] T005 [P] Add Order-only purchase-quote subject/scope properties without changing existing Cart/Campaign contracts in `services/product-service/src/main/resources/application.yml`
 - [X] T006 Add `ORDER_CLIENT_ID`/`ORDER_CLIENT_SECRET`, internal URLs, topics, and disabled feature flags to `infra/docker/.env.example` and `infra/docker/compose.yml`
@@ -95,8 +95,8 @@ Cart, and exact replay for the same shopper/key/body.
 ### Tests for User Story 1
 
 - [X] T031 [P] [US1] Add Product purchase-quote application/HTTP/security tests for found, missing, unsellable, current price/currency/version, order preservation, and bounded batch input in `services/product-service/src/test/java/com/philia/flashsale/product/catalogquery/PurchaseQuoteTests.java`
-- [ ] T032 [P] [US1] Add Inventory hold domain tests for five-minute TTL, availability equation, item canonicalization, hold confirmation, and illegal transitions in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/domain/RegularStockHoldTests.java`
-- [ ] T033 [P] [US1] Add Inventory atomic persistence/concurrency tests for same-request replay, conflict, deterministic row locking, one-line oversell prevention, and exact movement in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldPersistenceIntegrationTests.java`
+- [X] T032 [P] [US1] Add Inventory hold domain tests for five-minute TTL, availability equation, item canonicalization, hold confirmation, and illegal transitions in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/domain/RegularStockHoldTests.java`
+- [X] T033 [P] [US1] Add Inventory atomic persistence/concurrency tests for same-request replay, conflict, deterministic row locking, one-line oversell prevention, and exact movement in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldPersistenceIntegrationTests.java`
 - [ ] T034 [P] [US1] Add Buy Now request/fingerprint, price/sellability/stock rejection, owner derivation, five-second budget, replay/conflict, and response contract tests in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/BuyNowUseCaseTests.java` and `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/BuyNowHttpTests.java`
 - [ ] T035 [P] [US1] Add multi-line-capable Order/source/participant/total and existing Flash Sale construction regression tests in `services/order-service/src/test/java/com/philia/flashsale/order/order/domain/RegularOrderDomainTests.java`
 - [ ] T036 [P] [US1] Add regular confirm-command/result outbox, inbox replay, Order terminalization, and unchanged `PaymentRequestedV1` mapping tests in `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/RegularHoldPaidSagaTests.java`
@@ -108,10 +108,10 @@ Cart, and exact replay for the same shopper/key/body.
 
 ### Inventory hold creation and paid confirmation
 
-- [ ] T039 [US1] Implement `RegularStockHold`, item, status, TTL, availability, and transition policies in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/domain/model/RegularStockHold.java`
-- [ ] T040 [US1] Implement create/confirm input ports, commands/results, and use cases with one capability-level atomic persistence port in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/application/usecase/RegularStockHoldService.java`
-- [ ] T041 [US1] Implement JPA entities/repositories/mappers and deterministic Inventory-row locking for atomic hold creation/confirmation in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/out/persistence/jpa/RegularStockHoldPersistenceAdapter.java`
-- [ ] T042 [US1] Implement the idempotent internal regular-hold request/response DTOs and controller in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/in/web/RegularStockHoldController.java`
+- [X] T039 [US1] Implement `RegularStockHold`, item, status, TTL, availability, and transition policies in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/domain/model/RegularStockHold.java`
+- [X] T040 [US1] Implement create/confirm input ports, commands/results, and use cases with one capability-level atomic persistence port in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/application/usecase/RegularStockHoldService.java`
+- [X] T041 [US1] Implement JPA entities/repositories/mappers and deterministic Inventory-row locking for atomic hold creation/confirmation in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/out/persistence/jpa/RegularStockHoldPersistenceAdapter.java`
+- [X] T042 [US1] Implement the idempotent internal regular-hold request/response DTOs and controller in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/in/web/RegularStockHoldController.java`
 - [ ] T043 [US1] Implement strict `ConfirmRegularStockHoldV1` mapper/listener, command inbox transaction, and consumer-specific DLT routing in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/in/messaging/kafka/RegularHoldCommandKafkaConsumer.java`
 - [ ] T044 [US1] Generalize Inventory outbox claim/retry dispatch and publish stable confirmed facts in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/outbox/application/InventoryOutboxEventTypeDispatcher.java` and `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/out/messaging/kafka/RegularHoldOutcomePublisher.java`
 

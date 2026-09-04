@@ -138,8 +138,9 @@ Request:
 ```
 
 Order does not supply `expiresAt`; Inventory applies its configured, contract-tested five-minute
-policy to its own current time. `requestedAt` is trace/audit input and must fall within an approved
-clock-skew bound; it cannot extend the hold.
+policy to its own current time. `requestedAt` is trace/audit input and must be within 90 seconds of
+Inventory's UTC clock by default. Inventory owns the `INVENTORY_REGULAR_HOLD_MAX_CLOCK_SKEW`
+environment setting so operators can tighten the accepted skew later; it cannot extend the hold.
 
 Response `201` (new) or `200` (equivalent replay):
 

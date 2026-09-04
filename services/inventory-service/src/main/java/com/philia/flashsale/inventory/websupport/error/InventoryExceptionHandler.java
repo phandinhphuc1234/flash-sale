@@ -8,6 +8,8 @@ import com.philia.flashsale.inventory.allocation.domain.exception.AllocationRequ
 import com.philia.flashsale.inventory.stock.domain.exception.InsufficientStockException;
 import com.philia.flashsale.inventory.stock.application.exception.StockApplicationException;
 import com.philia.flashsale.inventory.stock.domain.exception.InventoryDomainException;
+import com.philia.flashsale.inventory.regularhold.application.exception.RegularStockHoldApplicationException;
+import com.philia.flashsale.inventory.regularhold.domain.exception.RegularStockHoldDomainException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -18,8 +20,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class InventoryExceptionHandler {
     @ExceptionHandler({StockApplicationException.class, AllocationApplicationException.class,
-            InventoryDomainException.class, AllocationDomainException.class})
+            InventoryDomainException.class, AllocationDomainException.class,
+            RegularStockHoldApplicationException.class, RegularStockHoldDomainException.class})
     public ResponseEntity<ApiErrorResponse> handleBusiness(RuntimeException exception) {
+        if (exception instanceof RegularStockHoldApplicationException regularHold) {
+            return regularHoldError(regularHold);
+        }
         if (exception instanceof InsufficientStockException) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(ApiErrorResponse.of("INVENTORY_INSUFFICIENT_STOCK", "Insufficient available stock"));
@@ -36,6 +42,22 @@ public class InventoryExceptionHandler {
         String message = notFound ? "Inventory resource was not found" : "Inventory operation was rejected";
         return ResponseEntity.status(status)
                 .body(ApiErrorResponse.of(code, message));
+    }
+
+    private ResponseEntity<ApiErrorResponse> regularHoldError(
+            RegularStockHoldApplicationException exception) {
+        return switch (exception.reason()) {
+            case IDENTITY_CONFLICT -> ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                    "HOLD_IDENTITY_CONFLICT", "Purchase request identity was already used with different hold data"));
+            case INVENTORY_ITEM_NOT_FOUND -> ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                    "INVENTORY_ITEM_NOT_FOUND", "A submitted variant has no Inventory item"));
+            case INSUFFICIENT_STOCK -> ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+                    "INSUFFICIENT_STOCK", "Regular stock is insufficient for the submitted purchase",
+                    java.util.List.of(new FieldViolation("items", "Requested quantity exceeds current regular availability"))));
+            case REQUEST_TIME_OUT_OF_RANGE -> ResponseEntity.badRequest().body(ApiErrorResponse.of(
+                    "VALIDATION_ERROR", "Request validation failed",
+                    java.util.List.of(new FieldViolation("requestedAt", "must be within the accepted clock-skew bound"))));
+        };
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

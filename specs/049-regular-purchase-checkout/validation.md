@@ -87,3 +87,18 @@ and compatible consumer images are reviewed.
   reserve Inventory, create an Order, emit an event, or expose the internal route through Gateway.
 - The Product endpoint accepts only the exact `order-service` machine identity and
   `catalog.purchase-quote.read` scope. No existing Cart or Campaign capability was broadened.
+
+## Phase 3B-1 — Inventory regular-hold core
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T032, T039–T040, focused domain/application tests | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/inventory-service -am "-Dtest=RegularStockHoldTest,RegularStockHoldApplicationServiceTest,CampaignAllocationApplicationServiceTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — nine focused tests cover the exact five-minute TTL, ±90-second requested-at acceptance boundary, canonical lines, legal terminal transitions, regular availability, a one-time physical deduction, stock movement, and unchanged campaign-allocation safety. |
+| T033, T041–T042, PostgreSQL HTTP/concurrency compatibility | `.\mvnw.cmd --batch-mode --no-transfer-progress -pl services/inventory-service -am "-Dtest=RegularStockHoldCompatibilityTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — six PostgreSQL Testcontainers tests cover Order-only HTTP authentication, initial/replay/conflict identity semantics, all-or-nothing multi-line validation, 91-second skew rejection, deterministic lock contention without oversell, and one confirmed movement/deduction. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in the scoped Inventory/Feature 049 changes. |
+
+### Phase 3B-1 safety boundary
+
+- The Inventory HTTP endpoint remains disabled by default and is callable only by the documented
+  `order-service` machine identity and scope; it is not routed through Gateway.
+- Core confirmation is durable and atomic locally, but its Kafka command listener and fact outbox
+  publisher are still disabled and remain the next checked tasks (T043–T044).
