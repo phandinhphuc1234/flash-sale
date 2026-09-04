@@ -144,3 +144,15 @@ and compatible consumer images are reviewed.
 
 - Changeset `003` remains byte-for-byte unchanged, so any already-applied Liquibase checksum stays valid. Changeset `004` is forward-only and only replaces the check constraint.
 - The rule never accepts a browser-selected Cart ID. Order obtains Cart identity from the exact-subject internal Cart snapshot and records it only with the successful state transition.
+
+## Phase 3C-3 — Regular-purchase intake domain
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T046, regular request domain and Order regression | `.\\mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=RegularPurchaseRequestDomainTests,RegularOrderDomainTests,RegularHoldPaidSagaTests,OrderArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 13 selected tests passed with zero failures/errors. The domain canonicalizes browser-supplied Cart lines without a Cart ID, preserves the fingerprint after owner-bound Cart snapshot identity is attached, enforces shopper/key replay versus conflict, and prevents a stock-held request from becoming a business rejection. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace error in scoped Feature 049 changes. |
+
+### Phase 3C-3 safety boundary
+
+- The new aggregate is Java-only domain code. It does not make an HTTP call, depend on JPA, write a database row, publish Kafka, or expose a public endpoint.
+- Inventory remains the owner of the precise five-minute hold start on its own clock. Order records the returned expiry and derives the exact 30-second-earlier Payment deadline without treating an expired or ambiguous hold as a business rejection.

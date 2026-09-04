@@ -388,6 +388,10 @@ transition stores `cartId` and `cartVersion` together with `SNAPSHOT_VALIDATED`.
 Order migration enforces this state-aware boundary, including the valid case of rejection before a
 Cart snapshot exists.
 
+The first Cart fingerprint is computed from the canonical browser-submitted body only (source,
+submitted Cart version, and sorted lines with their reviewed values). The later Cart identity is
+snapshot evidence, not new client intent, so it never changes the original idempotency key binding.
+
 ### Paid Cart path
 
 ```text

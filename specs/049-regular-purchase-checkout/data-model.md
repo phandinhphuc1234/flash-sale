@@ -222,7 +222,7 @@ New table: `regular_purchase_requests`
 | `id` | UUID | `purchaseRequestId`, primary key. |
 | `shopper_id` | UUID | Authenticated subject. |
 | `idempotency_key` | VARCHAR(128) | Opaque caller value; unique with shopper. |
-| `request_fingerprint` | CHAR(64) | Canonical immutable payload digest. |
+| `request_fingerprint` | CHAR(64) | Canonical immutable browser-submitted payload digest. For `CART`, it contains source, submitted Cart version, and sorted item values but never internal `cart_id`. |
 | `source` | VARCHAR(16) | `BUY_NOW` or `CART`. |
 | `state` | VARCHAR(32) | See state machine below. |
 | `proposed_order_id` | UUID | Allocated once. |

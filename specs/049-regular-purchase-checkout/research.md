@@ -75,8 +75,10 @@ intake row makes retry resumable without holding a DB transaction during network
 **Canonical identity rules**:
 
 - Buy Now canonical content: source, variant ID, quantity, expected unit price, currency.
-- Cart canonical content: source, Cart ID/version, and items sorted by variant ID containing
-  variant ID, quantity, item version, expected unit price, and currency.
+- Cart canonical content: source, the browser-submitted Cart version, and items sorted by variant
+  ID containing variant ID, quantity, item version, expected unit price, and currency. It excludes
+  `cartId`, because that is internal Cart-owned identity and is unavailable to the browser; Order
+  binds it only after the trusted snapshot succeeds.
 - Same shopper/key/fingerprint returns or resumes the original result.
 - Same shopper/key/different fingerprint returns `409 IDEMPOTENCY_KEY_REUSED`.
 - Another shopper may independently use the same opaque key.

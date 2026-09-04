@@ -370,6 +370,11 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
 - **HD-005 — Inventory request-time skew (decided 2026-09-04)**: Inventory accepts an Order
   `requestedAt` audit timestamp only when it is within 90 seconds of Inventory's UTC clock. The
   default is externally configurable and does not alter Inventory's five-minute hold TTL.
+- **HD-007 — Cart intake fingerprint (decided 2026-09-04)**: The first Cart request fingerprint is
+  calculated only from the canonical browser-submitted body: source, submitted Cart version, and
+  sorted item variant/quantity/item-version/expected-price/currency values. `cartId` is internal
+  Cart-owned identity attached after snapshot validation; it does not alter the original
+  idempotency identity.
 
 | Priority | Why it blocks | Options and trade-offs | Owner | Decision deadline |
 |----------|---------------|------------------------|-------|-------------------|
@@ -379,6 +384,7 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
 | Decided | Concurrent Cart edits and cleanup must not delete later shopper intent. | Option A selected: immutable snapshot, no Cart lock, match-only cleanup after confirmed payment, and no cleanup for unpaid outcomes. | Project owner | Decided 2026-09-03 |
 | Decided | Stock-hold expiry and duplicate-request scope determine availability, payment deadlines, conflict behavior, and recovery tests. | Option A selected: 5-minute hold, 4-minute-30-second Payment deadline, shopper-scoped client key, equivalent replay, and conflicting-payload rejection. | Project owner | Decided 2026-09-03 |
 | Decided | The number of lines bounds synchronous Product/Inventory decision work and must agree across Cart checkout contracts. | Project owner selected a maximum of 20 distinct variant lines; each line retains the existing quantity bound of 1–10. | Project owner | Decided 2026-09-04 |
+| Decided | Browser input has no Cart identity, but equivalent Cart retries still need a stable first-intake idempotency boundary. | Project owner selected a canonical submitted-body fingerprint; the internal Cart identity is bound later only after the trusted snapshot succeeds. | Project owner | Decided 2026-09-04 |
 
 ## Constitutional Constraints *(mandatory)*
 
@@ -420,6 +426,9 @@ converges without duplicate charge intent, duplicate stock effects, or destructi
 - 2026-09-04 — HD-006 approved: a Cart request is persisted for shopper-scoped idempotency before
   its Cart snapshot; `cartId`/`cartVersion` are attached only after the owner-bound Cart snapshot
   succeeds, and a pre-snapshot rejection retains neither reference.
+- 2026-09-04 — HD-007 approved: the first Cart request fingerprint uses only the canonical
+  browser-submitted body; the owner-bound internal Cart identity is attached after snapshot
+  validation and is not part of the initial idempotency identity.
 - 2026-09-03 — Project owner approved the clarified specification for planning.
 - 2026-09-03 — Project owner approved the implementation plan and authorized task generation.
 - 2026-09-03 — Project owner approved the generated task ledger and authorized Phase 1 implementation.
