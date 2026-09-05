@@ -63,7 +63,7 @@ class OrderSchemaMigrationIntegrationTests {
                 "databasechangelog", "databasechangeloglock");
         assertThat(jdbc.queryForObject("SELECT locked FROM databasechangeloglock WHERE id = 1", Boolean.class))
                 .isFalse();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(5);
     }
 
     @Test
@@ -229,7 +229,7 @@ class OrderSchemaMigrationIntegrationTests {
     @Order(99)
     void regularCheckoutExpansionRetainsOperationalHistory() {
         assertThat(publicTables()).contains("regular_purchase_requests", "purchase_sagas", "orders");
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(5);
     }
 
     private static void insertOrder(

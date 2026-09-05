@@ -251,3 +251,17 @@ and compatible consumer images are reviewed.
 - The smoke uses the real hosted test Checkout state before sending the signed webhook, so an unpaid or expired Stripe Session cannot be marked paid by a fabricated payload.
 - Replay assertions cover both the Buy Now idempotency key and duplicate webhook delivery; downstream completion is observed through Payment, Kafka, Inventory, Order, and Cart read-only checks.
 - The run was completed against the restarted local Docker stack after service-owned migrations; no database reset or direct business-state mutation was used.
+
+### Phase 3C-11 — US1 module verification (T056)
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T056 module verification | `./mvnw.cmd --batch-mode --no-transfer-progress -pl contracts/kafka-avro-contracts,services/product-service,services/inventory-service,services/order-service,services/payment-service,services/api-gateway -am verify` | PASS — Maven reactor completed with `BUILD SUCCESS` in 07:56. Contract, API Gateway, Product, Order, Payment, and Inventory modules all reported `SUCCESS`; no test failures or errors were reported. |
+| T056 Buy Now paid smoke | `./infra/docker/smoke/feature-049-regular-purchase.ps1 -Scenario BuyNowPaid -TimeoutSeconds 1800` | PASS — recorded above as `FEATURE_049_BUY_NOW_PAID=PASS`. |
+| Inventory compatibility cleanup regression | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/inventory-service -am "-Dtest=CampaignAllocationCompatibilityTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 7 tests passed with zero failures/errors after including the Feature 049 hold tables in the test cleanup order. |
+| Repository hygiene | `git diff --check` | PASS — no whitespace errors in the scoped Feature 049 changes. |
+
+### Phase 3C-11 safety boundary
+
+- The only source change in the verification fix is test cleanup ordering: child hold rows and hold inbox rows are truncated before the referenced Inventory rows. No production schema, runtime flag, or business behavior changed.
+- The full reactor verification exercises the already-approved US1 implementation and does not apply Kubernetes/cloud state or expose secrets.

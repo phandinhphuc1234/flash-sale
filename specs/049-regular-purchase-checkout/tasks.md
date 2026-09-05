@@ -129,7 +129,7 @@ Cart, and exact replay for the same shopper/key/body.
 - [X] T053 [US1] Publish regular `OrderCreatedV2`, existing `PaymentRequestedV1`, and confirm-hold command through stable Order outbox dispatchers in `services/order-service/src/main/java/com/philia/flashsale/order/outbox/application/usecase/OrderOutboxEventTypeDispatcher.java`
 - [X] T054 [US1] Consume and validate `RegularStockHoldConfirmedV1`, atomically complete Saga/Order, and publish `OrderConfirmedV2` in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/RegularHoldResultKafkaConsumer.java`
 - [X] T055 [US1] Complete the `BuyNowPaid` local scenario through Gateway, Payment, test webhook, Kafka, Inventory, and Order while asserting Cart is unchanged in `infra/docker/smoke/feature-049-regular-purchase.ps1`
-- [ ] T056 [US1] Run Product, Inventory, Order, Payment, Gateway, and contract module verification plus `BuyNowPaid`; record exact PASS evidence in `specs/049-regular-purchase-checkout/validation.md`
+- [X] T056 [US1] Run Product, Inventory, Order, Payment, Gateway, and contract module verification plus `BuyNowPaid`; record exact PASS evidence in `specs/049-regular-purchase-checkout/validation.md`
 
 **Checkpoint**: US1 is an independently demonstrable MVP with real Payment convergence and no Cart
 dependency.
