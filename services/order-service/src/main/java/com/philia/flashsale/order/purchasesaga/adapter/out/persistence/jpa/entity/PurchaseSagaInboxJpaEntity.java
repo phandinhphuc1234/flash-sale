@@ -4,6 +4,7 @@ import com.philia.flashsale.order.purchasesaga.application.command.PaymentSuccee
 import com.philia.flashsale.order.purchasesaga.application.command.PaymentFailedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationConfirmedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationReleasedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldConfirmedCommand;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -73,6 +74,13 @@ public class PurchaseSagaInboxJpaEntity {
                 command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), command.releasedAt());
     }
 
+    public static PurchaseSagaInboxJpaEntity regularStockHoldConfirmed(
+            RegularStockHoldConfirmedCommand command) {
+        return from(command.eventId(), command.eventType(), command.eventVersion(), command.producer(),
+                command.aggregateId(), command.aggregateVersion(), command.orderId(), command.fingerprint(),
+                command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), command.transitionedAt());
+    }
+
     private static PurchaseSagaInboxJpaEntity from(UUID eventId, String eventType, int eventVersion,
             String producer, UUID aggregateId, long aggregateVersion, UUID orderId, String payloadFingerprint,
             String sourceTopic, int sourcePartition, long sourceOffset, Instant processedAt) {
@@ -94,5 +102,7 @@ public class PurchaseSagaInboxJpaEntity {
 
     public UUID getEventId() { return eventId; }
     public UUID getOrderId() { return orderId; }
+    public long getAggregateVersion() { return aggregateVersion; }
+    public Instant getProcessedAt() { return processedAt; }
     public String getPayloadFingerprint() { return payloadFingerprint; }
 }

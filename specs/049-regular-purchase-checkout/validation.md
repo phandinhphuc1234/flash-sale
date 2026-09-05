@@ -223,3 +223,17 @@ and compatible consumer images are reviewed.
 - V1 Flash Sale `OrderCreated` routing and mapper remain unchanged. `OrderCreatedV2` publishes to the same approved Order topic under its new Avro record-name subject.
 - The regular confirm publisher only relays an already durable outbox command and preserves the existing Order key, purchase-request correlation, payment causation, and trace headers. T054 owns writing that command after a verified Payment result.
 - No broker, Registry, consumer, scheduler, database, cloud resource, or runtime flag was changed.
+
+### Phase 3C-9 — Regular hold confirmation consumer (T054)
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T054 mapper, transaction, replay, conflict, and architecture regression | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=ConfirmRegularStockHoldAvroMapperTests,RegularStockHoldConfirmedAvroMapperTests,RegularHoldConfirmationIntegrationTests,PaymentSuccessTransitionIntegrationTests,OrderArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 14 selected tests passed with zero failures/errors. Docker Desktop was restarted before the run; Testcontainers started PostgreSQL 17. The integration tests prove Payment success writes a regular hold command with `correlationId=purchaseRequestId` and `causationId=PaymentSucceeded.eventId`; a valid Inventory confirmation atomically completes Order/Saga, records the inbox, and emits exactly one `OrderConfirmedV2`; exact replay is idempotent; mismatched lines and command identity leave no receipt or terminal outbox fact. |
+| T054 compile and repository hygiene | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am -DskipTests compile` and `git diff --check` | PASS — compile succeeded; no whitespace errors in the scoped Feature 049 changes. |
+
+### Phase 3C-9 safety boundary
+
+- The Kafka mapper validates topic, producer, record version, aggregate identity, key, correlation, status, item bounds, and canonical fingerprint before entering the application port.
+- Saga, Order, inbox receipt, and `OrderConfirmedV2` outbox are committed in one local transaction; the consumer acknowledges only after that transaction succeeds.
+- Exact event replay is returned as `REPLAYED`; lower aggregate versions are recorded as stale; conflicting same-version or identity/line content is rejected as non-retryable and routed to the result DLT.
+- No runtime flag was enabled and no Kubernetes/cloud state was changed by this task.

@@ -5,6 +5,7 @@ import com.philia.flashsale.order.purchasesaga.application.command.PaymentSuccee
 import com.philia.flashsale.order.purchasesaga.application.command.PaymentFailedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationConfirmedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationReleasedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldConfirmedCommand;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -130,6 +131,22 @@ public class OrderCreationOutboxJpaEntity {
                 command.occurredAt(), command.occurredAt());
     }
 
+    /** Creates the stable Inventory regular-hold confirmation command after verified payment success. */
+    public static OrderCreationOutboxJpaEntity confirmRegularStockHold(PaymentSucceededCommand command,
+            PurchaseSaga saga, UUID commandId) {
+        String payload = "{"
+                + "\"sagaId\":\"" + saga.id() + "\","
+                + ORDER_ID_JSON_FIELD + saga.orderId() + "\","
+                + "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\","
+                + "\"holdId\":\"" + saga.stockReferenceId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"paidAt\":\"" + command.paidAt() + "\"}";
+        return pendingEvent(commandId, PURCHASE_SAGA_AGGREGATE_TYPE, saga.id(), saga.version(),
+                "ConfirmRegularStockHold", saga.orderId().toString(), saga.purchaseRequestId(),
+                command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
+                command.occurredAt(), command.occurredAt());
+    }
+
     /** Creates the stable Flash Sale release command after a terminal PaymentFailed fact. */
     public static OrderCreationOutboxJpaEntity releaseReservation(PaymentFailedCommand command,
             PurchaseSaga saga, UUID commandId) {
@@ -159,6 +176,26 @@ public class OrderCreationOutboxJpaEntity {
                 + "\"paymentId\":\"" + command.paymentId() + "\","
                 + "\"confirmedAt\":\"" + occurredAt + "\"}";
         return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderConfirmed",
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
+    /** Creates the additive regular terminal fact after Inventory has durably confirmed the stock hold. */
+    public static OrderCreationOutboxJpaEntity regularOrderConfirmed(RegularStockHoldConfirmedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-confirmed-v2:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.transitionedAt();
+        String payload = "{"
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"purchaseSource\":\"" + order.getPurchaseSource() + "\","
+                + "\"stockParticipantType\":\"" + order.getStockParticipantType() + "\","
+                + "\"stockReferenceId\":\"" + order.getStockReferenceId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"confirmedAt\":\"" + occurredAt + "\"}";
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderConfirmedV2", 2,
                 order.getId().toString(), command.correlationId(), command.eventId(), payload,
                 command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
     }

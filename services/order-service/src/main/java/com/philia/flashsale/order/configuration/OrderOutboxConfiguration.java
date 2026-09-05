@@ -3,6 +3,7 @@ package com.philia.flashsale.order.configuration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.contract.order.event.v1.OrderCreatedV1;
 import com.philia.flashsale.contract.order.event.v2.OrderCreatedV2;
+import com.philia.flashsale.contract.order.event.v2.OrderConfirmedV2;
 import com.philia.flashsale.contract.payment.command.v1.PaymentRequestedV1;
 import com.philia.flashsale.contract.regularhold.command.v1.ConfirmRegularStockHoldV1;
 import com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservationV1;
@@ -16,6 +17,8 @@ import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderC
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderCreatedV2Publisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCreatedV2AvroMapper;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderConfirmedV2AvroMapper;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderConfirmedV2Publisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaPaymentRequestedPublisher;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.PaymentRequestedAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.ConfirmReservationAvroMapper;
@@ -85,6 +88,18 @@ public class OrderOutboxConfiguration {
             KafkaTemplate<String, OrderCreatedV2> kafka, OrderCreatedV2AvroMapper mapper,
             OrderKafkaProperties properties) {
         return new KafkaOrderCreatedV2Publisher(kafka, mapper, properties);
+    }
+
+    @Bean
+    OrderConfirmedV2AvroMapper orderConfirmedV2AvroMapper(ObjectMapper objectMapper) {
+        return new OrderConfirmedV2AvroMapper(objectMapper);
+    }
+
+    @Bean
+    KafkaOrderConfirmedV2Publisher kafkaOrderConfirmedV2Publisher(
+            KafkaTemplate<String, OrderConfirmedV2> kafka, OrderConfirmedV2AvroMapper mapper,
+            OrderKafkaProperties properties) {
+        return new KafkaOrderConfirmedV2Publisher(kafka, mapper, properties);
     }
 
     @Bean
@@ -187,6 +202,7 @@ public class OrderOutboxConfiguration {
     OrderOutboxEventTypeDispatcher orderOutboxEventTypeDispatcher(
             KafkaOrderCreatedPublisher orderCreatedPublisher,
             KafkaOrderCreatedV2Publisher orderCreatedV2Publisher,
+            KafkaOrderConfirmedV2Publisher orderConfirmedV2Publisher,
             KafkaPaymentRequestedPublisher paymentRequestedPublisher,
             KafkaConfirmReservationPublisher confirmReservationPublisher,
             KafkaConfirmRegularStockHoldPublisher confirmRegularStockHoldPublisher,
@@ -195,17 +211,18 @@ public class OrderOutboxConfiguration {
             KafkaOrderCancelledPublisher orderCancelledPublisher,
             KafkaOrderExpiredPublisher orderExpiredPublisher,
             KafkaOrderPaymentReviewRequiredPublisher reviewPublisher) {
-        return new OrderOutboxEventTypeDispatcher(Map.of(
-                "OrderCreated", orderCreatedPublisher,
-                "OrderCreatedV2", orderCreatedV2Publisher,
-                "PaymentRequested", paymentRequestedPublisher,
-                "ConfirmPurchaseReservation", confirmReservationPublisher,
-                "ConfirmRegularStockHold", confirmRegularStockHoldPublisher,
-                "OrderConfirmed", orderConfirmedPublisher,
-                "ReleasePurchaseReservation", releaseReservationPublisher,
-                "OrderCancelled", orderCancelledPublisher,
-                "OrderExpired", orderExpiredPublisher,
-                "OrderPaymentReviewRequired", reviewPublisher));
+        return new OrderOutboxEventTypeDispatcher(Map.ofEntries(
+                Map.entry("OrderCreated", orderCreatedPublisher),
+                Map.entry("OrderCreatedV2", orderCreatedV2Publisher),
+                Map.entry("OrderConfirmedV2", orderConfirmedV2Publisher),
+                Map.entry("PaymentRequested", paymentRequestedPublisher),
+                Map.entry("ConfirmPurchaseReservation", confirmReservationPublisher),
+                Map.entry("ConfirmRegularStockHold", confirmRegularStockHoldPublisher),
+                Map.entry("OrderConfirmed", orderConfirmedPublisher),
+                Map.entry("ReleasePurchaseReservation", releaseReservationPublisher),
+                Map.entry("OrderCancelled", orderCancelledPublisher),
+                Map.entry("OrderExpired", orderExpiredPublisher),
+                Map.entry("OrderPaymentReviewRequired", reviewPublisher)));
     }
 
     @Bean

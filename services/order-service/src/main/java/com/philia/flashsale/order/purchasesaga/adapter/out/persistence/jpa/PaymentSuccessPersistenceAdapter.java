@@ -15,6 +15,7 @@ import com.philia.flashsale.order.purchasesaga.application.result.PaymentSuccess
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPaymentSuccessService;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSagaStatus;
+import com.philia.flashsale.order.purchasesaga.domain.model.StockParticipantType;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -43,7 +44,10 @@ public class PaymentSuccessPersistenceAdapter implements ApplyPaymentSuccessPort
                 .orElseThrow(() -> new InvalidPaymentSuccessException("Order Saga does not exist"));
         OrderJpaEntity order = orders.findLockedById(command.orderId())
                 .orElseThrow(() -> new InvalidPaymentSuccessException("Order does not exist"));
-        var commandId = ApplyPaymentSuccessService.confirmCommandId(command.eventId());
+        boolean regularStock = stored.getStockParticipantType() == StockParticipantType.REGULAR_STOCK_HOLD;
+        var commandId = regularStock
+                ? ApplyPaymentSuccessService.confirmRegularStockHoldCommandId(command.eventId())
+                : ApplyPaymentSuccessService.confirmCommandId(command.eventId());
         var existing = inbox.findByEventId(command.eventId());
         if (existing.isPresent()) {
             if (!existing.get().getPayloadFingerprint().equals(command.fingerprint())) {
@@ -87,12 +91,17 @@ public class PaymentSuccessPersistenceAdapter implements ApplyPaymentSuccessPort
                     || current.status() == PurchaseSagaStatus.COMPLETED) {
                 return PaymentSuccessResult.stale(command.orderId(), stored.getId());
             }
-            PurchaseSaga transitioned = current.confirmReservation(command.paymentId(),
-                    command.aggregateVersion(), command.paidAt(), commandId, command.occurredAt());
+            PurchaseSaga transitioned = regularStock
+                    ? current.confirmRegularStock(command.paymentId(), command.aggregateVersion(), command.paidAt(),
+                            commandId, command.occurredAt())
+                    : current.confirmReservation(command.paymentId(), command.aggregateVersion(), command.paidAt(),
+                            commandId, command.occurredAt());
             stored.apply(transitioned);
             sagas.saveAndFlush(stored);
             inbox.saveAndFlush(PurchaseSagaInboxJpaEntity.paymentSucceeded(command));
-            outbox.saveAndFlush(OrderCreationOutboxJpaEntity.confirmReservation(command, transitioned, commandId));
+            outbox.saveAndFlush(regularStock
+                    ? OrderCreationOutboxJpaEntity.confirmRegularStockHold(command, transitioned, commandId)
+                    : OrderCreationOutboxJpaEntity.confirmReservation(command, transitioned, commandId));
             return PaymentSuccessResult.applied(stored.getOrderId(), stored.getId(), commandId);
         } catch (DataAccessException exception) {
             throw new InvalidPaymentSuccessException("PaymentSucceeded persistence failed: "
@@ -109,6 +118,13 @@ public class PaymentSuccessPersistenceAdapter implements ApplyPaymentSuccessPort
     }
 
     private PurchaseSaga toDomain(PurchaseSagaJpaEntity entity) {
+        if (entity.getStockParticipantType() == StockParticipantType.REGULAR_STOCK_HOLD) {
+            return PurchaseSaga.restoreRegular(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(),
+                    entity.getStockReferenceId(), entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(),
+                    entity.getLastPaymentVersion(), entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(),
+                    entity.getDesiredOrderStatus(), entity.getManualReviewReason(), entity.getActiveCommandId(),
+                    entity.getStepStartedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
+        }
         return PurchaseSaga.restore(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(), entity.getReservationId(),
                 entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(), entity.getLastPaymentVersion(),
                 entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(), entity.getDesiredOrderStatus(),

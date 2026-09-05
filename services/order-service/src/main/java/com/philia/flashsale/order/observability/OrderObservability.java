@@ -32,7 +32,8 @@ public final class OrderObservability {
     public static final String DLT_PUBLICATION_TOTAL = "order.saga.dlt.publication.total";
 
     private static final Set<String> SAGA_STATES = Set.of(
-            "PAYMENT_PENDING", "CONFIRMING_RESERVATION", "RELEASING_RESERVATION",
+            "PAYMENT_PENDING", "CONFIRMING_RESERVATION", "RELEASING_RESERVATION", "CONFIRMING_STOCK",
+            "RELEASING_STOCK",
             "COMPLETED", "COMPENSATED", "MANUAL_REVIEW");
 
     private static final OrderObservability NOOP = new OrderObservability();
@@ -238,7 +239,8 @@ public final class OrderObservability {
 
     public enum ConsumerBoundary {
         PAYMENT_RESULTS("payment_results"),
-        RESERVATION_RESULTS("reservation_results");
+        RESERVATION_RESULTS("reservation_results"),
+        REGULAR_HOLD_RESULTS("regular_hold_results");
 
         private final String tagValue;
 

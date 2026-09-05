@@ -5,8 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-/** Read boundary for the line snapshot belonging to an Order. */
+/** Service-owned persistence query for immutable Order line snapshots. */
 public interface OrderLineJpaRepository extends JpaRepository<OrderLineJpaEntity, UUID> {
-
     List<OrderLineJpaEntity> findByOrder_IdOrderByIdAsc(UUID orderId);
 }

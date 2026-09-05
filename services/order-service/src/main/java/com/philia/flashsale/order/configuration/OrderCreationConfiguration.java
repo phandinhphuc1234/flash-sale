@@ -4,6 +4,7 @@ import com.philia.flashsale.order.order.adapter.out.persistence.jpa.OrderCreatio
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OrderConsumerInboxJpaRepository;
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OrderCreationOutboxJpaRepository;
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OrderJpaRepository;
+import com.philia.flashsale.order.order.adapter.out.persistence.jpa.repository.OrderLineJpaRepository;
 import com.philia.flashsale.order.order.application.port.in.CreateOrderFromAcceptedPurchaseUseCase;
 import com.philia.flashsale.order.order.application.port.out.CurrentTimePort;
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderIdentityPort;
@@ -25,6 +26,9 @@ import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPurchase
 import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPurchaseReservationReleaseUseCase;
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPurchaseReservationConfirmationService;
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPurchaseReservationReleaseService;
+import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.RegularHoldConfirmationPersistenceAdapter;
+import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyRegularHoldConfirmationUseCase;
+import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyRegularHoldConfirmationService;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -96,6 +100,19 @@ public class OrderCreationConfiguration {
     public ApplyPurchaseReservationConfirmationUseCase applyPurchaseReservationConfirmationUseCase(
             ReservationConfirmationPersistenceAdapter persistence) {
         return new ApplyPurchaseReservationConfirmationService(persistence);
+    }
+
+    @Bean
+    public RegularHoldConfirmationPersistenceAdapter regularHoldConfirmationPersistenceAdapter(
+            OrderJpaRepository orders, OrderLineJpaRepository lines, PurchaseSagaJpaRepository sagas,
+            PurchaseSagaInboxJpaRepository inbox, OrderCreationOutboxJpaRepository outbox) {
+        return new RegularHoldConfirmationPersistenceAdapter(orders, lines, sagas, inbox, outbox);
+    }
+
+    @Bean
+    public ApplyRegularHoldConfirmationUseCase applyRegularHoldConfirmationUseCase(
+            RegularHoldConfirmationPersistenceAdapter persistence) {
+        return new ApplyRegularHoldConfirmationService(persistence);
     }
 
     @Bean

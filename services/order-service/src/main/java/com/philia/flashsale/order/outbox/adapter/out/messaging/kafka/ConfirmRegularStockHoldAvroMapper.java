@@ -34,11 +34,12 @@ public final class ConfirmRegularStockHoldAvroMapper {
         UUID paymentId = uuid(root, "paymentId");
         Instant paidAt = instant(root, "paidAt");
         if (!event.aggregateId().equals(sagaId) || !event.eventKey().equals(orderId.toString())
-                || !event.correlationId().equals(purchaseRequestId) || !event.causationId().equals(paymentId)) {
+                || !event.correlationId().equals(purchaseRequestId) || !sagaId.equals(purchaseRequestId)
+                || event.causationId() == null) {
             throw invalid("regular hold confirm identity/key mismatch");
         }
         return new ConfirmRegularStockHoldV1(event.eventId(), EVENT_TYPE, 1, "order-service",
-                "PURCHASE_SAGA", sagaId, event.aggregateVersion(), purchaseRequestId, paymentId,
+                "PURCHASE_SAGA", sagaId, event.aggregateVersion(), purchaseRequestId, event.causationId(),
                 event.occurredAt(), event.traceparent(), event.tracestate(),
                 new ConfirmRegularStockHoldDataV1(sagaId, orderId, purchaseRequestId, holdId, paymentId, paidAt));
     }

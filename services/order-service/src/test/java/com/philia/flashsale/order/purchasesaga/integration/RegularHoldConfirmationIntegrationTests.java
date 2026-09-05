@@ -1,0 +1,148 @@
+package com.philia.flashsale.order.purchasesaga.integration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.philia.flashsale.order.order.domain.model.Order;
+import com.philia.flashsale.order.order.domain.model.OrderLine;
+import com.philia.flashsale.order.order.domain.model.PurchaseSource;
+import com.philia.flashsale.order.order.domain.valueobject.Money;
+import com.philia.flashsale.order.purchasesaga.application.command.PaymentSucceededCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldConfirmedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldConfirmedLine;
+import com.philia.flashsale.order.purchasesaga.application.exception.InvalidRegularHoldConfirmationException;
+import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPaymentSuccessUseCase;
+import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyRegularHoldConfirmationUseCase;
+import com.philia.flashsale.order.purchasesaga.application.result.RegularHoldConfirmationResult;
+import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
+import com.philia.flashsale.order.regularpurchase.adapter.out.persistence.jpa.RegularPurchasePersistenceAdapter;
+import com.philia.flashsale.order.regularpurchase.application.model.RegularPurchaseAcceptance;
+import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseLine;
+import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRequest;
+import com.philia.flashsale.order.support.PostgreSqlIntegrationTestSupport;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
+
+@SpringBootTest(properties = {
+        "spring.jpa.hibernate.ddl-auto=validate",
+        "spring.kafka.bootstrap-servers=localhost:19092",
+        "order.runtime.outbox-publisher-enabled=false",
+        "order.runtime.accepted-purchase-consumer-enabled=false",
+        "order.runtime.purchase-reservation-results-consumer-enabled=false",
+        "order.runtime.payment-events-consumer-enabled=false",
+        "order.regular-purchase.runtime.hold-result-consumer-enabled=false"
+})
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+class RegularHoldConfirmationIntegrationTests extends PostgreSqlIntegrationTestSupport {
+    private static final Instant NOW = Instant.parse("2032-01-01T10:00:00Z");
+    private static final AtomicLong OFFSET = new AtomicLong(500_000);
+    @Autowired private RegularPurchasePersistenceAdapter intake;
+    @Autowired private ApplyPaymentSuccessUseCase payments;
+    @Autowired private ApplyRegularHoldConfirmationUseCase confirmations;
+    @Autowired private JdbcTemplate jdbc;
+
+    @Test
+    void paidBuyNowConfirmsAtomicallyAndDuplicateDoesNotRepublish() {
+        Fixture fixture = paid();
+        RegularStockHoldConfirmedCommand event = confirmation(fixture, fixture.variantId(), fixture.commandId());
+
+        assertThat(confirmations.apply(event).outcome()).isEqualTo(RegularHoldConfirmationResult.Outcome.APPLIED);
+        assertThat(confirmations.apply(event).outcome()).isEqualTo(RegularHoldConfirmationResult.Outcome.REPLAYED);
+        assertThat(status("orders", "id", fixture.orderId())).isEqualTo("CONFIRMED");
+        assertThat(status("purchase_sagas", "order_id", fixture.orderId())).isEqualTo("COMPLETED");
+        assertThat(inboxCount(event.eventId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from order_outbox_events where aggregate_id = ? "
+                + "and event_type = 'OrderConfirmedV2' and event_version = 2", Long.class, fixture.orderId()))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void mismatchedLinesCannotChangeOrderSagaOrWriteReceipt() {
+        Fixture fixture = paid();
+        RegularStockHoldConfirmedCommand event = confirmation(fixture, UUID.randomUUID(), fixture.commandId());
+        assertThatThrownBy(() -> confirmations.apply(event))
+                .isInstanceOf(InvalidRegularHoldConfirmationException.class)
+                .hasMessageContaining("immutable Order lines");
+        assertUnchanged(fixture, event);
+    }
+
+    @Test
+    void unrelatedCommandCannotConfirmHold() {
+        Fixture fixture = paid();
+        RegularStockHoldConfirmedCommand event = confirmation(fixture, fixture.variantId(), UUID.randomUUID());
+        assertThatThrownBy(() -> confirmations.apply(event))
+                .isInstanceOf(InvalidRegularHoldConfirmationException.class);
+        assertUnchanged(fixture, event);
+    }
+
+    private void assertUnchanged(Fixture fixture, RegularStockHoldConfirmedCommand event) {
+        assertThat(status("orders", "id", fixture.orderId())).isEqualTo("PENDING_PAYMENT");
+        assertThat(status("purchase_sagas", "order_id", fixture.orderId())).isEqualTo("CONFIRMING_STOCK");
+        assertThat(inboxCount(event.eventId())).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from order_outbox_events where aggregate_id = ? "
+                + "and event_type = 'OrderConfirmedV2'", Long.class, fixture.orderId())).isZero();
+    }
+
+    private Fixture paid() {
+        UUID requestId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID holdId = UUID.randomUUID();
+        UUID shopperId = UUID.randomUUID();
+        UUID variantId = UUID.randomUUID();
+        Money price = Money.of(new BigDecimal("179000.0000"));
+        RegularPurchaseRequest registered = RegularPurchaseRequest.receiveBuyNow(requestId, shopperId,
+                "buy-" + requestId, orderId, holdId, new RegularPurchaseLine(variantId, 1, price, "VND", null), NOW);
+        intake.register(registered);
+        Instant expiry = NOW.plusSeconds(300);
+        var accepted = registered.productValidated(NOW.plusSeconds(1))
+                .holdAcquired(expiry, NOW.plusSeconds(2)).accept(orderId, NOW.plusSeconds(3));
+        Order order = Order.regular(orderId, "REG-" + orderId, requestId, PurchaseSource.BUY_NOW, holdId,
+                shopperId, "VND", List.of(OrderLine.create(UUID.randomUUID(), variantId, 1, price)),
+                null, null, NOW.plusSeconds(3), expiry);
+        PurchaseSaga saga = PurchaseSaga.startRegular(orderId, requestId, holdId, expiry, NOW.plusSeconds(3));
+        intake.accept(new RegularPurchaseAcceptance(accepted, order, saga, UUID.randomUUID(), UUID.randomUUID(),
+                requestId, requestId, NOW.plusSeconds(3), null, null));
+        UUID paymentId = UUID.randomUUID();
+        UUID paymentEventId = UUID.randomUUID();
+        var payment = new PaymentSucceededCommand(paymentEventId, "PaymentSucceeded", 1, "payment-service",
+                "PAYMENT", paymentId, 2, orderId, UUID.randomUUID(), NOW.plusSeconds(5),
+                paymentId, orderId, new BigDecimal("179000.0000"), "VND", NOW.plusSeconds(5),
+                "stripe", "cs_test", null, "flashsale.payment.events.v1", 0, OFFSET.incrementAndGet(),
+                null, null, "a".repeat(64));
+        var result = payments.apply(payment);
+        assertThat(jdbc.queryForObject("select event_type from order_outbox_events where event_id = ?",
+                String.class, result.confirmCommandId())).isEqualTo("ConfirmRegularStockHold");
+        assertThat(jdbc.queryForObject("select causation_id from order_outbox_events where event_id = ?",
+                UUID.class, result.confirmCommandId())).isEqualTo(paymentEventId);
+        assertThat(jdbc.queryForObject("select correlation_id from order_outbox_events where event_id = ?",
+                UUID.class, result.confirmCommandId())).isEqualTo(requestId);
+        return new Fixture(requestId, orderId, holdId, paymentId, variantId, result.confirmCommandId());
+    }
+
+    private RegularStockHoldConfirmedCommand confirmation(Fixture fixture, UUID variantId, UUID causationId) {
+        return new RegularStockHoldConfirmedCommand(UUID.randomUUID(), "RegularStockHoldConfirmed", 1,
+                "inventory-service", "REGULAR_STOCK_HOLD", fixture.holdId(), 2, fixture.requestId(), causationId,
+                NOW.plusSeconds(6), fixture.requestId(), fixture.orderId(), fixture.requestId(), fixture.holdId(),
+                fixture.paymentId(), NOW.plusSeconds(6), List.of(new RegularStockHoldConfirmedLine(variantId, 1)),
+                "flashsale.inventory.regular-hold.events.v1", 0, OFFSET.incrementAndGet(), null, null, "b".repeat(64));
+    }
+
+    private String status(String table, String column, UUID id) {
+        return jdbc.queryForObject("select status from " + table + " where " + column + " = ?", String.class, id);
+    }
+
+    private long inboxCount(UUID eventId) {
+        return jdbc.queryForObject("select count(*) from purchase_saga_inbox where event_id = ?", Long.class, eventId);
+    }
+
+    private record Fixture(UUID requestId, UUID orderId, UUID holdId, UUID paymentId, UUID variantId,
+            UUID commandId) { }
+}

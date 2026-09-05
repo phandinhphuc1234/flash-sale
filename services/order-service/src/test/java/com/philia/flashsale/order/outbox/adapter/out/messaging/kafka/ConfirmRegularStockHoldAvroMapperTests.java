@@ -27,17 +27,15 @@ class ConfirmRegularStockHoldAvroMapperTests {
     }
 
     @Test
-    void rejectsACommandWhoseCausationIsNotThePaidPayment() {
-        OrderOutboxEvent event = event(UUID.randomUUID());
-
-        assertThatThrownBy(() -> new ConfirmRegularStockHoldAvroMapper(new ObjectMapper()).map(event))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("identity/key");
+    void rejectsACommandWithoutItsCausativePaymentEvent() {
+        assertThatThrownBy(() -> event(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("causationId");
     }
 
     private static OrderOutboxEvent event() {
         UUID paymentId = UUID.randomUUID();
-        return event(paymentId, paymentId);
+        return event(paymentId, UUID.randomUUID());
     }
 
     private static OrderOutboxEvent event(UUID causationId) {
@@ -47,7 +45,7 @@ class ConfirmRegularStockHoldAvroMapperTests {
     private static OrderOutboxEvent event(UUID paymentId, UUID causationId) {
         UUID sagaId = UUID.randomUUID();
         UUID orderId = UUID.randomUUID();
-        UUID requestId = UUID.randomUUID();
+        UUID requestId = sagaId;
         UUID holdId = UUID.randomUUID();
         String payload = "{\"sagaId\":\"" + sagaId + "\",\"orderId\":\"" + orderId
                 + "\",\"purchaseRequestId\":\"" + requestId + "\",\"holdId\":\"" + holdId
