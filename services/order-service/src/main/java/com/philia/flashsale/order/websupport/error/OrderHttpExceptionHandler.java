@@ -130,6 +130,7 @@ public class OrderHttpExceptionHandler {
             case VARIANT_NOT_FOUND -> OrderErrorCode.VARIANT_NOT_FOUND;
             case VARIANT_NOT_SELLABLE -> OrderErrorCode.VARIANT_NOT_SELLABLE;
             case PRICE_CHANGED -> OrderErrorCode.PRICE_CHANGED;
+            case CART_CHANGED -> OrderErrorCode.CART_CHANGED;
             case INSUFFICIENT_STOCK, INVENTORY_ITEM_NOT_FOUND -> OrderErrorCode.INSUFFICIENT_STOCK;
         };
     }

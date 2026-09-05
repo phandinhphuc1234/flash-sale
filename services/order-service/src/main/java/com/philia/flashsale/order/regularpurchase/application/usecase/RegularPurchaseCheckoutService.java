@@ -9,6 +9,8 @@ import com.philia.flashsale.order.order.domain.model.PurchaseSource;
 import com.philia.flashsale.order.order.domain.valueobject.Money;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import com.philia.flashsale.order.regularpurchase.application.command.BuyNowCheckoutCommand;
+import com.philia.flashsale.order.regularpurchase.application.command.CartCheckoutCommand;
+import com.philia.flashsale.order.regularpurchase.application.command.CartCheckoutLine;
 import com.philia.flashsale.order.regularpurchase.application.exception.RegularPurchaseBusinessException;
 import com.philia.flashsale.order.regularpurchase.application.exception.RegularPurchaseDownstreamException;
 import com.philia.flashsale.order.regularpurchase.application.model.ProductPurchaseQuote;
@@ -16,7 +18,9 @@ import com.philia.flashsale.order.regularpurchase.application.model.RegularPurch
 import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHold;
 import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHoldCommand;
 import com.philia.flashsale.order.regularpurchase.application.port.in.CheckoutBuyNowUseCase;
+import com.philia.flashsale.order.regularpurchase.application.port.in.CheckoutCartUseCase;
 import com.philia.flashsale.order.regularpurchase.application.port.out.CreateRegularStockHoldPort;
+import com.philia.flashsale.order.regularpurchase.application.port.out.LoadCartCheckoutSnapshotPort;
 import com.philia.flashsale.order.regularpurchase.application.port.out.LoadProductPurchaseQuotesPort;
 import com.philia.flashsale.order.regularpurchase.application.port.out.PersistRegularPurchasePort;
 import com.philia.flashsale.order.regularpurchase.application.result.RegularPurchaseCheckoutResult;
@@ -33,11 +37,12 @@ import java.util.UUID;
  * Resumable Buy Now orchestration. Each persistence call owns a short local transaction; no
  * Product or Inventory HTTP request is made while an Order transaction is open.
  */
-public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCase {
+public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCase, CheckoutCartUseCase {
 
     private final PersistRegularPurchasePort persistence;
     private final LoadProductPurchaseQuotesPort productQuotes;
     private final CreateRegularStockHoldPort stockHolds;
+    private final LoadCartCheckoutSnapshotPort cartSnapshots;
     private final GenerateOrderIdentityPort identities;
     private final GenerateOrderNumberPort orderNumbers;
     private final CurrentTimePort clock;
@@ -45,9 +50,17 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
     public RegularPurchaseCheckoutService(PersistRegularPurchasePort persistence,
             LoadProductPurchaseQuotesPort productQuotes, CreateRegularStockHoldPort stockHolds,
             GenerateOrderIdentityPort identities, GenerateOrderNumberPort orderNumbers, CurrentTimePort clock) {
+        this(persistence, productQuotes, stockHolds, null, identities, orderNumbers, clock);
+    }
+
+    public RegularPurchaseCheckoutService(PersistRegularPurchasePort persistence,
+            LoadProductPurchaseQuotesPort productQuotes, CreateRegularStockHoldPort stockHolds,
+            LoadCartCheckoutSnapshotPort cartSnapshots, GenerateOrderIdentityPort identities,
+            GenerateOrderNumberPort orderNumbers, CurrentTimePort clock) {
         this.persistence = Objects.requireNonNull(persistence, "persistence");
         this.productQuotes = Objects.requireNonNull(productQuotes, "productQuotes");
         this.stockHolds = Objects.requireNonNull(stockHolds, "stockHolds");
+        this.cartSnapshots = cartSnapshots;
         this.identities = Objects.requireNonNull(identities, "identities");
         this.orderNumbers = Objects.requireNonNull(orderNumbers, "orderNumbers");
         this.clock = Objects.requireNonNull(clock, "clock");
@@ -76,43 +89,99 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
             throw rejected(intake.rejectionCode());
         }
 
+        return continueCheckout(intake, command.traceId(), command.traceparent(), command.tracestate());
+    }
+
+    @Override
+    public RegularPurchaseCheckoutResult checkout(CartCheckoutCommand command) {
+        Objects.requireNonNull(command, "command");
+        if (cartSnapshots == null) {
+            throw new RegularPurchaseDownstreamException(
+                    RegularPurchaseDownstreamException.Failure.CART_SERVICE_UNAVAILABLE);
+        }
+        Instant receivedAt = clock.now();
+        List<RegularPurchaseLine> submittedLines = command.lines().stream()
+                .map(line -> new RegularPurchaseLine(line.variantId(), line.quantity(), line.expectedUnitPrice(),
+                        line.currency(), line.itemVersion()))
+                .toList();
+        RegularPurchaseRequest candidate = RegularPurchaseRequest.receiveCart(identities.generate(),
+                command.shopperId(), command.idempotencyKey(), identities.generate(), identities.generate(),
+                command.cartVersion(), submittedLines, receivedAt);
+        RegularPurchaseRequest intake = persistence.register(candidate);
+        IdempotencyMatch match = intake.idempotencyMatch(command.shopperId(), command.idempotencyKey(),
+                candidate.requestFingerprint());
+        if (match == IdempotencyMatch.CONFLICT) {
+            throw new RegularPurchaseBusinessException(
+                    RegularPurchaseBusinessException.Reason.IDEMPOTENCY_KEY_REUSED);
+        }
+        if (intake.state() == RegularPurchaseRequestState.ACCEPTED) {
+            return result(intake, true);
+        }
+        if (intake.state() == RegularPurchaseRequestState.REJECTED) {
+            throw rejected(intake.rejectionCode());
+        }
         if (intake.state() == RegularPurchaseRequestState.RECEIVED) {
+            var snapshot = cartSnapshots.load(command.shopperId(), command.traceId());
+            if (!matchesSnapshot(intake, snapshot)) {
+                reject(intake, "CART_CHANGED");
+                throw new RegularPurchaseBusinessException(
+                        RegularPurchaseBusinessException.Reason.CART_CHANGED);
+            }
+            intake = persistence.update(intake.snapshotValidated(snapshot.cartId(), snapshot.cartVersion(),
+                    clock.now()));
+        }
+        return continueCheckout(intake, command.traceId(), command.traceparent(), command.tracestate());
+    }
+
+    private RegularPurchaseCheckoutResult continueCheckout(RegularPurchaseRequest intake, String traceId,
+            String traceparent, String tracestate) {
+        if (intake.state() == RegularPurchaseRequestState.RECEIVED
+                || intake.state() == RegularPurchaseRequestState.SNAPSHOT_VALIDATED) {
             List<ProductPurchaseQuote> quotes = productQuotes.loadQuotes(
-                    intake.lines().stream().map(RegularPurchaseLine::variantId).toList(), command.traceId());
+                    intake.lines().stream().map(RegularPurchaseLine::variantId).toList(), traceId);
             validateQuotes(intake, quotes);
             intake = persistence.update(intake.productValidated(clock.now()));
         }
-
         if (intake.state() == RegularPurchaseRequestState.PRODUCT_VALIDATED) {
             try {
                 RegularStockHold hold = stockHolds.create(new RegularStockHoldCommand(intake.proposedHoldId(),
                         intake.id(), intake.proposedOrderId(), intake.shopperId(), clock.now(), intake.lines().stream()
                                 .map(line -> new RegularStockHoldCommand.RegularStockHoldLine(
                                         line.variantId(), line.quantity()))
-                                .toList()), command.traceId());
+                                .toList()), traceId);
                 intake = persistence.update(intake.holdAcquired(hold.expiresAt(), clock.now()));
             } catch (RegularPurchaseDownstreamException exception) {
                 throw mapInventoryFailure(intake, exception);
             }
         }
-
         if (intake.state() != RegularPurchaseRequestState.HOLD_ACQUIRED) {
             throw new RegularPurchaseBusinessException(
                     RegularPurchaseBusinessException.Reason.PURCHASE_RECOVERY_REQUIRED);
         }
         Instant acceptedAt = clock.now();
         Order order = Order.regular(intake.proposedOrderId(), orderNumbers.generate(acceptedAt,
-                intake.proposedOrderId()), intake.id(), PurchaseSource.BUY_NOW, intake.proposedHoldId(),
+                intake.proposedOrderId()), intake.id(), intake.source(), intake.proposedHoldId(),
                 intake.shopperId(), intake.currency(), intake.lines().stream().map(line -> OrderLine.create(
                         identities.generate(), line.variantId(), line.quantity(), line.expectedUnitPrice())).toList(),
-                null, null, acceptedAt, intake.holdExpiresAt());
+                intake.cartId(), intake.cartVersion(), acceptedAt, intake.holdExpiresAt());
         PurchaseSaga saga = PurchaseSaga.startRegular(order.id(), intake.id(), intake.proposedHoldId(),
                 intake.holdExpiresAt(), acceptedAt);
         RegularPurchaseRequest accepted = intake.accept(order.id(), acceptedAt);
         persistence.accept(new RegularPurchaseAcceptance(accepted, order, saga, identities.generate(),
-                identities.generate(), intake.id(), intake.id(), acceptedAt, command.traceparent(),
-                command.tracestate()));
+                identities.generate(), intake.id(), intake.id(), acceptedAt, traceparent, tracestate));
         return result(accepted, false);
+    }
+
+    private boolean matchesSnapshot(RegularPurchaseRequest intake,
+            com.philia.flashsale.order.regularpurchase.application.model.CartCheckoutSnapshot snapshot) {
+        if (snapshot == null || !intake.shopperId().equals(snapshot.ownerId())
+                || !Objects.equals(intake.submittedCartVersion(), snapshot.cartVersion())
+                || snapshot.items().size() != intake.lines().size()) {
+            return false;
+        }
+        return intake.lines().stream().allMatch(line -> snapshot.items().stream().anyMatch(item ->
+                line.variantId().equals(item.variantId()) && line.quantity() == item.quantity()
+                        && Objects.equals(line.cartItemVersion(), item.itemVersion())));
     }
 
     private void validateQuotes(RegularPurchaseRequest intake, List<ProductPurchaseQuote> quotes) {
@@ -175,6 +244,8 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
                     RegularPurchaseBusinessException.Reason.INSUFFICIENT_STOCK);
             case "INVENTORY_ITEM_NOT_FOUND" -> new RegularPurchaseBusinessException(
                     RegularPurchaseBusinessException.Reason.INVENTORY_ITEM_NOT_FOUND);
+            case "CART_CHANGED" -> new RegularPurchaseBusinessException(
+                    RegularPurchaseBusinessException.Reason.CART_CHANGED);
             default -> new RegularPurchaseBusinessException(
                     RegularPurchaseBusinessException.Reason.PURCHASE_RECOVERY_REQUIRED);
         };

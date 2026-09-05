@@ -1,6 +1,7 @@
 package com.philia.flashsale.order.configuration;
 
 import com.philia.flashsale.order.regularpurchase.adapter.out.client.inventory.InventoryRegularHoldFeignClient;
+import com.philia.flashsale.order.regularpurchase.adapter.out.client.cart.CartCheckoutSnapshotFeignClient;
 import com.philia.flashsale.order.regularpurchase.adapter.out.client.product.ProductPurchaseQuoteFeignClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.openfeign.EnableFeignClients;
@@ -18,7 +19,8 @@ import feign.RequestInterceptor;
 @Configuration(proxyBeanMethods = false)
 @EnableFeignClients(clients = {
         ProductPurchaseQuoteFeignClient.class,
-        InventoryRegularHoldFeignClient.class
+        InventoryRegularHoldFeignClient.class,
+        CartCheckoutSnapshotFeignClient.class
 })
 public class OrderInternalClientConfiguration {
 

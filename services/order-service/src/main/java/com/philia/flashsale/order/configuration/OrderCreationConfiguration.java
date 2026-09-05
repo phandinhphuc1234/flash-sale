@@ -27,6 +27,7 @@ import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyPurchase
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPurchaseReservationConfirmationService;
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPurchaseReservationReleaseService;
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.RegularHoldConfirmationPersistenceAdapter;
+import com.philia.flashsale.order.regularpurchase.adapter.out.persistence.jpa.repository.RegularPurchaseRequestJpaRepository;
 import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyRegularHoldConfirmationUseCase;
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyRegularHoldConfirmationService;
 import jakarta.persistence.EntityManager;
@@ -34,6 +35,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /** Wires the atomic Order creation use case only when JPA infrastructure is active. */
 @Configuration
@@ -105,8 +108,12 @@ public class OrderCreationConfiguration {
     @Bean
     public RegularHoldConfirmationPersistenceAdapter regularHoldConfirmationPersistenceAdapter(
             OrderJpaRepository orders, OrderLineJpaRepository lines, PurchaseSagaJpaRepository sagas,
-            PurchaseSagaInboxJpaRepository inbox, OrderCreationOutboxJpaRepository outbox) {
-        return new RegularHoldConfirmationPersistenceAdapter(orders, lines, sagas, inbox, outbox);
+            PurchaseSagaInboxJpaRepository inbox, OrderCreationOutboxJpaRepository outbox,
+            RegularPurchaseRequestJpaRepository regularRequests, ObjectMapper objectMapper,
+            @Value("${order.regular-purchase.runtime.cart-reconciliation-producer-enabled:false}")
+            boolean cartReconciliationEnabled) {
+        return new RegularHoldConfirmationPersistenceAdapter(orders, lines, sagas, inbox, outbox,
+                regularRequests, objectMapper, cartReconciliationEnabled);
     }
 
     @Bean

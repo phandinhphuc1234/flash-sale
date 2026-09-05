@@ -11,11 +11,11 @@ public final class CartWebMapper {
         return new CartItemResponse(result.variantId(), result.quantity(), result.detailsAvailable(),
                 result.sellable(), result.unavailableReason(), result.productId(), result.productSlug(),
                 result.productName(), result.variantName(), result.sku(), result.basePrice(), result.currency(),
-                result.primaryImageUrl(), result.updatedAt());
+                result.primaryImageUrl(), result.itemVersion(), result.updatedAt());
     }
 
     public CartResponse toResponse(CartResult result) {
         return new CartResponse(result.items().stream().map(this::toResponse).toList(),
-                result.distinctItemCount(), result.totalQuantity(), result.updatedAt());
+                result.distinctItemCount(), result.totalQuantity(), result.cartVersion(), result.updatedAt());
     }
 }

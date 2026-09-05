@@ -7,7 +7,8 @@
   it enables the reviewed flags only in this PowerShell process, provisions the additive Kafka
   contracts, runs service-owned migrations/fixture adapters, and drives the public Buy Now and
   Payment endpoints through Gateway. It never prints .env values, tokens, Checkout URLs, or raw
-  provider/webhook payloads.
+  provider/webhook payloads. Use -SkipBuild when the local service images already match the
+  checked-out source and only migrations/runtime smoke need to be repeated.
 #>
 [CmdletBinding()]
 param(
@@ -28,7 +29,8 @@ param(
     )]
     [string] $Scenario = 'Static',
     [ValidateRange(60, 3600)]
-    [int] $TimeoutSeconds = 600
+    [int] $TimeoutSeconds = 600,
+    [switch] $SkipBuild
 )
 
 Set-StrictMode -Version Latest
@@ -225,6 +227,18 @@ function Invoke-InventoryMigration {
     }
 }
 
+function Invoke-CartMigration {
+    # Cart owns its Liquibase history. Run it as a one-off process so the live Cart replica never
+    # races another replica for the Liquibase lock during a checkout smoke.
+    Invoke-Compose @('stop', 'cart-service')
+    Invoke-Compose @('run', '--rm', '--no-deps',
+        '-e', 'SPRING_LIQUIBASE_ENABLED=true',
+        '-e', 'SPRING_MAIN_KEEP_ALIVE=false',
+        '-e', 'SPRING_KAFKA_LISTENER_AUTO_STARTUP=false',
+        '-e', 'SPRING_TASK_SCHEDULING_ENABLED=false',
+        'cart-migration', '--spring.main.web-application-type=none') 'migrations'
+}
+
 function Invoke-InventoryFixture([Guid] $VariantId, [string] $Sku) {
     Assert-Budget 'Inventory fixture'
     Invoke-Compose @('run', '--rm', '--no-deps',
@@ -264,6 +278,7 @@ function Invoke-BuyNowPaid {
     $runtimeFlags = @(
         'ORDER_REGULAR_PURCHASE_INTAKE_ENABLED', 'ORDER_REGULAR_PURCHASE_RECOVERY_ENABLED',
         'ORDER_REGULAR_HOLD_RESULT_CONSUMER_ENABLED', 'ORDER_REGULAR_HOLD_COMMAND_PRODUCER_ENABLED',
+        'ORDER_CART_RECONCILIATION_PRODUCER_ENABLED', 'CART_CHECKOUT_RECONCILIATION_CONSUMER_ENABLED',
         'INVENTORY_REGULAR_HOLD_API_ENABLED', 'INVENTORY_REGULAR_HOLD_COMMAND_CONSUMER_ENABLED',
         'INVENTORY_REGULAR_HOLD_OUTBOX_PUBLISHER_ENABLED', 'PAYMENT_ACCEPTANCE_ENABLED',
         'PAYMENT_CHECKOUT_ENABLED', 'PAYMENT_WEBHOOK_PROCESSING_ENABLED', 'PAYMENT_CONSUMER_ENABLED',
@@ -279,7 +294,9 @@ function Invoke-BuyNowPaid {
         Invoke-TopicAndSchemaBootstrap
         # Build Flash Sale as well: its outbox migration owns the causation_id column
         # required by the current regular-purchase/late-confirmation runtime.
-        Invoke-Compose @('build', 'api-gateway', 'product-service', 'flashsale-service', 'order-service', 'inventory-service', 'payment-service')
+        if (-not $SkipBuild) {
+            Invoke-Compose @('build', 'api-gateway', 'product-service', 'flashsale-service', 'order-service', 'inventory-service', 'payment-service', 'cart-service')
+        }
         Invoke-Compose @('run', '--rm', '--no-deps',
             '-e', 'SPRING_LIQUIBASE_ENABLED=true',
             '-e', 'SPRING_MAIN_KEEP_ALIVE=false',
@@ -289,6 +306,7 @@ function Invoke-BuyNowPaid {
             '-e', 'FLASHSALE_RUNTIME_RECONCILIATION_ENABLED=false',
             'flashsale-migration', '--spring.main.web-application-type=none') 'migrations'
         Invoke-InventoryMigration
+        Invoke-CartMigration
         # The migration services inherit compose-time flags from the parent process. Override
         # every Feature 049 worker explicitly so a Liquibase-only JVM does not require the
         # runtime persistence/HTTP/Kafka beans that are exercised by the live services.
@@ -309,12 +327,13 @@ function Invoke-BuyNowPaid {
             '-e', 'STRIPE_ENABLED=false',
             'payment-migration', '--spring.main.web-application-type=none') 'migrations'
         Invoke-Compose @('up', '-d', '--force-recreate', 'product-service', 'flashsale-service', 'order-service',
-            'inventory-service', 'payment-service', 'api-gateway')
+            'inventory-service', 'payment-service', 'cart-service', 'api-gateway')
         Wait-Http 'http://127.0.0.1:18084/actuator/health/readiness' @(200) 240
         Wait-Http 'http://127.0.0.1:18082/actuator/health/readiness' @(200) 240
         Wait-Http 'http://127.0.0.1:18085/actuator/health/readiness' @(200) 240
         Wait-Http 'http://127.0.0.1:18088/actuator/health/readiness' @(200) 240
         Wait-Http 'http://127.0.0.1:18086/actuator/health/readiness' @(200) 240
+        Wait-Http 'http://127.0.0.1:18089/actuator/health/readiness' @(200) 240
         Wait-Http $gatewayBase/actuator/health @(200) 180
 
         $paymentEventsBefore = Get-KafkaEndOffset 'flashsale.payment.events.v1'
@@ -478,6 +497,228 @@ function Invoke-BuyNowPaid {
     }
 }
 
+function Invoke-CartPaid(
+    [switch] $EditDuringPayment,
+    [ValidateSet('Paid', 'PriceChanged', 'InsufficientStock')]
+    [string] $ScenarioMode = 'Paid',
+    [switch] $SkipBuild) {
+    if (-not (Test-Path -LiteralPath $envFile -PathType Leaf)) {
+        throw 'infra/docker/.env is required for Cart checkout; local Secret values stay ignored.'
+    }
+    $runtimeFlags = @(
+        'ORDER_REGULAR_PURCHASE_INTAKE_ENABLED', 'ORDER_REGULAR_PURCHASE_RECOVERY_ENABLED',
+        'ORDER_REGULAR_HOLD_RESULT_CONSUMER_ENABLED', 'ORDER_REGULAR_HOLD_COMMAND_PRODUCER_ENABLED',
+        'ORDER_CART_RECONCILIATION_PRODUCER_ENABLED', 'CART_CHECKOUT_RECONCILIATION_CONSUMER_ENABLED',
+        'INVENTORY_REGULAR_HOLD_API_ENABLED', 'INVENTORY_REGULAR_HOLD_COMMAND_CONSUMER_ENABLED',
+        'INVENTORY_REGULAR_HOLD_OUTBOX_PUBLISHER_ENABLED', 'PAYMENT_ACCEPTANCE_ENABLED',
+        'PAYMENT_CHECKOUT_ENABLED', 'PAYMENT_WEBHOOK_PROCESSING_ENABLED', 'PAYMENT_CONSUMER_ENABLED',
+        'PAYMENT_OUTBOX_PUBLISHER_ENABLED', 'PAYMENT_RECOVERY_ENABLED', 'STRIPE_ENABLED')
+    $previous = @{}
+    foreach ($name in $runtimeFlags) {
+        $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+        [Environment]::SetEnvironmentVariable($name, 'true', 'Process')
+    }
+    try {
+        Invoke-Compose @('up', '-d', 'postgres', 'redis', 'kafka', 'schema-registry')
+        Wait-Http 'http://127.0.0.1:8081/subjects' @(200) 180
+        Invoke-TopicAndSchemaBootstrap
+        if (-not $SkipBuild) {
+            Invoke-Compose @('build', 'api-gateway', 'product-service', 'flashsale-service', 'order-service',
+                'inventory-service', 'payment-service', 'cart-service')
+        }
+        Invoke-Compose @('run', '--rm', '--no-deps',
+            '-e', 'SPRING_LIQUIBASE_ENABLED=true',
+            '-e', 'SPRING_MAIN_KEEP_ALIVE=false',
+            '-e', 'SPRING_KAFKA_LISTENER_AUTO_STARTUP=false',
+            '-e', 'SPRING_TASK_SCHEDULING_ENABLED=false',
+            '-e', 'FLASHSALE_RUNTIME_ENABLED=false',
+            '-e', 'FLASHSALE_RUNTIME_RECONCILIATION_ENABLED=false',
+            'flashsale-migration', '--spring.main.web-application-type=none') 'migrations'
+        Invoke-InventoryMigration
+        Invoke-CartMigration
+        Invoke-Compose @('run', '--rm', '--no-deps',
+            '-e', 'ORDER_REGULAR_PURCHASE_INTAKE_ENABLED=false',
+            '-e', 'ORDER_REGULAR_PURCHASE_RECOVERY_ENABLED=false',
+            '-e', 'ORDER_REGULAR_HOLD_RESULT_CONSUMER_ENABLED=false',
+            '-e', 'ORDER_REGULAR_HOLD_COMMAND_PRODUCER_ENABLED=false',
+            '-e', 'ORDER_CART_RECONCILIATION_PRODUCER_ENABLED=false',
+            'order-migration', '--spring.main.web-application-type=none') 'migrations'
+        Invoke-Compose @('run', '--rm', '--no-deps',
+            '-e', 'PAYMENT_ACCEPTANCE_ENABLED=false', '-e', 'PAYMENT_CHECKOUT_ENABLED=false',
+            '-e', 'PAYMENT_WEBHOOK_PROCESSING_ENABLED=false', '-e', 'PAYMENT_CONSUMER_ENABLED=false',
+            '-e', 'PAYMENT_OUTBOX_PUBLISHER_ENABLED=false', '-e', 'PAYMENT_RECOVERY_ENABLED=false',
+            '-e', 'STRIPE_ENABLED=false', 'payment-migration', '--spring.main.web-application-type=none') 'migrations'
+        Invoke-Compose @('up', '-d', '--force-recreate', 'product-service', 'flashsale-service', 'order-service',
+            'inventory-service', 'payment-service', 'cart-service', 'api-gateway')
+        Wait-Http 'http://127.0.0.1:18084/actuator/health/readiness' @(200) 240
+        Wait-Http 'http://127.0.0.1:18082/actuator/health/readiness' @(200) 240
+        Wait-Http 'http://127.0.0.1:18085/actuator/health/readiness' @(200) 240
+        Wait-Http 'http://127.0.0.1:18088/actuator/health/readiness' @(200) 240
+        Wait-Http 'http://127.0.0.1:18086/actuator/health/readiness' @(200) 240
+        Wait-Http 'http://127.0.0.1:18089/actuator/health/readiness' @(200) 240
+        Wait-Http $gatewayBase/actuator/health @(200) 180
+
+        $paymentEventsBefore = Get-KafkaEndOffset 'flashsale.payment.events.v1'
+        $holdEventsBefore = Get-KafkaEndOffset 'flashsale.inventory.regular-hold.events.v1'
+        $cartCommandsBefore = Get-KafkaEndOffset 'flashsale.cart.checkout.commands.v1'
+        $shopperLabel = if ($EditDuringPayment) { 'cart-edited' } else { $ScenarioMode.ToLowerInvariant() }
+        $shopper = New-Shopper $shopperLabel
+        $catalogResponse = Invoke-Json "$gatewayBase/api/v1/catalog/products?page=0&size=100" 'Get' @{}
+        Require-Status $catalogResponse @(200) 'catalog query for Cart checkout'
+        $variants = @((($catalogResponse.Content | ConvertFrom-Json).data.data | ForEach-Object { $_.variants }) |
+            Where-Object {
+                if ($null -eq $_) { return $false }
+                $sellable = $_.PSObject.Properties['sellable']
+                return $null -eq $sellable -or $sellable.Value -ne $false
+            })
+        if ($variants.Count -lt 2) { throw 'Cart checkout requires at least two sellable catalog variants.' }
+        $selected = @($variants | Select-Object -First 2)
+        foreach ($candidate in $selected) {
+            $candidateId = [Guid](Get-RequiredObjectProperty $candidate 'id' 'Cart catalog variant')
+            $candidateSku = [string](Get-RequiredObjectProperty $candidate 'sku' 'Cart catalog variant')
+            Invoke-InventoryFixture $candidateId $candidateSku
+            $set = Invoke-Json "$gatewayBase/api/v1/cart/items/$candidateId" 'Put' `
+                @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-set' } `
+                (@{ quantity = 1 } | ConvertTo-Json -Compress)
+            Require-Status $set @(200) 'Cart item setup'
+        }
+        $cartRead = Invoke-Json "$gatewayBase/api/v1/cart" 'Get' `
+            @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-read' }
+        Require-Status $cartRead @(200) 'Cart checkout snapshot read'
+        $cart = ($cartRead.Content | ConvertFrom-Json).data
+        $cartItems = @($cart.items | Where-Object { $_.variantId -and $_.basePrice -and $_.currency })
+        if ($cartItems.Count -ne 2) { throw "Expected two Cart items; observed $($cartItems.Count)." }
+        $checkoutItems = @($cartItems | ForEach-Object {
+            @{ variantId = [string]$_.variantId; quantity = [int]$_.quantity; itemVersion = [long]$_.itemVersion
+                expectedUnitPrice = [string]$_.basePrice; currency = [string]$_.currency }
+        })
+        if ($ScenarioMode -eq 'PriceChanged') {
+            $checkoutItems[0].expectedUnitPrice =
+                ([decimal]$checkoutItems[0].expectedUnitPrice + 1).ToString(
+                    [Globalization.CultureInfo]::InvariantCulture)
+        } elseif ($ScenarioMode -eq 'InsufficientStock') {
+            # The fixture owns one unit per variant. Asking for two must reject the
+            # entire Cart submission before an Order, Payment, or hold is created.
+            $checkoutItems[0].quantity = 2
+        }
+        $idempotencyKey = 'feature049-cart-' + [Guid]::NewGuid().ToString('N')
+        $body = @{ cartVersion = [long]$cart.cartVersion; items = $checkoutItems } | ConvertTo-Json -Compress -Depth 8
+        $headers = @{ Authorization = "Bearer $($shopper.Token)"; 'Idempotency-Key' = $idempotencyKey
+            'X-Trace-Id' = 'feature049-cart-checkout' }
+        $accepted = Invoke-Json "$gatewayBase/api/v1/orders/cart-checkouts" 'Post' $headers $body
+        if ($ScenarioMode -eq 'PriceChanged' -or $ScenarioMode -eq 'InsufficientStock') {
+            Require-Status $accepted @(409) "$ScenarioMode Cart checkout rejection"
+            $rejection = $accepted.Content | ConvertFrom-Json
+            $expectedCode = if ($ScenarioMode -eq 'PriceChanged') { 'PRICE_CHANGED' } else { 'INSUFFICIENT_STOCK' }
+            if ([string]$rejection.errorCode -ne $expectedCode) {
+                throw "$ScenarioMode Cart checkout returned unexpected errorCode '$($rejection.errorCode)'."
+            }
+            $cartAfterRejected = Invoke-Json "$gatewayBase/api/v1/cart" 'Get' `
+                @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-rejected-after' }
+            Require-Status $cartAfterRejected @(200) "$ScenarioMode Cart after rejection"
+            if (@((($cartAfterRejected.Content | ConvertFrom-Json).data.items)).Count -ne 2) {
+                throw "$ScenarioMode Cart rejection unexpectedly changed Cart contents."
+            }
+            Write-Output "FEATURE_049_CART_$($ScenarioMode.ToUpperInvariant())=PASS"
+            Write-Output "Cart checkout: $expectedCode rejected before Payment/hold; Cart remained unchanged."
+            Write-Output 'Secret values, tokens, Checkout URLs, provider payloads, and shopper identities were not printed.'
+            return
+        }
+        Require-Status $accepted @(201) 'Cart checkout acceptance'
+        $acceptedData = ($accepted.Content | ConvertFrom-Json).data
+        $orderId = [Guid]$acceptedData.orderId
+        $purchaseRequestId = [Guid]$acceptedData.purchaseRequestId
+        $replay = Invoke-Json "$gatewayBase/api/v1/orders/cart-checkouts" 'Post' $headers $body
+        Require-Status $replay @(200) 'Cart checkout replay'
+        if ($replay.Headers['Idempotency-Replayed'] -ne 'true') { throw 'Cart checkout replay did not carry Idempotency-Replayed=true.' }
+        if ([Guid](($replay.Content | ConvertFrom-Json).data.orderId) -ne $orderId) {
+            throw 'Cart checkout replay returned a different Order identity.'
+        }
+        if ($EditDuringPayment) {
+            $edited = $cartItems | Select-Object -First 1
+            $edit = Invoke-Json "$gatewayBase/api/v1/cart/items/$($edited.variantId)" 'Put' `
+                @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-edit' } `
+                (@{ quantity = 2 } | ConvertTo-Json -Compress)
+            Require-Status $edit @(200) 'Cart edit while payment is pending'
+        }
+        $payment = $null
+        Wait-Until -Description 'Payment creation from Cart checkout' -Seconds 180 -Condition {
+            $candidate = Invoke-Json "$gatewayBase/api/v1/payments/by-order/$orderId" 'Get' `
+                @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-payment' }
+            if ([int]$candidate.StatusCode -eq 200) { $script:payment = ($candidate.Content | ConvertFrom-Json).data; return $true }
+            return $false
+        }
+        $payment = $script:payment
+        $paymentId = [Guid](Get-RequiredObjectProperty $payment 'id' 'Cart Payment details')
+        $checkoutKey = 'feature049-cart-checkout-' + [Guid]::NewGuid().ToString('N')
+        $checkoutHeaders = @{ Authorization = "Bearer $($shopper.Token)"; 'Idempotency-Key' = $checkoutKey
+            'X-Trace-Id' = 'feature049-cart-checkout-session' }
+        $checkout = Invoke-Json "$gatewayBase/api/v1/payments/$paymentId/checkout-sessions" 'Post' $checkoutHeaders
+        Require-Status $checkout @(201, 200, 202) 'Cart Checkout Session creation'
+        $checkoutData = ($checkout.Content | ConvertFrom-Json).data
+        if ([string]::IsNullOrWhiteSpace([string]$checkoutData.checkoutUrl)) { throw 'Cart Checkout Session did not return a provider URL.' }
+        Start-Process ([string]$checkoutData.checkoutUrl)
+        [void](Read-Host 'Complete the Cart Stripe test Checkout in the browser, then press Enter')
+        $attempt = [string](Invoke-Database 'payment_db' `
+            "SELECT id || '|' || provider_session_id FROM payment_attempts WHERE payment_id='$paymentId'::uuid ORDER BY attempt_number DESC LIMIT 1;" |
+            Select-Object -First 1)
+        $attemptParts = $attempt.Split('|', 2)
+        if ($attemptParts.Length -ne 2 -or [string]::IsNullOrWhiteSpace($attemptParts[1])) {
+            throw 'Cart Checkout did not persist a provider session identity.'
+        }
+        Invoke-ContainerSignedWebhook $paymentId ([Guid]$attemptParts[0]) $orderId $attemptParts[1]
+        Wait-Until -Description 'Cart Order confirmation after Stripe webhook and Kafka' -Seconds 240 -Condition {
+            $candidate = Invoke-Json "$gatewayBase/api/v1/orders/$orderId" 'Get' `
+                @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-order-final' }
+            if ([int]$candidate.StatusCode -eq 200) {
+                return [string](($candidate.Content | ConvertFrom-Json).data.status) -eq 'CONFIRMED'
+            }
+            return $false
+        }
+        Wait-Until -Description 'Cart regular hold confirmation' -Seconds 120 -Condition {
+            $status = [string](Invoke-Database 'inventory_db' `
+                "SELECT COUNT(*) FROM regular_stock_holds WHERE purchase_request_id='$purchaseRequestId'::uuid AND status='CONFIRMED';" |
+                Select-Object -First 1)
+            return [int]$status -eq 1
+        }
+        Wait-Until -Description 'Cart reconciliation command publication' -Seconds 120 -Condition {
+            return (Get-KafkaEndOffset 'flashsale.cart.checkout.commands.v1') -gt $cartCommandsBefore
+        }
+        $cartAfterResponse = Invoke-Json "$gatewayBase/api/v1/cart" 'Get' `
+            @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-after' }
+        Require-Status $cartAfterResponse @(200) 'Cart after confirmed payment'
+        $cartAfterItems = @((($cartAfterResponse.Content | ConvertFrom-Json).data.items))
+        if ($EditDuringPayment) {
+            $editedAfter = $cartAfterItems | Where-Object { [string]$_.variantId -eq [string]$cartItems[0].variantId }
+            if ($null -eq $editedAfter -or [int]$editedAfter.quantity -ne 2) {
+                throw 'Cart reconciliation removed a later edit instead of preserving it.'
+            }
+            if (@($cartAfterItems).Count -ne 1) { throw 'Cart reconciliation did not remove the unchanged Cart item.' }
+        } elseif (@($cartAfterItems).Count -ne 0) {
+            throw 'Cart reconciliation did not remove all unchanged purchased items.'
+        }
+        $finalPayment = Invoke-Json "$gatewayBase/api/v1/payments/$paymentId" 'Get' `
+            @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-payment-final' }
+        Require-Status $finalPayment @(200) 'final Cart Payment query'
+        if ([string](($finalPayment.Content | ConvertFrom-Json).data.status) -ne 'SUCCEEDED') {
+            throw 'Final Cart Payment status was not SUCCEEDED.'
+        }
+        if ($EditDuringPayment) {
+            Write-Output 'FEATURE_049_CART_EDITED_WHILE_PAYING=PASS'
+            Write-Output 'Cart: later quantity edit survived confirmed-payment reconciliation; unchanged item was removed.'
+        } else {
+            Write-Output 'FEATURE_049_CART_PAID=PASS'
+            Write-Output 'Cart: two immutable items became one Order/Payment and were removed after confirmed payment.'
+        }
+        Write-Output 'Cart checkout: exact replay returned the original Order; Payment, Kafka hold, Order, and reconciliation converged.'
+        Write-Output 'Secret values, tokens, Checkout URLs, provider payloads, and shopper identities were not printed.'
+    } finally {
+        foreach ($name in $runtimeFlags) {
+            [Environment]::SetEnvironmentVariable($name, $previous[$name], 'Process')
+        }
+    }
+}
+
 function Invoke-StaticGate {
     $requiredFiles = @(
         'services/cart-service/pom.xml',
@@ -579,6 +820,26 @@ switch ($Scenario) {
         $gatewayBase = "http://127.0.0.1:$([Environment]::GetEnvironmentVariable('GATEWAY_PORT', 'Process'))"
         if ($gatewayBase -eq 'http://127.0.0.1:') { $gatewayBase = 'http://127.0.0.1:18080' }
         Invoke-BuyNowPaid
+    }
+    'CartPaid' {
+        $gatewayBase = "http://127.0.0.1:$([Environment]::GetEnvironmentVariable('GATEWAY_PORT', 'Process'))"
+        if ($gatewayBase -eq 'http://127.0.0.1:') { $gatewayBase = 'http://127.0.0.1:18080' }
+        Invoke-CartPaid -SkipBuild:$SkipBuild
+    }
+    'CartEditedWhilePaying' {
+        $gatewayBase = "http://127.0.0.1:$([Environment]::GetEnvironmentVariable('GATEWAY_PORT', 'Process'))"
+        if ($gatewayBase -eq 'http://127.0.0.1:') { $gatewayBase = 'http://127.0.0.1:18080' }
+        Invoke-CartPaid -EditDuringPayment -SkipBuild:$SkipBuild
+    }
+    'PriceChanged' {
+        $gatewayBase = "http://127.0.0.1:$([Environment]::GetEnvironmentVariable('GATEWAY_PORT', 'Process'))"
+        if ($gatewayBase -eq 'http://127.0.0.1:') { $gatewayBase = 'http://127.0.0.1:18080' }
+        Invoke-CartPaid -ScenarioMode PriceChanged -SkipBuild:$SkipBuild
+    }
+    'InsufficientStock' {
+        $gatewayBase = "http://127.0.0.1:$([Environment]::GetEnvironmentVariable('GATEWAY_PORT', 'Process'))"
+        if ($gatewayBase -eq 'http://127.0.0.1:') { $gatewayBase = 'http://127.0.0.1:18080' }
+        Invoke-CartPaid -ScenarioMode InsufficientStock -SkipBuild:$SkipBuild
     }
     default {
         throw "Scenario '$Scenario' is not implemented yet; complete its approved Feature 049 task before running it."

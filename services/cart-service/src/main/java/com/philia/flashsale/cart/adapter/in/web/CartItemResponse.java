@@ -19,4 +19,5 @@ public record CartItemResponse(
         BigDecimal basePrice,
         String currency,
         String primaryImageUrl,
+        long itemVersion,
         Instant updatedAt) { }

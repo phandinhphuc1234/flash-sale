@@ -147,32 +147,32 @@ the unchanged item without exposing/changing another shopper's Cart.
 
 ### Tests for User Story 2
 
-- [ ] T057 [P] [US2] Add Cart/cart-item monotonic revision and delete/re-add tests in `services/cart-service/src/test/java/com/philia/flashsale/cart/domain/CartCheckoutRevisionTests.java`
-- [ ] T058 [P] [US2] Add Cart snapshot HTTP/application/owner-isolation tests for absent, empty, exact revisions, and no Product enrichment in `services/cart-service/src/test/java/com/philia/flashsale/cart/checkout/CartCheckoutSnapshotTests.java`
+- [X] T057 [P] [US2] Add Cart/cart-item monotonic revision and delete/re-add tests in `services/cart-service/src/test/java/com/philia/flashsale/cart/domain/CartCheckoutRevisionTests.java`
+- [X] T058 [P] [US2] Add Cart snapshot HTTP/application/owner-isolation tests for absent, empty, exact revisions, and no Product enrichment in `services/cart-service/src/test/java/com/philia/flashsale/cart/checkout/CartCheckoutSnapshotTests.java`
 - [ ] T059 [P] [US2] Add Cart reconciliation integration tests for applied, partial no-op, quantity edit, remove/re-add, concurrent HTTP mutation, replay, conflict, wrong owner, and DLT in `services/cart-service/src/test/java/com/philia/flashsale/cart/checkout/CartReconciliationIntegrationTests.java`
-- [ ] T060 [P] [US2] Add Order Cart checkout tests for exact snapshot comparison, empty/changed/foreign Cart, duplicate variants, mixed currency, price conflict payload, all-or-nothing stock rejection, one Order/Payment, and replay in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/CartCheckoutUseCaseTests.java`
+- [X] T060 [P] [US2] Add Order Cart checkout tests for exact snapshot comparison, empty/changed/foreign Cart, duplicate variants, mixed currency, price conflict payload, all-or-nothing stock rejection, one Order/Payment, and replay in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/CartCheckoutUseCaseTests.java`
 - [ ] T061 [P] [US2] Add multi-item overlapping-hold concurrency tests proving atomic rejection and no unexplained partial hold in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/MultiItemRegularHoldConcurrencyTests.java`
 
 ### Cart snapshot and revision implementation
 
-- [ ] T062 [US2] Extend Cart/CartItem domain and persistence mapping to allocate monotonic Cart/item revisions for CRUD and delete/re-add in `services/cart-service/src/main/java/com/philia/flashsale/cart/domain/model/Cart.java` and `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/CartPersistenceAdapter.java`
-- [ ] T063 [US2] Add `cartVersion` and `itemVersion` to public Cart results/responses without changing existing CRUD semantics in `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartResponse.java` and `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartItemResponse.java`
-- [ ] T064 [US2] Implement internal snapshot query/result/port/use case and owner-safe JPA adapter in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/application/usecase/GetCartCheckoutSnapshotService.java`
-- [ ] T065 [US2] Implement the exact-subject internal snapshot DTOs/controller/mapper in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/adapter/in/web/CartCheckoutSnapshotController.java`
+- [X] T062 [US2] Extend Cart/CartItem domain and persistence mapping to allocate monotonic Cart/item revisions for CRUD and delete/re-add in `services/cart-service/src/main/java/com/philia/flashsale/cart/domain/model/Cart.java` and `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/out/persistence/jpa/CartPersistenceAdapter.java`
+- [X] T063 [US2] Add `cartVersion` and `itemVersion` to public Cart results/responses without changing existing CRUD semantics in `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartResponse.java` and `services/cart-service/src/main/java/com/philia/flashsale/cart/adapter/in/web/CartItemResponse.java`
+- [X] T064 [US2] Implement internal snapshot query/result/port/use case and owner-safe JPA adapter in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/application/usecase/GetCartCheckoutSnapshotService.java`
+- [X] T065 [US2] Implement the exact-subject internal snapshot DTOs/controller/mapper in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/adapter/in/web/CartCheckoutSnapshotController.java`
 
 ### Cart checkout orchestration
 
-- [ ] T066 [US2] Implement the Cart snapshot Feign wire models/adapter and bounded error mapping in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/cart/CartCheckoutSnapshotClientAdapter.java`
-- [ ] T067 [US2] Extend regular orchestration to canonicalize/compare the exact Cart snapshot, validate all Product prices, acquire one multi-item hold, and commit one Order/Payment in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/application/usecase/RegularPurchaseCheckoutService.java`
-- [ ] T068 [US2] Add Cart checkout request validation and endpoint/replay behavior to `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/in/web/RegularPurchaseController.java`
+- [X] T066 [US2] Implement the Cart snapshot Feign wire models/adapter and bounded error mapping in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/cart/CartCheckoutSnapshotClientAdapter.java`
+- [X] T067 [US2] Extend regular orchestration to canonicalize/compare the exact Cart snapshot, validate all Product prices, acquire one multi-item hold, and commit one Order/Payment in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/application/usecase/RegularPurchaseCheckoutService.java`
+- [X] T068 [US2] Add Cart checkout request validation and endpoint/replay behavior to `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/in/web/RegularPurchaseController.java`
 
 ### Confirmed Cart reconciliation
 
-- [ ] T069 [US2] Implement Cart reconciliation domain policy, input port, command/result, and conditional cleanup use case in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/application/usecase/ReconcilePurchasedCartSnapshotService.java`
-- [ ] T070 [US2] Implement atomic conditional deletes plus inbox receipt and Cart version advancement in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/adapter/out/persistence/jpa/CartReconciliationPersistenceAdapter.java`
-- [ ] T071 [US2] Implement strict reconciliation Avro mapper/listener, manual acknowledgement, retry, and DLT in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/adapter/in/messaging/kafka/CartReconciliationKafkaConsumer.java`
-- [ ] T072 [US2] Emit one `ReconcilePurchasedCartSnapshotV1` outbox command only after a `CART` Order is durably confirmed in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/out/persistence/jpa/RegularHoldConfirmationPersistenceAdapter.java`
-- [ ] T073 [US2] Update public Gateway/Swagger/frontend handoff documentation for Cart versions, Cart checkout, price conflict, and Payment continuation in `docs/api/frontend-integration-guide.md` and `docs/api/endpoint-registry.md`
+- [X] T069 [US2] Implement Cart reconciliation domain policy, input port, command/result, and conditional cleanup use case in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/application/usecase/ReconcilePurchasedCartSnapshotService.java`
+- [X] T070 [US2] Implement atomic conditional deletes plus inbox receipt and Cart version advancement in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/adapter/out/persistence/jpa/CartReconciliationPersistenceAdapter.java`
+- [X] T071 [US2] Implement strict reconciliation Avro mapper/listener, manual acknowledgement, retry, and DLT in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/adapter/in/messaging/kafka/CartReconciliationKafkaConsumer.java`
+- [X] T072 [US2] Emit one `ReconcilePurchasedCartSnapshotV1` outbox command only after a `CART` Order is durably confirmed in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/out/persistence/jpa/RegularHoldConfirmationPersistenceAdapter.java`
+- [X] T073 [US2] Update public Gateway/Swagger/frontend handoff documentation for Cart versions, Cart checkout, price conflict, and Payment continuation in `docs/api/frontend-integration-guide.md` and `docs/api/endpoint-registry.md`
 - [ ] T074 [US2] Complete `CartPaid`, `CartEditedWhilePaying`, `PriceChanged`, and `InsufficientStock` local scenarios in `infra/docker/smoke/feature-049-regular-purchase.ps1`
 - [ ] T075 [US2] Run Cart, Product, Inventory, Order, Payment, Gateway, and contract module verification plus all US2 scenarios; record PASS evidence in `specs/049-regular-purchase-checkout/validation.md`
 

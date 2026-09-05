@@ -16,22 +16,32 @@ public final class Cart {
     private final UUID ownerId;
     private final Instant createdAt;
     private Instant updatedAt;
+    private long version;
     private final Map<UUID, CartItem> items = new LinkedHashMap<>();
 
-    private Cart(UUID id, UUID ownerId, Instant createdAt, Instant updatedAt) {
+    private Cart(UUID id, UUID ownerId, Instant createdAt, Instant updatedAt, long version) {
         this.id = Objects.requireNonNull(id, "id");
         this.ownerId = Objects.requireNonNull(ownerId, "ownerId");
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt");
+        if (version < 0) {
+            throw new IllegalArgumentException("version cannot be negative");
+        }
+        this.version = version;
     }
 
     public static Cart create(UUID id, UUID ownerId, Instant now) {
-        return new Cart(id, ownerId, now, now);
+        return new Cart(id, ownerId, now, now, 0);
     }
 
     public static Cart restore(UUID id, UUID ownerId, Instant createdAt, Instant updatedAt,
             List<CartItem> restoredItems) {
-        Cart cart = new Cart(id, ownerId, createdAt, updatedAt);
+        return restore(id, ownerId, createdAt, updatedAt, 0, restoredItems);
+    }
+
+    public static Cart restore(UUID id, UUID ownerId, Instant createdAt, Instant updatedAt,
+            long version, List<CartItem> restoredItems) {
+        Cart cart = new Cart(id, ownerId, createdAt, updatedAt, version);
         if (restoredItems != null) {
             restoredItems.forEach(item -> cart.items.put(item.variantId(), item));
         }
@@ -42,13 +52,15 @@ public final class Cart {
         Objects.requireNonNull(variantId, "variantId");
         Objects.requireNonNull(quantity, "quantity");
         Objects.requireNonNull(now, "now");
+        long nextVersion = version + 1;
         CartItem item = items.get(variantId);
         if (item == null) {
-            item = CartItem.create(variantId, quantity, now);
+            item = CartItem.create(variantId, quantity, now, nextVersion);
             items.put(variantId, item);
         } else {
-            item.replaceQuantity(quantity, now);
+            item.replaceQuantity(quantity, now, nextVersion);
         }
+        version = nextVersion;
         updatedAt = now;
         return item;
     }
@@ -56,8 +68,10 @@ public final class Cart {
     public void removeItem(UUID variantId, Instant now) {
         Objects.requireNonNull(variantId, "variantId");
         Objects.requireNonNull(now, "now");
-        items.remove(variantId);
-        updatedAt = now;
+        if (items.remove(variantId) != null) {
+            version++;
+            updatedAt = now;
+        }
     }
 
     public List<CartItem> items() {
@@ -71,4 +85,5 @@ public final class Cart {
     public UUID ownerId() { return ownerId; }
     public Instant createdAt() { return createdAt; }
     public Instant updatedAt() { return updatedAt; }
+    public long version() { return version; }
 }

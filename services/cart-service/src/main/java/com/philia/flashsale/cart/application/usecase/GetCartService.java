@@ -40,7 +40,7 @@ public final class GetCartService implements GetCartUseCase {
         Cart cart = loaded.orElseThrow();
         List<CartItem> savedItems = cart.items();
         if (savedItems.isEmpty()) {
-            return new CartResult(List.of(), 0, 0, cart.updatedAt());
+            return new CartResult(List.of(), 0, 0, cart.version(), cart.updatedAt());
         }
 
         List<UUID> variantIds = savedItems.stream().map(CartItem::variantId).toList();
@@ -49,11 +49,11 @@ public final class GetCartService implements GetCartUseCase {
         List<CartItemResult> resultItems = savedItems.stream()
                 .map(item -> CartItemResult.from(
                         new CartItemState(
-                                item.variantId(), item.quantity(), item.updatedAt()),
+                                item.variantId(), item.quantity(), item.version(), item.updatedAt()),
                         displays.getOrDefault(item.variantId(), ProductDisplay.unavailable(item.variantId()))))
                 .toList();
         int totalQuantity = resultItems.stream().mapToInt(CartItemResult::quantity).sum();
-        return new CartResult(resultItems, resultItems.size(), totalQuantity, cart.updatedAt());
+        return new CartResult(resultItems, resultItems.size(), totalQuantity, cart.version(), cart.updatedAt());
     }
 
     private ProductDisplayBatch loadFailSoft(List<UUID> variantIds, String traceId) {

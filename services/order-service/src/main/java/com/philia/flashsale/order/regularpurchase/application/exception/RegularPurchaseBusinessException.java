@@ -14,7 +14,8 @@ public final class RegularPurchaseBusinessException extends RuntimeException {
         VARIANT_NOT_SELLABLE,
         PRICE_CHANGED,
         INSUFFICIENT_STOCK,
-        INVENTORY_ITEM_NOT_FOUND
+        INVENTORY_ITEM_NOT_FOUND,
+        CART_CHANGED
     }
 
     private final Reason reason;

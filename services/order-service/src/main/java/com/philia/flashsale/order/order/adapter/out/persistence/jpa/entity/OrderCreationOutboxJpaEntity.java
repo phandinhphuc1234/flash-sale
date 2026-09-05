@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /** Immutable OrderCreated publication snapshot and relay state. */
 @Entity
@@ -198,6 +199,43 @@ public class OrderCreationOutboxJpaEntity {
         return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderConfirmedV2", 2,
                 order.getId().toString(), command.correlationId(), command.eventId(), payload,
                 command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
+    /** Emits Cart cleanup only after a CART Order is durably confirmed. */
+    public static OrderCreationOutboxJpaEntity reconcilePurchasedCart(RegularStockHoldConfirmedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order, String snapshotPayload, ObjectMapper objectMapper) {
+        if (order.getCartId() == null || order.getCartVersion() == null
+                || order.getPurchaseSource() != com.philia.flashsale.order.order.domain.model.PurchaseSource.CART) {
+            throw new IllegalArgumentException("Cart reconciliation requires a confirmed CART Order");
+        }
+        try {
+            if (objectMapper == null) {
+                throw new IllegalArgumentException("Cart reconciliation ObjectMapper is missing");
+            }
+            com.fasterxml.jackson.databind.JsonNode snapshot = objectMapper.readTree(snapshotPayload);
+            StringBuilder items = new StringBuilder();
+            for (com.fasterxml.jackson.databind.JsonNode line : snapshot.withArray("lines")) {
+                if (!items.isEmpty()) items.append(',');
+                items.append("{\"variantId\":\"").append(line.required("variantId").asText()).append("\",")
+                        .append("\"quantity\":").append(line.required("quantity").asLong()).append(',')
+                        .append("\"itemVersion\":").append(line.required("cartItemVersion").asLong()).append('}');
+            }
+            UUID eventId = UUID.nameUUIDFromBytes(("cart-reconciliation:" + command.eventId())
+                    .getBytes(StandardCharsets.UTF_8));
+            String payload = "{" + ORDER_ID_JSON_FIELD + order.getId() + "\","
+                    + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                    + "\"cartId\":\"" + order.getCartId() + "\","
+                    + "\"ownerId\":\"" + order.getUserId() + "\","
+                    + "\"snapshotCartVersion\":" + order.getCartVersion() + ","
+                    + "\"confirmedAt\":\"" + command.transitionedAt() + "\","
+                    + "\"items\":[" + items + "]}";
+            return pendingEvent(eventId, "ORDER", order.getId(), saga.version(),
+                    "ReconcilePurchasedCartSnapshot", order.getId().toString(), command.correlationId(),
+                    command.eventId(), payload, command.traceparent(), command.tracestate(),
+                    command.transitionedAt(), command.transitionedAt(), command.transitionedAt());
+        } catch (Exception exception) {
+            throw new IllegalStateException("Cart reconciliation snapshot is invalid", exception);
+        }
     }
 
     /** Creates the terminal OrderCancelled/OrderExpired fact after reservation release. */

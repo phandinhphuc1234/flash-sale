@@ -14,6 +14,7 @@ public enum OrderErrorCode {
     VARIANT_NOT_FOUND(HttpStatus.NOT_FOUND, "Product variant not found"),
     VARIANT_NOT_SELLABLE(HttpStatus.CONFLICT, "Product variant is not sellable"),
     PRICE_CHANGED(HttpStatus.CONFLICT, "One or more prices changed. Review current prices and submit a new request."),
+    CART_CHANGED(HttpStatus.CONFLICT, "Cart changed while checkout was being prepared. Review the cart and submit again."),
     INSUFFICIENT_STOCK(HttpStatus.CONFLICT, "Regular stock is insufficient for the submitted purchase"),
     CHECKOUT_DEPENDENCY_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Checkout dependency is temporarily unavailable"),
     REGULAR_PURCHASE_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "Regular purchase is temporarily disabled"),

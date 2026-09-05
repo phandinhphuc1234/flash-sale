@@ -265,3 +265,30 @@ and compatible consumer images are reviewed.
 
 - The only source change in the verification fix is test cleanup ordering: child hold rows and hold inbox rows are truncated before the referenced Inventory rows. No production schema, runtime flag, or business behavior changed.
 - The full reactor verification exercises the already-approved US1 implementation and does not apply Kubernetes/cloud state or expose secrets.
+
+### Phase 4 — Cart checkout foundation and reconciliation (T057–T073)
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T057–T058, Cart revisions and owner-safe snapshot | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service -am "-Dtest=CartCheckoutRevisionTests,CartCheckoutSnapshotTests,CartReconciliationPersistenceIntegrationTests,ReconcilePurchasedCartSnapshotAvroMapperTests,CartArchitectureTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 13 selected tests passed with zero failures/errors. Cart/item revisions, delete/re-add behavior, exact snapshot reads, owner isolation, reconciliation replay, and Avro mapping are covered. |
+| T060, Cart checkout application boundary | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/order-service -am "-Dtest=CartCheckoutUseCaseTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 4 tests passed with zero failures/errors. Duplicate variants, mixed currencies, foreign snapshots, price changes, and all-or-nothing insufficient stock are rejected before durable Order state. |
+| T062–T073, Cart checkout implementation and contract regression | Cart/Order focused suites plus architecture tests | PASS — Cart and Order revisions, owner-safe snapshot, exact checkout comparison, multi-item hold orchestration, replay semantics, reconciliation outbox/consumer, and frontend/API documentation are implemented and compile-tested. |
+| Cart/Order module verification | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service,services/order-service -am verify` | PASS — Maven reactor completed with `BUILD SUCCESS`; Cart reported 47 tests passed, Order reported 183 tests with zero failures/errors (8 skipped by existing integration-test prerequisites). |
+| Smoke runner syntax/static gate | PowerShell parser check and `pwsh -NoLogo -NoProfile -File .\infra\docker\smoke\feature-049-regular-purchase.ps1 -Scenario Static` | PASS — `FEATURE_049_STATIC=PASS`; the CartPaid and CartEditedWhilePaying scenarios are renderable and keep runtime feature flags scoped to the local process. |
+| Runner no-build mode | `pwsh -NoLogo -NoProfile -File .\infra\docker\smoke\feature-049-regular-purchase.ps1 -Scenario PriceChanged -SkipBuild -TimeoutSeconds 1800` | BLOCKED — the local Docker Desktop Linux engine returned HTTP 500 on `/_ping` before Compose could start. No application, database, Kafka, or Secret state was changed by this attempt. |
+
+### Phase 4 — remaining concurrency/reconciliation test additions
+
+| Test addition | Command / scope | Result |
+|---|---|---|
+| T059 reconciliation matrix additions | `CartReconciliationPersistenceIntegrationTests` now covers quantity edit, remove/re-add revision preservation, and same-order payload conflict in addition to apply/replay, partial no-op, and owner isolation. | COMPILED — the focused Maven run completed with BUILD SUCCESS, but the six Testcontainers-backed Cart integration cases were skipped because the local Docker Engine returned status 500 through the named pipe. Live execution remains required. |
+| T061 overlapping multi-item hold test | `MultiItemRegularHoldConcurrencyTests` adds two concurrent two-line requests and asserts one 201/one 409, exactly one hold, two hold items, and no partial winner. | COMPILED — the focused Maven run completed with BUILD SUCCESS, but the Testcontainers-backed case was skipped for the same unavailable Docker Engine. Live execution remains required. |
+| Cart/Inventory focused non-container regression | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service,services/inventory-service -am "-Dtest=CartCheckoutRevisionTests,CartCheckoutSnapshotTests,ReconcilePurchasedCartSnapshotAvroMapperTests,CartArchitectureTests,RegularStockHoldApplicationServiceTest,RegularHoldCommandProcessingServiceTest,RegularStockHoldTest,InventoryRegularHoldKafkaConsumerConfigurationTests,InventoryRegularHoldSecurityConfigurationTests" "-Dsurefire.failIfNoSpecifiedTests=false" test` | PASS — 26 selected unit/architecture tests passed with zero failures/errors. |
+| Current Cart/Order module verification after test additions | `./mvnw.cmd --batch-mode --no-transfer-progress -pl services/cart-service,services/order-service -am verify` | BLOCKED — Cart completed (50 tests, 0 failures, 11 Docker-dependent skips), but Order stopped with 11 Testcontainers errors because Docker Desktop Linux Engine returned HTTP 500. This is an environment blocker, not a code assertion failure. |
+
+### Phase 4 safety boundary and remaining evidence
+
+- Cart checkout uses a captured Cart snapshot and monotonic Cart/item revisions. Order validates owner, exact line identity, quantity, price, and currency before one all-or-nothing Inventory hold.
+- Cart reconciliation is conditional and idempotent: it removes only unchanged purchased lines, preserves edits, records an inbox receipt, and publishes no browser-visible secret or provider payload.
+- The new local smoke runner includes `CartPaid` and `CartEditedWhilePaying`; both require an operator to complete the hosted Stripe test Checkout. They have not been claimed as live PASS in this ledger yet.
+- T059/T061 now have the required test coverage in source, but their Testcontainers execution remains open until Docker Engine health is restored. The broader HTTP/DLT assertions still need a live Kafka test gate. T074/T075 remain open until the negative smoke scenarios (`PriceChanged`, `InsufficientStock`) and the live Cart scenarios are executed and recorded.

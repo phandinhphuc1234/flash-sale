@@ -6,6 +6,7 @@ import com.philia.flashsale.contract.order.event.v2.OrderCreatedV2;
 import com.philia.flashsale.contract.order.event.v2.OrderConfirmedV2;
 import com.philia.flashsale.contract.payment.command.v1.PaymentRequestedV1;
 import com.philia.flashsale.contract.regularhold.command.v1.ConfirmRegularStockHoldV1;
+import com.philia.flashsale.contract.cart.command.v1.ReconcilePurchasedCartSnapshotV1;
 import com.philia.flashsale.contract.purchase.command.v1.ConfirmPurchaseReservationV1;
 import com.philia.flashsale.contract.purchase.command.v1.ReleasePurchaseReservationV1;
 import com.philia.flashsale.contract.order.event.v1.OrderConfirmedV1;
@@ -35,6 +36,8 @@ import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderCancel
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderExpiredAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.OrderPaymentReviewRequiredAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaOrderPaymentReviewRequiredPublisher;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.KafkaReconcilePurchasedCartSnapshotPublisher;
+import com.philia.flashsale.order.outbox.adapter.out.messaging.kafka.ReconcilePurchasedCartSnapshotAvroMapper;
 import com.philia.flashsale.order.outbox.adapter.out.persistence.OrderOutboxPersistenceAdapter;
 import com.philia.flashsale.order.outbox.application.port.ClaimOrderOutboxEventsPort;
 import com.philia.flashsale.order.outbox.application.port.UpdateOrderOutboxPublicationPort;
@@ -139,6 +142,18 @@ public class OrderOutboxConfiguration {
     }
 
     @Bean
+    ReconcilePurchasedCartSnapshotAvroMapper reconcilePurchasedCartSnapshotAvroMapper(ObjectMapper objectMapper) {
+        return new ReconcilePurchasedCartSnapshotAvroMapper(objectMapper);
+    }
+
+    @Bean
+    KafkaReconcilePurchasedCartSnapshotPublisher kafkaReconcilePurchasedCartSnapshotPublisher(
+            KafkaTemplate<String, ReconcilePurchasedCartSnapshotV1> kafka,
+            ReconcilePurchasedCartSnapshotAvroMapper mapper, OrderKafkaProperties properties) {
+        return new KafkaReconcilePurchasedCartSnapshotPublisher(kafka, mapper, properties);
+    }
+
+    @Bean
     ReleaseReservationAvroMapper releaseReservationAvroMapper(ObjectMapper objectMapper) {
         return new ReleaseReservationAvroMapper(objectMapper);
     }
@@ -206,6 +221,7 @@ public class OrderOutboxConfiguration {
             KafkaPaymentRequestedPublisher paymentRequestedPublisher,
             KafkaConfirmReservationPublisher confirmReservationPublisher,
             KafkaConfirmRegularStockHoldPublisher confirmRegularStockHoldPublisher,
+            KafkaReconcilePurchasedCartSnapshotPublisher reconcilePurchasedCartSnapshotPublisher,
             KafkaOrderConfirmedPublisher orderConfirmedPublisher,
             KafkaReleaseReservationPublisher releaseReservationPublisher,
             KafkaOrderCancelledPublisher orderCancelledPublisher,
@@ -218,6 +234,7 @@ public class OrderOutboxConfiguration {
                 Map.entry("PaymentRequested", paymentRequestedPublisher),
                 Map.entry("ConfirmPurchaseReservation", confirmReservationPublisher),
                 Map.entry("ConfirmRegularStockHold", confirmRegularStockHoldPublisher),
+                Map.entry("ReconcilePurchasedCartSnapshot", reconcilePurchasedCartSnapshotPublisher),
                 Map.entry("OrderConfirmed", orderConfirmedPublisher),
                 Map.entry("ReleasePurchaseReservation", releaseReservationPublisher),
                 Map.entry("OrderCancelled", orderCancelledPublisher),

@@ -10,7 +10,8 @@ public final class RegularPurchaseDownstreamException extends RuntimeException {
         INVENTORY_ITEM_NOT_FOUND,
         INVENTORY_HOLD_CONFLICT,
         INVENTORY_HOLD_AMBIGUOUS,
-        INVENTORY_SERVICE_UNAVAILABLE
+        INVENTORY_SERVICE_UNAVAILABLE,
+        CART_SERVICE_UNAVAILABLE
     }
 
     private final Failure failure;

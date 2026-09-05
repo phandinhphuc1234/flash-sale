@@ -8,10 +8,21 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 /** Spring Data boundary for owner-scoped Cart rows and PostgreSQL owner upsert. */
 public interface CartJpaRepository extends JpaRepository<CartJpaEntity, UUID> {
     Optional<CartJpaEntity> findByOwnerId(UUID ownerId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select cart from CartJpaEntity cart where cart.ownerId = :ownerId")
+    Optional<CartJpaEntity> findByOwnerIdForUpdate(@Param("ownerId") UUID ownerId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE carts SET version = version + 1, updated_at = :updatedAt WHERE owner_id = :ownerId",
+            nativeQuery = true)
+    int advanceVersion(@Param("ownerId") UUID ownerId, @Param("updatedAt") Instant updatedAt);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """

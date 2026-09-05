@@ -3,11 +3,15 @@ package com.philia.flashsale.order.regularpurchase.adapter.in.web;
 import com.philia.flashsale.common.web.ApiResponse;
 import com.philia.flashsale.order.order.domain.valueobject.Money;
 import com.philia.flashsale.order.regularpurchase.adapter.in.web.request.BuyNowCheckoutRequest;
+import com.philia.flashsale.order.regularpurchase.adapter.in.web.request.CartCheckoutRequest;
 import com.philia.flashsale.order.regularpurchase.adapter.in.web.response.RegularPurchaseCheckoutResponse;
 import com.philia.flashsale.order.regularpurchase.application.command.BuyNowCheckoutCommand;
+import com.philia.flashsale.order.regularpurchase.application.command.CartCheckoutCommand;
+import com.philia.flashsale.order.regularpurchase.application.command.CartCheckoutLine;
 import com.philia.flashsale.order.regularpurchase.application.exception.InvalidIdempotencyKeyException;
 import com.philia.flashsale.order.regularpurchase.application.exception.RegularPurchaseDisabledException;
 import com.philia.flashsale.order.regularpurchase.application.port.in.CheckoutBuyNowUseCase;
+import com.philia.flashsale.order.regularpurchase.application.port.in.CheckoutCartUseCase;
 import com.philia.flashsale.order.websupport.context.OrderRequestContext;
 import com.philia.flashsale.order.websupport.context.OrderTraceIdResolver;
 import com.philia.flashsale.order.websupport.error.OrderAuthenticationException;
@@ -16,6 +20,7 @@ import jakarta.validation.Valid;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -36,12 +41,47 @@ import org.springframework.web.bind.annotation.RestController;
 public class RegularPurchaseController {
 
     private final ObjectProvider<CheckoutBuyNowUseCase> checkout;
+    private final ObjectProvider<CheckoutCartUseCase> cartCheckout;
     private final OrderTraceIdResolver traceIds;
 
+    @Autowired
     public RegularPurchaseController(ObjectProvider<CheckoutBuyNowUseCase> checkout,
             OrderTraceIdResolver traceIds) {
+        this(checkout, null, traceIds);
+    }
+
+    public RegularPurchaseController(ObjectProvider<CheckoutBuyNowUseCase> checkout,
+            ObjectProvider<CheckoutCartUseCase> cartCheckout, OrderTraceIdResolver traceIds) {
         this.checkout = Objects.requireNonNull(checkout);
+        this.cartCheckout = cartCheckout;
         this.traceIds = Objects.requireNonNull(traceIds);
+    }
+
+    @PostMapping(path = "/cart-checkouts", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<RegularPurchaseCheckoutResponse>> checkoutCart(
+            @Valid @RequestBody CartCheckoutRequest body,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal Jwt jwt, HttpServletRequest request) {
+        validateIdempotencyKey(idempotencyKey);
+        CheckoutCartUseCase useCase = cartCheckout == null ? null : cartCheckout.getIfAvailable();
+        if (useCase == null) throw new RegularPurchaseDisabledException();
+        String traceId = traceIds.resolve(request);
+        var lines = body.items().stream().map(line -> new CartCheckoutLine(line.variantId(), line.quantity(),
+                line.itemVersion(), Money.of(line.expectedUnitPrice()), line.currency())).toList();
+        var result = useCase.checkout(new CartCheckoutCommand(ownerId(jwt), idempotencyKey, body.cartVersion(),
+                lines, traceId, validTraceparent(request.getHeader(OrderRequestContext.TRACEPARENT_HEADER)),
+                OrderRequestContext.normalizeTracestate(request.getHeader(OrderRequestContext.TRACESTATE_HEADER))));
+        HttpStatus status = result.replayed() ? HttpStatus.OK : HttpStatus.CREATED;
+        HttpHeaders headers = baseHeaders(traceId, result.replayed());
+        if (!result.replayed()) headers.setLocation(java.net.URI.create("/api/v1/orders/" + result.orderId()));
+        return ResponseEntity.status(status).headers(headers)
+                .body(ApiResponse.success("Cart checkout accepted", RegularPurchaseCheckoutResponse.from(result)));
+    }
+
+    private void validateIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank() || idempotencyKey.length() > 128) {
+            throw new InvalidIdempotencyKeyException();
+        }
     }
 
     @PostMapping(path = "/buy-now", consumes = MediaType.APPLICATION_JSON_VALUE)

@@ -9,6 +9,8 @@ import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.entit
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.entity.PurchaseSagaJpaEntity;
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.repository.PurchaseSagaInboxJpaRepository;
 import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.repository.PurchaseSagaJpaRepository;
+import com.philia.flashsale.order.regularpurchase.adapter.out.persistence.jpa.entity.RegularPurchaseRequestJpaEntity;
+import com.philia.flashsale.order.regularpurchase.adapter.out.persistence.jpa.repository.RegularPurchaseRequestJpaRepository;
 import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldConfirmedCommand;
 import com.philia.flashsale.order.purchasesaga.application.exception.InvalidRegularHoldConfirmationException;
 import com.philia.flashsale.order.purchasesaga.application.port.out.ApplyRegularHoldConfirmationPort;
@@ -17,6 +19,7 @@ import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSagaStatus;
 import com.philia.flashsale.order.purchasesaga.domain.model.StockParticipantType;
 import jakarta.transaction.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -34,15 +37,34 @@ public class RegularHoldConfirmationPersistenceAdapter implements ApplyRegularHo
     private final PurchaseSagaJpaRepository sagas;
     private final PurchaseSagaInboxJpaRepository inbox;
     private final OrderCreationOutboxJpaRepository outbox;
+    private final RegularPurchaseRequestJpaRepository regularRequests;
+    private final ObjectMapper objectMapper;
+    private final boolean cartReconciliationEnabled;
 
     public RegularHoldConfirmationPersistenceAdapter(OrderJpaRepository orders, OrderLineJpaRepository lines,
             PurchaseSagaJpaRepository sagas, PurchaseSagaInboxJpaRepository inbox,
             OrderCreationOutboxJpaRepository outbox) {
+        this(orders, lines, sagas, inbox, outbox, null, null, false);
+    }
+
+    public RegularHoldConfirmationPersistenceAdapter(OrderJpaRepository orders, OrderLineJpaRepository lines,
+            PurchaseSagaJpaRepository sagas, PurchaseSagaInboxJpaRepository inbox,
+            OrderCreationOutboxJpaRepository outbox, RegularPurchaseRequestJpaRepository regularRequests) {
+        this(orders, lines, sagas, inbox, outbox, regularRequests, null, false);
+    }
+
+    public RegularHoldConfirmationPersistenceAdapter(OrderJpaRepository orders, OrderLineJpaRepository lines,
+            PurchaseSagaJpaRepository sagas, PurchaseSagaInboxJpaRepository inbox,
+            OrderCreationOutboxJpaRepository outbox, RegularPurchaseRequestJpaRepository regularRequests,
+            ObjectMapper objectMapper, boolean cartReconciliationEnabled) {
         this.orders = Objects.requireNonNull(orders, "orders");
         this.lines = Objects.requireNonNull(lines, "lines");
         this.sagas = Objects.requireNonNull(sagas, "sagas");
         this.inbox = Objects.requireNonNull(inbox, "inbox");
         this.outbox = Objects.requireNonNull(outbox, "outbox");
+        this.regularRequests = regularRequests;
+        this.objectMapper = objectMapper;
+        this.cartReconciliationEnabled = cartReconciliationEnabled;
     }
 
     @Override
@@ -91,6 +113,16 @@ public class RegularHoldConfirmationPersistenceAdapter implements ApplyRegularHo
         orders.saveAndFlush(storedOrder);
         inbox.saveAndFlush(PurchaseSagaInboxJpaEntity.regularStockHoldConfirmed(command));
         outbox.saveAndFlush(OrderCreationOutboxJpaEntity.regularOrderConfirmed(command, completed, storedOrder));
+        if (cartReconciliationEnabled
+                && storedOrder.getPurchaseSource() == com.philia.flashsale.order.order.domain.model.PurchaseSource.CART) {
+            if (regularRequests == null) {
+                throw invalid("Cart reconciliation persistence is not configured");
+            }
+            RegularPurchaseRequestJpaEntity request = regularRequests.findById(command.purchaseRequestId())
+                    .orElseThrow(() -> invalid("Cart purchase intake does not exist"));
+            outbox.saveAndFlush(OrderCreationOutboxJpaEntity.reconcilePurchasedCart(command, completed,
+                    storedOrder, request.getSnapshotPayload(), objectMapper));
+        }
         return RegularHoldConfirmationResult.applied(command.orderId(), storedSaga.getId());
     }
 

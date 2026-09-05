@@ -18,16 +18,18 @@ public interface CartItemJpaRepository extends JpaRepository<CartItemJpaEntity, 
             + "order by item.updatedAt desc, item.id.variantId asc")
     List<CartItemJpaEntity> findByCartIdOrderByUpdatedAtDescVariantIdAsc(@Param("cartId") UUID cartId);
 
+    long countByIdCartId(UUID cartId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
-            INSERT INTO cart_items (cart_id, variant_id, quantity, created_at, updated_at)
-            VALUES (:cartId, :variantId, :quantity, :createdAt, :updatedAt)
+            INSERT INTO cart_items (cart_id, variant_id, quantity, created_at, updated_at, version)
+            VALUES (:cartId, :variantId, :quantity, :createdAt, :updatedAt, :version)
             ON CONFLICT (cart_id, variant_id)
-            DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = EXCLUDED.updated_at
+            DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = EXCLUDED.updated_at, version = EXCLUDED.version
             """, nativeQuery = true)
     int upsert(@Param("cartId") UUID cartId, @Param("variantId") UUID variantId,
             @Param("quantity") int quantity, @Param("createdAt") Instant createdAt,
-            @Param("updatedAt") Instant updatedAt);
+            @Param("updatedAt") Instant updatedAt, @Param("version") long version);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from CartItemJpaEntity item where item.id.cartId = :cartId and item.id.variantId = :variantId")
