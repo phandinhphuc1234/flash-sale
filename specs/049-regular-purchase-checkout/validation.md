@@ -237,3 +237,17 @@ and compatible consumer images are reviewed.
 - Saga, Order, inbox receipt, and `OrderConfirmedV2` outbox are committed in one local transaction; the consumer acknowledges only after that transaction succeeds.
 - Exact event replay is returned as `REPLAYED`; lower aggregate versions are recorded as stale; conflicting same-version or identity/line content is rejected as non-retryable and routed to the result DLT.
 - No runtime flag was enabled and no Kubernetes/cloud state was changed by this task.
+
+### Phase 3C-10 — Buy Now paid local smoke (T055)
+
+| Task / gate | Command / scope | Result |
+|---|---|---|
+| T055, `BuyNowPaid` local end-to-end scenario | `.\infra\docker\smoke\feature-049-regular-purchase.ps1 -Scenario BuyNowPaid -TimeoutSeconds 1800` with the local Docker Compose stack | PASS — `FEATURE_049_BUY_NOW_PAID=PASS`. Buy Now acceptance and exact idempotent replay returned the original Order; a real Stripe test Checkout was completed; the signed webhook and duplicate replay were acknowledged; Payment event, regular-hold command, and regular-hold result Kafka offsets advanced; one regular hold was confirmed with exactly one physical deduction; Order became `CONFIRMED`; Cart fingerprint was unchanged. |
+| Secret and output boundary | Same run | PASS — no Secret values, bearer tokens, Checkout URLs, provider payloads, or shopper identities were printed. |
+| Runtime safety | Docker Compose local stack | PASS — no Kubernetes/cloud mutation; Payment deadline and provider reconciliation remained unchanged. |
+
+### Phase 3C-10 safety boundary
+
+- The smoke uses the real hosted test Checkout state before sending the signed webhook, so an unpaid or expired Stripe Session cannot be marked paid by a fabricated payload.
+- Replay assertions cover both the Buy Now idempotency key and duplicate webhook delivery; downstream completion is observed through Payment, Kafka, Inventory, Order, and Cart read-only checks.
+- The run was completed against the restarted local Docker stack after service-owned migrations; no database reset or direct business-state mutation was used.

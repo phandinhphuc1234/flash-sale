@@ -50,7 +50,7 @@ public class InventoryRegularHoldKafkaConsumerConfiguration {
     }
 
     @Bean
-    DefaultErrorHandler inventoryRegularHoldErrorHandler(KafkaOperations<Object, Object> kafkaOperations,
+    DefaultErrorHandler inventoryRegularHoldErrorHandler(KafkaOperations<?, ?> kafkaOperations,
             InventoryRegularHoldProperties properties) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaOperations,
                 (record, exception) -> dltDestination(record, properties));
