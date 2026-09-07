@@ -1,17 +1,21 @@
 package com.philia.flashsale.inventory.regularhold.application.usecase;
 
 import com.philia.flashsale.inventory.configuration.InventoryRegularHoldProperties;
+import com.philia.flashsale.inventory.observability.InventoryObservability;
 import com.philia.flashsale.inventory.regularhold.application.command.CreateRegularStockHoldCommand;
 import com.philia.flashsale.inventory.regularhold.application.command.ConfirmRegularStockHoldCommand;
+import com.philia.flashsale.inventory.regularhold.application.command.ReleaseRegularStockHoldCommand;
 import com.philia.flashsale.inventory.regularhold.application.command.RegularStockHoldLine;
 import com.philia.flashsale.inventory.regularhold.application.exception.RegularStockHoldApplicationException;
 import com.philia.flashsale.inventory.regularhold.application.port.in.ConfirmRegularStockHoldUseCase;
 import com.philia.flashsale.inventory.regularhold.application.port.in.CreateRegularStockHoldUseCase;
+import com.philia.flashsale.inventory.regularhold.application.port.in.ReleaseRegularStockHoldUseCase;
 import com.philia.flashsale.inventory.regularhold.application.port.out.LoadActiveRegularHoldQuantityPort;
 import com.philia.flashsale.inventory.regularhold.application.port.out.LoadRegularStockHoldPort;
 import com.philia.flashsale.inventory.regularhold.application.port.out.SaveRegularStockHoldPort;
 import com.philia.flashsale.inventory.regularhold.application.result.RegularStockHoldResult;
 import com.philia.flashsale.inventory.regularhold.application.result.RegularStockHoldConfirmationResult;
+import com.philia.flashsale.inventory.regularhold.application.result.RegularStockHoldReleaseResult;
 import com.philia.flashsale.inventory.regularhold.domain.model.RegularStockHold;
 import com.philia.flashsale.inventory.regularhold.domain.model.RegularStockHoldItem;
 import com.philia.flashsale.inventory.movement.application.port.out.RecordStockMovementPort;
@@ -31,12 +35,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Coordinates one locked, all-or-nothing regular hold without changing physical stock. */
 @Service
-public class RegularStockHoldApplicationService implements CreateRegularStockHoldUseCase, ConfirmRegularStockHoldUseCase {
+public class RegularStockHoldApplicationService implements CreateRegularStockHoldUseCase, ConfirmRegularStockHoldUseCase,
+        ReleaseRegularStockHoldUseCase {
     private static final long MAX_QUANTITY_PER_VARIANT = 10;
 
     private final LoadRegularStockHoldPort holds;
@@ -47,7 +53,9 @@ public class RegularStockHoldApplicationService implements CreateRegularStockHol
     private final LoadActiveRegularHoldQuantityPort activeHeldQuantities;
     private final InventoryRegularHoldProperties properties;
     private final Clock clock;
+    private final InventoryObservability observability;
 
+    /** Backward-compatible constructor for focused tests that do not need runtime metrics. */
     public RegularStockHoldApplicationService(
             LoadRegularStockHoldPort holds,
             SaveRegularStockHoldPort saveHold,
@@ -57,6 +65,21 @@ public class RegularStockHoldApplicationService implements CreateRegularStockHol
             LoadActiveRegularHoldQuantityPort activeHeldQuantities,
             InventoryRegularHoldProperties properties,
             Clock inventoryClock) {
+        this(holds, saveHold, inventoryItems, saveInventoryItem, recordMovement, activeHeldQuantities,
+                properties, inventoryClock, InventoryObservability.noop());
+    }
+
+    @Autowired
+    public RegularStockHoldApplicationService(
+            LoadRegularStockHoldPort holds,
+            SaveRegularStockHoldPort saveHold,
+            LoadInventoryItemPort inventoryItems,
+            SaveInventoryItemPort saveInventoryItem,
+            RecordStockMovementPort recordMovement,
+            LoadActiveRegularHoldQuantityPort activeHeldQuantities,
+            InventoryRegularHoldProperties properties,
+            Clock inventoryClock,
+            InventoryObservability observability) {
         this.holds = holds;
         this.saveHold = saveHold;
         this.inventoryItems = inventoryItems;
@@ -65,6 +88,7 @@ public class RegularStockHoldApplicationService implements CreateRegularStockHol
         this.activeHeldQuantities = activeHeldQuantities;
         this.properties = properties;
         this.clock = inventoryClock;
+        this.observability = observability;
     }
 
     @Override
@@ -85,6 +109,14 @@ public class RegularStockHoldApplicationService implements CreateRegularStockHol
         for (Map.Entry<UUID, Long> requested : canonicalItems.entrySet()) {
             InventoryItem item = inventoryItems.findByVariantIdForUpdate(requested.getKey())
                     .orElseThrow(RegularStockHoldApplicationException::inventoryItemNotFound);
+            // A competing same-key request may have committed while this transaction waited for
+            // the deterministic Inventory-row lock. Reconcile the durable idempotency identity
+            // before calculating availability, otherwise a legitimate replay is misclassified as
+            // INSUFFICIENT_STOCK after the winner's hold becomes visible.
+            existing = holds.findByPurchaseRequestId(command.purchaseRequestId());
+            if (existing.isPresent()) {
+                return compatibleReplay(command, fingerprint, existing.get());
+            }
             long activeHeld = activeHeldQuantities.activeHeldQuantity(item.id(), now);
             long available = item.availableQuantity() - activeHeld;
             if (requested.getValue() > available) {
@@ -103,7 +135,9 @@ public class RegularStockHoldApplicationService implements CreateRegularStockHol
 
         RegularStockHold created = RegularStockHold.held(command.holdId(), command.purchaseRequestId(),
                 command.orderId(), command.shopperId(), fingerprint, holdItems, now, properties.getTtl());
-        return RegularStockHoldResult.from(saveHold.save(created), false);
+        RegularStockHold saved = saveHold.save(created);
+        observability.recordHoldState("active");
+        return RegularStockHoldResult.from(saved, false);
     }
 
     /**
@@ -123,7 +157,9 @@ public class RegularStockHoldApplicationService implements CreateRegularStockHol
         }
         if (hold.isExpiredAt(now)) {
             hold.expire(now);
-            return new RegularStockHoldConfirmationResult(saveHold.save(hold), true);
+            RegularStockHold expired = saveHold.save(hold);
+            observability.recordHoldState("expired");
+            return new RegularStockHoldConfirmationResult(expired, true);
         }
 
         for (RegularStockHoldItem item : hold.items()) {
@@ -137,7 +173,35 @@ public class RegularStockHoldApplicationService implements CreateRegularStockHol
                     "PAID_CONFIRMATION", now));
         }
         hold.confirm(now);
-        return new RegularStockHoldConfirmationResult(saveHold.save(hold), true);
+        RegularStockHold confirmed = saveHold.save(hold);
+        observability.recordHoldState("confirmed");
+        return new RegularStockHoldConfirmationResult(confirmed, true);
+    }
+
+    /** Releases an unpaid hold idempotently; unlike confirmation it never changes physical stock. */
+    @Override
+    @Transactional
+    public RegularStockHoldReleaseResult release(ReleaseRegularStockHoldCommand command) {
+        Instant now = clock.instant();
+        RegularStockHold hold = holds.findByIdForUpdate(command.holdId())
+                .orElseThrow(() -> new IllegalArgumentException("Regular stock hold is not found"));
+        if (!hold.orderId().equals(command.orderId())
+                || !hold.purchaseRequestId().equals(command.purchaseRequestId())) {
+            throw RegularStockHoldApplicationException.identityConflict();
+        }
+        if (!hold.isHeld()) {
+            return new RegularStockHoldReleaseResult(hold, false, "CURRENT_STATE_" + hold.status());
+        }
+        if (hold.isExpiredAt(now)) {
+            hold.expire(now);
+            RegularStockHold expired = saveHold.save(hold);
+            observability.recordHoldState("expired");
+            return new RegularStockHoldReleaseResult(expired, true, "HOLD_TTL_EXPIRED");
+        }
+        hold.release(now);
+        RegularStockHold released = saveHold.save(hold);
+        observability.recordHoldState("released");
+        return new RegularStockHoldReleaseResult(released, true, command.reason());
     }
 
     private void validateRequestTime(Instant requestedAt, Instant now) {

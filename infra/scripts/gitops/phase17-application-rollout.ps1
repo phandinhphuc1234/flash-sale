@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Validate and explicitly roll out the eight cloud application Deployments.
+  Validate and explicitly roll out the nine cloud application Deployments.
 
 .DESCRIPTION
   Default mode is validation-only. It checks the target namespace, Phase 14 platform resources,
@@ -82,7 +82,8 @@ foreach ($configMapName in @(
     "flash-sale-service-runtime-config",
     "inventory-service-runtime-config",
     "order-service-runtime-config",
-    "payment-service-runtime-config"
+    "payment-service-runtime-config",
+    "cart-service-runtime-config"
   )) {
   $resource = Get-KubectlName @("-n", $Namespace, "get", "configmap", $configMapName, "-o", "name")
   if ([string]::IsNullOrWhiteSpace($resource)) {
@@ -100,7 +101,8 @@ foreach ($secretName in @(
     "flashsale-secrets",
     "inventory-secrets",
     "order-secrets",
-    "payment-secrets"
+    "payment-secrets",
+    "cart-secrets"
   )) {
   $resource = Get-KubectlName @("-n", $Namespace, "get", "secret", $secretName, "-o", "name")
   if ([string]::IsNullOrWhiteSpace($resource)) {
@@ -115,7 +117,8 @@ foreach ($jobName in @(
     "migrate-flash-sale-service",
     "migrate-inventory-service",
     "migrate-order-service",
-    "migrate-payment-service"
+    "migrate-payment-service",
+    "migrate-cart-service"
   )) {
   $jobResource = Get-KubectlName @("-n", $Namespace, "get", "job", $jobName, "-o", "name")
   if ([string]::IsNullOrWhiteSpace($jobResource)) {
@@ -138,7 +141,8 @@ $applicationDeployments = @(
   "flash-sale-service",
   "inventory-service",
   "order-service",
-  "payment-service"
+  "payment-service",
+  "cart-service"
 )
 foreach ($deploymentName in $applicationDeployments) {
   if ($renderedText -notmatch "(?m)^\s*name: $([regex]::Escape($deploymentName))\s*$") {
@@ -150,7 +154,7 @@ if ($renderedText -match "name: flash-sale-secrets") {
 }
 
 Invoke-Kubectl @("apply", "--dry-run=client", "-k", $OverlayPath)
-Write-Output "Phase 17 prerequisites passed. Eight application Deployments are renderable."
+Write-Output "Phase 17 prerequisites passed. Nine application Deployments are renderable."
 Write-Output "Secret values were not read or printed."
 if (-not $Apply) {
   Write-Output "Validation-only mode: no application Deployment was changed."
@@ -170,4 +174,4 @@ try {
 }
 
 Invoke-Kubectl @("-n", $Namespace, "get", "deployments,pods")
-Write-Output "Phase 17 cloud application rollout completed: 8/8 Deployments available."
+Write-Output "Phase 17 cloud application rollout completed: 9/9 Deployments available."

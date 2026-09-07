@@ -5,7 +5,7 @@
 .DESCRIPTION
   Default mode validates local manifests and live prerequisites without changing the cluster.
   -Apply additionally requires the Phase 19 desired state to be present on origin/develop, suspends
-  the historical pilot, reconciles flash-sale-cloud, verifies all eight application Deployments,
+  the historical pilot, reconciles flash-sale-cloud, verifies all nine application Deployments,
   and removes only the finalizer-free historical Application object. If cutover fails, the script
   restores the committed pilot Application. Secret values are never read or printed.
 #>
@@ -39,7 +39,8 @@ $ApplicationDeployments = @(
   "flash-sale-service",
   "inventory-service",
   "order-service",
-  "payment-service"
+  "payment-service",
+  "cart-service"
 )
 
 function Invoke-Native {

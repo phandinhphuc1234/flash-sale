@@ -12,10 +12,16 @@ import com.philia.flashsale.order.regularpurchase.adapter.out.persistence.jpa.en
 import com.philia.flashsale.order.regularpurchase.adapter.out.persistence.jpa.mapper.RegularPurchasePersistenceMapper;
 import com.philia.flashsale.order.regularpurchase.adapter.out.persistence.jpa.repository.RegularPurchaseRequestJpaRepository;
 import com.philia.flashsale.order.regularpurchase.application.model.RegularPurchaseAcceptance;
+import com.philia.flashsale.order.regularpurchase.application.model.RegularPurchaseRecoveryClaim;
+import com.philia.flashsale.order.regularpurchase.application.port.out.ClaimRegularPurchaseRecoveryPort;
 import com.philia.flashsale.order.regularpurchase.application.port.out.PersistRegularPurchasePort;
 import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRequest;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataAccessException;
@@ -27,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>No Product, Cart, Inventory, or Payment call is made inside this transaction. An accepted
  * regular hold is therefore never followed by a partly durable Order/Saga/outbox state.</p>
  */
-public class RegularPurchasePersistenceAdapter implements PersistRegularPurchasePort {
+public class RegularPurchasePersistenceAdapter implements PersistRegularPurchasePort, ClaimRegularPurchaseRecoveryPort {
 
     private final RegularPurchaseRequestJpaRepository requests;
     private final OrderJpaRepository orders;
@@ -104,6 +110,56 @@ public class RegularPurchasePersistenceAdapter implements PersistRegularPurchase
         } catch (DataAccessException exception) {
             throw new IllegalStateException("regular purchase acceptance could not commit atomically", exception);
         }
+    }
+
+    /**
+     * Claims stale rows in one short transaction. The row locks end before Product/Cart/Inventory
+     * calls begin; the persisted lease is what prevents another Order instance from taking them.
+     */
+    @Override
+    @Transactional
+    public List<RegularPurchaseRecoveryClaim> claim(String workerId, Instant now, int batchSize, Duration lease) {
+        if (workerId == null || workerId.isBlank() || workerId.length() > 128) {
+            throw new IllegalArgumentException("workerId must be one to 128 characters");
+        }
+        if (batchSize < 1 || batchSize > 500) throw new IllegalArgumentException("batchSize must be between 1 and 500");
+        if (lease == null || lease.isNegative() || lease.isZero()) throw new IllegalArgumentException("lease must be positive");
+        Instant staleBefore = now.minus(lease);
+        @SuppressWarnings("unchecked")
+        List<Object> rawIds = entityManager.createNativeQuery("""
+                select id
+                  from regular_purchase_requests
+                 where state in ('RECEIVED', 'SNAPSHOT_VALIDATED', 'PRODUCT_VALIDATED', 'HOLD_ACQUIRED')
+                   and updated_at <= ?1
+                   and (recovery_lease_until is null or recovery_lease_until <= ?2)
+                 order by updated_at, id
+                 for update skip locked
+                """)
+                .setParameter(1, staleBefore)
+                .setParameter(2, now)
+                .setMaxResults(batchSize)
+                .getResultList();
+        if (rawIds.isEmpty()) return List.of();
+        Instant leaseUntil = now.plus(lease);
+        List<RegularPurchaseRecoveryClaim> claims = new ArrayList<>(rawIds.size());
+        for (Object rawId : rawIds) {
+            UUID id = rawId instanceof UUID uuid ? uuid : UUID.fromString(rawId.toString());
+            RegularPurchaseRequestJpaEntity entity = requests.findById(id)
+                    .orElseThrow(() -> new IllegalStateException("claimed regular purchase intake disappeared"));
+            entity.claimRecoveryLease(workerId, leaseUntil);
+            claims.add(new RegularPurchaseRecoveryClaim(mapper.toDomain(entity), workerId, leaseUntil));
+        }
+        requests.flush();
+        return claims;
+    }
+
+    @Override
+    @Transactional
+    public void release(UUID requestId, String workerId) {
+        requests.findById(requestId).ifPresent(entity -> {
+            entity.releaseRecoveryLease(workerId);
+            requests.saveAndFlush(entity);
+        });
     }
 
     private void lockIdempotencyIdentity(UUID shopperId, String idempotencyKey) {

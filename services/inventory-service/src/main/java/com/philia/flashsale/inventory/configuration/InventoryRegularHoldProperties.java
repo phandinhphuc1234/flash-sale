@@ -11,6 +11,7 @@ public class InventoryRegularHoldProperties {
     private boolean commandConsumerEnabled;
     private boolean outboxPublisherEnabled;
     private boolean expiryEnabled;
+    private int expiryBatchSize = 100;
     private Duration ttl = Duration.ofMinutes(5);
     private Duration maxClockSkew = Duration.ofSeconds(90);
     private String commandsTopic;
@@ -30,6 +31,9 @@ public class InventoryRegularHoldProperties {
                 || retryDelays.stream().anyMatch(delay -> delay == null || delay.isNegative() || delay.isZero())) {
             throw new IllegalArgumentException("Regular hold retry delays must be positive");
         }
+        if (expiryBatchSize <= 0 || expiryBatchSize > 1_000) {
+            throw new IllegalArgumentException("Regular hold expiryBatchSize must be between one and one thousand");
+        }
     }
 
     public boolean isApiEnabled() { return apiEnabled; }
@@ -40,6 +44,8 @@ public class InventoryRegularHoldProperties {
     public void setOutboxPublisherEnabled(boolean outboxPublisherEnabled) { this.outboxPublisherEnabled = outboxPublisherEnabled; }
     public boolean isExpiryEnabled() { return expiryEnabled; }
     public void setExpiryEnabled(boolean expiryEnabled) { this.expiryEnabled = expiryEnabled; }
+    public int getExpiryBatchSize() { return expiryBatchSize; }
+    public void setExpiryBatchSize(int expiryBatchSize) { this.expiryBatchSize = expiryBatchSize; }
     public Duration getTtl() { return ttl; }
     public void setTtl(Duration ttl) { this.ttl = ttl; }
     public Duration getMaxClockSkew() { return maxClockSkew; }

@@ -173,8 +173,8 @@ the unchanged item without exposing/changing another shopper's Cart.
 - [X] T071 [US2] Implement strict reconciliation Avro mapper/listener, manual acknowledgement, retry, and DLT in `services/cart-service/src/main/java/com/philia/flashsale/cart/checkout/adapter/in/messaging/kafka/CartReconciliationKafkaConsumer.java`
 - [X] T072 [US2] Emit one `ReconcilePurchasedCartSnapshotV1` outbox command only after a `CART` Order is durably confirmed in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/out/persistence/jpa/RegularHoldConfirmationPersistenceAdapter.java`
 - [X] T073 [US2] Update public Gateway/Swagger/frontend handoff documentation for Cart versions, Cart checkout, price conflict, and Payment continuation in `docs/api/frontend-integration-guide.md` and `docs/api/endpoint-registry.md`
-- [ ] T074 [US2] Complete `CartPaid`, `CartEditedWhilePaying`, `PriceChanged`, and `InsufficientStock` local scenarios in `infra/docker/smoke/feature-049-regular-purchase.ps1`
-- [ ] T075 [US2] Run Cart, Product, Inventory, Order, Payment, Gateway, and contract module verification plus all US2 scenarios; record PASS evidence in `specs/049-regular-purchase-checkout/validation.md`
+- [x] T074 [US2] Complete `CartPaid`, `CartEditedWhilePaying`, `PriceChanged`, and `InsufficientStock` local scenarios in `infra/docker/smoke/feature-049-regular-purchase.ps1`
+- [x] T075 [US2] Run Cart, Product, Inventory, Order, Payment, Gateway, and contract module verification plus all US2 scenarios; record PASS evidence in `specs/049-regular-purchase-checkout/validation.md`
 
 **Checkpoint**: US1 and US2 both work; Cart checkout is multi-line/all-or-nothing and later Cart
 intent survives asynchronous confirmation.
@@ -193,31 +193,31 @@ Cart outcomes and unchanged Flash Sale behavior.
 
 ### Tests for User Story 3
 
-- [ ] T076 [P] [US3] Add Inventory release/expiry/current-state outcome tests covering deadline boundary, scheduler race, confirm-versus-release, late confirm, replay, and movement invariants in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldRecoveryIntegrationTests.java`
-- [ ] T077 [P] [US3] Add Order Payment failure, hold released/expired, stale/reordered version, success-dominant late success, and manual-review tests in `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/RegularHoldRecoverySagaTests.java`
-- [ ] T078 [P] [US3] Add intake crash-window/resume tests for failure before hold, ambiguous hold response, crash after hold/before Order commit, concurrent same key, and recovery worker lease in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/RegularPurchaseRecoveryIntegrationTests.java`
-- [ ] T079 [P] [US3] Add consumer malformed/identity-conflict/retry/DLT tests in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldKafkaFailureTests.java`, `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/RegularHoldResultKafkaFailureTests.java`, and `services/cart-service/src/test/java/com/philia/flashsale/cart/checkout/CartReconciliationKafkaFailureTests.java`
-- [ ] T080 [P] [US3] Add 100-replay and competing Buy Now/Cart final-unit load tests proving one semantic effect and no oversell in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/RegularPurchaseReplayLoadTests.java` and `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldLoadTests.java`
+- [x] T076 [P] [US3] Add Inventory release/expiry/current-state outcome tests covering deadline boundary, scheduler race, confirm-versus-release, late confirm, replay, and movement invariants in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldRecoveryIntegrationTests.java`
+- [x] T077 [P] [US3] Add Order Payment failure, hold released/expired, stale/reordered version, success-dominant late success, and manual-review tests in `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/RegularHoldRecoverySagaTests.java`
+- [x] T078 [P] [US3] Add intake crash-window/resume tests for failure before hold, ambiguous hold response, crash after hold/before Order commit, concurrent same key, and recovery worker lease in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/RegularPurchaseRecoveryIntegrationTests.java`
+- [x] T079 [P] [US3] Add consumer malformed/identity-conflict/retry/DLT tests in `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldKafkaFailureTests.java`, `services/order-service/src/test/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/RegularHoldResultKafkaFailureTests.java`, and `services/cart-service/src/test/java/com/philia/flashsale/cart/checkout/CartReconciliationKafkaFailureTests.java`
+- [x] T080 [P] [US3] Add 100-replay and competing Buy Now/Cart final-unit load tests proving one semantic effect and no oversell in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/RegularPurchaseReplayLoadTests.java` and `services/inventory-service/src/test/java/com/philia/flashsale/inventory/regularhold/integration/RegularHoldLoadTests.java`
 
 ### Inventory release, expiry, and recoverable publication
 
-- [ ] T081 [US3] Extend Inventory hold domain/application/persistence with idempotent release, expiry, current-state outcomes, and deterministic confirm/release/expiry locking in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/application/usecase/RegularStockHoldService.java`
-- [ ] T082 [US3] Implement strict release command handling and all three stable outcome publishers in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/in/messaging/kafka/RegularHoldCommandKafkaConsumer.java` and `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/out/messaging/kafka/RegularHoldOutcomePublisher.java`
-- [ ] T083 [US3] Implement bounded `SKIP LOCKED` hold expiry and outbox recovery scheduling with disabled-by-default runtime controls in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/in/scheduling/RegularHoldExpiryJob.java`
+- [x] T081 [US3] Extend Inventory hold domain/application/persistence with idempotent release, expiry, current-state outcomes, and deterministic confirm/release/expiry locking in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/application/usecase/RegularStockHoldApplicationService.java`
+- [x] T082 [US3] Implement strict release command handling and all three stable outcome publishers in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/in/messaging/kafka/RegularHoldCommandKafkaConsumer.java` and `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/out/messaging/kafka/RegularHoldOutcomeAvroMapper.java`
+- [x] T083 [US3] Implement bounded `SKIP LOCKED` hold expiry and outbox recovery scheduling with disabled-by-default runtime controls in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/regularhold/adapter/in/scheduling/RegularHoldExpiryJob.java`
 
 ### Order recovery and terminal convergence
 
-- [ ] T084 [US3] Extend the Order Saga state/participant routing to release regular holds, consume released/expired outcomes, preserve monotonic versions, and terminalize `CANCELLED`/`EXPIRED` in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/domain/model/PurchaseSaga.java`
-- [ ] T085 [US3] Implement atomic regular hold release/expiry/late-success transitions and V2 terminal/manual-review outbox facts in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/out/persistence/jpa/RegularHoldRecoveryPersistenceAdapter.java`
-- [ ] T086 [US3] Extend strict Inventory result consumption, current-command causation checks, replay/conflict handling, retry, manual acknowledgement, and DLT in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/RegularHoldResultKafkaConsumer.java`
-- [ ] T087 [US3] Implement leased recovery of non-terminal regular intake checkpoints using the same idempotent clients/IDs in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/in/scheduling/RegularPurchaseRecoveryJob.java`
-- [ ] T088 [US3] Prove the existing Payment deadline rejects new Checkout attempts while preserving provider reconciliation, without changing Payment production contracts or schemas, in `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/domain/model/PaymentTests.java` and `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/integration/CheckoutRecoveryIntegrationTests.java`
+- [x] T084 [US3] Extend the Order Saga state/participant routing to release regular holds, consume released/expired outcomes, preserve monotonic versions, and terminalize `CANCELLED`/`EXPIRED` in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/domain/model/PurchaseSaga.java`
+- [x] T085 [US3] Implement atomic regular hold release/expiry/late-success transitions and V2 terminal/manual-review outbox facts in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/out/persistence/jpa/RegularHoldRecoveryPersistenceAdapter.java`
+- [x] T086 [US3] Extend strict Inventory result consumption, current-command causation checks, replay/conflict handling, retry, manual acknowledgement, and DLT in `services/order-service/src/main/java/com/philia/flashsale/order/purchasesaga/adapter/in/messaging/kafka/RegularHoldResultKafkaConsumer.java`
+- [x] T087 [US3] Implement leased recovery of non-terminal regular intake checkpoints using the same idempotent clients/IDs in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/in/scheduling/RegularPurchaseRecoveryJob.java`
+- [x] T088 [US3] Prove the existing Payment deadline rejects new Checkout attempts while preserving provider reconciliation, without changing Payment production contracts or schemas, in `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/domain/model/PaymentTests.java` and `services/payment-service/src/test/java/com/philia/flashsale/payment/payment/integration/CheckoutRecoveryIntegrationTests.java`
 
 ### Observability and aggregate recovery evidence
 
-- [ ] T089 [P] [US3] Add bounded regular-intake/Saga/recovery/manual-review metrics and trace propagation without sensitive labels in `services/order-service/src/main/java/com/philia/flashsale/order/observability/OrderObservability.java`
-- [ ] T090 [P] [US3] Add bounded active/expired/confirmed/released hold, outbox, DLT, and expiry metrics in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/observability/InventoryObservability.java`
-- [ ] T091 [P] [US3] Add bounded reconciliation applied/no-op/replay/conflict/DLT metrics in `services/cart-service/src/main/java/com/philia/flashsale/cart/observability/CartObservability.java`
+- [x] T089 [P] [US3] Add bounded regular-intake/Saga/recovery/manual-review metrics and trace propagation without sensitive labels in `services/order-service/src/main/java/com/philia/flashsale/order/observability/OrderObservability.java`
+- [x] T090 [P] [US3] Add bounded active/expired/confirmed/released hold, outbox, DLT, and expiry metrics in `services/inventory-service/src/main/java/com/philia/flashsale/inventory/observability/InventoryObservability.java`
+- [x] T091 [P] [US3] Add bounded reconciliation applied/no-op/replay/conflict/DLT metrics in `services/cart-service/src/main/java/com/philia/flashsale/cart/observability/CartObservability.java`
 - [ ] T092 [US3] Complete `PaymentFailed`, `HoldExpired`, `Replay`, `Concurrency`, dependency-restart, and `LateSuccess` scenarios with sanitized diagnostics in `infra/docker/smoke/feature-049-regular-purchase.ps1`
 - [ ] T093 [US3] Run existing Feature 044/Phase 22/Phase 24 Flash Sale and Payment regression scenarios without altering their contracts in `infra/docker/smoke/feature-044-purchase-saga.ps1` and record results in `specs/049-regular-purchase-checkout/validation.md`
 - [ ] T094 [US3] Run all US3 module, Kafka/Registry/PostgreSQL, replay/concurrency, outage/restart, and late-success gates; record exact PASS evidence in `specs/049-regular-purchase-checkout/validation.md`
@@ -233,23 +233,23 @@ existing Flash Sale Saga remains green.
 
 ### Documentation and operations
 
-- [ ] T095 [P] Update the complete endpoint registry, Swagger aggregation, frontend payload examples, and no-internal-route guidance in `docs/api/endpoint-registry.md`, `docs/api/frontend-integration-guide.md`, and `services/api-gateway/src/main/resources/application.yml`
-- [ ] T096 [P] Add bounded Prometheus rules and Grafana panels for checkout rejection/latency, active/expired holds, Saga recovery, DLT/outbox lag, and Cart reconciliation in `infra/monitoring/prometheus/rules/regular-purchase-alerts.yml` and `infra/monitoring/grafana/dashboards/regular-purchase.json`
-- [ ] T097 [P] Add troubleshooting, replay, expiry, orphan-hold, manual-review, and Secret-redaction procedures in `docs/runbooks/regular-purchase-checkout.md`
-- [ ] T098 Audit comments/logs/error responses/metrics/traces for stale Flash Sale-only wording and sensitive/high-cardinality data in `services/order-service/src/main/java`, `services/inventory-service/src/main/java`, and `services/cart-service/src/main/java`
+- [x] T095 [P] Update the complete endpoint registry, Swagger aggregation, frontend payload examples, and no-internal-route guidance in `docs/api/endpoint-registry.md`, `docs/api/frontend-integration-guide.md`, and `services/api-gateway/src/main/resources/application.yml`
+- [x] T096 [P] Add bounded Prometheus rules and Grafana panels for checkout rejection/latency, active/expired holds, Saga recovery, DLT/outbox lag, and Cart reconciliation in `infra/monitoring/prometheus/rules/regular-purchase-alerts.yml` and `infra/monitoring/grafana/dashboards/regular-purchase.json`
+- [x] T097 [P] Add troubleshooting, replay, expiry, orphan-hold, manual-review, and Secret-redaction procedures in `docs/runbooks/regular-purchase-checkout.md`
+- [x] T098 Audit comments/logs/error responses/metrics/traces for stale Flash Sale-only wording and sensitive/high-cardinality data in `services/order-service/src/main/java`, `services/inventory-service/src/main/java`, and `services/cart-service/src/main/java`
 
 ### Local aggregate gate
 
-- [ ] T099 Complete the `All` orchestration, bounded process cleanup, PASS labels, and failure diagnostics in `infra/docker/smoke/feature-049-regular-purchase.ps1`
-- [ ] T100 Run affected module verification for Authentication, Product, Cart, Inventory, Order, Payment, Gateway, and contracts; record exit codes in `specs/049-regular-purchase-checkout/validation.md`
-- [ ] T101 Run `./mvnw clean verify` with a sufficient independent execution budget and record the successful exit code in `specs/049-regular-purchase-checkout/validation.md`
+- [x] T099 Complete the `All` orchestration, bounded process cleanup, PASS labels, and failure diagnostics in `infra/docker/smoke/feature-049-regular-purchase.ps1`
+- [x] T100 Run affected module verification for Authentication, Product, Cart, Inventory, Order, Payment, Gateway, and contracts; record exit codes in `specs/049-regular-purchase-checkout/validation.md`
+- [x] T101 Run `./mvnw clean verify` with a sufficient independent execution budget and record the successful exit code in `specs/049-regular-purchase-checkout/validation.md`
 - [ ] T102 Run PowerShell syntax, Compose render, topic/schema validation-only, `git diff --check`, architecture tests, and `kubectl apply --dry-run=client -k infra/k8s/overlays/cloud`; record results in `specs/049-regular-purchase-checkout/validation.md`
 
 ### Migration, release, and rollback gates
 
-- [ ] T103 Implement read-only/apply migration gate resolving exact `release-<develop SHA>` images and running Cart, Inventory, then Order Jobs sequentially in `infra/scripts/gitops/phase49-regular-purchase-migration-gate.ps1`
-- [ ] T104 Implement read-only prior-image/schema/status compatibility rehearsal that never changes or prints business rows in `infra/scripts/gitops/phase49-regular-purchase-rollback-rehearsal.ps1`
-- [ ] T105 Add the missing Cart ECR/workload ownership to the Terraform/Kustomize cloud delivery path and extend selective delivery mapping for affected Feature 049 service paths without rebuilding Payment unnecessarily in `.github/workflows/service-delivery.yml`
+- [x] T103 Implement read-only/apply migration gate resolving exact `release-<develop SHA>` images and running Cart, Inventory, then Order Jobs sequentially in `infra/scripts/gitops/phase49-regular-purchase-migration-gate.ps1`
+- [x] T104 Implement read-only prior-image/schema/status compatibility rehearsal that never changes or prints business rows in `infra/scripts/gitops/phase49-regular-purchase-rollback-rehearsal.ps1`
+- [x] T105 Add the missing Cart ECR/workload ownership to the Terraform/Kustomize cloud delivery path and extend selective delivery mapping for affected Feature 049 service paths without rebuilding Payment unnecessarily in `.github/workflows/service-delivery.yml`
 - [ ] T106 Provision Feature 049 topics/subjects with Payment safety flags respected and record the validation/apply evidence in `specs/049-regular-purchase-checkout/validation.md`
 - [ ] T107 Run one selective immutable-image delivery, verify ECR digests, execute the migration gate, review one image-promotion PR, and record CI/PR references in `specs/049-regular-purchase-checkout/validation.md`
 - [ ] T108 Merge image promotion, force Argo refresh, verify Synced/Healthy, Deployment image digests/readiness, consumers enabled and regular intake still disabled in `specs/049-regular-purchase-checkout/validation.md`

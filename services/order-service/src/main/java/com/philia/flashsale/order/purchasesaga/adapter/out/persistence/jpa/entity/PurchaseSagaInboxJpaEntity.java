@@ -5,6 +5,7 @@ import com.philia.flashsale.order.purchasesaga.application.command.PaymentFailed
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationConfirmedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationReleasedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldConfirmedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldOutcomeCommand;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -76,6 +77,12 @@ public class PurchaseSagaInboxJpaEntity {
 
     public static PurchaseSagaInboxJpaEntity regularStockHoldConfirmed(
             RegularStockHoldConfirmedCommand command) {
+        return from(command.eventId(), command.eventType(), command.eventVersion(), command.producer(),
+                command.aggregateId(), command.aggregateVersion(), command.orderId(), command.fingerprint(),
+                command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), command.transitionedAt());
+    }
+
+    public static PurchaseSagaInboxJpaEntity regularStockHoldOutcome(RegularStockHoldOutcomeCommand command) {
         return from(command.eventId(), command.eventType(), command.eventVersion(), command.producer(),
                 command.aggregateId(), command.aggregateVersion(), command.orderId(), command.fingerprint(),
                 command.sourceTopic(), command.sourcePartition(), command.sourceOffset(), command.transitionedAt());

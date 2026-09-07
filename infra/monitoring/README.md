@@ -3,7 +3,7 @@
 This directory is the Git-owned desired state for the internal Phase 25 monitoring stack.
 
 ```text
-8 Spring Boot Services --/actuator/prometheus--> Prometheus --> Grafana
+9 Spring Boot Services --/actuator/prometheus--> Prometheus --> Grafana
                                                       |
                                                       +--> seckill/Saga rules
 ```

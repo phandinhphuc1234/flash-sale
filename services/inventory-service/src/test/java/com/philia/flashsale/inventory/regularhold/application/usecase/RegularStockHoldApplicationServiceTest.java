@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.philia.flashsale.inventory.configuration.InventoryRegularHoldProperties;
 import com.philia.flashsale.inventory.regularhold.application.command.CreateRegularStockHoldCommand;
 import com.philia.flashsale.inventory.regularhold.application.command.ConfirmRegularStockHoldCommand;
+import com.philia.flashsale.inventory.regularhold.application.command.ReleaseRegularStockHoldCommand;
 import com.philia.flashsale.inventory.regularhold.application.command.RegularStockHoldLine;
 import com.philia.flashsale.inventory.regularhold.application.exception.RegularStockHoldApplicationException;
 import com.philia.flashsale.inventory.regularhold.application.port.out.LoadActiveRegularHoldQuantityPort;
@@ -124,6 +125,52 @@ class RegularStockHoldApplicationServiceTest {
         assertEquals("CONFIRMED", result.hold().status().name());
         assertEquals(3, item.onHandQuantity());
         verify(recordMovement).record(any(StockMovement.class));
+    }
+
+    @Test
+    void releasesAHeldHoldWithoutChangingPhysicalStock() {
+        LoadRegularStockHoldPort holds = mock(LoadRegularStockHoldPort.class);
+        SaveRegularStockHoldPort saveHold = mock(SaveRegularStockHoldPort.class);
+        UUID holdId = UUID.randomUUID();
+        UUID purchaseRequestId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        RegularStockHold hold = RegularStockHold.held(holdId, purchaseRequestId, orderId, UUID.randomUUID(),
+                "b".repeat(64), List.of(new RegularStockHoldItem(UUID.randomUUID(), UUID.randomUUID(), 1, "SKU-1")),
+                NOW, java.time.Duration.ofMinutes(5));
+        when(holds.findByIdForUpdate(holdId)).thenReturn(Optional.of(hold));
+        when(saveHold.save(any(RegularStockHold.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service(holds, saveHold, mock(LoadInventoryItemPort.class),
+                mock(LoadActiveRegularHoldQuantityPort.class)).release(new ReleaseRegularStockHoldCommand(
+                        UUID.randomUUID(), holdId, purchaseRequestId, orderId, UUID.randomUUID(),
+                        "PAYMENT_DEADLINE_EXPIRED", "CANCELLED"));
+
+        assertEquals(true, result.transitioned());
+        assertEquals("RELEASED", result.hold().status().name());
+        verify(saveHold).save(hold);
+    }
+
+    @Test
+    void convertsAReleaseRacingTheInclusiveDeadlineIntoExpiredWithoutStockMovement() {
+        LoadRegularStockHoldPort holds = mock(LoadRegularStockHoldPort.class);
+        SaveRegularStockHoldPort saveHold = mock(SaveRegularStockHoldPort.class);
+        UUID holdId = UUID.randomUUID();
+        UUID purchaseRequestId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        RegularStockHold hold = RegularStockHold.held(holdId, purchaseRequestId, orderId, UUID.randomUUID(),
+                "c".repeat(64), List.of(new RegularStockHoldItem(UUID.randomUUID(), UUID.randomUUID(), 1, "SKU-1")),
+                NOW.minusSeconds(300), java.time.Duration.ofMinutes(5));
+        when(holds.findByIdForUpdate(holdId)).thenReturn(Optional.of(hold));
+        when(saveHold.save(any(RegularStockHold.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service(holds, saveHold, mock(LoadInventoryItemPort.class),
+                mock(LoadActiveRegularHoldQuantityPort.class)).release(new ReleaseRegularStockHoldCommand(
+                        UUID.randomUUID(), holdId, purchaseRequestId, orderId, UUID.randomUUID(),
+                        "PAYMENT_DEADLINE_EXPIRED", "EXPIRED"));
+
+        assertEquals(true, result.transitioned());
+        assertEquals("EXPIRED", result.hold().status().name());
+        assertEquals("HOLD_TTL_EXPIRED", result.reason());
     }
 
     private RegularStockHoldApplicationService service(LoadRegularStockHoldPort holds,

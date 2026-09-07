@@ -1,6 +1,5 @@
 package com.philia.flashsale.inventory.configuration;
 
-import com.philia.flashsale.contract.regularhold.command.v1.ConfirmRegularStockHoldV1;
 import com.philia.flashsale.inventory.regularhold.adapter.in.messaging.kafka.RegularHoldCommandRecordException;
 import com.philia.flashsale.inventory.regularhold.application.exception.RegularHoldCommandConflictException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
@@ -10,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.avro.specific.SpecificRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -30,7 +30,7 @@ import org.springframework.util.backoff.BackOffExecution;
 @ConditionalOnProperty(name = "flashsale.inventory.regular-hold.command-consumer-enabled", havingValue = "true")
 public class InventoryRegularHoldKafkaConsumerConfiguration {
     @Bean
-    ConsumerFactory<String, ConfirmRegularStockHoldV1> inventoryRegularHoldConsumerFactory(KafkaProperties properties) {
+    ConsumerFactory<String, SpecificRecord> inventoryRegularHoldConsumerFactory(KafkaProperties properties) {
         Map<String, Object> consumer = new HashMap<>(properties.buildConsumerProperties());
         consumer.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         consumer.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
@@ -38,11 +38,11 @@ public class InventoryRegularHoldKafkaConsumerConfiguration {
     }
 
     @Bean
-    ConcurrentKafkaListenerContainerFactory<String, ConfirmRegularStockHoldV1>
+    ConcurrentKafkaListenerContainerFactory<String, SpecificRecord>
             inventoryRegularHoldKafkaListenerContainerFactory(
-                    ConsumerFactory<String, ConfirmRegularStockHoldV1> inventoryRegularHoldConsumerFactory,
+                    ConsumerFactory<String, SpecificRecord> inventoryRegularHoldConsumerFactory,
                     DefaultErrorHandler inventoryRegularHoldErrorHandler) {
-        var factory = new ConcurrentKafkaListenerContainerFactory<String, ConfirmRegularStockHoldV1>();
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, SpecificRecord>();
         factory.setConsumerFactory(inventoryRegularHoldConsumerFactory);
         factory.getContainerProperties().setAckMode(AckMode.MANUAL_IMMEDIATE);
         factory.setCommonErrorHandler(inventoryRegularHoldErrorHandler);

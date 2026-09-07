@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   Phase 21 treats the EKS cloud environment as the staging-equivalent target. It verifies Argo
-  ownership/health, eight application Deployments, ECR manifest digests versus running Pod image IDs,
+  ownership/health, nine application Deployments, ECR manifest digests versus running Pod image IDs,
   the explicitly expected Payment runtime state, and the existing localhost-only Gateway smoke
   contract. Before Stripe enablement the expected state is disabled; after the reviewed Phase 24
   rollout it may be enabled. The script never reads Kubernetes Secret values and has no -Apply mode.
@@ -41,7 +41,8 @@ $ExpectedServices = @(
   "flash-sale-service",
   "inventory-service",
   "order-service",
-  "payment-service"
+  "payment-service",
+  "cart-service"
 )
 $ExpectedPaymentFlags = @(
   "PAYMENT_ACCEPTANCE_ENABLED",

@@ -45,7 +45,7 @@ class ReconcilePurchasedCartSnapshotAvroMapperTests {
 
     private ConsumerRecord<String, ReconcilePurchasedCartSnapshotV1> record(
             ReconcilePurchasedCartSnapshotV1 event) {
-        return new ConsumerRecord<>(TOPIC, 0, 42L, event.getAggregateId().toString(), event);
+        return new ConsumerRecord<>(TOPIC, 0, 42L, event.getData().getCartId().toString(), event);
     }
 
     private ReconcilePurchasedCartSnapshotV1 event() {

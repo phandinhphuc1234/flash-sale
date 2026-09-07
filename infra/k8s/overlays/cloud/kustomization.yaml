@@ -33,6 +33,12 @@ patches:
       version: v1
       kind: Deployment
       name: product-service
+  - path: patches/cart-service-envfrom.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: cart-service
   - path: patches/campaign-service-envfrom.yaml
     target:
       group: apps
@@ -91,3 +97,6 @@ images:
   - name: product-service
     newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/product-service
     newTag: release-f5a11de7dd40da24bb4c12e70fb2051b589fc066
+  - name: cart-service
+    newName: 090814040069.dkr.ecr.ap-southeast-2.amazonaws.com/flash-sale/cart-service
+    newTag: initial

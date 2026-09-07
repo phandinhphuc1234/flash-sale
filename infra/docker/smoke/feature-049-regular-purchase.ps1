@@ -24,13 +24,17 @@ param(
         'HoldExpired',
         'Replay',
         'Concurrency',
+        'DependencyRestart',
+        'LateSuccess',
         'FlashSaleRegression',
         'All'
     )]
     [string] $Scenario = 'Static',
     [ValidateRange(60, 3600)]
     [int] $TimeoutSeconds = 600,
-    [switch] $SkipBuild
+    [switch] $SkipBuild,
+    [switch] $AllowDependencyRestart,
+    [switch] $RunInteractive
 )
 
 Set-StrictMode -Version Latest
@@ -38,10 +42,10 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
-$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+$budgetWatch = [Diagnostics.Stopwatch]::StartNew()
 
 function Assert-Budget([string] $Stage) {
-    if ((Get-Date) -gt $deadline) {
+    if ($budgetWatch.Elapsed.TotalSeconds -gt $TimeoutSeconds) {
         throw "$Stage exceeded the Feature 049 $TimeoutSeconds-second execution budget."
     }
 }
@@ -95,12 +99,12 @@ function Invoke-Database([string] $Database, [string] $Sql) {
 }
 
 function Wait-Until([scriptblock] $Condition, [string] $Description, [int] $Seconds = 120) {
-    $waitDeadline = (Get-Date).AddSeconds($Seconds)
+    $waitWatch = [Diagnostics.Stopwatch]::StartNew()
     do {
         Assert-Budget $Description
         try { if (& $Condition) { return } } catch { }
         Start-Sleep -Seconds 2
-    } while ((Get-Date) -lt $waitDeadline)
+    } while ($waitWatch.Elapsed.TotalSeconds -lt $Seconds)
     throw "Timed out waiting for $Description."
 }
 
@@ -236,6 +240,9 @@ function Invoke-CartMigration {
         '-e', 'SPRING_MAIN_KEEP_ALIVE=false',
         '-e', 'SPRING_KAFKA_LISTENER_AUTO_STARTUP=false',
         '-e', 'SPRING_TASK_SCHEDULING_ENABLED=false',
+        # The listener has its own feature flag in the Cart configuration.  Keep it disabled
+        # explicitly for the one-off Liquibase JVM so a compose .env cannot keep the process alive.
+        '-e', 'CART_CHECKOUT_RECONCILIATION_CONSUMER_ENABLED=false',
         'cart-migration', '--spring.main.web-application-type=none') 'migrations'
 }
 
@@ -252,6 +259,31 @@ function Invoke-InventoryFixture([Guid] $VariantId, [string] $Sku) {
         '-e', 'SPRING_TASK_SCHEDULING_ENABLED=false',
         '-e', 'SPRING_LIQUIBASE_ENABLED=false',
         'inventory-service', '--spring.main.web-application-type=none') 'apps'
+}
+
+function Get-InventoryAvailable([Guid] $VariantId) {
+    # The Inventory fixture is intentionally initialize-once.  Repeated smoke runs must not
+    # invoke it for an existing row (the service correctly rejects that as "already initialized").
+    # Read the availability equation so Cart scenarios can reuse an existing sellable fixture while
+    # avoiding variants exhausted by an earlier run.  This is observation only; stock is still
+    # created exclusively through the service-owned fixture command above.
+    $sql = @"
+SELECT (i.on_hand_quantity - i.campaign_allocated_quantity - COALESCE((
+    SELECT SUM(hi.quantity)
+    FROM regular_stock_hold_items hi
+    JOIN regular_stock_holds h ON h.id = hi.hold_id
+    WHERE hi.variant_id = i.variant_id
+      AND h.status = 'HELD'
+      AND h.expires_at > NOW()
+), 0))
+FROM inventory_items i
+WHERE i.variant_id = '$VariantId';
+"@
+    $row = @(Invoke-Database 'inventory_db' $sql.Trim() | Select-Object -First 1)
+    if ($row.Count -eq 0 -or [string]::IsNullOrWhiteSpace([string]$row[0])) {
+        return $null
+    }
+    return [long]([string]$row[0]).Trim()
 }
 
 function Invoke-ContainerSignedWebhook([Guid] $PaymentId, [Guid] $AttemptId, [Guid] $OrderId,
@@ -572,15 +604,62 @@ function Invoke-CartPaid(
                 return $null -eq $sellable -or $sellable.Value -ne $false
             })
         if ($variants.Count -lt 2) { throw 'Cart checkout requires at least two sellable catalog variants.' }
-        $selected = @($variants | Select-Object -First 2)
+        # Prefer variants that either have not been initialized yet or still have at least one
+        # available unit.  The negative scenarios are repeatable against a persistent local DB,
+        # while successful Cart scenarios do not accidentally select a variant exhausted by an
+        # earlier smoke run.
+        $eligible = @($variants | Where-Object {
+                $candidateId = [Guid](Get-RequiredObjectProperty $_ 'id' 'Cart catalog variant')
+                $available = Get-InventoryAvailable $candidateId
+                $null -eq $available -or $available -ge 1
+            })
+        if ($eligible.Count -lt 2) {
+            throw 'Cart checkout requires two sellable variants with available or uninitialized stock.'
+        }
+        if ($ScenarioMode -eq 'InsufficientStock') {
+            # The fixture initializes exactly one unit and is initialize-once. Prefer a fresh
+            # variant, otherwise reuse a row whose current availability is exactly one; selecting
+            # a larger stock would make this negative case nondeterministic on a persistent DB.
+            $insufficientCandidate = $null
+            foreach ($candidate in $eligible) {
+                $candidateId = [Guid](Get-RequiredObjectProperty $candidate 'id' 'Cart catalog variant')
+                $available = Get-InventoryAvailable $candidateId
+                if ($null -eq $available -or $available -eq 1) {
+                    $insufficientCandidate = $candidate
+                    break
+                }
+            }
+            if ($null -eq $insufficientCandidate) {
+                throw 'InsufficientStock requires a fresh or exactly-one-unit inventory fixture.'
+            }
+            $selected = @($insufficientCandidate) + @($eligible |
+                    Where-Object { $_.id -ne $insufficientCandidate.id } | Select-Object -First 1)
+            if ($selected.Count -lt 2) {
+                throw 'Cart checkout requires two distinct sellable catalog variants.'
+            }
+        } else {
+            $selected = @($eligible | Select-Object -First 2)
+        }
         foreach ($candidate in $selected) {
             $candidateId = [Guid](Get-RequiredObjectProperty $candidate 'id' 'Cart catalog variant')
             $candidateSku = [string](Get-RequiredObjectProperty $candidate 'sku' 'Cart catalog variant')
-            Invoke-InventoryFixture $candidateId $candidateSku
+            if ($null -eq (Get-InventoryAvailable $candidateId)) {
+                Invoke-InventoryFixture $candidateId $candidateSku
+            }
             $set = Invoke-Json "$gatewayBase/api/v1/cart/items/$candidateId" 'Put' `
                 @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-set' } `
                 (@{ quantity = 1 } | ConvertTo-Json -Compress)
             Require-Status $set @(200) 'Cart item setup'
+        }
+        if ($ScenarioMode -eq 'InsufficientStock') {
+            # Make the persisted Cart agree with the submitted quantity. The checkout API rejects
+            # stale Cart snapshots before it reaches Inventory, so the negative case must create a
+            # valid two-unit Cart and let Inventory (which owns one unit) reject the hold.
+            $insufficientVariant = [Guid](Get-RequiredObjectProperty $selected[0] 'id' 'Cart catalog variant')
+            $setInsufficientQuantity = Invoke-Json "$gatewayBase/api/v1/cart/items/$insufficientVariant" 'Put' `
+                @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-insufficient-stock' } `
+                (@{ quantity = 2 } | ConvertTo-Json -Compress)
+            Require-Status $setInsufficientQuantity @(200) 'Cart insufficient-stock quantity setup'
         }
         $cartRead = Invoke-Json "$gatewayBase/api/v1/cart" 'Get' `
             @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-read' }
@@ -684,6 +763,20 @@ function Invoke-CartPaid(
         Wait-Until -Description 'Cart reconciliation command publication' -Seconds 120 -Condition {
             return (Get-KafkaEndOffset 'flashsale.cart.checkout.commands.v1') -gt $cartCommandsBefore
         }
+        # Publication only proves that the reconciliation command reached Kafka; the Cart
+        # consumer may still be processing it.  Wait for the shopper-visible Cart state to
+        # converge before asserting the final contents, avoiding a transient false negative.
+        Wait-Until -Description 'Cart reconciliation state' -Seconds 120 -Condition {
+            $candidate = Invoke-Json "$gatewayBase/api/v1/cart" 'Get' `
+                @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-reconciliation-state' }
+            if ([int]$candidate.StatusCode -ne 200) { return $false }
+            $items = @((($candidate.Content | ConvertFrom-Json).data.items))
+            if ($EditDuringPayment) {
+                $edited = $items | Where-Object { [string]$_.variantId -eq [string]$cartItems[0].variantId }
+                return @($items).Count -eq 1 -and $null -ne $edited -and [int]$edited.quantity -eq 2
+            }
+            return @($items).Count -eq 0
+        }
         $cartAfterResponse = Invoke-Json "$gatewayBase/api/v1/cart" 'Get' `
             @{ Authorization = "Bearer $($shopper.Token)"; 'X-Trace-Id' = 'feature049-cart-after' }
         Require-Status $cartAfterResponse @(200) 'Cart after confirmed payment'
@@ -717,6 +810,43 @@ function Invoke-CartPaid(
             [Environment]::SetEnvironmentVariable($name, $previous[$name], 'Process')
         }
     }
+}
+
+function Invoke-TestBackedScenario([string] $ScenarioName, [string[]] $Modules, [string] $Tests) {
+    Assert-Budget "$ScenarioName scenario setup"
+    $mavenWrapper = Join-Path $repoRoot 'mvnw.cmd'
+    if (-not (Test-Path -LiteralPath $mavenWrapper -PathType Leaf)) {
+        throw 'Maven wrapper is missing; cannot run the bounded Feature 049 scenario gate.'
+    }
+    $moduleArgument = $Modules -join ','
+    $arguments = @('--batch-mode', '--no-transfer-progress', '-pl', $moduleArgument, '-am',
+        "-Dtest=$Tests", '-Dsurefire.failIfNoSpecifiedTests=false', 'test')
+    Write-Output "FEATURE_049_$($ScenarioName.ToUpperInvariant())=RUN"
+    $output = @(& $mavenWrapper @arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+    Assert-Budget "$ScenarioName scenario"
+    if ($exitCode -ne 0) {
+        # Do not echo Maven logs: they can contain connection strings or environment-derived
+        # diagnostics. The test reports remain available under each module's target directory.
+        throw "$ScenarioName scenario failed (exitCode=$exitCode); inspect the bounded Surefire reports under target/surefire-reports."
+    }
+    Write-Output "FEATURE_049_$($ScenarioName.ToUpperInvariant())=PASS"
+    Write-Output "${ScenarioName}: focused recovery/concurrency tests passed; diagnostics were redacted."
+}
+
+function Invoke-DependencyRestartScenario {
+    if (-not $AllowDependencyRestart) {
+        throw 'DependencyRestart requires explicit -AllowDependencyRestart because it restarts a local service.'
+    }
+    if (-not (Test-Path -LiteralPath $envFile -PathType Leaf)) {
+        throw 'infra/docker/.env is required for the dependency restart scenario.'
+    }
+    Assert-Budget 'dependency restart scenario setup'
+    # Restart only the Order process; durable intake leases and idempotency rows are the recovery
+    # boundary. The test suite verifies the same lease/replay behavior without printing payloads.
+    Invoke-Compose @('restart', 'order-service')
+    Invoke-TestBackedScenario 'DependencyRestart' @('services/order-service') `
+        'RegularPurchaseRecoveryJobTests,RegularPurchaseRecoveryIntegrationTests'
 }
 
 function Invoke-StaticGate {
@@ -840,6 +970,75 @@ switch ($Scenario) {
         $gatewayBase = "http://127.0.0.1:$([Environment]::GetEnvironmentVariable('GATEWAY_PORT', 'Process'))"
         if ($gatewayBase -eq 'http://127.0.0.1:') { $gatewayBase = 'http://127.0.0.1:18080' }
         Invoke-CartPaid -ScenarioMode InsufficientStock -SkipBuild:$SkipBuild
+    }
+    'PaymentFailed' {
+        Invoke-TestBackedScenario 'PaymentFailed' @('services/order-service', 'services/inventory-service') `
+            'RegularHoldRecoverySagaTests,RegularHoldRecoveryIntegrationTests,PaymentFailureTransitionIntegrationTests'
+    }
+    'HoldExpired' {
+        Invoke-TestBackedScenario 'HoldExpired' @('services/order-service', 'services/inventory-service') `
+            'RegularHoldRecoverySagaTests,RegularHoldRecoveryIntegrationTests,RegularHoldLoadTests'
+    }
+    'Replay' {
+        Invoke-TestBackedScenario 'Replay' @('services/cart-service', 'services/inventory-service', 'services/order-service') `
+            'CartReconciliationPersistenceIntegrationTests,RegularHoldLoadTests,RegularPurchaseReplayLoadTests'
+    }
+    'Concurrency' {
+        Invoke-TestBackedScenario 'Concurrency' @('services/cart-service', 'services/inventory-service', 'services/order-service') `
+            'CartReconciliationPersistenceIntegrationTests,MultiItemRegularHoldConcurrencyTests,RegularHoldLoadTests,RegularPurchaseReplayLoadTests'
+    }
+    'DependencyRestart' {
+        Invoke-DependencyRestartScenario
+    }
+    'LateSuccess' {
+        Invoke-TestBackedScenario 'LateSuccess' @('services/payment-service', 'services/order-service') `
+            'CheckoutRecoveryIntegrationTests,PurchaseSagaLateSuccessTests,LatePaymentCorrectionIntegrationTests,RegularHoldRecoveryIntegrationTests'
+    }
+    'FlashSaleRegression' {
+        $feature044 = Join-Path $repoRoot 'infra/docker/smoke/feature-044-purchase-saga.ps1'
+        if (-not (Test-Path -LiteralPath $feature044 -PathType Leaf)) {
+            throw 'Feature 044 regression runner is missing.'
+        }
+        & pwsh -NoLogo -NoProfile -File $feature044 -Scenario Replay -TimeoutSeconds ([Math]::Min($TimeoutSeconds, 1800)) | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Flash Sale regression scenario failed (exitCode=$LASTEXITCODE)." }
+        Write-Output 'FEATURE_049_FLASHSALE_REGRESSION=PASS'
+        Write-Output 'Flash Sale regression reused the existing bounded Feature 044 replay gate; diagnostics were redacted.'
+    }
+    'All' {
+        # Aggregate gate is intentionally non-interactive by default. It runs every deterministic
+        # source/test/regression check and leaves Docker Checkout/browser and service restart
+        # boundaries opt-in so a CI invocation cannot mutate a shared local stack unexpectedly.
+        Invoke-StaticGate
+        Invoke-TestBackedScenario 'PaymentFailed' @('services/order-service', 'services/inventory-service') `
+            'RegularHoldRecoverySagaTests,RegularHoldRecoveryIntegrationTests,PaymentFailureTransitionIntegrationTests'
+        Invoke-TestBackedScenario 'HoldExpired' @('services/order-service', 'services/inventory-service') `
+            'RegularHoldRecoverySagaTests,RegularHoldRecoveryIntegrationTests,RegularHoldLoadTests'
+        Invoke-TestBackedScenario 'Replay' @('services/cart-service', 'services/inventory-service', 'services/order-service') `
+            'CartReconciliationPersistenceIntegrationTests,RegularHoldLoadTests,RegularPurchaseReplayLoadTests'
+        Invoke-TestBackedScenario 'Concurrency' @('services/cart-service', 'services/inventory-service', 'services/order-service') `
+            'CartReconciliationPersistenceIntegrationTests,MultiItemRegularHoldConcurrencyTests,RegularHoldLoadTests,RegularPurchaseReplayLoadTests'
+        Invoke-TestBackedScenario 'LateSuccess' @('services/payment-service', 'services/order-service') `
+            'CheckoutRecoveryIntegrationTests,PurchaseSagaLateSuccessTests,LatePaymentCorrectionIntegrationTests,RegularHoldRecoveryIntegrationTests'
+        $feature044 = Join-Path $repoRoot 'infra/docker/smoke/feature-044-purchase-saga.ps1'
+        if (-not (Test-Path -LiteralPath $feature044 -PathType Leaf)) {
+            throw 'Feature 044 regression runner is missing.'
+        }
+        & pwsh -NoLogo -NoProfile -File $feature044 -Scenario Replay -TimeoutSeconds ([Math]::Min($TimeoutSeconds, 1800)) | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Flash Sale regression scenario failed (exitCode=$LASTEXITCODE)." }
+        Write-Output 'FEATURE_049_FLASHSALE_REGRESSION=PASS'
+        if ($RunInteractive) {
+            Invoke-BuyNowPaid
+            Invoke-CartPaid -SkipBuild:$SkipBuild
+            Invoke-CartPaid -EditDuringPayment -SkipBuild:$SkipBuild
+            Invoke-CartPaid -ScenarioMode PriceChanged -SkipBuild:$SkipBuild
+            Invoke-CartPaid -ScenarioMode InsufficientStock -SkipBuild:$SkipBuild
+            Invoke-DependencyRestartScenario
+            Write-Output 'FEATURE_049_INTERACTIVE=PASS'
+        } else {
+            Write-Output 'FEATURE_049_INTERACTIVE=DEFERRED (use -RunInteractive for Docker/Stripe scenarios)'
+            Write-Output 'FEATURE_049_DEPENDENCY_RESTART=DEFERRED (use -AllowDependencyRestart explicitly)'
+        }
+        Write-Output 'FEATURE_049_LOCAL_AGGREGATE=PASS'
     }
     default {
         throw "Scenario '$Scenario' is not implemented yet; complete its approved Feature 049 task before running it."

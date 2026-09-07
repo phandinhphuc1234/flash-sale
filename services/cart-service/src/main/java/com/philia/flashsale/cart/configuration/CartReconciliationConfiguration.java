@@ -2,9 +2,9 @@ package com.philia.flashsale.cart.configuration;
 
 import com.philia.flashsale.cart.adapter.in.messaging.kafka.CartReconciliationRecordException;
 import com.philia.flashsale.cart.adapter.in.messaging.kafka.ReconcilePurchasedCartSnapshotAvroMapper;
-import com.philia.flashsale.cart.application.port.in.ReconcilePurchasedCartSnapshotUseCase;
 import com.philia.flashsale.cart.application.port.out.ReconcilePurchasedCartSnapshotPort;
 import com.philia.flashsale.cart.application.usecase.ReconcilePurchasedCartSnapshotService;
+import com.philia.flashsale.cart.observability.CartObservability;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,14 +36,8 @@ public class CartReconciliationConfiguration {
 
     @Bean
     ReconcilePurchasedCartSnapshotService reconcilePurchasedCartSnapshotService(
-            ReconcilePurchasedCartSnapshotPort persistence) {
-        return new ReconcilePurchasedCartSnapshotService(persistence);
-    }
-
-    @Bean
-    ReconcilePurchasedCartSnapshotUseCase reconcilePurchasedCartSnapshotUseCase(
-            ReconcilePurchasedCartSnapshotService service) {
-        return service;
+            ReconcilePurchasedCartSnapshotPort persistence, CartObservability observability) {
+        return new ReconcilePurchasedCartSnapshotService(persistence, observability);
     }
 
     @Bean(name = "cartReconciliationConsumerFactory")
@@ -67,14 +61,25 @@ public class CartReconciliationConfiguration {
 
     @Bean
     DefaultErrorHandler cartReconciliationErrorHandler(KafkaOperations<Object, Object> kafkaOperations,
-            @Value("${cart.checkout.reconciliation.dlt-topic}") String dltTopic) {
+            @Value("${cart.checkout.reconciliation.dlt-topic}") String dltTopic,
+            CartObservability observability) {
         var recoverer = new DeadLetterPublishingRecoverer(kafkaOperations,
-                (record, exception) -> new TopicPartition(dltTopic, record.partition()));
+                (record, exception) -> {
+                    observability.recordDltPublication();
+                    return new TopicPartition(dltTopic, record.partition());
+                });
+        recoverer.setFailIfSendResultIsError(true);
         var handler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
         handler.addNotRetryableExceptions(CartReconciliationRecordException.class,
                 IllegalArgumentException.class);
         handler.setCommitRecovered(true);
         handler.setAckAfterHandle(true);
         return handler;
+    }
+
+    /** Compatibility factory for direct unit tests that do not create the Micrometer facade. */
+    DefaultErrorHandler cartReconciliationErrorHandler(KafkaOperations<Object, Object> kafkaOperations,
+            String dltTopic) {
+        return cartReconciliationErrorHandler(kafkaOperations, dltTopic, CartObservability.noop());
     }
 }

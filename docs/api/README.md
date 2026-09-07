@@ -1,12 +1,17 @@
 # Flash Sale HTTP API catalog
 
 This is the reader-facing catalog for the HTTP surface currently supported by the monorepo.
-There are **45 unique endpoints**, counted by `HTTP method + normalized path`.
+There are **47 unique endpoints**, counted by `HTTP method + normalized path`.
 
 Frontend developers should use the Vietnamese
 [`frontend-integration-guide.md`](frontend-integration-guide.md), which adds complete request/response
 payload examples, authentication/session rules, shopper/admin flows, polling guidance, and known
 contract gaps.
+
+For implementing the newly completed Cart UI in QuickCart, use the self-contained Vietnamese
+[`cart-frontend-ai-handoff.md`](cart-frontend-ai-handoff.md). It includes the four public Cart
+contracts, current frontend gaps, file-by-file changes, acceptance criteria, and a ready-to-use AI
+coding prompt.
 
 ## What is counted
 
@@ -34,7 +39,7 @@ contract gaps.
 | Payment | 4 | 0 | 0 | 4 |
 | Cart | 4 | 0 | 0 | 4 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **37** | **7** | **1** | **45** |
+| **Total** | **39** | **7** | **1** | **47** |
 
 ## Endpoint inventory
 
@@ -85,12 +90,14 @@ contract gaps.
 | API-043 | Cart | Gateway-public | DELETE | `/api/v1/cart/items/{variantId}` | Authenticated shopper | Remove one owned Cart item idempotently |
 | API-044 | Cart | Gateway-public | DELETE | `/api/v1/cart` | Authenticated shopper | Clear all owned Cart items idempotently |
 | API-045 | Product | Internal | POST | `/internal/v1/catalog/variants/display-details` | Cart service subject/scope | Batch-read current Product display details for Cart |
+| API-046 | Order | Gateway-public | POST | `/api/v1/orders/cart-checkouts` | Authenticated shopper, idempotency key | Validate and accept one immutable Cart snapshot as one regular Order |
+| API-047 | Order | Gateway-public | POST | `/api/v1/orders/buy-now` | Authenticated shopper, idempotency key | Accept one sellable normal variant without changing Cart |
 
 ### Cart contract notes
 
 API-041 through API-044 require a shopper JWT. The authenticated JWT subject is the only owner
 selector; clients must not send `ownerId` or `cartId`. Cart responses carry `Cache-Control:
-no-store`. PUT uses absolute quantity replacement (1–10) and is safe to retry with the same body;
+no-store`, `cartVersion`, and per-item `itemVersion`. PUT uses absolute quantity replacement (1–10) and is safe to retry with the same body;
 both DELETE operations are idempotent and return `204 No Content`.
 
 | Status | Cart error codes | Meaning |
@@ -106,6 +113,13 @@ API-045 is not a frontend endpoint. Cart calls it with a service token whose sub
 `cart-service`, audience is `flash-sale-internal-api`, and scope is
 `catalog.variant-display.read`; missing/invalid credentials map to `401`/`403`, malformed input to
 `400`, and Product returns ordered display results with explicit missing/non-sellable entries.
+
+API-046 accepts 1–20 distinct Cart lines with the submitted `cartVersion`/`itemVersion` values and
+current display prices. `CART_CHANGED`, `PRICE_CHANGED`, or `INSUFFICIENT_STOCK` rejects the whole
+checkout before an Order/Payment is created. After successful Payment, Cart cleanup is asynchronous
+and removes only entries whose variant, quantity, and item revision still match the submitted
+snapshot. API-047 accepts one normal variant and never mutates Cart. Continue either regular route
+with API-039 then API-037; API-040 is called by Stripe, never by the browser.
 
 ## Read the APIs in Swagger UI
 

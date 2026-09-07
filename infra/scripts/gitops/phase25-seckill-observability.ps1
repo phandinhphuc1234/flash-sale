@@ -39,7 +39,7 @@ $argoPath = Join-Path $repoRoot "infra\k8s\argocd\observability"
 $staticTestPath = Join-Path $repoRoot "infra\scripts\gitops\tests\phase25-seckill-observability.tests.ps1"
 $expectedJobs = @(
   "api-gateway", "authentication-service", "product-service", "campaign-service",
-  "flash-sale-service", "inventory-service", "order-service", "payment-service"
+  "flash-sale-service", "inventory-service", "order-service", "payment-service", "cart-service"
 )
 
 function Get-RemainingSeconds {
@@ -144,7 +144,7 @@ $context = Invoke-NativeText "kubectl" @("config", "current-context")
 if ($context -notmatch [regex]::Escape($ExpectedClusterName)) {
   throw "kubectl context '$context' does not target '$ExpectedClusterName'."
 }
-Write-Output "Phase 25 manifest gate: PASS (8 targets; Prometheus/Grafana private and pinned)."
+Write-Output "Phase 25 manifest gate: PASS (9 targets; Prometheus/Grafana private and pinned)."
 Write-Output "kubectl context: $context"
 
 if (-not $Apply) {
@@ -223,7 +223,7 @@ try {
   Stop-ChildProcess $prometheusForward
 }
 
-Write-Output "Prometheus targets: PASS (8/8 UP)."
+Write-Output "Prometheus targets: PASS (9/9 UP)."
 Write-Output "Prometheus rules: PASS (purchase-saga, payment-service)."
 Write-Output "Grafana: PASS (healthy; Seckill Overview provisioned from Git)."
 Write-Output "Phase 25 seckill observability: PASS"

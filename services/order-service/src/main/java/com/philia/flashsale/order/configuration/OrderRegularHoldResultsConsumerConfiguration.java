@@ -3,6 +3,8 @@ package com.philia.flashsale.order.configuration;
 import com.philia.flashsale.order.observability.OrderObservability;
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.RegularStockHoldConfirmedConflictException;
 import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.RegularStockHoldConfirmedRecordException;
+import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.RegularStockHoldOutcomeConflictException;
+import com.philia.flashsale.order.purchasesaga.adapter.in.messaging.kafka.RegularStockHoldOutcomeRecordException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import java.util.HashMap;
 import java.util.Map;
@@ -59,6 +61,8 @@ public class OrderRegularHoldResultsConsumerConfiguration {
                 new OrderKafkaConsumerConfiguration.OrderKafkaRetryBackOff(properties.retryDelays()));
         handler.addNotRetryableExceptions(RegularStockHoldConfirmedRecordException.class,
                 RegularStockHoldConfirmedConflictException.class,
+                RegularStockHoldOutcomeRecordException.class,
+                RegularStockHoldOutcomeConflictException.class,
                 com.philia.flashsale.order.purchasesaga.application.exception.InvalidRegularHoldConfirmationException.class);
         handler.setCommitRecovered(true);
         handler.setAckAfterHandle(true);

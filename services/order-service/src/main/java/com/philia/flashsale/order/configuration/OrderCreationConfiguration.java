@@ -30,6 +30,9 @@ import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.Regul
 import com.philia.flashsale.order.regularpurchase.adapter.out.persistence.jpa.repository.RegularPurchaseRequestJpaRepository;
 import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyRegularHoldConfirmationUseCase;
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyRegularHoldConfirmationService;
+import com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.RegularHoldRecoveryPersistenceAdapter;
+import com.philia.flashsale.order.purchasesaga.application.port.in.ApplyRegularHoldOutcomeUseCase;
+import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyRegularHoldOutcomeService;
 import jakarta.persistence.EntityManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -120,6 +123,19 @@ public class OrderCreationConfiguration {
     public ApplyRegularHoldConfirmationUseCase applyRegularHoldConfirmationUseCase(
             RegularHoldConfirmationPersistenceAdapter persistence) {
         return new ApplyRegularHoldConfirmationService(persistence);
+    }
+
+    @Bean
+    public RegularHoldRecoveryPersistenceAdapter regularHoldRecoveryPersistenceAdapter(
+            OrderJpaRepository orders, OrderLineJpaRepository lines, PurchaseSagaJpaRepository sagas,
+            PurchaseSagaInboxJpaRepository inbox, OrderCreationOutboxJpaRepository outbox) {
+        return new RegularHoldRecoveryPersistenceAdapter(orders, lines, sagas, inbox, outbox);
+    }
+
+    @Bean
+    public ApplyRegularHoldOutcomeUseCase applyRegularHoldOutcomeUseCase(
+            RegularHoldRecoveryPersistenceAdapter persistence) {
+        return new ApplyRegularHoldOutcomeService(persistence);
     }
 
     @Bean

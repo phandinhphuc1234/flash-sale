@@ -44,12 +44,12 @@ public class RegularPurchaseController {
     private final ObjectProvider<CheckoutCartUseCase> cartCheckout;
     private final OrderTraceIdResolver traceIds;
 
-    @Autowired
     public RegularPurchaseController(ObjectProvider<CheckoutBuyNowUseCase> checkout,
             OrderTraceIdResolver traceIds) {
         this(checkout, null, traceIds);
     }
 
+    @Autowired
     public RegularPurchaseController(ObjectProvider<CheckoutBuyNowUseCase> checkout,
             ObjectProvider<CheckoutCartUseCase> cartCheckout, OrderTraceIdResolver traceIds) {
         this.checkout = Objects.requireNonNull(checkout);

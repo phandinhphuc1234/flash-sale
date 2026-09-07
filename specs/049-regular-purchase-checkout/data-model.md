@@ -236,9 +236,17 @@ New table: `regular_purchase_requests`
 | `response_payload` | JSONB nullable | Stable accepted response used for exact replay. |
 | `traceparent`, `tracestate` | nullable | Bounded W3C context. |
 | `created_at`, `updated_at` | TIMESTAMPTZ | UTC. |
+| `recovery_lease_owner`, `recovery_lease_until` | nullable | Short operational lease; never exposed to shoppers. |
+| `recovery_attempt_count` | INTEGER | Non-negative diagnostic count. |
 
 Unique constraint: `(shopper_id, idempotency_key)`. Fingerprint constraint is lowercase SHA-256.
 Sensitive credentials/tokens are never persisted.
+
+Recovery leases are additive operational fields. A worker claims only stale non-terminal rows with
+`FOR UPDATE SKIP LOCKED`, persists an owner/expiry lease, commits that short claim transaction, and
+only then calls the existing idempotent checkout use case. A transient failure leaves the lease to
+expire; a completed or terminally rejected attempt releases it. The lease never changes the
+business checkpoint or creates a second purchase identity.
 
 State machine:
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldConfirmedV1;
+import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldReleasedV1;
 import com.philia.flashsale.inventory.regularhold.application.model.RegularHoldFactItem;
 import com.philia.flashsale.inventory.regularhold.application.model.RegularHoldFactOutboxEvent;
 import com.philia.flashsale.inventory.regularhold.application.model.RegularHoldOutboxEvent;
@@ -43,5 +44,29 @@ class RegularHoldOutcomeAvroMapperTest {
         assertThat(confirmed.getData().getOrderId()).isEqualTo(orderId);
         assertThat(confirmed.getData().getPaymentId()).isEqualTo(paymentId);
         assertThat(confirmed.getData().getItems()).hasSize(1);
+    }
+
+    @Test
+    void mapsTheDurableReleasedFactWithItsBoundedReason() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        UUID holdId = UUID.randomUUID();
+        UUID purchaseRequestId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        RegularHoldFactOutboxEvent event = new RegularHoldFactOutboxEvent(eventId,
+                "RegularStockHoldReleased", 3L, holdId, purchaseRequestId, orderId, UUID.randomUUID(), null,
+                null, RegularStockHoldStatus.RELEASED,
+                List.of(new RegularHoldFactItem(UUID.randomUUID(), 1L)), UUID.randomUUID(), NOW,
+                "PAYMENT_DEADLINE_EXPIRED");
+        RegularHoldOutboxEvent outbox = new RegularHoldOutboxEvent(eventId, event.eventType(),
+                event.aggregateVersion(), holdId, orderId.toString(), purchaseRequestId, event.causationId(),
+                null, null, objectMapper.writeValueAsString(event));
+
+        var avro = mapper.toRecord(outbox);
+
+        assertThat(avro).isInstanceOf(RegularStockHoldReleasedV1.class);
+        RegularStockHoldReleasedV1 released = (RegularStockHoldReleasedV1) avro;
+        assertThat(released.getData().getStatus()).isEqualTo("RELEASED");
+        assertThat(released.getData().getReason()).isEqualTo("PAYMENT_DEADLINE_EXPIRED");
+        assertThat(released.getData().getItems()).hasSize(1);
     }
 }

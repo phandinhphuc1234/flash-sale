@@ -64,6 +64,12 @@ public class RegularPurchaseRequestJpaEntity {
     private Instant createdAt;
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+    @Column(name = "recovery_lease_owner", length = 128)
+    private String recoveryLeaseOwner;
+    @Column(name = "recovery_lease_until")
+    private Instant recoveryLeaseUntil;
+    @Column(name = "recovery_attempt_count", nullable = false)
+    private int recoveryAttemptCount;
 
     protected RegularPurchaseRequestJpaEntity() {
     }
@@ -99,6 +105,19 @@ public class RegularPurchaseRequestJpaEntity {
         this.updatedAt = updatedAt;
     }
 
+    public void claimRecoveryLease(String workerId, Instant leaseUntil) {
+        this.recoveryLeaseOwner = workerId;
+        this.recoveryLeaseUntil = leaseUntil;
+        this.recoveryAttemptCount++;
+    }
+
+    public void releaseRecoveryLease(String workerId) {
+        if (workerId.equals(this.recoveryLeaseOwner)) {
+            this.recoveryLeaseOwner = null;
+            this.recoveryLeaseUntil = null;
+        }
+    }
+
     public UUID getId() { return id; }
     public UUID getShopperId() { return shopperId; }
     public String getIdempotencyKey() { return idempotencyKey; }
@@ -117,4 +136,7 @@ public class RegularPurchaseRequestJpaEntity {
     public String getTracestate() { return tracestate; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public String getRecoveryLeaseOwner() { return recoveryLeaseOwner; }
+    public Instant getRecoveryLeaseUntil() { return recoveryLeaseUntil; }
+    public int getRecoveryAttemptCount() { return recoveryAttemptCount; }
 }

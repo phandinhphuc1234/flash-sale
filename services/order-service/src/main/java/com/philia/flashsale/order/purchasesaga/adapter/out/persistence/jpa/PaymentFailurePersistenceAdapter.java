@@ -13,6 +13,7 @@ import com.philia.flashsale.order.purchasesaga.application.port.out.ApplyPayment
 import com.philia.flashsale.order.purchasesaga.application.result.PaymentFailureResult;
 import com.philia.flashsale.order.purchasesaga.application.usecase.ApplyPaymentFailureService;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
+import com.philia.flashsale.order.purchasesaga.domain.model.StockParticipantType;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -51,13 +52,19 @@ public class PaymentFailurePersistenceAdapter implements ApplyPaymentFailurePort
         }
         validate(command, order, stored);
         PurchaseSaga current = toDomain(stored);
-        PurchaseSaga transitioned = current.releaseReservation(command.paymentId(), command.aggregateVersion(),
-                command.reason(), desiredStatus, command.failedAt(), commandId, command.occurredAt());
+        PurchaseSaga transitioned = current.stockParticipantType() == StockParticipantType.REGULAR_STOCK_HOLD
+                ? current.releaseRegularStock(command.paymentId(), command.aggregateVersion(), command.reason(),
+                        desiredStatus, command.failedAt(), commandId, command.occurredAt())
+                : current.releaseReservation(command.paymentId(), command.aggregateVersion(), command.reason(),
+                        desiredStatus, command.failedAt(), commandId, command.occurredAt());
         stored.apply(transitioned);
         sagas.saveAndFlush(stored);
         inbox.saveAndFlush(PurchaseSagaInboxJpaEntity.paymentFailed(command));
-        outbox.saveAndFlush(com.philia.flashsale.order.order.adapter.out.persistence.jpa.entity.OrderCreationOutboxJpaEntity
-                .releaseReservation(command, transitioned, commandId));
+        outbox.saveAndFlush(current.stockParticipantType() == StockParticipantType.REGULAR_STOCK_HOLD
+                ? com.philia.flashsale.order.order.adapter.out.persistence.jpa.entity.OrderCreationOutboxJpaEntity
+                        .releaseRegularStockHold(command, transitioned, commandId)
+                : com.philia.flashsale.order.order.adapter.out.persistence.jpa.entity.OrderCreationOutboxJpaEntity
+                        .releaseReservation(command, transitioned, commandId));
         return PaymentFailureResult.applied(command.orderId(), stored.getId(), commandId, desiredStatus);
     }
 
@@ -69,11 +76,18 @@ public class PaymentFailurePersistenceAdapter implements ApplyPaymentFailurePort
     }
 
     private PurchaseSaga toDomain(PurchaseSagaJpaEntity entity) {
+        if (entity.getStockParticipantType() == StockParticipantType.REGULAR_STOCK_HOLD) {
+            return PurchaseSaga.restoreRegular(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(),
+                    entity.getStockReferenceId(), entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(),
+                    entity.getLastPaymentVersion(), entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(),
+                    entity.getDesiredOrderStatus(), entity.getManualReviewReason(), entity.getActiveCommandId(),
+                    entity.getStepStartedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
+        }
         return PurchaseSaga.restore(entity.getId(), entity.getOrderId(), entity.getPurchaseRequestId(), entity.getReservationId(),
                 entity.getStatus(), entity.getPaymentDeadline(), entity.getPaymentId(), entity.getLastPaymentVersion(),
                 entity.getPaymentSucceededAt(), entity.getPaymentFailureReason(), entity.getDesiredOrderStatus(),
-                entity.getManualReviewReason(),
-                entity.getActiveCommandId(), entity.getStepStartedAt(), entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
+                entity.getManualReviewReason(), entity.getActiveCommandId(), entity.getStepStartedAt(), entity.getVersion(),
+                entity.getCreatedAt(), entity.getUpdatedAt());
     }
     private InvalidPaymentFailureException invalid(String message) { return new InvalidPaymentFailureException(message); }
 }

@@ -36,7 +36,7 @@ public final class ReconcilePurchasedCartSnapshotAvroMapper {
                     item.required("quantity").longValue(), item.required("itemVersion").longValue()));
         }
         if (items.isEmpty() || !orderId.equals(event.aggregateId()) || !purchaseRequestId.equals(event.correlationId())
-                || !event.eventKey().equals(orderId.toString()) || event.causationId() == null) {
+                || !event.eventKey().equals(cartId.toString()) || event.causationId() == null) {
             throw new IllegalArgumentException("Cart reconciliation identity/key mismatch");
         }
         var data = new ReconcilePurchasedCartSnapshotDataV1(orderId, purchaseRequestId, cartId, ownerId,

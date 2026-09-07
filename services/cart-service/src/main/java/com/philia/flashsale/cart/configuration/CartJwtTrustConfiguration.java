@@ -44,7 +44,18 @@ public class CartJwtTrustConfiguration {
 
     @Bean("cartJwtAuthenticationConverter")
     Converter<Jwt, AbstractAuthenticationToken> cartJwtAuthenticationConverter() {
-        return jwt -> new JwtAuthenticationToken(jwt, authorities(jwt), jwt.getSubject());
+        // Use a concrete parameterized Converter rather than a lambda. Spring Kafka inspects
+        // Converter beans while registering listener message converters; a lambda erases its
+        // source/target types at runtime and causes application startup to fail when the
+        // reconciliation listener is enabled.
+        return new CartJwtAuthenticationConverter();
+    }
+
+    static final class CartJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+        @Override
+        public AbstractAuthenticationToken convert(Jwt jwt) {
+            return new JwtAuthenticationToken(jwt, authorities(jwt), jwt.getSubject());
+        }
     }
 
     private static List<GrantedAuthority> authorities(Jwt jwt) {

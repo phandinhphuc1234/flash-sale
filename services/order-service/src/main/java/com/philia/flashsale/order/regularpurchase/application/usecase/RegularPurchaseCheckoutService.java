@@ -28,10 +28,12 @@ import com.philia.flashsale.order.regularpurchase.domain.model.IdempotencyMatch;
 import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseLine;
 import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRequest;
 import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRequestState;
+import com.philia.flashsale.order.observability.OrderObservability;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * Resumable Buy Now orchestration. Each persistence call owns a short local transaction; no
@@ -46,17 +48,27 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
     private final GenerateOrderIdentityPort identities;
     private final GenerateOrderNumberPort orderNumbers;
     private final CurrentTimePort clock;
+    private final OrderObservability observability;
 
     public RegularPurchaseCheckoutService(PersistRegularPurchasePort persistence,
             LoadProductPurchaseQuotesPort productQuotes, CreateRegularStockHoldPort stockHolds,
             GenerateOrderIdentityPort identities, GenerateOrderNumberPort orderNumbers, CurrentTimePort clock) {
-        this(persistence, productQuotes, stockHolds, null, identities, orderNumbers, clock);
+        this(persistence, productQuotes, stockHolds, null, identities, orderNumbers, clock,
+                OrderObservability.noop());
     }
 
     public RegularPurchaseCheckoutService(PersistRegularPurchasePort persistence,
             LoadProductPurchaseQuotesPort productQuotes, CreateRegularStockHoldPort stockHolds,
             LoadCartCheckoutSnapshotPort cartSnapshots, GenerateOrderIdentityPort identities,
             GenerateOrderNumberPort orderNumbers, CurrentTimePort clock) {
+        this(persistence, productQuotes, stockHolds, cartSnapshots, identities, orderNumbers, clock,
+                OrderObservability.noop());
+    }
+
+    public RegularPurchaseCheckoutService(PersistRegularPurchasePort persistence,
+            LoadProductPurchaseQuotesPort productQuotes, CreateRegularStockHoldPort stockHolds,
+            LoadCartCheckoutSnapshotPort cartSnapshots, GenerateOrderIdentityPort identities,
+            GenerateOrderNumberPort orderNumbers, CurrentTimePort clock, OrderObservability observability) {
         this.persistence = Objects.requireNonNull(persistence, "persistence");
         this.productQuotes = Objects.requireNonNull(productQuotes, "productQuotes");
         this.stockHolds = Objects.requireNonNull(stockHolds, "stockHolds");
@@ -64,11 +76,16 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
         this.identities = Objects.requireNonNull(identities, "identities");
         this.orderNumbers = Objects.requireNonNull(orderNumbers, "orderNumbers");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.observability = Objects.requireNonNull(observability, "observability");
     }
 
     @Override
     public RegularPurchaseCheckoutResult checkout(BuyNowCheckoutCommand command) {
         Objects.requireNonNull(command, "command");
+        return observeIntake("buy_now", () -> checkoutBuyNow(command));
+    }
+
+    private RegularPurchaseCheckoutResult checkoutBuyNow(BuyNowCheckoutCommand command) {
         Instant receivedAt = clock.now();
         RegularPurchaseLine submittedLine = new RegularPurchaseLine(command.variantId(), command.quantity(),
                 command.expectedUnitPrice(), command.currency(), null);
@@ -95,6 +112,10 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
     @Override
     public RegularPurchaseCheckoutResult checkout(CartCheckoutCommand command) {
         Objects.requireNonNull(command, "command");
+        return observeIntake("cart", () -> checkoutCart(command));
+    }
+
+    private RegularPurchaseCheckoutResult checkoutCart(CartCheckoutCommand command) {
         if (cartSnapshots == null) {
             throw new RegularPurchaseDownstreamException(
                     RegularPurchaseDownstreamException.Failure.CART_SERVICE_UNAVAILABLE);
@@ -131,6 +152,22 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
                     clock.now()));
         }
         return continueCheckout(intake, command.traceId(), command.traceparent(), command.tracestate());
+    }
+
+    private RegularPurchaseCheckoutResult observeIntake(String source,
+            Supplier<RegularPurchaseCheckoutResult> action) {
+        try {
+            RegularPurchaseCheckoutResult result = observability.observe(
+                    OrderObservability.Operation.REGULAR_INTAKE, action);
+            observability.recordRegularIntake(source, result.replayed() ? "replayed" : "accepted");
+            return result;
+        } catch (RegularPurchaseBusinessException exception) {
+            observability.recordRegularIntake(source, "rejected");
+            throw exception;
+        } catch (RuntimeException exception) {
+            observability.recordRegularIntake(source, "error");
+            throw exception;
+        }
     }
 
     private RegularPurchaseCheckoutResult continueCheckout(RegularPurchaseRequest intake, String traceId,

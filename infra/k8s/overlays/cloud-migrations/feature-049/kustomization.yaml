@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: flash-sale
+
+# The migration gate replaces these three placeholders with exact immutable release images
+# in a temporary manifest. The overlay itself never changes a live resource.
+resources:
+  - cart-checkout-migration-job.yaml
+  - inventory-regular-hold-migration-job.yaml
+  - order-regular-purchase-migration-job.yaml

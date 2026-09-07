@@ -38,11 +38,12 @@ $ExpectedServices = @(
   [pscustomobject]@{ Name = "inventory-service"; ConfigMap = "inventory-service-runtime-config"; Secret = "inventory-secrets" },
   [pscustomobject]@{ Name = "order-service"; ConfigMap = "order-service-runtime-config"; Secret = "order-secrets" },
   [pscustomobject]@{ Name = "payment-service"; ConfigMap = "payment-service-runtime-config"; Secret = "payment-secrets" }
+  [pscustomobject]@{ Name = "cart-service"; ConfigMap = "cart-service-runtime-config"; Secret = "cart-secrets" }
 )
 $ExpectedSecretBoundaries = @(
   "platform-secrets", "gateway-secrets", "authentication-secrets", "product-secrets",
   "campaign-secrets", "flashsale-secrets", "inventory-secrets", "order-secrets",
-  "payment-secrets", "auth-jwt"
+  "payment-secrets", "cart-secrets", "auth-jwt"
 )
 $ExpectedPaymentFlags = @(
   "PAYMENT_ACCEPTANCE_ENABLED", "PAYMENT_CHECKOUT_ENABLED", "STRIPE_ENABLED",

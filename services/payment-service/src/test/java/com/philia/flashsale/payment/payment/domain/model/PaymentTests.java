@@ -1,8 +1,10 @@
 package com.philia.flashsale.payment.payment.domain.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.philia.flashsale.payment.payment.domain.exception.PaymentAttemptException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -77,6 +79,38 @@ class PaymentTests {
         assertEquals(PaymentStatus.EXPIRED, payment.status());
         assertEquals(FailureReason.PAYMENT_DEADLINE_EXPIRED, payment.failureReason());
         assertEquals(1L, payment.aggregateVersion());
+    }
+
+    @Test
+    void checkoutAttemptAtDeadlineIsRejectedAndPaymentBecomesExpired() {
+        Payment payment = payment();
+
+        assertThrows(PaymentAttemptException.class,
+                () -> payment.allocateAttempt(UUID.randomUUID(), "deadline-key", DEADLINE,
+                        DEADLINE.plus(23, ChronoUnit.HOURS)));
+
+        assertEquals(PaymentStatus.EXPIRED, payment.status());
+        assertEquals(FailureReason.PAYMENT_DEADLINE_EXPIRED, payment.failureReason());
+        assertEquals(1L, payment.aggregateVersion());
+        assertEquals(0, payment.attemptsUsed());
+    }
+
+    @Test
+    void verifiedProviderSuccessStillConvergesAfterLocalDeadlineExpiry() {
+        Payment payment = payment();
+        PaymentAttempt attempt = payment.allocateAttempt(UUID.randomUUID(), "late-success-key",
+                CREATED.plusSeconds(1), CREATED.plus(23, ChronoUnit.HOURS));
+
+        payment.expire(DEADLINE);
+        payment.markProviderPaid(attempt.id(), "cs_late_success", "pi_late_success",
+                DEADLINE.plusSeconds(1));
+
+        assertEquals(PaymentStatus.SUCCEEDED, payment.status());
+        assertEquals(PaymentAttemptStatus.SUCCEEDED, attempt.status());
+        assertEquals("cs_late_success", attempt.providerSessionId());
+        assertEquals("pi_late_success", attempt.providerPaymentIntentId());
+        assertEquals(2L, payment.aggregateVersion());
+        assertNull(payment.failureReason());
     }
 
     private Payment payment() {

@@ -89,6 +89,7 @@ flashsale:
       command-consumer-enabled: ${INVENTORY_REGULAR_HOLD_COMMAND_CONSUMER_ENABLED:false}
       outbox-publisher-enabled: ${INVENTORY_REGULAR_HOLD_OUTBOX_PUBLISHER_ENABLED:false}
       expiry-enabled: ${INVENTORY_REGULAR_HOLD_EXPIRY_ENABLED:false}
+      expiry-batch-size: ${INVENTORY_REGULAR_HOLD_EXPIRY_BATCH_SIZE:100}
       ttl: ${INVENTORY_REGULAR_HOLD_TTL:5m}
       # `requestedAt` is Order audit evidence only. Inventory owns the acceptance window and
       # always calculates the five-minute hold TTL from its own UTC clock.

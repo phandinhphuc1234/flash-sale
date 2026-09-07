@@ -8,6 +8,9 @@ import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldConfir
 import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldExpiredDataV1;
 import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldExpiredItemV1;
 import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldExpiredV1;
+import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldReleasedDataV1;
+import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldReleasedItemV1;
+import com.philia.flashsale.contract.regularhold.event.v1.RegularStockHoldReleasedV1;
 import com.philia.flashsale.inventory.regularhold.application.model.RegularHoldFactOutboxEvent;
 import com.philia.flashsale.inventory.regularhold.application.model.RegularHoldOutboxEvent;
 import java.util.Objects;
@@ -28,6 +31,7 @@ public class RegularHoldOutcomeAvroMapper {
         return switch (event.eventType()) {
             case "RegularStockHoldConfirmed" -> confirmed(event);
             case "RegularStockHoldExpired" -> expired(event);
+            case "RegularStockHoldReleased" -> released(event);
             default -> throw new IllegalArgumentException("Unsupported regular hold outbox event " + event.eventType());
         };
     }
@@ -52,6 +56,20 @@ public class RegularHoldOutcomeAvroMapper {
                         .map(item -> new RegularStockHoldExpiredItemV1(item.variantId(), item.quantity())).toList(),
                 event.transitionedAt());
         return new RegularStockHoldExpiredV1(event.eventId(), "RegularStockHoldExpired", 1,
+                "inventory-service", "REGULAR_STOCK_HOLD", event.holdId(), event.aggregateVersion(),
+                event.purchaseRequestId(), event.causationId(), event.transitionedAt(), event.traceparent(),
+                event.tracestate(), data);
+    }
+
+    private RegularStockHoldReleasedV1 released(RegularHoldFactOutboxEvent event) {
+        if (event.reason() == null || event.reason().isBlank() || event.paymentId() == null) {
+            throw new IllegalArgumentException("Released regular hold event requires reason and paymentId");
+        }
+        var data = new RegularStockHoldReleasedDataV1(event.holdId(), event.purchaseRequestId(), event.orderId(),
+                "RELEASED", event.items().stream()
+                        .map(item -> new RegularStockHoldReleasedItemV1(item.variantId(), item.quantity())).toList(),
+                event.reason(), event.transitionedAt());
+        return new RegularStockHoldReleasedV1(event.eventId(), "RegularStockHoldReleased", 1,
                 "inventory-service", "REGULAR_STOCK_HOLD", event.holdId(), event.aggregateVersion(),
                 event.purchaseRequestId(), event.causationId(), event.transitionedAt(), event.traceparent(),
                 event.tracestate(), data);

@@ -1,7 +1,7 @@
 # Frontend Integration Guide
 
 Tài liệu này mô tả contract HTTP hiện có của hệ thống Flash Sale để frontend tích hợp mà không
-phải suy đoán từ code Java. Phạm vi gồm **45 endpoint**: 36 endpoint dành cho shopper/admin, một
+phải suy đoán từ code Java. Phạm vi gồm **47 endpoint**: 38 endpoint dành cho shopper/admin, một
 Stripe webhook, một JWKS endpoint và bảy endpoint nội bộ. Cart Service có bốn endpoint shopper;
 Notification Service chưa có HTTP API.
 
@@ -1824,7 +1824,7 @@ service port trong frontend.
 
 ## 18. Tài liệu và kiểm tra liên quan
 
-- Danh mục 45 endpoint: [`README.md`](README.md)
+- Danh mục 47 endpoint: [`README.md`](README.md) hoặc [endpoint-registry.md](endpoint-registry.md)
 - Contract inventory: [`../../specs/047-api-documentation/contracts/http-inventory.md`](../../specs/047-api-documentation/contracts/http-inventory.md)
 - Flash-sale end-to-end flow: [`../architecture/flash-sale-end-to-end-flow.md`](../architecture/flash-sale-end-to-end-flow.md)
 - Kiểm tra catalog/OpenAPI wiring:

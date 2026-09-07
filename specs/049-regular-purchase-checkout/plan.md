@@ -382,6 +382,12 @@ request and repeats only idempotent downstream operations. Inventory hold creati
 commit cannot oversell or duplicate: retry finds the same hold, while the five-minute Inventory
 expiry is the final orphan safety net.
 
+The recovery worker claims stale non-terminal rows with a short persisted lease using
+`FOR UPDATE SKIP LOCKED`, commits the claim before downstream HTTP, and invokes the same checkout
+use case with the stored shopper/key/payload and generated identities. Lease expiry is the retry
+boundary; the worker never creates a replacement request or holds a database transaction across
+Cart, Product, or Inventory calls.
+
 For `CART`, the initial durable `RECEIVED` intake has no `cartId`, because the browser may never
 choose one. The Cart internal snapshot returns that owner-bound identity; the Order persistence
 transition stores `cartId` and `cartVersion` together with `SNAPSHOT_VALIDATED`. The forward-only

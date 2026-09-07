@@ -5,6 +5,7 @@ import com.philia.flashsale.inventory.regularhold.adapter.out.persistence.jpa.en
 import com.philia.flashsale.inventory.regularhold.adapter.out.persistence.jpa.repository.RegularStockHoldItemJpaRepository;
 import com.philia.flashsale.inventory.regularhold.adapter.out.persistence.jpa.repository.RegularStockHoldJpaRepository;
 import com.philia.flashsale.inventory.regularhold.application.port.out.LoadActiveRegularHoldQuantityPort;
+import com.philia.flashsale.inventory.regularhold.application.port.out.LoadDueRegularStockHoldsPort;
 import com.philia.flashsale.inventory.regularhold.application.port.out.LoadRegularStockHoldPort;
 import com.philia.flashsale.inventory.regularhold.application.port.out.SaveRegularStockHoldPort;
 import com.philia.flashsale.inventory.regularhold.domain.model.RegularStockHold;
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Component;
 /** JPA boundary for durable hold identity, items, and active-held availability accounting. */
 @Component
 public class RegularStockHoldPersistenceAdapter implements LoadRegularStockHoldPort,
-        SaveRegularStockHoldPort, LoadActiveRegularHoldQuantityPort {
+        SaveRegularStockHoldPort, LoadActiveRegularHoldQuantityPort, LoadDueRegularStockHoldsPort {
     private final RegularStockHoldJpaRepository holds;
     private final RegularStockHoldItemJpaRepository items;
 
@@ -72,6 +73,11 @@ public class RegularStockHoldPersistenceAdapter implements LoadRegularStockHoldP
     @Override
     public long activeHeldQuantity(UUID inventoryItemId, Instant at) {
         return items.sumActiveHeldQuantity(inventoryItemId, at);
+    }
+
+    @Override
+    public List<RegularStockHold> findDueForUpdate(Instant now, int limit) {
+        return holds.findDueForExpiry(now, limit).stream().map(this::toDomain).toList();
     }
 
     private RegularStockHold toDomain(RegularStockHoldJpaEntity entity) {

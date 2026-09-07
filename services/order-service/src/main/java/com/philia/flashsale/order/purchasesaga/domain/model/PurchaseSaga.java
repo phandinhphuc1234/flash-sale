@@ -149,7 +149,8 @@ public final class PurchaseSaga {
         if (paymentVersion <= 0) {
             throw new InvalidPurchaseSagaException("payment version must be positive");
         }
-        if (status != PurchaseSagaStatus.PAYMENT_PENDING) {
+        if (status != PurchaseSagaStatus.PAYMENT_PENDING
+                && status != PurchaseSagaStatus.RELEASING_STOCK) {
             throw new InvalidPurchaseSagaException("Saga is not eligible for regular stock confirmation");
         }
         if (lastPaymentVersion != null && paymentVersion < lastPaymentVersion) {
@@ -159,6 +160,34 @@ public final class PurchaseSaga {
                 PurchaseSagaStatus.CONFIRMING_STOCK, paymentDeadline, paymentId,
                 paymentVersion, paidAt, null, null, null, commandId, transitionedAt, version + 1, createdAt,
                 transitionedAt, false);
+    }
+
+    /** Applies a terminal PaymentFailed fact and opens release of a regular Inventory hold. */
+    public PurchaseSaga releaseRegularStock(UUID paymentId, long paymentVersion, String failureReason,
+            String desiredStatus, Instant failedAt, UUID commandId, Instant transitionedAt) {
+        Objects.requireNonNull(paymentId, PAYMENT_ID_FIELD);
+        Objects.requireNonNull(failureReason, "failureReason");
+        Objects.requireNonNull(desiredStatus, "desiredStatus");
+        Objects.requireNonNull(failedAt, "failedAt");
+        Objects.requireNonNull(commandId, "commandId");
+        Objects.requireNonNull(transitionedAt, TRANSITIONED_AT_FIELD);
+        if (stockParticipantType != StockParticipantType.REGULAR_STOCK_HOLD) {
+            throw new InvalidPurchaseSagaException("Saga does not own a regular stock hold");
+        }
+        if (paymentVersion <= 0) throw new InvalidPurchaseSagaException("payment version must be positive");
+        if (!"CANCELLED".equals(desiredStatus) && !"EXPIRED".equals(desiredStatus)) {
+            throw new InvalidPurchaseSagaException("invalid release target");
+        }
+        if (status != PurchaseSagaStatus.PAYMENT_PENDING) {
+            throw new InvalidPurchaseSagaException("Saga is not eligible for regular stock release");
+        }
+        if (lastPaymentVersion != null && paymentVersion < lastPaymentVersion) {
+            throw new InvalidPurchaseSagaException("payment version regressed");
+        }
+        return new PurchaseSaga(id, orderId, purchaseRequestId, stockParticipantType, stockReferenceId,
+                reservationId, PurchaseSagaStatus.RELEASING_STOCK, paymentDeadline, paymentId,
+                paymentVersion, paymentSucceededAt, failureReason, desiredStatus, null, commandId,
+                transitionedAt, version + 1, createdAt, transitionedAt, false);
     }
 
     /** Applies one verified terminal PaymentFailed fact and opens reservation release. */
@@ -209,8 +238,11 @@ public final class PurchaseSaga {
     /** Moves an in-flight success to manual review when Flash Sale reports the reservation gone. */
     public PurchaseSaga enterManualReviewAfterReservationFailure(Instant transitionedAt) {
         Objects.requireNonNull(transitionedAt, TRANSITIONED_AT_FIELD);
-        if (status != PurchaseSagaStatus.CONFIRMING_RESERVATION
-                && status != PurchaseSagaStatus.RELEASING_RESERVATION) {
+        boolean awaitingFlashSaleRecovery = status == PurchaseSagaStatus.CONFIRMING_RESERVATION
+                || status == PurchaseSagaStatus.RELEASING_RESERVATION;
+        boolean awaitingRegularStockRecovery = status == PurchaseSagaStatus.CONFIRMING_STOCK
+                || status == PurchaseSagaStatus.RELEASING_STOCK;
+        if (!awaitingFlashSaleRecovery && !awaitingRegularStockRecovery) {
             throw new InvalidPurchaseSagaException("Saga is not awaiting reservation recovery");
         }
         if (paymentId == null || lastPaymentVersion == null) {
@@ -225,13 +257,46 @@ public final class PurchaseSaga {
     /** Applies the durable Flash Sale release result and closes the Saga. */
     public PurchaseSaga completeRelease(Instant releasedAt) {
         Objects.requireNonNull(releasedAt, "releasedAt");
-        if (status != PurchaseSagaStatus.RELEASING_RESERVATION) {
+        if (status != PurchaseSagaStatus.RELEASING_RESERVATION
+                && status != PurchaseSagaStatus.RELEASING_STOCK) {
             throw new InvalidPurchaseSagaException("Saga is not awaiting reservation release");
         }
         return new PurchaseSaga(id, orderId, purchaseRequestId, stockParticipantType, stockReferenceId, reservationId,
                 PurchaseSagaStatus.COMPENSATED, paymentDeadline, paymentId, lastPaymentVersion,
                 paymentSucceededAt, paymentFailureReason, desiredOrderStatus, manualReviewReason, null, releasedAt,
                 version + 1, createdAt, releasedAt, false);
+    }
+
+    /** Applies the verified Inventory release/expiry result for a regular hold. */
+    public PurchaseSaga completeRegularStockRelease(Instant releasedAt) {
+        Objects.requireNonNull(releasedAt, "releasedAt");
+        if (stockParticipantType != StockParticipantType.REGULAR_STOCK_HOLD
+                || status != PurchaseSagaStatus.RELEASING_STOCK) {
+            throw new InvalidPurchaseSagaException("Saga is not awaiting regular stock release");
+        }
+        if (!"CANCELLED".equals(desiredOrderStatus) && !"EXPIRED".equals(desiredOrderStatus)) {
+            throw new InvalidPurchaseSagaException("regular stock release has no valid terminal Order status");
+        }
+        return new PurchaseSaga(id, orderId, purchaseRequestId, stockParticipantType, stockReferenceId,
+                reservationId, PurchaseSagaStatus.COMPENSATED, paymentDeadline, paymentId, lastPaymentVersion,
+                paymentSucceededAt, paymentFailureReason, desiredOrderStatus, manualReviewReason, null,
+                releasedAt, version + 1, createdAt, releasedAt, false);
+    }
+
+    /** Applies an Inventory expiry fact and closes an unpaid regular purchase as EXPIRED. */
+    public PurchaseSaga completeRegularStockExpiry(Instant expiredAt) {
+        Objects.requireNonNull(expiredAt, "expiredAt");
+        if (stockParticipantType != StockParticipantType.REGULAR_STOCK_HOLD) {
+            throw new InvalidPurchaseSagaException("Saga does not own a regular stock hold");
+        }
+        if (status != PurchaseSagaStatus.PAYMENT_PENDING
+                && status != PurchaseSagaStatus.RELEASING_STOCK) {
+            throw new InvalidPurchaseSagaException("Saga is not eligible for regular stock expiry");
+        }
+        return new PurchaseSaga(id, orderId, purchaseRequestId, stockParticipantType, stockReferenceId,
+                reservationId, PurchaseSagaStatus.COMPENSATED, paymentDeadline, paymentId, lastPaymentVersion,
+                paymentSucceededAt, paymentFailureReason, "EXPIRED", manualReviewReason, null,
+                expiredAt, version + 1, createdAt, expiredAt, false);
     }
 
     /** Applies the verified Flash Sale confirmation and completes the Order-owned Saga. */

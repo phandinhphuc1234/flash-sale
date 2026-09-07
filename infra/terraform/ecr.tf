@@ -5,6 +5,7 @@ variable "service_names" {
     "api-gateway",
     "authentication-service",
     "product-service",
+    "cart-service",
     "campaign-service",
     "flash-sale-service",
     "inventory-service",

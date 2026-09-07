@@ -14,6 +14,7 @@ import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRe
 import com.philia.flashsale.order.support.PostgreSqlIntegrationTestSupport;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -97,6 +98,29 @@ class RegularPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationTe
         assertThat(replayBoundary.id()).isEqualTo(first.id());
         assertThat(replayBoundary.requestFingerprint()).isEqualTo(first.requestFingerprint());
         assertThat(count("regular_purchase_requests", "shopper_id", shopperId)).isEqualTo(1);
+    }
+
+    @Test
+    void staleIntakeIsClaimedOnceUntilTheLeaseIsReleasedOrExpires() {
+        UUID requestId = UUID.randomUUID();
+        RegularPurchaseRequest request = RegularPurchaseRequest.receiveBuyNow(requestId, UUID.randomUUID(),
+                "lease-key", UUID.randomUUID(), UUID.randomUUID(), line(UUID.randomUUID(), 1, "1.0000"),
+                ACCEPTED_AT.minusSeconds(60));
+        persistence.register(request);
+        Instant recoveryNow = ACCEPTED_AT.plusSeconds(60);
+
+        var first = persistence.claim("worker-a", recoveryNow, 1, Duration.ofSeconds(30));
+        var second = persistence.claim("worker-b", recoveryNow, 1, Duration.ofSeconds(30));
+
+        assertThat(first).hasSize(1);
+        assertThat(first.getFirst().request().id()).isEqualTo(requestId);
+        assertThat(second).noneMatch(claim -> claim.request().id().equals(requestId));
+        assertThat(jdbc.queryForObject("select recovery_lease_owner from regular_purchase_requests where id = ?",
+                String.class, requestId)).isEqualTo("worker-a");
+
+        persistence.release(requestId, "worker-a");
+        assertThat(persistence.claim("worker-b", recoveryNow, 10, Duration.ofSeconds(30)))
+                .anyMatch(claim -> claim.request().id().equals(requestId));
     }
 
     private static RegularPurchaseLine line(UUID variantId, long quantity, String price) {
