@@ -25,6 +25,23 @@ class OrderOutboxEventTypeDispatcherTests {
     }
 
     @Test
+    void routesAdditiveRegularOrderAndHoldCommandTypesSeparately() {
+        var received = new java.util.ArrayList<String>();
+        PublishOrderEventPort orderCreated = event -> received.add("created:" + event.eventId());
+        PublishOrderEventPort holdConfirm = event -> received.add("confirm:" + event.eventId());
+        var dispatcher = new OrderOutboxEventTypeDispatcher(Map.of(
+                "OrderCreatedV2", orderCreated,
+                "ConfirmRegularStockHold", holdConfirm));
+        var created = event("OrderCreatedV2", 2);
+        var confirm = event("ConfirmRegularStockHold", 1);
+
+        dispatcher.publish(created);
+        dispatcher.publish(confirm);
+
+        assertThat(received).containsExactly("created:" + created.eventId(), "confirm:" + confirm.eventId());
+    }
+
+    @Test
     void refusesAnEventUntilItsStoryRegistersAPublisher() {
         var dispatcher = new OrderOutboxEventTypeDispatcher(Map.of());
 
@@ -34,9 +51,13 @@ class OrderOutboxEventTypeDispatcherTests {
     }
 
     private static OrderOutboxEvent event(String type) {
+        return event(type, 1);
+    }
+
+    private static OrderOutboxEvent event(String type, int version) {
         UUID id = UUID.randomUUID();
         Instant now = Instant.parse("2030-01-01T00:00:00Z");
-        return new OrderOutboxEvent(id, "ORDER", id, 1, type, 1, id.toString(),
+        return new OrderOutboxEvent(id, "ORDER", id, 1, type, version, id.toString(),
                 UUID.randomUUID(), UUID.randomUUID(), "{}", "00-trace", null,
                 "PENDING", 0, now, null, null, null, null, now, now, now);
     }

@@ -74,6 +74,10 @@ class InventoryLocalSmokeFixture {
             }
             jdbc.update("DELETE FROM stock_movements WHERE inventory_item_id = ?", itemId);
             jdbc.update("DELETE FROM campaign_stock_allocations WHERE inventory_item_id = ?", itemId);
+            // Historical regular holds deliberately use RESTRICT FKs. The disposable fixture
+            // may be reused after a prior smoke run, so remove only the hold-item links for this
+            // variant before deleting its inventory row; leave the other hold history intact.
+            jdbc.update("DELETE FROM regular_stock_hold_items WHERE inventory_item_id = ?", itemId);
             jdbc.update("DELETE FROM inventory_items WHERE id = ?", itemId);
         }
     }

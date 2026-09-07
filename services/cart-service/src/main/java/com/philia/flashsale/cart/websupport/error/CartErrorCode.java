@@ -8,6 +8,8 @@ public enum CartErrorCode {
     CART_VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Cart request is invalid"),
     CART_VARIANT_NOT_FOUND(HttpStatus.NOT_FOUND, "Cart variant was not found"),
     CART_VARIANT_NOT_SELLABLE(HttpStatus.CONFLICT, "Cart variant is not sellable"),
+    CART_NOT_FOUND(HttpStatus.NOT_FOUND, "Cart was not found"),
+    CART_EMPTY(HttpStatus.CONFLICT, "Cart is empty"),
     CART_PRODUCT_DEPENDENCY_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
             "Product details are temporarily unavailable"),
     CART_INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Cart operation failed");

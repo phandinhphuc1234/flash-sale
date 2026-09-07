@@ -22,6 +22,7 @@ class InventoryCleanArchitectureTest {
                 "com.philia.flashsale.inventory.allocation.adapter.",
                 "com.philia.flashsale.inventory.movement.adapter.",
                 "com.philia.flashsale.inventory.outbox.adapter.",
+                "com.philia.flashsale.inventory.regularhold.adapter.",
                 "org.springframework.data.domain."
         ));
 

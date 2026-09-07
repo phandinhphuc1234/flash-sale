@@ -27,9 +27,13 @@ public class ProductInternalSecurityFailureHandler implements AuthenticationEntr
     public void handle(HttpServletRequest request, HttpServletResponse response,
             AccessDeniedException exception) throws IOException, ServletException {
         boolean cartDisplay = request.getRequestURI().endsWith("/display-details");
+        boolean purchaseQuote = request.getRequestURI().endsWith("/purchase-quotes");
         write(response, HttpServletResponse.SC_FORBIDDEN,
-                cartDisplay ? "CATALOG_VARIANT_DISPLAY_SCOPE_REQUIRED" : "CATALOG_READ_SCOPE_REQUIRED",
-                cartDisplay ? "catalog.variant-display.read scope is required" : "catalog.read scope is required");
+                cartDisplay ? "CATALOG_VARIANT_DISPLAY_SCOPE_REQUIRED"
+                        : purchaseQuote ? "CATALOG_PURCHASE_QUOTE_SCOPE_REQUIRED" : "CATALOG_READ_SCOPE_REQUIRED",
+                cartDisplay ? "catalog.variant-display.read scope is required"
+                        : purchaseQuote ? "catalog.purchase-quote.read scope is required"
+                                : "catalog.read scope is required");
     }
     private void write(HttpServletResponse response, int status, String code, String message) throws IOException {
         response.setStatus(status);

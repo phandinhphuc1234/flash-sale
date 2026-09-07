@@ -63,6 +63,8 @@ status, header, or security change. One endpoint is one unique `HTTP method + no
 | API-043 | Cart | Gateway-public | DELETE | `/api/v1/cart/items/{variantId}` | Authenticated shopper | Remove one owned Cart item idempotently |
 | API-044 | Cart | Gateway-public | DELETE | `/api/v1/cart` | Authenticated shopper | Clear all owned Cart items idempotently |
 | API-045 | Product | Internal | POST | `/internal/v1/catalog/variants/display-details` | Cart service subject/scope | Batch-read current Product display details for Cart |
+| API-046 | Order | Gateway-public | POST | `/api/v1/orders/cart-checkouts` | Authenticated shopper, idempotency key | Validate and accept one immutable Cart snapshot as one regular Order |
+| API-047 | Order | Gateway-public | POST | `/api/v1/orders/buy-now` | Authenticated shopper, idempotency key | Accept one sellable normal variant without changing Cart |
 
 ## Totals by owner
 
@@ -78,7 +80,7 @@ status, header, or security change. One endpoint is one unique `HTTP method + no
 | Payment | 4 | 0 | 0 | 4 |
 | Cart | 4 | 0 | 0 | 4 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **37** | **7** | **1** | **45** |
+| **Total** | **39** | **7** | **1** | **47** |
 
 ## Documentation endpoints (excluded from the 45)
 

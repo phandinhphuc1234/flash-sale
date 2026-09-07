@@ -1,0 +1,33 @@
+{
+  "type": "record",
+  "name": "ReconcilePurchasedCartSnapshotV1",
+  "namespace": "com.philia.flashsale.contract.cart.command.v1",
+  "doc": "Order-owned command asking Cart to conditionally reconcile a durably confirmed Cart snapshot.",
+  "fields": [
+    {"name": "eventId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "eventType", "type": "string", "doc": "ReconcilePurchasedCartSnapshot"},
+    {"name": "eventVersion", "type": "int", "doc": "1"},
+    {"name": "producer", "type": "string", "doc": "order-service"},
+    {"name": "aggregateType", "type": "string", "doc": "ORDER"},
+    {"name": "aggregateId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "aggregateVersion", "type": "long"},
+    {"name": "correlationId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "causationId", "type": {"type": "string", "logicalType": "uuid"}},
+    {"name": "occurredAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "traceparent", "type": ["null", "string"], "default": null, "doc": "Nullable bounded W3C traceparent."},
+    {"name": "tracestate", "type": ["null", "string"], "default": null, "doc": "Nullable bounded W3C tracestate."},
+    {"name": "data", "type": {"type": "record", "name": "ReconcilePurchasedCartSnapshotDataV1", "fields": [
+      {"name": "orderId", "type": {"type": "string", "logicalType": "uuid"}},
+      {"name": "purchaseRequestId", "type": {"type": "string", "logicalType": "uuid"}},
+      {"name": "cartId", "type": {"type": "string", "logicalType": "uuid"}},
+      {"name": "ownerId", "type": {"type": "string", "logicalType": "uuid"}},
+      {"name": "snapshotCartVersion", "type": "long"},
+      {"name": "confirmedAt", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+      {"name": "items", "type": {"type": "array", "items": {"type": "record", "name": "ReconcilePurchasedCartSnapshotItemV1", "fields": [
+        {"name": "variantId", "type": {"type": "string", "logicalType": "uuid"}},
+        {"name": "quantity", "type": "long"},
+        {"name": "itemVersion", "type": "long"}
+      ]}}}
+    ]}}
+  ]
+}

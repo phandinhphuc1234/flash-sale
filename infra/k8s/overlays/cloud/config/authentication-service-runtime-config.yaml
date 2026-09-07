@@ -15,6 +15,8 @@ data:
   INTERNAL_JWT_AUDIENCE: "flash-sale-internal-api"
   CAMPAIGN_CLIENT_ID: "campaign-service"
   FLASHSALE_CLIENT_ID: "flashsale-service"
+  CART_CLIENT_ID: "cart-service"
+  ORDER_CLIENT_ID: "order-service"
   AUTH_RUNTIME_ENABLED: "true"
   AUTH_COOKIE_SECURE: "false"
   AUTH_COOKIE_SAME_SITE: "Lax"

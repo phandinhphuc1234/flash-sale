@@ -17,8 +17,10 @@ import com.philia.flashsale.inventory.allocation.domain.exception.AllocationRequ
 import com.philia.flashsale.inventory.movement.application.port.out.RecordStockMovementPort;
 import com.philia.flashsale.inventory.movement.domain.model.MovementType;
 import com.philia.flashsale.inventory.movement.domain.model.StockMovement;
+import com.philia.flashsale.inventory.regularhold.application.port.out.LoadActiveRegularHoldQuantityPort;
 import com.philia.flashsale.inventory.stock.application.port.out.LoadInventoryItemPort;
 import com.philia.flashsale.inventory.stock.application.port.out.SaveInventoryItemPort;
+import com.philia.flashsale.inventory.stock.domain.exception.InsufficientStockException;
 import com.philia.flashsale.inventory.stock.domain.model.InventoryItem;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -39,6 +41,7 @@ public class CampaignAllocationApplicationService implements
     private final SaveCampaignStockAllocationPort saveAllocation;
     private final RecordStockMovementPort recordStockMovement;
     private final RecordAllocationOutboxPort outboxRecorder;
+    private final LoadActiveRegularHoldQuantityPort activeRegularHolds;
 
     public CampaignAllocationApplicationService(
             LoadInventoryItemPort loadInventoryItem,
@@ -46,13 +49,15 @@ public class CampaignAllocationApplicationService implements
             LoadCampaignStockAllocationPort loadAllocation,
             SaveCampaignStockAllocationPort saveAllocation,
             RecordStockMovementPort recordStockMovement,
-            RecordAllocationOutboxPort outboxRecorder) {
+            RecordAllocationOutboxPort outboxRecorder,
+            LoadActiveRegularHoldQuantityPort activeRegularHolds) {
         this.loadInventoryItem = loadInventoryItem;
         this.saveInventoryItem = saveInventoryItem;
         this.loadAllocation = loadAllocation;
         this.saveAllocation = saveAllocation;
         this.recordStockMovement = recordStockMovement;
         this.outboxRecorder = outboxRecorder;
+        this.activeRegularHolds = activeRegularHolds;
     }
 
     @Override
@@ -73,6 +78,10 @@ public class CampaignAllocationApplicationService implements
         }
 
         Instant now = Instant.now();
+        long regularHeld = activeRegularHolds.activeHeldQuantity(item.id(), now);
+        if (command.quantity() > item.availableQuantity() - regularHeld) {
+            throw new InsufficientStockException();
+        }
         item.allocate(command.quantity(), now);
         InventoryItem saved = saveInventoryItem.save(item);
         CampaignStockAllocation allocation = CampaignStockAllocation.active(

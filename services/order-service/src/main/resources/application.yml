@@ -43,6 +43,39 @@ spring:
       ack-mode: manual_immediate
     properties:
       schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+  security:
+    oauth2:
+      client:
+        provider:
+          authentication:
+            token-uri: ${OAUTH_TOKEN_URI:http://authentication-service:8080/oauth2/token}
+        registration:
+          order-internal:
+            provider: authentication
+            client-id: ${ORDER_CLIENT_ID:order-service}
+            client-secret: ${ORDER_CLIENT_SECRET:}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope:
+              - cart.checkout-snapshot.read
+              - catalog.purchase-quote.read
+              - inventory.regular-hold.write
+  cloud:
+    openfeign:
+      client:
+        config:
+          order-cart:
+            connectTimeout: ${ORDER_CART_CONNECT_TIMEOUT_MS:300}
+            readTimeout: ${ORDER_CART_READ_TIMEOUT_MS:600}
+            loggerLevel: basic
+          order-product:
+            connectTimeout: ${ORDER_PRODUCT_CONNECT_TIMEOUT_MS:300}
+            readTimeout: ${ORDER_PRODUCT_READ_TIMEOUT_MS:600}
+            loggerLevel: basic
+          order-inventory:
+            connectTimeout: ${ORDER_INVENTORY_CONNECT_TIMEOUT_MS:300}
+            readTimeout: ${ORDER_INVENTORY_READ_TIMEOUT_MS:800}
+            loggerLevel: basic
 
 server:
   port: ${SERVER_PORT:8080}
@@ -101,6 +134,11 @@ order:
     purchase-reservation-results-topic: ${ORDER_PURCHASE_RESERVATION_RESULTS_TOPIC:flashsale.purchase.events.v1}
     purchase-reservation-results-consumer-group: ${ORDER_PURCHASE_RESERVATION_RESULTS_CONSUMER_GROUP:order-purchase-reservation-results-v1}
     purchase-reservation-results-dlt-topic: ${ORDER_PURCHASE_RESERVATION_RESULTS_DLT_TOPIC:flashsale.order.purchase-reservation-result.dlt.v1}
+    regular-hold-commands-topic: ${ORDER_REGULAR_HOLD_COMMANDS_TOPIC:flashsale.inventory.regular-hold.commands.v1}
+    regular-hold-events-topic: ${ORDER_REGULAR_HOLD_EVENTS_TOPIC:flashsale.inventory.regular-hold.events.v1}
+    regular-hold-events-consumer-group: ${ORDER_REGULAR_HOLD_EVENTS_CONSUMER_GROUP:order-regular-hold-events-v1}
+    regular-hold-events-dlt-topic: ${ORDER_REGULAR_HOLD_EVENTS_DLT_TOPIC:flashsale.order.regular-hold-result.dlt.v1}
+    cart-reconciliation-commands-topic: ${ORDER_CART_RECONCILIATION_COMMANDS_TOPIC:flashsale.cart.checkout.commands.v1}
     retry-delays: ${ORDER_KAFKA_RETRY_DELAYS:1s,3s,10s}
   outbox:
     enabled: ${ORDER_OUTBOX_ENABLED:true}
@@ -123,6 +161,28 @@ order:
     enabled: ${ORDER_CREATION_ENABLED:true}
   query:
     enabled: ${ORDER_QUERY_ENABLED:true}
+  regular-purchase:
+    runtime:
+      # Setup is intentionally inert; later reviewed phases enable consumers before producers/intake.
+      intake-enabled: ${ORDER_REGULAR_PURCHASE_INTAKE_ENABLED:false}
+      recovery-enabled: ${ORDER_REGULAR_PURCHASE_RECOVERY_ENABLED:false}
+      hold-result-consumer-enabled: ${ORDER_REGULAR_HOLD_RESULT_CONSUMER_ENABLED:false}
+      hold-command-producer-enabled: ${ORDER_REGULAR_HOLD_COMMAND_PRODUCER_ENABLED:false}
+      cart-reconciliation-producer-enabled: ${ORDER_CART_RECONCILIATION_PRODUCER_ENABLED:false}
+    hold-policy:
+      ttl: ${ORDER_REGULAR_HOLD_TTL:5m}
+      payment-deadline-lead: ${ORDER_REGULAR_PAYMENT_DEADLINE_LEAD:30s}
+    internal-clients:
+      registration-id: order-internal
+      token-max-ttl-seconds: ${ORDER_INTERNAL_TOKEN_MAX_TTL_SECONDS:300}
+      cart-base-url: ${CART_SERVICE_URL:http://cart-service:8080}
+      product-base-url: ${PRODUCT_SERVICE_URL:http://product-service:8080}
+      inventory-base-url: ${INVENTORY_SERVICE_URL:http://inventory-service:8080}
+    recovery:
+      poll-interval: ${ORDER_REGULAR_PURCHASE_RECOVERY_POLL_INTERVAL:1s}
+      batch-size: ${ORDER_REGULAR_PURCHASE_RECOVERY_BATCH_SIZE:100}
+      claim-lease: ${ORDER_REGULAR_PURCHASE_RECOVERY_CLAIM_LEASE:30s}
+      retry-backoff: ${ORDER_REGULAR_PURCHASE_RECOVERY_RETRY_BACKOFF:1s,3s,10s,30s}
 
 springdoc:
   api-docs:

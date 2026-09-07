@@ -7,3 +7,9 @@ databaseChangeLog:
   - include:
       file: changes/001-create-inventory-schema.sql
       relativeToChangelogFile: true
+  - include:
+      file: changes/002-add-regular-stock-holds.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/003-normalize-regular-hold-fingerprints.sql
+      relativeToChangelogFile: true

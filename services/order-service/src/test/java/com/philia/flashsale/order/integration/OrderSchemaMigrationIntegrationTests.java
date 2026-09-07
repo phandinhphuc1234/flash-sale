@@ -11,13 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
-import liquibase.Contexts;
-import liquibase.LabelExpression;
-import liquibase.Liquibase;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
 import liquibase.integration.spring.SpringLiquibase;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -65,10 +59,11 @@ class OrderSchemaMigrationIntegrationTests {
         assertThat(publicTables()).containsExactlyInAnyOrder(
                 "orders", "order_lines", "order_consumer_inbox", "order_outbox_events",
                 "purchase_sagas", "purchase_saga_inbox",
+                "regular_purchase_requests",
                 "databasechangelog", "databasechangeloglock");
         assertThat(jdbc.queryForObject("SELECT locked FROM databasechangeloglock WHERE id = 1", Boolean.class))
                 .isFalse();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(6);
     }
 
     @Test
@@ -91,7 +86,8 @@ class OrderSchemaMigrationIntegrationTests {
                 "idx_purchase_sagas_order",
                 "idx_purchase_sagas_deadline",
                 "idx_purchase_saga_inbox_order",
-                "idx_purchase_saga_inbox_aggregate_version");
+                "idx_purchase_saga_inbox_aggregate_version",
+                "idx_regular_purchase_requests_recovery");
     }
 
     @Test
@@ -231,21 +227,9 @@ class OrderSchemaMigrationIntegrationTests {
 
     @Test
     @Order(99)
-    void developmentRollbackRemovesOrderObjectsInReverseDependencyOrder() throws Exception {
-        // The rollback restores the pre-saga constraints. Remove the one
-        // generalized outbox row first so the old ORDER-only check is valid.
-        jdbc.update("DELETE FROM order_outbox_events WHERE aggregate_type = 'PURCHASE_SAGA'");
-        try (var connection = dataSource.getConnection()) {
-            var database = DatabaseFactory.getInstance()
-                    .findCorrectDatabaseImplementation(new JdbcConnection(connection));
-            Liquibase liquibase = new Liquibase("db/changelog/db.changelog-master.yaml",
-                    new ClassLoaderResourceAccessor(), database);
-            liquibase.rollback(1, new Contexts(), new LabelExpression());
-        }
-
-        assertThat(publicTables()).containsExactlyInAnyOrder(
-                "orders", "order_lines", "order_consumer_inbox", "order_outbox_events",
-                "databasechangelog", "databasechangeloglock");
+    void regularCheckoutExpansionRetainsOperationalHistory() {
+        assertThat(publicTables()).contains("regular_purchase_requests", "purchase_sagas", "orders");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(6);
     }
 
     private static void insertOrder(

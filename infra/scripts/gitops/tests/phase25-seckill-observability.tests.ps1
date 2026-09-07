@@ -50,11 +50,12 @@ $expectedTargets = @{
   "inventory-service" = "inventory-service.flash-sale.svc.cluster.local:8080"
   "order-service" = "order-service.flash-sale.svc.cluster.local:8080"
   "payment-service" = "payment-service.flash-sale.svc.cluster.local:8080"
+  "cart-service" = "cart-service.flash-sale.svc.cluster.local:8080"
 }
 foreach ($service in $expectedTargets.Keys) {
   Assert-True ($prometheusConfig -match [regex]::Escape($expectedTargets[$service])) "missing target $service"
 }
-Assert-True (($prometheusConfig | Select-String -Pattern 'job_name:' -AllMatches).Matches.Count -eq 8) "expected exactly eight scrape jobs"
+Assert-True (($prometheusConfig | Select-String -Pattern 'job_name:' -AllMatches).Matches.Count -eq 9) "expected exactly nine scrape jobs"
 Assert-True ($prometheusConfig -match 'scrape_interval:\s*15s') "scrape interval must be 15 seconds"
 Assert-True ($prometheusConfig -match 'metrics_path:\s*/actuator/prometheus') "Actuator Prometheus path is missing"
 
@@ -86,5 +87,5 @@ Assert-True ($runnerText -notmatch 'jsonpath=\{range') "runner must parse Servic
 Assert-True ($runnerText -notmatch '(?i)whsec_|sk_(test|live)_|password\s*=\s*["''][^"'']+["'']') "runner contains a credential-like literal"
 
 Write-Output "PHASE_25_STATIC=PASS"
-Write-Output "Targets: 8 application Services; monitoring Services: 2 ClusterIP."
+Write-Output "Targets: 9 application Services; monitoring Services: 2 ClusterIP."
 Write-Output "Deferred components absent; Secret values absent."

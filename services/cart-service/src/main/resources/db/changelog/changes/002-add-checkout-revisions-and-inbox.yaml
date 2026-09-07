@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-add-checkout-revisions-and-inbox
+      author: philia
+      dbms: postgresql
+      runInTransaction: true
+      comments: >-
+        Forward-only expand migration. Rollback intentionally preserves checkout revisions and inbox
+        evidence; a later reviewed retention policy owns any destructive cleanup.
+      preConditions:
+        - onFail: HALT
+        - onError: HALT
+        - dbms:
+            type: postgresql
+        - sqlCheck:
+            expectedResult: cart_db
+            sql: SELECT current_database()
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              ALTER TABLE carts
+                  ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+
+              ALTER TABLE cart_items
+                  ADD COLUMN version BIGINT NOT NULL DEFAULT 1;
+
+              -- A pre-feature Cart containing rows receives a single historic mutation revision.
+              -- New code allocates future item revisions from the aggregate Cart version.
+              UPDATE carts
+              SET version = 1
+              WHERE EXISTS (
+                  SELECT 1 FROM cart_items WHERE cart_items.cart_id = carts.id
+              );
+
+              ALTER TABLE carts
+                  ADD CONSTRAINT ck_carts_version_non_negative CHECK (version >= 0);
+
+              ALTER TABLE cart_items
+                  ADD CONSTRAINT ck_cart_items_version_positive CHECK (version > 0);
+
+              CREATE TABLE cart_reconciliation_inbox (
+                  command_id UUID NOT NULL,
+                  order_id UUID NOT NULL,
+                  cart_id UUID NOT NULL,
+                  owner_id UUID NOT NULL,
+                  payload_fingerprint CHAR(64) NOT NULL,
+                  source_topic VARCHAR(200) NOT NULL,
+                  source_partition INTEGER NOT NULL,
+                  source_offset BIGINT NOT NULL,
+                  removed_item_count INTEGER NOT NULL DEFAULT 0,
+                  processed_at TIMESTAMPTZ NOT NULL,
+                  CONSTRAINT pk_cart_reconciliation_inbox PRIMARY KEY (command_id),
+                  CONSTRAINT uq_cart_reconciliation_inbox_order UNIQUE (order_id),
+                  CONSTRAINT uq_cart_reconciliation_inbox_source_position
+                      UNIQUE (source_topic, source_partition, source_offset),
+                  CONSTRAINT fk_cart_reconciliation_inbox_cart
+                      FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE RESTRICT,
+                  CONSTRAINT ck_cart_reconciliation_inbox_fingerprint
+                      CHECK (payload_fingerprint ~ '^[0-9a-f]{64}$'),
+                  CONSTRAINT ck_cart_reconciliation_inbox_partition CHECK (source_partition >= 0),
+                  CONSTRAINT ck_cart_reconciliation_inbox_offset CHECK (source_offset >= 0),
+                  CONSTRAINT ck_cart_reconciliation_inbox_removed_count CHECK (removed_item_count >= 0)
+              );
+
+              CREATE INDEX idx_cart_reconciliation_inbox_cart_processed
+                  ON cart_reconciliation_inbox (cart_id, processed_at DESC, command_id DESC);

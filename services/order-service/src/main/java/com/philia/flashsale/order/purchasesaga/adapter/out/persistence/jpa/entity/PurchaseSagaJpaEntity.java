@@ -2,6 +2,7 @@ package com.philia.flashsale.order.purchasesaga.adapter.out.persistence.jpa.enti
 
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSagaStatus;
+import com.philia.flashsale.order.purchasesaga.domain.model.StockParticipantType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,8 +22,13 @@ public class PurchaseSagaJpaEntity {
     private UUID orderId;
     @Column(name = "purchase_request_id", nullable = false, unique = true)
     private UUID purchaseRequestId;
-    @Column(name = "reservation_id", nullable = false, unique = true)
+    @Column(name = "reservation_id", unique = true)
     private UUID reservationId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "stock_participant_type", nullable = false, length = 32)
+    private StockParticipantType stockParticipantType;
+    @Column(name = "stock_reference_id")
+    private UUID stockReferenceId;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 40)
     private PurchaseSagaStatus status;
@@ -60,6 +66,8 @@ public class PurchaseSagaJpaEntity {
         entity.orderId = saga.orderId();
         entity.purchaseRequestId = saga.purchaseRequestId();
         entity.reservationId = saga.reservationId();
+        entity.stockParticipantType = saga.stockParticipantType();
+        entity.stockReferenceId = saga.stockReferenceId();
         entity.status = saga.status();
         entity.paymentDeadline = saga.paymentDeadline();
         entity.paymentId = saga.paymentId();
@@ -80,6 +88,8 @@ public class PurchaseSagaJpaEntity {
     public UUID getOrderId() { return orderId; }
     public UUID getPurchaseRequestId() { return purchaseRequestId; }
     public UUID getReservationId() { return reservationId; }
+    public StockParticipantType getStockParticipantType() { return stockParticipantType; }
+    public UUID getStockReferenceId() { return stockReferenceId; }
     public PurchaseSagaStatus getStatus() { return status; }
     public Instant getPaymentDeadline() { return paymentDeadline; }
     public UUID getPaymentId() { return paymentId; }

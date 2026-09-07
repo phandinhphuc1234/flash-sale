@@ -1,7 +1,7 @@
 # Frontend Integration Guide
 
 Tài liệu này mô tả contract HTTP hiện có của hệ thống Flash Sale để frontend tích hợp mà không
-phải suy đoán từ code Java. Phạm vi gồm **45 endpoint**: 36 endpoint dành cho shopper/admin, một
+phải suy đoán từ code Java. Phạm vi gồm **47 endpoint**: 38 endpoint dành cho shopper/admin, một
 Stripe webhook, một JWKS endpoint và bảy endpoint nội bộ. Cart Service có bốn endpoint shopper;
 Notification Service chưa có HTTP API.
 
@@ -454,11 +454,13 @@ Response `200 OK`:
         "basePrice": "299000.0000",
         "currency": "VND",
         "primaryImageUrl": "https://cdn.example.com/products/fss-black-m.jpg",
+        "itemVersion": 1,
         "updatedAt": "2026-08-29T00:00:00Z"
       }
     ],
     "distinctItemCount": 1,
     "totalQuantity": 2,
+    "cartVersion": 1,
     "updatedAt": "2026-08-29T00:00:00Z"
   },
   "timestamp": "2026-08-29T00:00:00Z"
@@ -540,6 +542,82 @@ login -> accessToken
 Cart không giữ giá/stock guarantee, không tạo Order/Payment và không reserve Inventory. Mỗi retry
 của cùng một thao tác PUT nên giữ cùng ý định/payload; không gửi Cart request trực tiếp tới
 `cart-service`.
+
+### API-046 — Checkout toàn bộ Cart thành một Order thường
+
+Đây là public endpoint qua Gateway. Frontend gửi đúng `cartVersion`, `itemVersion`, giá/currency
+đã hiển thị và một `Idempotency-Key`; backend vẫn gọi Product để xác nhận giá thật và Inventory để
+giữ toàn bộ item theo nguyên tắc all-or-nothing.
+
+```http
+POST /api/v1/orders/cart-checkouts
+Authorization: Bearer <shopperToken>
+Idempotency-Key: <uuid>
+X-Trace-Id: <uuid>
+Content-Type: application/json
+```
+
+Request body:
+
+```json
+{
+  "cartVersion": 7,
+  "items": [
+    {
+      "variantId": "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+      "quantity": 2,
+      "itemVersion": 6,
+      "expectedUnitPrice": 299000.0000,
+      "currency": "VND"
+    }
+  ]
+}
+```
+
+`items` có 1–20 variant khác nhau, mỗi quantity từ 1–10; tất cả item phải cùng currency. Owner
+được lấy từ JWT, không gửi `ownerId` hoặc `cartId`. Thành công trả `201` với cùng shape checkout
+response như Buy Now (`purchaseRequestId`, `orderId`, `source=CART`, `PENDING_PAYMENT`, tổng tiền,
+`paymentDeadline`). Gửi lại cùng key và cùng body trả kết quả gốc (`200` và
+`Idempotency-Replayed: true`), còn dùng lại key cho body khác bị từ chối.
+
+Các lỗi quan trọng:
+
+| Status | Error code | Ý nghĩa |
+|---:|---|---|
+| 400 | `CART_VALIDATION_ERROR` | body, quantity, version hoặc currency không hợp lệ |
+| 401 | `UNAUTHENTICATED` | thiếu/hết JWT |
+| 404 | `CART_NOT_FOUND` / `CART_EMPTY` | Cart không tồn tại hoặc không có item |
+| 409 | `CART_CHANGED` | Cart/item revision khác snapshot đã gửi |
+| 409 | `PRICE_CHANGED` | Product trả giá/currency hiện tại khác giá shopper xác nhận; không tạo Order/Payment |
+| 409 | `INSUFFICIENT_STOCK` | thiếu bất kỳ item nào; toàn bộ checkout bị từ chối |
+| 503 | `CART_SERVICE_UNAVAILABLE` | không lấy được snapshot Cart |
+
+Sau khi Payment thành công, frontend poll `GET /api/v1/orders/{orderId}` và
+`GET /api/v1/payments/{paymentId}`. Cart được cleanup bất đồng bộ: chỉ item có cùng
+`variantId + quantity + itemVersion` với snapshot mới bị xóa; mọi edit sau lúc submit được giữ lại.
+Payment thất bại/expired không xóa Cart.
+
+### API-047 — Buy Now sản phẩm thường
+
+```http
+POST /api/v1/orders/buy-now
+Authorization: Bearer <shopperToken>
+Idempotency-Key: <uuid>
+X-Trace-Id: <uuid>
+Content-Type: application/json
+```
+
+```json
+{
+  "variantId": "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+  "quantity": 1,
+  "expectedUnitPrice": 299000.0000,
+  "currency": "VND"
+}
+```
+
+Buy Now không thêm item vào Cart. Sau `201`, tiếp tục bằng API-039 → API-037; Cart vẫn giữ
+nguyên. Cùng key/body là replay an toàn.
 
 ## 5. Product Admin
 
@@ -1147,8 +1225,8 @@ không thuộc user hiện tại cũng có thể được che thành `404`.
 
 ## 9. Order
 
-Frontend **không tạo Order bằng HTTP**. Order Service nhận `PurchaseAccepted` qua Kafka và tạo Order
-bất đồng bộ.
+Order thường được tạo bằng API-046/API-047. Flash Sale vẫn giữ flow reservation Kafka cũ; frontend
+không gửi internal service request hoặc tự tạo Order bằng database.
 
 ### API-036 — Danh sách order của user
 
@@ -1625,7 +1703,8 @@ Request là raw Stripe event. Frontend không thể tự tạo signature hợp l
 | Flash-sale detail | API-010 + campaign data còn thiếu public API |
 | Reserve result | API-034, API-033 |
 | My orders | API-036, API-035 |
-| Checkout | API-039, API-037 |
+| Checkout thường | API-046 hoặc API-047 -> API-039 -> API-037 |
+| Checkout Flash Sale | API-039, API-037 |
 | Payment result | API-038, API-035, API-033 |
 | Admin product | API-011 đến API-017 |
 | Admin inventory | API-027 đến API-029 |
@@ -1745,7 +1824,7 @@ service port trong frontend.
 
 ## 18. Tài liệu và kiểm tra liên quan
 
-- Danh mục 45 endpoint: [`README.md`](README.md)
+- Danh mục 47 endpoint: [`README.md`](README.md) hoặc [endpoint-registry.md](endpoint-registry.md)
 - Contract inventory: [`../../specs/047-api-documentation/contracts/http-inventory.md`](../../specs/047-api-documentation/contracts/http-inventory.md)
 - Flash-sale end-to-end flow: [`../architecture/flash-sale-end-to-end-flow.md`](../architecture/flash-sale-end-to-end-flow.md)
 - Kiểm tra catalog/OpenAPI wiring:

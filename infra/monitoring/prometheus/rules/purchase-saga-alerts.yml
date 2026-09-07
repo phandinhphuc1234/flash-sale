@@ -70,3 +70,37 @@ groups:
         annotations:
           summary: Flash Sale outbox is behind
           description: The oldest unpublished Flash Sale outbox row is older than two minutes.
+
+      - alert: RegularPurchaseIntakeRejected
+        expr: increase(order_regular_purchase_intake_total{outcome="rejected"}[5m]) > 0
+        labels:
+          severity: info
+        annotations:
+          summary: Regular purchase intake rejected requests
+          description: Review the bounded rejection outcome and client contract; no identifiers are in the metric.
+
+      - alert: RegularPurchaseRecoveryAging
+        expr: increase(order_regular_purchase_recovery_total{outcome="deferred"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Regular purchase recovery is being deferred
+          description: A recovery worker is leaving work for a later bounded retry.
+
+      - alert: RegularHoldExpiryDue
+        expr: inventory_regular_hold_expiry_due > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Regular stock holds are due for expiry
+          description: Inventory reports due regular holds; verify the expiry worker and downstream release path.
+
+      - alert: CartReconciliationDltGrowth
+        expr: increase(cart_reconciliation_dlt_publication_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Cart reconciliation records reached the DLT
+          description: Inspect the Cart-owned DLT before replaying a malformed or conflicting record.

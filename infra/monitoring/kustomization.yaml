@@ -18,6 +18,7 @@ configMapGenerator:
     files:
       - purchase-saga-alerts.yml=prometheus/rules/purchase-saga-alerts.yml
       - payment-service-alerts.yml=prometheus/rules/payment-service-alerts.yml
+      - regular-purchase-alerts.yml=prometheus/rules/regular-purchase-alerts.yml
   - name: grafana-datasources
     files:
       - prometheus.yaml=grafana/provisioning/datasources/prometheus.yaml

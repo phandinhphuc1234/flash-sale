@@ -5,6 +5,8 @@ import com.philia.flashsale.order.purchasesaga.application.command.PaymentSuccee
 import com.philia.flashsale.order.purchasesaga.application.command.PaymentFailedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationConfirmedCommand;
 import com.philia.flashsale.order.purchasesaga.application.command.PurchaseReservationReleasedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldConfirmedCommand;
+import com.philia.flashsale.order.purchasesaga.application.command.RegularStockHoldOutcomeCommand;
 import com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +17,7 @@ import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /** Immutable OrderCreated publication snapshot and relay state. */
 @Entity
@@ -94,6 +97,26 @@ public class OrderCreationOutboxJpaEntity {
                 candidate.createdAt(), candidate.occurredAt(), candidate.createdAt());
     }
 
+    /** Creates the additive V2 regular-Order fact without changing the Flash Sale V1 snapshot. */
+    public static OrderCreationOutboxJpaEntity regularOrderCreated(UUID eventId,
+            com.philia.flashsale.order.order.domain.model.Order order, PurchaseSaga saga,
+            UUID correlationId, UUID causationId, String traceparent, String tracestate, Instant occurredAt) {
+        return pendingEvent(eventId, "ORDER", order.id(), 1, "OrderCreatedV2", 2,
+                order.id().toString(), correlationId, causationId,
+                regularOrderCreatedPayload(order, saga), traceparent, tracestate,
+                occurredAt, occurredAt, occurredAt);
+    }
+
+    /** Reuses the established PaymentRequestedV1 contract for an accepted regular Order. */
+    public static OrderCreationOutboxJpaEntity paymentRequested(UUID eventId,
+            com.philia.flashsale.order.order.domain.model.Order order, PurchaseSaga saga,
+            UUID correlationId, UUID causationId, String traceparent, String tracestate, Instant occurredAt) {
+        return pendingEvent(eventId, PURCHASE_SAGA_AGGREGATE_TYPE, order.id(), 1,
+                "PaymentRequested", 1, order.id().toString(), correlationId, causationId,
+                paymentRequestedPayload(order, saga), traceparent, tracestate,
+                occurredAt, occurredAt, occurredAt);
+    }
+
     /** Creates the stable Flash Sale confirm command after a verified PaymentSucceeded fact. */
     public static OrderCreationOutboxJpaEntity confirmReservation(PaymentSucceededCommand command,
             PurchaseSaga saga, UUID commandId) {
@@ -108,6 +131,42 @@ public class OrderCreationOutboxJpaEntity {
                 "ConfirmPurchaseReservation", saga.orderId().toString(), command.correlationId(),
                 command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
                 command.occurredAt(), command.occurredAt());
+    }
+
+    /** Creates the stable Inventory regular-hold confirmation command after verified payment success. */
+    public static OrderCreationOutboxJpaEntity confirmRegularStockHold(PaymentSucceededCommand command,
+            PurchaseSaga saga, UUID commandId) {
+        String payload = "{"
+                + "\"sagaId\":\"" + saga.id() + "\","
+                + ORDER_ID_JSON_FIELD + saga.orderId() + "\","
+                + "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\","
+                + "\"holdId\":\"" + saga.stockReferenceId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"paidAt\":\"" + command.paidAt() + "\"}";
+        return pendingEvent(commandId, PURCHASE_SAGA_AGGREGATE_TYPE, saga.id(), saga.version(),
+                "ConfirmRegularStockHold", saga.orderId().toString(), saga.purchaseRequestId(),
+                command.eventId(), payload, command.traceparent(), command.tracestate(), command.occurredAt(),
+                command.occurredAt(), command.occurredAt());
+    }
+
+    /** Creates the stable regular Inventory release command after a terminal PaymentFailed fact. */
+    public static OrderCreationOutboxJpaEntity releaseRegularStockHold(PaymentFailedCommand command,
+            PurchaseSaga saga, UUID commandId) {
+        if (saga.stockParticipantType() != com.philia.flashsale.order.purchasesaga.domain.model.StockParticipantType.REGULAR_STOCK_HOLD) {
+            throw new IllegalArgumentException("regular stock release requires a regular Saga");
+        }
+        String payload = "{" +
+                "\"sagaId\":\"" + saga.id() + "\"," +
+                ORDER_ID_JSON_FIELD + saga.orderId() + "\"," +
+                "\"purchaseRequestId\":\"" + saga.purchaseRequestId() + "\"," +
+                "\"holdId\":\"" + saga.stockReferenceId() + "\"," +
+                "\"paymentId\":\"" + command.paymentId() + "\"," +
+                "\"reason\":\"" + command.reason() + "\"," +
+                "\"desiredOrderStatus\":\"" + saga.desiredOrderStatus() + "\"}";
+        return pendingEvent(commandId, PURCHASE_SAGA_AGGREGATE_TYPE, saga.id(), saga.version(),
+                "ReleaseRegularStockHold", saga.orderId().toString(), command.correlationId(), command.eventId(),
+                payload, command.traceparent(), command.tracestate(), command.occurredAt(), command.occurredAt(),
+                command.occurredAt());
     }
 
     /** Creates the stable Flash Sale release command after a terminal PaymentFailed fact. */
@@ -143,6 +202,63 @@ public class OrderCreationOutboxJpaEntity {
                 command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
     }
 
+    /** Creates the additive regular terminal fact after Inventory has durably confirmed the stock hold. */
+    public static OrderCreationOutboxJpaEntity regularOrderConfirmed(RegularStockHoldConfirmedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-confirmed-v2:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.transitionedAt();
+        String payload = "{"
+                + ORDER_ID_JSON_FIELD + order.getId() + "\","
+                + "\"orderNumber\":\"" + order.getOrderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                + "\"purchaseSource\":\"" + order.getPurchaseSource() + "\","
+                + "\"stockParticipantType\":\"" + order.getStockParticipantType() + "\","
+                + "\"stockReferenceId\":\"" + order.getStockReferenceId() + "\","
+                + "\"paymentId\":\"" + command.paymentId() + "\","
+                + "\"confirmedAt\":\"" + occurredAt + "\"}";
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderConfirmedV2", 2,
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
+    /** Emits Cart cleanup only after a CART Order is durably confirmed. */
+    public static OrderCreationOutboxJpaEntity reconcilePurchasedCart(RegularStockHoldConfirmedCommand command,
+            PurchaseSaga saga, OrderJpaEntity order, String snapshotPayload, ObjectMapper objectMapper) {
+        if (order.getCartId() == null || order.getCartVersion() == null
+                || order.getPurchaseSource() != com.philia.flashsale.order.order.domain.model.PurchaseSource.CART) {
+            throw new IllegalArgumentException("Cart reconciliation requires a confirmed CART Order");
+        }
+        try {
+            if (objectMapper == null) {
+                throw new IllegalArgumentException("Cart reconciliation ObjectMapper is missing");
+            }
+            com.fasterxml.jackson.databind.JsonNode snapshot = objectMapper.readTree(snapshotPayload);
+            StringBuilder items = new StringBuilder();
+            for (com.fasterxml.jackson.databind.JsonNode line : snapshot.withArray("lines")) {
+                if (!items.isEmpty()) items.append(',');
+                items.append("{\"variantId\":\"").append(line.required("variantId").asText()).append("\",")
+                        .append("\"quantity\":").append(line.required("quantity").asLong()).append(',')
+                        .append("\"itemVersion\":").append(line.required("cartItemVersion").asLong()).append('}');
+            }
+            UUID eventId = UUID.nameUUIDFromBytes(("cart-reconciliation:" + command.eventId())
+                    .getBytes(StandardCharsets.UTF_8));
+            String payload = "{" + ORDER_ID_JSON_FIELD + order.getId() + "\","
+                    + "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\","
+                    + "\"cartId\":\"" + order.getCartId() + "\","
+                    + "\"ownerId\":\"" + order.getUserId() + "\","
+                    + "\"snapshotCartVersion\":" + order.getCartVersion() + ","
+                    + "\"confirmedAt\":\"" + command.transitionedAt() + "\","
+                    + "\"items\":[" + items + "]}";
+            return pendingEvent(eventId, "ORDER", order.getId(), saga.version(),
+                    "ReconcilePurchasedCartSnapshot", order.getCartId().toString(), command.correlationId(),
+                    command.eventId(), payload, command.traceparent(), command.tracestate(),
+                    command.transitionedAt(), command.transitionedAt(), command.transitionedAt());
+        } catch (Exception exception) {
+            throw new IllegalStateException("Cart reconciliation snapshot is invalid", exception);
+        }
+    }
+
     /** Creates the terminal OrderCancelled/OrderExpired fact after reservation release. */
     public static OrderCreationOutboxJpaEntity orderCancelled(PurchaseReservationReleasedCommand command,
             PurchaseSaga saga, OrderJpaEntity order) {
@@ -152,6 +268,39 @@ public class OrderCreationOutboxJpaEntity {
     public static OrderCreationOutboxJpaEntity orderExpired(PurchaseReservationReleasedCommand command,
             PurchaseSaga saga, OrderJpaEntity order) {
         return terminalRelease(command, saga, order, "OrderExpired", "expiredAt");
+    }
+
+    /** Creates the additive regular terminal cancellation fact after a released hold. */
+    public static OrderCreationOutboxJpaEntity regularOrderCancelled(RegularStockHoldOutcomeCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        return regularTerminal(command, saga, order, "OrderCancelledV2", "cancelledAt");
+    }
+
+    /** Creates the additive regular terminal expiry fact after a released/expired hold. */
+    public static OrderCreationOutboxJpaEntity regularOrderExpired(RegularStockHoldOutcomeCommand command,
+            PurchaseSaga saga, OrderJpaEntity order) {
+        return regularTerminal(command, saga, order, "OrderExpiredV2", "expiredAt");
+    }
+
+    /** Creates a review fact when verified payment succeeds after regular stock is gone. */
+    public static OrderCreationOutboxJpaEntity regularOrderPaymentReviewRequired(
+            RegularStockHoldOutcomeCommand command, PurchaseSaga saga, OrderJpaEntity order) {
+        UUID eventId = UUID.nameUUIDFromBytes(("order-payment-review-required:" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.transitionedAt();
+        String payload = "{" + ORDER_ID_JSON_FIELD + order.getId() + "\"," +
+                "\"orderNumber\":\"" + order.getOrderNumber() + "\"," +
+                "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\"," +
+                "\"stockParticipantType\":\"REGULAR_STOCK_HOLD\"," +
+                "\"stockReferenceId\":\"" + order.getStockReferenceId() + "\"," +
+                "\"paymentId\":\"" + saga.paymentId() + "\"," +
+                "\"previousStatus\":\"" + order.getStatus() + "\"," +
+                "\"reviewReason\":\"LATE_PAYMENT_RESERVATION_UNAVAILABLE\"," +
+                "\"reviewRequiredAt\":\"" + occurredAt + "\"}";
+        UUID causationId = saga.activeCommandId() == null ? command.eventId() : saga.activeCommandId();
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), "OrderPaymentReviewRequired", 1,
+                order.getId().toString(), command.correlationId(), causationId, payload, command.traceparent(),
+                command.tracestate(), occurredAt, occurredAt, occurredAt);
     }
 
     /** Creates the stable correction fact for a verified late payment after release. */
@@ -213,8 +362,35 @@ public class OrderCreationOutboxJpaEntity {
                 command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
     }
 
+    private static OrderCreationOutboxJpaEntity regularTerminal(RegularStockHoldOutcomeCommand command,
+            PurchaseSaga saga, OrderJpaEntity order, String eventType, String timeField) {
+        UUID eventId = UUID.nameUUIDFromBytes((eventType + ":" + command.eventId())
+                .getBytes(StandardCharsets.UTF_8));
+        Instant occurredAt = command.transitionedAt();
+        String reason = command.reason() == null ? "PAYMENT_DEADLINE_EXPIRED" : command.reason();
+        String payload = "{" + ORDER_ID_JSON_FIELD + order.getId() + "\"," +
+                "\"orderNumber\":\"" + order.getOrderNumber() + "\"," +
+                "\"purchaseRequestId\":\"" + order.getPurchaseRequestId() + "\"," +
+                "\"purchaseSource\":\"" + order.getPurchaseSource() + "\"," +
+                "\"stockParticipantType\":\"REGULAR_STOCK_HOLD\"," +
+                "\"stockReferenceId\":\"" + order.getStockReferenceId() + "\"," +
+                "\"reason\":\"" + reason + "\"," +
+                "\"" + timeField + "\":\"" + occurredAt + "\"}";
+        return pendingEvent(eventId, "ORDER", order.getId(), saga.version(), eventType, 2,
+                order.getId().toString(), command.correlationId(), command.eventId(), payload,
+                command.traceparent(), command.tracestate(), occurredAt, occurredAt, occurredAt);
+    }
+
     private static OrderCreationOutboxJpaEntity pendingEvent(UUID eventId, String aggregateType,
             UUID aggregateId, long aggregateVersion, String eventType, String eventKey,
+            UUID correlationId, UUID causationId, String payload, String traceparent, String tracestate,
+            Instant nextAttemptAt, Instant occurredAt, Instant createdAt) {
+        return pendingEvent(eventId, aggregateType, aggregateId, aggregateVersion, eventType, 1, eventKey,
+                correlationId, causationId, payload, traceparent, tracestate, nextAttemptAt, occurredAt, createdAt);
+    }
+
+    private static OrderCreationOutboxJpaEntity pendingEvent(UUID eventId, String aggregateType,
+            UUID aggregateId, long aggregateVersion, String eventType, int eventVersion, String eventKey,
             UUID correlationId, UUID causationId, String payload, String traceparent, String tracestate,
             Instant nextAttemptAt, Instant occurredAt, Instant createdAt) {
         OrderCreationOutboxJpaEntity entity = new OrderCreationOutboxJpaEntity();
@@ -223,7 +399,7 @@ public class OrderCreationOutboxJpaEntity {
         entity.aggregateId = aggregateId;
         entity.aggregateVersion = aggregateVersion;
         entity.eventType = eventType;
-        entity.eventVersion = 1;
+        entity.eventVersion = eventVersion;
         entity.eventKey = eventKey;
         entity.correlationId = correlationId;
         entity.causationId = causationId;
@@ -248,6 +424,45 @@ public class OrderCreationOutboxJpaEntity {
                 + "\"amount\":\"" + order.total().amount().toPlainString() + "\","
                 + "\"currency\":\"" + order.currency() + "\","
                 + "\"paymentDeadline\":\"" + saga.paymentDeadline() + "\"}";
+    }
+
+    private static String regularOrderCreatedPayload(
+            com.philia.flashsale.order.order.domain.model.Order order,
+            com.philia.flashsale.order.purchasesaga.domain.model.PurchaseSaga saga) {
+        StringBuilder items = new StringBuilder();
+        for (var line : order.lines()) {
+            if (!items.isEmpty()) items.append(',');
+            items.append("{\"variantId\":\"").append(line.variantId()).append("\",")
+                    .append("\"quantity\":").append(line.quantity()).append(',')
+                    .append("\"unitPrice\":\"").append(line.unitPrice().amount().toPlainString()).append("\",")
+                    .append("\"lineAmount\":\"").append(line.lineAmount().amount().toPlainString()).append("\"}");
+        }
+        return "{"
+                + ORDER_ID_JSON_FIELD + order.id() + "\","
+                + "\"orderNumber\":\"" + order.orderNumber() + "\","
+                + "\"purchaseRequestId\":\"" + order.purchaseRequestId() + "\","
+                + "\"userId\":\"" + order.userId() + "\","
+                + "\"purchaseSource\":\"" + order.purchaseSource() + "\","
+                + "\"stockParticipantType\":\"" + order.stockParticipantType() + "\","
+                + "\"stockReferenceId\":\"" + order.stockReferenceId() + "\","
+                + "\"cartId\":" + nullableUuid(order.cartId()) + ','
+                + "\"cartVersion\":" + nullableLong(order.cartVersion()) + ','
+                + "\"status\":\"" + order.status() + "\","
+                + "\"currency\":\"" + order.currency() + "\","
+                + "\"subtotalAmount\":\"" + order.subtotal().amount().toPlainString() + "\","
+                + "\"totalAmount\":\"" + order.total().amount().toPlainString() + "\","
+                + "\"acceptedAt\":\"" + order.acceptedAt() + "\","
+                + "\"stockHoldExpiresAt\":\"" + order.stockParticipantExpiresAt() + "\","
+                + "\"paymentDeadline\":\"" + saga.paymentDeadline() + "\","
+                + "\"items\":[" + items + "]}";
+    }
+
+    private static String nullableUuid(UUID value) {
+        return value == null ? "null" : "\"" + value + "\"";
+    }
+
+    private static String nullableLong(Long value) {
+        return value == null ? "null" : value.toString();
     }
 
     private static String snapshotPayload(OrderCreationCandidate candidate) {

@@ -58,6 +58,15 @@ flashsale:
         client-secret: ${CART_CLIENT_SECRET:}
         allowed-scopes:
           - catalog.variant-display.read
+      # Order is the only machine identity allowed to capture Cart snapshots, receive Product
+      # checkout quotes, and create an atomic regular Inventory hold.
+      order:
+        client-id: ${ORDER_CLIENT_ID:order-service}
+        client-secret: ${ORDER_CLIENT_SECRET:}
+        allowed-scopes:
+          - cart.checkout-snapshot.read
+          - catalog.purchase-quote.read
+          - inventory.regular-hold.write
   authentication:
     # Enables the internal OAuth2 client-credentials endpoint in deployed environments.
     runtime-enabled: ${AUTH_RUNTIME_ENABLED:true}

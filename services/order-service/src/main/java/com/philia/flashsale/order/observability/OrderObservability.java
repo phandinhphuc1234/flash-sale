@@ -30,9 +30,14 @@ public final class OrderObservability {
     public static final String SAGA_OLDEST_STEP_AGE = "order.saga.oldest_step_age_seconds";
     public static final String CONSUMER_OUTCOME_TOTAL = "order.saga.consumer.outcome.total";
     public static final String DLT_PUBLICATION_TOTAL = "order.saga.dlt.publication.total";
+    public static final String REGULAR_INTAKE_TOTAL = "order.regular_purchase.intake.total";
+    public static final String REGULAR_RECOVERY_TOTAL = "order.regular_purchase.recovery.total";
+    public static final String SAGA_TRANSITION_TOTAL = "order.saga.transition.total";
+    public static final String MANUAL_REVIEW_TOTAL = "order.saga.manual_review.total";
 
     private static final Set<String> SAGA_STATES = Set.of(
-            "PAYMENT_PENDING", "CONFIRMING_RESERVATION", "RELEASING_RESERVATION",
+            "PAYMENT_PENDING", "CONFIRMING_RESERVATION", "RELEASING_RESERVATION", "CONFIRMING_STOCK",
+            "RELEASING_STOCK",
             "COMPLETED", "COMPENSATED", "MANUAL_REVIEW");
 
     private static final OrderObservability NOOP = new OrderObservability();
@@ -146,11 +151,15 @@ public final class OrderObservability {
         if (metrics == null) {
             return;
         }
+        String boundedOutcome = boundedConsumerOutcome(outcome);
         Counter.builder(CONSUMER_OUTCOME_TOTAL)
                 .description("Order Purchase Saga consumer results")
-                .tags("consumer", consumer.tagValue(), "outcome", boundedConsumerOutcome(outcome))
+                .tags("consumer", consumer.tagValue(), "outcome", boundedOutcome)
                 .register(metrics)
                 .increment();
+        if ("manual_review".equals(boundedOutcome)) {
+            recordManualReview("outcome");
+        }
     }
 
     public void recordDltPublication(ConsumerBoundary consumer) {
@@ -164,6 +173,58 @@ public final class OrderObservability {
                 .increment();
     }
 
+    /**
+     * Records a regular-purchase intake outcome using only a fixed source/outcome vocabulary.
+     * Shopper, Order, Cart, idempotency, and provider identifiers must never be metric labels.
+     */
+    public void recordRegularIntake(String source, String outcome) {
+        if (metrics == null) {
+            return;
+        }
+        Counter.builder(REGULAR_INTAKE_TOTAL)
+                .description("Regular purchase intake outcomes")
+                .tags("source", boundedIntakeSource(source), "outcome", boundedIntakeOutcome(outcome))
+                .register(metrics)
+                .increment();
+    }
+
+    /** Records recovery checkpoints with a bounded stage/outcome vocabulary. */
+    public void recordRegularRecovery(String stage, String outcome) {
+        if (metrics == null) {
+            return;
+        }
+        Counter.builder(REGULAR_RECOVERY_TOTAL)
+                .description("Regular purchase recovery worker outcomes")
+                .tags("stage", boundedRecoveryStage(stage), "outcome", boundedRecoveryOutcome(outcome))
+                .register(metrics)
+                .increment();
+    }
+
+    /** Records a Saga transition without exposing aggregate identifiers or free-form reasons. */
+    public void recordSagaTransition(String from, String to, String outcome) {
+        if (metrics == null) {
+            return;
+        }
+        Counter.builder(SAGA_TRANSITION_TOTAL)
+                .description("Purchase Saga transition outcomes")
+                .tags("from", boundedSagaState(from), "to", boundedSagaState(to),
+                        "outcome", boundedSagaOutcome(outcome))
+                .register(metrics)
+                .increment();
+    }
+
+    /** Records a manual-review boundary with a fixed reason vocabulary. */
+    public void recordManualReview(String reason) {
+        if (metrics == null) {
+            return;
+        }
+        Counter.builder(MANUAL_REVIEW_TOTAL)
+                .description("Purchase Saga manual-review outcomes")
+                .tag("reason", boundedManualReviewReason(reason))
+                .register(metrics)
+                .increment();
+    }
+
     private String boundedConsumerOutcome(String outcome) {
         if (outcome == null) {
             return "unknown";
@@ -171,6 +232,81 @@ public final class OrderObservability {
         return switch (outcome) {
             case "APPLIED", "REPLAYED", "STALE", "MANUAL_REVIEW", "CONFLICT" ->
                 outcome.toLowerCase(java.util.Locale.ROOT);
+            default -> "other";
+        };
+    }
+
+    private String boundedIntakeSource(String source) {
+        if (source == null) {
+            return "unknown";
+        }
+        return switch (source.toLowerCase(java.util.Locale.ROOT)) {
+            case "buy_now", "buy-now" -> "buy_now";
+            case "cart" -> "cart";
+            case "recovery" -> "recovery";
+            default -> "other";
+        };
+    }
+
+    private String boundedIntakeOutcome(String outcome) {
+        if (outcome == null) {
+            return "unknown";
+        }
+        return switch (outcome.toLowerCase(java.util.Locale.ROOT)) {
+            case "accepted", "replayed", "rejected", "conflict", "error" ->
+                outcome.toLowerCase(java.util.Locale.ROOT);
+            default -> "other";
+        };
+    }
+
+    private String boundedRecoveryStage(String stage) {
+        if (stage == null) {
+            return "unknown";
+        }
+        return switch (stage.toLowerCase(java.util.Locale.ROOT)) {
+            case "claim", "checkout", "release", "lease" -> stage.toLowerCase(java.util.Locale.ROOT);
+            default -> "other";
+        };
+    }
+
+    private String boundedRecoveryOutcome(String outcome) {
+        if (outcome == null) {
+            return "unknown";
+        }
+        return switch (outcome.toLowerCase(java.util.Locale.ROOT)) {
+            case "claimed", "recovered", "deferred", "released", "empty", "error" ->
+                outcome.toLowerCase(java.util.Locale.ROOT);
+            default -> "other";
+        };
+    }
+
+    private String boundedSagaState(String state) {
+        if (state == null) {
+            return "unknown";
+        }
+        String normalized = state.toUpperCase(java.util.Locale.ROOT);
+        return SAGA_STATES.contains(normalized) ? normalized : "other";
+    }
+
+    private String boundedSagaOutcome(String outcome) {
+        if (outcome == null) {
+            return "unknown";
+        }
+        return switch (outcome.toLowerCase(java.util.Locale.ROOT)) {
+            case "applied", "replayed", "stale", "manual_review", "conflict", "error" ->
+                outcome.toLowerCase(java.util.Locale.ROOT);
+            default -> "other";
+        };
+    }
+
+    private String boundedManualReviewReason(String reason) {
+        if (reason == null) {
+            return "unknown";
+        }
+        String normalized = reason.toLowerCase(java.util.Locale.ROOT);
+        return switch (normalized) {
+            case "late_success", "hold_mismatch", "release_conflict", "payment_conflict",
+                    "reservation_conflict", "outcome", "unknown" -> normalized;
             default -> "other";
         };
     }
@@ -202,7 +338,8 @@ public final class OrderObservability {
         }
         return switch (status) {
             case "created", "event_replayed", "business_replayed", "conflict", "not_found",
-                    "listed", "published", "pending", "in_progress", "down", "up", "error" -> status;
+                    "listed", "published", "pending", "in_progress", "accepted", "replayed",
+                    "rejected", "down", "up", "error" -> status;
             default -> "other";
         };
     }
@@ -212,7 +349,9 @@ public final class OrderObservability {
         DURABLE_CREATION(OrderObservationNames.DURABLE_CREATION, "durable_creation", "PurchaseAccepted", "postgres", "created"),
         OWNER_DETAIL_QUERY(OrderObservationNames.OWNER_QUERY, "owner_detail_query", "OrderQuery", "postgres", "listed"),
         OWNER_LIST_QUERY(OrderObservationNames.OWNER_QUERY, "owner_list_query", "OrderQuery", "postgres", "listed"),
-        OUTBOX_PUBLICATION(OrderObservationNames.OUTBOX_PUBLICATION, "outbox_publication", "OrderCreated", "kafka", "published");
+        OUTBOX_PUBLICATION(OrderObservationNames.OUTBOX_PUBLICATION, "outbox_publication", "OrderCreated", "kafka", "published"),
+        REGULAR_INTAKE(OrderObservationNames.REGULAR_INTAKE, "regular_intake", "RegularPurchase", "orchestration", "accepted"),
+        REGULAR_RECOVERY(OrderObservationNames.REGULAR_RECOVERY, "regular_recovery", "RegularPurchaseRecovery", "orchestration", "recovered");
 
         private final String observationName;
         private final String operationTag;
@@ -238,7 +377,8 @@ public final class OrderObservability {
 
     public enum ConsumerBoundary {
         PAYMENT_RESULTS("payment_results"),
-        RESERVATION_RESULTS("reservation_results");
+        RESERVATION_RESULTS("reservation_results"),
+        REGULAR_HOLD_RESULTS("regular_hold_results");
 
         private final String tagValue;
 

@@ -8,3 +8,4 @@ data:
   JWT_JWK_SET_URI: "http://authentication-service:8080/.well-known/jwks.json"
   JWT_AUDIENCE: "flash-sale-api"
   INTERNAL_JWT_AUDIENCE: "flash-sale-internal-api"
+  ORDER_CLIENT_ID: "order-service"

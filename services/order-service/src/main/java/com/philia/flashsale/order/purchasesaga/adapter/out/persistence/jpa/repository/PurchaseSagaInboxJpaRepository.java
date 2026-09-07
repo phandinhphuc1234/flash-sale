@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** Durable inbox boundary for Payment and reservation participant facts. */
 public interface PurchaseSagaInboxJpaRepository extends JpaRepository<PurchaseSagaInboxJpaEntity, UUID> {
     Optional<PurchaseSagaInboxJpaEntity> findByEventId(UUID eventId);
+    Optional<PurchaseSagaInboxJpaEntity> findFirstByOrderIdAndAggregateIdAndProducerOrderByAggregateVersionDesc(
+            UUID orderId, UUID aggregateId, String producer);
 }

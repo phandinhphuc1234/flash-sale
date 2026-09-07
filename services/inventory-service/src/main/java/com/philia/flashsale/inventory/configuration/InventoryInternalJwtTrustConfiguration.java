@@ -13,17 +13,26 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 @Configuration
-@EnableConfigurationProperties(InventoryInternalJwtProperties.class)
+@EnableConfigurationProperties({InventoryInternalJwtProperties.class, InventoryRegularHoldJwtProperties.class})
 public class InventoryInternalJwtTrustConfiguration {
     @Bean(name = "inventoryInternalJwtDecoder")
     JwtDecoder inventoryInternalJwtDecoder(InventoryInternalJwtProperties properties) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri())
+        return decoder(properties.issuer(), properties.jwkSetUri(), properties.audience(), properties.subject());
+    }
+
+    @Bean(name = "inventoryRegularHoldJwtDecoder")
+    JwtDecoder inventoryRegularHoldJwtDecoder(InventoryRegularHoldJwtProperties properties) {
+        return decoder(properties.issuer(), properties.jwkSetUri(), properties.audience(), properties.subject());
+    }
+
+    private JwtDecoder decoder(String issuer, String jwkSetUri, String audience, String subject) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
                 .validateType(false)
                 .build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(properties.issuer()),
-                token -> audience(token, properties.audience()),
-                token -> subject(token, properties.subject()),
+                JwtValidators.createDefaultWithIssuer(issuer),
+                token -> audience(token, audience),
+                token -> subject(token, subject),
                 token -> "at+jwt".equals(token.getHeaders().get("typ"))
                         ? OAuth2TokenValidatorResult.success()
                         : failure("Required JWT type is missing")));

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Validate and explicitly run the seven cloud database migration Jobs.
+  Validate and explicitly run the eight cloud database migration Jobs.
 
 .DESCRIPTION
   Default mode is validation-only. It checks the current cluster, Phase 15 Secret names, and the
@@ -84,6 +84,7 @@ foreach ($secretName in @(
     "inventory-secrets",
     "order-secrets",
     "payment-secrets",
+    "cart-secrets",
     "auth-jwt"
   )) {
   $secretResource = Get-KubectlName @("-n", $Namespace, "get", "secret", $secretName, "-o", "name")
@@ -100,7 +101,8 @@ foreach ($configMapName in @(
     "flash-sale-service-runtime-config",
     "inventory-service-runtime-config",
     "order-service-runtime-config",
-    "payment-service-runtime-config"
+    "payment-service-runtime-config",
+    "cart-service-runtime-config"
   )) {
   $configMapResource = Get-KubectlName @("-n", $Namespace, "get", "configmap", $configMapName, "-o", "name")
   if ([string]::IsNullOrWhiteSpace($configMapResource)) {
@@ -112,7 +114,7 @@ $rendered = (& kubectl kustomize $OverlayPath)
 if ($LASTEXITCODE -ne 0) { throw "Migration overlay cannot be rendered: $OverlayPath" }
 $renderedText = $rendered -join [Environment]::NewLine
 $jobCount = @($rendered | Where-Object { $_ -eq "kind: Job" }).Count
-if ($jobCount -ne 7) { throw "Expected 7 database migration Jobs, rendered $jobCount." }
+if ($jobCount -ne 8) { throw "Expected 8 database migration Jobs, rendered $jobCount." }
 if ($renderedText -match "flash-sale-secrets") {
   throw "Migration overlay must not reference legacy Secret flash-sale-secrets."
 }
@@ -125,7 +127,8 @@ $jobNames = @(
   "migrate-flash-sale-service",
   "migrate-inventory-service",
   "migrate-order-service",
-  "migrate-payment-service"
+  "migrate-payment-service",
+  "migrate-cart-service"
 )
 $existingJobs = @()
 foreach ($jobName in $jobNames) {
@@ -137,7 +140,7 @@ if ($existingJobs.Count -gt 0 -and -not $ForceRerun) {
   throw "Migration Job(s) already exist: $($existingJobs -join ', '). Inspect them or rerun with -ForceRerun."
 }
 
-Write-Output "Migration prerequisites passed. Seven Jobs are renderable."
+Write-Output "Migration prerequisites passed. Eight Jobs are renderable."
 Write-Output "Secret values were not read or printed."
 if (-not $Apply) {
   Write-Output "Validation-only mode: no migration Job was created."

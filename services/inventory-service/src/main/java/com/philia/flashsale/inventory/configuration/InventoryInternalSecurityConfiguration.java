@@ -26,7 +26,7 @@ import org.springframework.http.HttpMethod;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class InventoryInternalSecurityConfiguration {
     @Bean
-    @Order(1)
+    @Order(2)
     SecurityFilterChain inventoryCampaignAllocationSecurity(HttpSecurity http,
             @Qualifier("inventoryInternalJwtDecoder") JwtDecoder decoder,
             InventoryInternalJwtProperties properties) throws Exception {

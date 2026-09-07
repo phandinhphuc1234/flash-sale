@@ -43,6 +43,13 @@ flashsale:
         audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
         subject: ${CART_CLIENT_ID:cart-service}
         required-scope: catalog.variant-display.read
+      # Feature 049 uses a separate Order-only decision contract and never broadens Cart/Campaign.
+      order-internal-jwt:
+        issuer: ${JWT_ISSUER_URI:http://authentication-service:8080}
+        jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+        audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+        subject: ${ORDER_CLIENT_ID:order-service}
+        required-scope: catalog.purchase-quote.read
 
 server:
   port: ${SERVER_PORT:8080}

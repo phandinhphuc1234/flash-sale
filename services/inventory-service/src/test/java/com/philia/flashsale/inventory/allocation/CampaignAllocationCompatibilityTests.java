@@ -76,6 +76,9 @@ class CampaignAllocationCompatibilityTests {
     void clearBusinessData() {
         jdbc.execute("""
                 TRUNCATE TABLE
+                    regular_stock_hold_items,
+                    regular_stock_holds,
+                    regular_hold_command_inbox,
                     outbox_events,
                     stock_movements,
                     campaign_stock_allocations,

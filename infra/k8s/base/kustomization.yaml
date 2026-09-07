@@ -5,6 +5,7 @@ resources:
   - namespace.yml
   - api-gateway
   - authentication-service
+  - cart-service
   - campaign-service
   - flash-sale-service
   - inventory-service

@@ -17,6 +17,29 @@ spring:
     enabled: ${LIQUIBASE_ENABLED:true}
     change-log: classpath:/db/changelog/db.changelog-master.yaml
 
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        enable.idempotence: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        auto.register.schemas: ${KAFKA_AUTO_REGISTER_SCHEMAS:false}
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+    consumer:
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+        specific.avro.reader: true
+    listener:
+      ack-mode: manual_immediate
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:http://schema-registry:8081}
+
   security:
     oauth2:
       resourceserver:
@@ -54,6 +77,28 @@ flashsale:
         audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
         subject: campaign-service
         required-scope: inventory.campaign.allocate
+      regular-hold-jwt:
+        issuer: ${JWT_ISSUER_URI:http://authentication-service:8080}
+        jwk-set-uri: ${JWT_JWK_SET_URI:http://authentication-service:8080/.well-known/jwks.json}
+        audience: ${INTERNAL_JWT_AUDIENCE:flash-sale-internal-api}
+        subject: ${ORDER_CLIENT_ID:order-service}
+        required-scope: inventory.regular-hold.write
+    regular-hold:
+      # Every Feature 049 runtime surface remains disabled through the setup and migration phases.
+      api-enabled: ${INVENTORY_REGULAR_HOLD_API_ENABLED:false}
+      command-consumer-enabled: ${INVENTORY_REGULAR_HOLD_COMMAND_CONSUMER_ENABLED:false}
+      outbox-publisher-enabled: ${INVENTORY_REGULAR_HOLD_OUTBOX_PUBLISHER_ENABLED:false}
+      expiry-enabled: ${INVENTORY_REGULAR_HOLD_EXPIRY_ENABLED:false}
+      expiry-batch-size: ${INVENTORY_REGULAR_HOLD_EXPIRY_BATCH_SIZE:100}
+      ttl: ${INVENTORY_REGULAR_HOLD_TTL:5m}
+      # `requestedAt` is Order audit evidence only. Inventory owns the acceptance window and
+      # always calculates the five-minute hold TTL from its own UTC clock.
+      max-clock-skew: ${INVENTORY_REGULAR_HOLD_MAX_CLOCK_SKEW:90s}
+      commands-topic: ${INVENTORY_REGULAR_HOLD_COMMANDS_TOPIC:flashsale.inventory.regular-hold.commands.v1}
+      events-topic: ${INVENTORY_REGULAR_HOLD_EVENTS_TOPIC:flashsale.inventory.regular-hold.events.v1}
+      command-consumer-group: ${INVENTORY_REGULAR_HOLD_COMMAND_CONSUMER_GROUP:inventory-regular-hold-commands-v1}
+      command-dlt-topic: ${INVENTORY_REGULAR_HOLD_COMMAND_DLT_TOPIC:flashsale.inventory.regular-hold-command.dlt.v1}
+      retry-delays: ${INVENTORY_REGULAR_HOLD_RETRY_DELAYS:1s,3s,10s}
 
 server:
   port: ${SERVER_PORT:8080}

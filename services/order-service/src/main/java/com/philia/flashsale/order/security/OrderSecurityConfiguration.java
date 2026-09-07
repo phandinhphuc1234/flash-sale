@@ -14,7 +14,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
-/** Protects the public read-only Order route and denies accidental extra endpoints. */
+/** Protects authenticated owner Order reads and checkout commands; other routes are denied. */
 @Configuration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class OrderSecurityConfiguration {

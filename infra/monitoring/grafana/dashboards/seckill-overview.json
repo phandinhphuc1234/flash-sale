@@ -111,6 +111,33 @@
       ],
       "title": "DLT and Manual Review Signals",
       "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "showPoints": "never"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26},
+      "id": 9,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "sum by (source, outcome) (rate(order_regular_purchase_intake_total[5m]))", "legendFormat": "{{source}} / {{outcome}}", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "sum by (stage, outcome) (rate(order_regular_purchase_recovery_total[5m]))", "legendFormat": "recovery {{stage}} / {{outcome}}", "range": true, "refId": "B"}
+      ],
+      "title": "Regular Purchase Intake and Recovery",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "showPoints": "never"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26},
+      "id": 10,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "inventory_regular_hold_state_total", "legendFormat": "hold {{state}}", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "inventory_regular_hold_expiry_due", "legendFormat": "expiry due", "range": true, "refId": "B"},
+        {"editorMode": "code", "expr": "cart_reconciliation_outcome_total", "legendFormat": "cart {{outcome}}", "range": true, "refId": "C"}
+      ],
+      "title": "Regular Holds and Cart Reconciliation",
+      "type": "timeseries"
     }
   ],
   "refresh": "15s",

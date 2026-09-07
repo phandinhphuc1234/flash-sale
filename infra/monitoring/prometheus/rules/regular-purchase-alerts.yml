@@ -1,0 +1,50 @@
+groups:
+  - name: regular-purchase
+    interval: 30s
+    rules:
+      - alert: RegularPurchaseCheckoutSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(order_operation_duration_seconds_bucket{operation="regular_intake"}[5m]))) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: order-service
+        annotations:
+          summary: Regular purchase intake is slower than the five-second goal
+          description: The bounded P95 regular-intake duration exceeded five seconds.
+
+      - alert: RegularPurchaseManualReviewPresent
+        expr: increase(order_saga_manual_review_total[5m]) > 0
+        labels:
+          severity: critical
+          service: order-service
+        annotations:
+          summary: Regular purchase reached manual review
+          description: Inspect the durable Order/Payment/Inventory evidence before replay or compensation.
+
+      - alert: RegularHoldOutboxLagging
+        expr: inventory_regular_hold_outbox_oldest_pending_age_seconds > 120
+        for: 5m
+        labels:
+          severity: warning
+          service: inventory-service
+        annotations:
+          summary: Regular hold outbox is behind
+          description: The oldest unpublished Inventory regular-hold fact is older than two minutes.
+
+      - alert: RegularHoldDltGrowth
+        expr: increase(inventory_regular_hold_dlt_publication_total[5m]) > 0
+        labels:
+          severity: warning
+          service: inventory-service
+        annotations:
+          summary: Regular hold command reached the Inventory DLT
+          description: Inspect the consumer DLT and preserve the original record for replay review.
+
+      - alert: CartReconciliationConflict
+        expr: increase(cart_reconciliation_outcome_total{outcome="conflict"}[5m]) > 0
+        labels:
+          severity: info
+          service: cart-service
+        annotations:
+          summary: Cart reconciliation encountered a conflict
+          description: A later shopper edit was preserved; inspect only if the conflict rate is unexpected.

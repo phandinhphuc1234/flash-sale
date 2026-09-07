@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Generates Order's opt-in owner-query OpenAPI document. */
+/** Generates Order's opt-in owner read and regular checkout OpenAPI document. */
 @Configuration
 @ConditionalOnProperty(name = "springdoc.api-docs.enabled", havingValue = "true")
 public class OrderOpenApiConfiguration {
@@ -19,7 +19,7 @@ public class OrderOpenApiConfiguration {
                 .info(new Info()
                         .title("Flash Sale Order API")
                         .version("v1")
-                        .description("Authenticated owner order queries; order creation is event-driven."))
+                        .description("Authenticated owner order reads and regular checkout commands."))
                 .components(new Components().addSecuritySchemes("bearerAuth", bearerScheme()));
     }
 

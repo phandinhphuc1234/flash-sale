@@ -27,4 +27,11 @@ public final class ApplyPaymentSuccessService implements ApplyPaymentSuccessUseC
         return UUID.nameUUIDFromBytes(("confirm-reservation:" + paymentEventId)
                 .getBytes(StandardCharsets.UTF_8));
     }
+
+    /** Uses a separate deterministic namespace so regular-hold commands cannot collide with Flash Sale commands. */
+    public static UUID confirmRegularStockHoldCommandId(UUID paymentEventId) {
+        Objects.requireNonNull(paymentEventId, "paymentEventId");
+        return UUID.nameUUIDFromBytes(("confirm-regular-stock-hold:" + paymentEventId)
+                .getBytes(StandardCharsets.UTF_8));
+    }
 }

@@ -17,9 +17,11 @@ public class OrderWebMapper {
 
     public OrderDetailsResponse toDetailsResponse(OrderDetailsResult result) {
         return new OrderDetailsResponse(result.id(), result.orderNumber(), result.purchaseRequestId(),
-                result.reservationId(), result.campaignId(), result.status(), result.currency(),
+                result.reservationId(), result.campaignId(), result.purchaseSource(),
+                result.stockParticipantType(), result.stockReferenceId(), result.status(), result.currency(),
                 result.subtotalAmount(), result.totalAmount(), result.acceptedAt(),
-                result.reservationExpiresAt(), result.items().stream().map(this::toItem).toList(),
+                result.reservationExpiresAt(), result.stockHoldExpiresAt(),
+                result.items().stream().map(this::toItem).toList(),
                 result.createdAt(), result.updatedAt());
     }
 
@@ -34,7 +36,7 @@ public class OrderWebMapper {
     }
 
     private OrderSummaryResponse toSummary(OrderSummaryResult result) {
-        return new OrderSummaryResponse(result.id(), result.orderNumber(), result.status(),
+        return new OrderSummaryResponse(result.id(), result.orderNumber(), result.status(), result.purchaseSource(),
                 result.currency(), result.totalAmount(), result.reservationExpiresAt(), result.createdAt());
     }
 }

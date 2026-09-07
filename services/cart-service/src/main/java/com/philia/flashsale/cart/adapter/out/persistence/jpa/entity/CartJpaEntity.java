@@ -24,17 +24,26 @@ public class CartJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "version", nullable = false)
+    private long version;
+
     protected CartJpaEntity() { }
 
     public CartJpaEntity(UUID id, UUID ownerId, Instant createdAt, Instant updatedAt) {
+        this(id, ownerId, createdAt, updatedAt, 0);
+    }
+
+    public CartJpaEntity(UUID id, UUID ownerId, Instant createdAt, Instant updatedAt, long version) {
         this.id = id;
         this.ownerId = ownerId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.version = version;
     }
 
     public UUID getId() { return id; }
     public UUID getOwnerId() { return ownerId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public long getVersion() { return version; }
 }

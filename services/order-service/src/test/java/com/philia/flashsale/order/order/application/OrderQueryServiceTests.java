@@ -13,6 +13,8 @@ import com.philia.flashsale.order.order.application.result.OrderDetailsResult;
 import com.philia.flashsale.order.order.application.result.OrderPageResult;
 import com.philia.flashsale.order.order.application.usecase.OrderQueryService;
 import com.philia.flashsale.order.order.domain.model.OrderStatus;
+import com.philia.flashsale.order.order.domain.model.PurchaseSource;
+import com.philia.flashsale.order.purchasesaga.domain.model.StockParticipantType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
@@ -59,8 +61,10 @@ class OrderQueryServiceTests {
 
     private static OrderDetailsResult details(UUID orderId) {
         Instant now = Instant.parse("2030-01-01T10:00:00Z");
-        return new OrderDetailsResult(orderId, "FS-001", UUID.randomUUID(), UUID.randomUUID(),
-                UUID.randomUUID(), OrderStatus.PENDING_PAYMENT, "VND", BigDecimal.TEN, BigDecimal.TEN,
-                now, now.plusSeconds(300), java.util.List.of(), now, now);
+        UUID reservationId = UUID.randomUUID();
+        return new OrderDetailsResult(orderId, "FS-001", UUID.randomUUID(), reservationId,
+                UUID.randomUUID(), PurchaseSource.FLASH_SALE, StockParticipantType.FLASH_SALE_RESERVATION,
+                reservationId, OrderStatus.PENDING_PAYMENT, "VND", BigDecimal.TEN, BigDecimal.TEN,
+                now, now.plusSeconds(300), null, java.util.List.of(), now, now);
     }
 }

@@ -107,4 +107,29 @@ class OrderObservabilityTests {
         assertThat(registry.getMeters()).flatExtracting(meter -> meter.getId().getTags())
                 .allSatisfy(tag -> assertThat(tag.getValue()).doesNotContain("orderId", "sagaId", "secret"));
     }
+
+    @Test
+    void recordsRegularIntakeRecoverySagaAndManualReviewWithBoundedDimensions() {
+        observability.recordRegularIntake("buy-now", "accepted");
+        observability.recordRegularIntake("shopper-123", "private-reason");
+        observability.recordRegularRecovery("checkout", "deferred");
+        observability.recordRegularRecovery("request-123", "private-reason");
+        observability.recordSagaTransition("PAYMENT_PENDING", "MANUAL_REVIEW", "MANUAL_REVIEW");
+        observability.recordManualReview("late_success");
+
+        assertThat(registry.get(OrderObservability.REGULAR_INTAKE_TOTAL)
+                .tags("source", "buy_now", "outcome", "accepted").counter().count()).isEqualTo(1d);
+        assertThat(registry.get(OrderObservability.REGULAR_INTAKE_TOTAL)
+                .tags("source", "other", "outcome", "other").counter().count()).isEqualTo(1d);
+        assertThat(registry.get(OrderObservability.REGULAR_RECOVERY_TOTAL)
+                .tags("stage", "checkout", "outcome", "deferred").counter().count()).isEqualTo(1d);
+        assertThat(registry.get(OrderObservability.SAGA_TRANSITION_TOTAL)
+                .tags("from", "PAYMENT_PENDING", "to", "MANUAL_REVIEW", "outcome", "manual_review")
+                .counter().count()).isEqualTo(1d);
+        assertThat(registry.get(OrderObservability.MANUAL_REVIEW_TOTAL)
+                .tag("reason", "late_success").counter().count()).isEqualTo(1d);
+        assertThat(registry.getMeters()).flatExtracting(meter -> meter.getId().getTags())
+                .allSatisfy(tag -> assertThat(tag.getValue())
+                        .doesNotContain("shopper-123", "request-123", "private-reason"));
+    }
 }

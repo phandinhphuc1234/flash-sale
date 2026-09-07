@@ -27,6 +27,7 @@ public final class ServiceClientBootstrapper implements ApplicationRunner {
         provision(properties.campaign());
         provision(properties.flashsale());
         provision(properties.cart());
+        provision(properties.order());
     }
 
     private void provision(ServiceClientsProperties.Client client) {

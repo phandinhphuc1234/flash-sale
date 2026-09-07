@@ -4,6 +4,9 @@ import com.philia.flashsale.cart.adapter.in.web.CartController;
 import com.philia.flashsale.cart.application.exception.CartVariantNotFoundException;
 import com.philia.flashsale.cart.application.exception.CartVariantNotSellableException;
 import com.philia.flashsale.cart.application.exception.ProductDisplayDependencyException;
+import com.philia.flashsale.cart.application.exception.CartNotFoundException;
+import com.philia.flashsale.cart.application.exception.CartEmptyException;
+import com.philia.flashsale.cart.adapter.in.web.CartCheckoutSnapshotController;
 import com.philia.flashsale.cart.security.InvalidCartPrincipalException;
 import com.philia.flashsale.common.web.ApiErrorResponse;
 import com.philia.flashsale.common.web.FieldViolation;
@@ -23,7 +26,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.http.converter.HttpMessageNotReadableException;
 
 /** Translates Cart application failures into the documented shared HTTP envelope. */
-@RestControllerAdvice(assignableTypes = CartController.class)
+@RestControllerAdvice(assignableTypes = {CartController.class, CartCheckoutSnapshotController.class})
 public class CartHttpExceptionHandler {
     private static final Logger LOG = LoggerFactory.getLogger(CartHttpExceptionHandler.class);
 
@@ -46,6 +49,16 @@ public class CartHttpExceptionHandler {
     @ExceptionHandler(CartVariantNotSellableException.class)
     ResponseEntity<ApiErrorResponse> notSellable(HttpServletRequest request) {
         return error(CartErrorCode.CART_VARIANT_NOT_SELLABLE, request, null);
+    }
+
+    @ExceptionHandler(CartNotFoundException.class)
+    ResponseEntity<ApiErrorResponse> cartNotFound(HttpServletRequest request) {
+        return error(CartErrorCode.CART_NOT_FOUND, request, null);
+    }
+
+    @ExceptionHandler(CartEmptyException.class)
+    ResponseEntity<ApiErrorResponse> cartEmpty(HttpServletRequest request) {
+        return error(CartErrorCode.CART_EMPTY, request, null);
     }
 
     @ExceptionHandler(ProductDisplayDependencyException.class)

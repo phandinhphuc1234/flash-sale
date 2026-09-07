@@ -53,16 +53,19 @@ public class OwnedOrderQueryJpaAdapter implements LoadOwnedOrderPort, ListOwnedO
     private OrderDetailsResult toDetails(OrderJpaEntity order) {
         return new OrderDetailsResult(
                 order.getId(), order.getOrderNumber(), order.getPurchaseRequestId(),
-                order.getReservationId(), order.getCampaignId(), order.getStatus(),
+                order.getReservationId(), order.getCampaignId(), order.getPurchaseSource(),
+                order.getStockParticipantType(), order.getStockReferenceId(), order.getStatus(),
                 order.getCurrency(), order.getSubtotalAmount(), order.getTotalAmount(),
                 order.getAcceptedAt(), order.getReservationExpiresAt(),
+                order.getPurchaseSource() == com.philia.flashsale.order.order.domain.model.PurchaseSource.FLASH_SALE
+                        ? null : order.getReservationExpiresAt(),
                 lines.findByOrder_IdOrderByIdAsc(order.getId()).stream().map(this::toItem).toList(),
                 order.getCreatedAt(), order.getUpdatedAt());
     }
 
     private OrderSummaryResult toSummary(OrderJpaEntity order) {
         return new OrderSummaryResult(
-                order.getId(), order.getOrderNumber(), order.getStatus(), order.getCurrency(),
+                order.getId(), order.getOrderNumber(), order.getStatus(), order.getPurchaseSource(), order.getCurrency(),
                 order.getTotalAmount(), order.getReservationExpiresAt(), order.getCreatedAt());
     }
 

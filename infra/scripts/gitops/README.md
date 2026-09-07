@@ -13,7 +13,7 @@ Run them from any directory. They resolve the repository root from their own loc
 ## Canonical roadmap and hosted delivery
 
 The canonical roadmap is documented in [`docs/deployment/gitops-roadmap-status.md`](../../docs/deployment/gitops-roadmap-status.md).
-The hosted **Eight-Service GitOps Delivery** workflow is the implementation of canonical roadmap
+The hosted **Nine-Service GitOps Delivery** workflow is the implementation of canonical roadmap
 21. It owns cloud image promotion for these eight deployed services:
 
 `api-gateway`, `authentication-service`, `product-service`, `campaign-service`,
@@ -55,7 +55,7 @@ rollback/rehearsal.
   recreates a topic or subject, and it expands a one-partition topic only while its total end offset
   is still zero.
 - Phase 21 verifies the cloud release artifact as the staging-equivalent gate. It checks the canonical
-  Argo Application, all eight Deployment/ECR/Pod image digests, the explicitly expected Payment
+  Argo Application, all nine Deployment/ECR/Pod image digests, the explicitly expected Payment
   runtime state, and reuses the localhost-only Gateway smoke. The default expects `disabled`; after
   reviewed Phase 24 Stripe enablement pass `-PaymentRuntimeState enabled`. It is read-only: it does
   not build, push, reconcile, update images, or read Kubernetes Secrets.
@@ -78,7 +78,7 @@ rollback/rehearsal.
   the read-only Phase 21 cloud release verification helper above. Manual dispatch accepts `all` or
   one deployed service. Review the generated PR before Argo CD reconciles `flash-sale-cloud`.
 - Passwords, tfvars, kubeconfig files, and .env files are never written by these scripts.
-- Do not run the Phase 7 full dev overlay against EKS yet; it contains all eight services.
+- Do not run the Phase 7 full dev overlay against EKS yet; it contains all nine services.
 
 ## Sequence
 
@@ -191,7 +191,7 @@ remain disabled throughout this phase.
 
 The canonical roadmap 21 delivery workflow treats the cloud EKS environment as the staging-equivalent
 release target because this project has no separate staging or production environment. It builds and
-publishes only affected service images (or all eight for shared changes), proposes one reviewed cloud
+publishes only affected service images (or all nine for shared changes), proposes one reviewed cloud
 overlay PR, and leaves reconciliation to `flash-sale-cloud`. After that PR is merged, the read-only
 Phase 21 cloud release verification helper resolves the selected ECR tags, compares manifest digests
 with running Pod image IDs, checks Argo Synced/Healthy and the seven disabled Payment flags, then

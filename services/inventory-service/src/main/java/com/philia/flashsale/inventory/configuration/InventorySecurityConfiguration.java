@@ -21,7 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class InventorySecurityConfiguration {
     @Bean
-    @Order(2)
+    @Order(3)
     SecurityFilterChain inventorySecurity(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
@@ -36,7 +36,18 @@ public class InventorySecurityConfiguration {
 
     @Bean
     Converter<Jwt, ? extends AbstractAuthenticationToken> inventoryJwtConverter() {
-        return jwt -> {
+        return new InventoryJwtAuthenticationConverter();
+    }
+
+    /*
+     * Keep the converter as a parameterized concrete type. Spring Kafka registers Converter beans
+     * with its listener conversion service and must be able to resolve their source/target types;
+     * a lambda erases that runtime type information and prevents the application context starting.
+     */
+    private static final class InventoryJwtAuthenticationConverter
+            implements Converter<Jwt, AbstractAuthenticationToken> {
+        @Override
+        public AbstractAuthenticationToken convert(Jwt jwt) {
             Collection<GrantedAuthority> authorities = new ArrayList<>();
             Object values = jwt.getClaims().get("authorities");
             if (values instanceof Collection<?> collection) collection.forEach(value -> authorities.add(new SimpleGrantedAuthority(String.valueOf(value))));
@@ -45,6 +56,6 @@ public class InventorySecurityConfiguration {
             String scope = jwt.getClaimAsString("scope");
             if (scope != null) for (String value : scope.split(" ")) authorities.add(new SimpleGrantedAuthority("SCOPE_" + value));
             return new JwtAuthenticationToken(jwt, authorities);
-        };
+        }
     }
 }

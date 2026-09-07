@@ -27,7 +27,12 @@ public record OrderKafkaProperties(
         @NotBlank String purchaseCommandsTopic,
         @NotBlank String purchaseReservationResultsTopic,
         @NotBlank String purchaseReservationResultsConsumerGroup,
-        @NotBlank String purchaseReservationResultsDltTopic) {
+        @NotBlank String purchaseReservationResultsDltTopic,
+        @NotBlank String regularHoldCommandsTopic,
+        @NotBlank String regularHoldEventsTopic,
+        @NotBlank String regularHoldEventsConsumerGroup,
+        @NotBlank String regularHoldEventsDltTopic,
+        @NotBlank String cartReconciliationCommandsTopic) {
 
     /** Backward-compatible constructor for unit tests and local callers before result topics existed. */
     public OrderKafkaProperties(String bootstrapServers, String schemaRegistryUrl,
@@ -39,7 +44,10 @@ public record OrderKafkaProperties(
                 "flashsale.payment.events.v1", "order-payment-events-v1",
                 "flashsale.order.payment-result.dlt.v1", "flashsale.purchase.commands.v1",
                 "flashsale.purchase.events.v1", "order-purchase-reservation-results-v1",
-                "flashsale.order.purchase-reservation-result.dlt.v1");
+                "flashsale.order.purchase-reservation-result.dlt.v1",
+                "flashsale.inventory.regular-hold.commands.v1", "flashsale.inventory.regular-hold.events.v1",
+                "order-regular-hold-events-v1", "flashsale.order.regular-hold-result.dlt.v1",
+                "flashsale.cart.checkout.commands.v1");
     }
 
     @ConstructorBinding

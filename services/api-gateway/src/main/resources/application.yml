@@ -94,6 +94,11 @@ spring:
               predicates:
                 - Path=/api/v1/orders/**
                 - Method=GET
+            - id: order-api
+              uri: ${ORDER_SERVICE_URL:http://order-service:8080}
+              predicates:
+                - Path=/api/v1/orders/**
+                - Method=POST
             - id: flash-sale-public
               uri: ${FLASHSALE_SERVICE_URL:http://flashsale-service:8080}
               predicates:

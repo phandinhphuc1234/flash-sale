@@ -1,6 +1,7 @@
 package com.philia.flashsale.order.security;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -55,6 +56,20 @@ class OrderPublicSecurityTests {
         mvc.perform(get("/api/v1/orders/00000000-0000-0000-0000-000000000001")
                         .header("Authorization", "Bearer invalid-token"))
                 .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errorCode").value("AUTHENTICATION_REQUIRED"));
+    }
+
+    @Test
+    void buyNowCommandUsesTheSameAuthenticatedOrderBoundary() throws Exception {
+        mvc.perform(post("/api/v1/orders/buy-now")
+                        .header("Idempotency-Key", "security-test")
+                        .contentType("application/json")
+                        .content("""
+                                {"variantId":"00000000-0000-0000-0000-000000000002", "quantity":1,
+                                "expectedUnitPrice":179000.0000, "currency":"VND"}
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("WWW-Authenticate", "Bearer"))
                 .andExpect(jsonPath("$.errorCode").value("AUTHENTICATION_REQUIRED"));
     }
 

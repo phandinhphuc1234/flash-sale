@@ -19,7 +19,9 @@ class CartServiceClientCredentialsTests {
                 new ServiceClientsProperties.Client("campaign-service", "campaign-secret", List.of("catalog.read")),
                 new ServiceClientsProperties.Client("flashsale-service", "flashsale-secret", List.of("inventory.read")),
                 new ServiceClientsProperties.Client("cart-service", "cart-secret",
-                        List.of("catalog.variant-display.read")));
+                        List.of("catalog.variant-display.read")),
+                new ServiceClientsProperties.Client("order-service", "order-secret",
+                        List.of("cart.checkout-snapshot.read")));
 
         new ServiceClientBootstrapper(provisioner, properties)
                 .run(new DefaultApplicationArguments());

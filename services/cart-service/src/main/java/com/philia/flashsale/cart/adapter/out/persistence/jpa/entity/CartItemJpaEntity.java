@@ -25,13 +25,22 @@ public class CartItemJpaEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "version", nullable = false)
+    private long version;
+
     protected CartItemJpaEntity() { }
 
     public CartItemJpaEntity(UUID cartId, UUID variantId, int quantity, Instant createdAt, Instant updatedAt) {
+        this(cartId, variantId, quantity, createdAt, updatedAt, 1);
+    }
+
+    public CartItemJpaEntity(UUID cartId, UUID variantId, int quantity, Instant createdAt, Instant updatedAt,
+            long version) {
         this.id = new CartItemId(cartId, variantId);
         this.quantity = quantity;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.version = version;
     }
 
     public UUID getCartId() { return id.cartId(); }
@@ -39,6 +48,7 @@ public class CartItemJpaEntity {
     public int getQuantity() { return quantity; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public long getVersion() { return version; }
 
     @Embeddable
     public static class CartItemId implements Serializable {

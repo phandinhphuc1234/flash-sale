@@ -40,3 +40,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: [payment-service.flash-sale.svc.cluster.local:8080]
+  - job_name: cart-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [cart-service.flash-sale.svc.cluster.local:8080]
