@@ -93,3 +93,54 @@ authorization headers, business identifiers, and raw request bodies must not be 
   Inventory timeouts are unchanged; breaker health is disabled; `git diff --check` passed.
 - Completed: 2026-09-16
 - CI/PR: PR #134; branch evidence pending push.
+
+## T008–T009 — User Story 1 tests before implementation
+
+- Command: `.\mvnw.cmd -pl services/order-service -am test
+  "-Dtest=ResilientInventoryRegularHoldClientAdapterTests,RegularPurchaseInventoryResilienceIntegrationTests"
+  "-Dsurefire.failIfNoSpecifiedTests=false"`
+- Scope: deterministic Circuit Breaker behavior plus the regular-checkout durable boundary while
+  the Inventory circuit is open.
+- Result: EXPECTED FAIL — test compilation reported the intentionally absent
+  `ResilientInventoryRegularHoldClientAdapter`; upstream `common-web` and
+  `kafka-avro-contracts` compilation passed and no unrelated failure was observed.
+- Exit status: `1` (expected red phase)
+- Completed: 2026-09-16
+- CI/PR: [PR #135](https://github.com/phandinhphuc1234/flash-sale/pull/135).
+
+## T010–T012 — User Story 1 outage containment
+
+### Behavior implemented
+
+- The primary `CreateRegularStockHoldPort` is an explicit infrastructure decorator around the
+  existing Feign translator. It forwards the original command object and trace value exactly once
+  for an admitted call and adds no retry or fallback.
+- `INVENTORY_INSUFFICIENT_STOCK`, `INVENTORY_ITEM_NOT_FOUND`, and
+  `INVENTORY_HOLD_CONFLICT` are ignored by Circuit Breaker accounting. Ambiguous, unavailable, and
+  unexpected outbound runtime failures are recorded.
+- An open circuit maps to the existing sanitized, recoverable
+  `INVENTORY_SERVICE_UNAVAILABLE` outcome without invoking Inventory.
+- Spring selects the decorator as the single primary application port while retaining
+  `InventoryRegularHoldClientAdapter` as the raw Feign/HTTP translator.
+
+### Focused verification
+
+- Command: `.\mvnw.cmd -pl services/order-service -am test
+  "-Dtest=OrderInventoryResilienceConfigurationTests,ResilientInventoryRegularHoldClientAdapterTests,InventoryRegularHoldClientAdapterTests,RegularPurchaseInventoryResilienceIntegrationTests,RegularPurchaseRecoveryIntegrationTests,OrderServiceApplicationTests"
+  "-Dsurefire.failIfNoSpecifiedTests=false"`
+- Scope: Spring bean selection/application context, raw Feign translation, deterministic breaker
+  classification and opening, open-state rejection, durable regular-purchase checkpoint, and
+  existing recovery behavior.
+- Result: PASS — 17 tests executed, 0 failures, 0 errors, 0 skipped; reactor modules
+  `flash-sale-engine`, `common-web`, `kafka-avro-contracts`, and `order-service` succeeded.
+- Exit status: `0`
+- Breaker evidence: two recorded infrastructure failures opened the two-call deterministic test
+  circuit; 100 ignored invocations for each documented business failure left it closed with zero
+  recorded failures; one successful call remained successful.
+- Open-state evidence: 100/100 attempts finished below 100 ms, p95 `5 ms`, maximum `72 ms`, zero
+  delegate invocations, and 100 not-permitted calls.
+- Durable evidence: repeated open-state checkout attempts left the request at
+  `PRODUCT_VALIDATED`, retained the same request/hold/Order identities, created no hold, Order,
+  Payment intent, or completed acceptance, made zero Inventory calls, and remained recoverable.
+- Completed: 2026-09-16
+- CI/PR: [PR #135](https://github.com/phandinhphuc1234/flash-sale/pull/135).

@@ -15,8 +15,8 @@ is added.
 **Organization**: Tasks are grouped by user story. Work proceeds one task or one coherent task group
 at a time, and every completed task records its validation evidence in `validation.md`.
 
-**Status**: Approved for implementation by the project owner on 2026-09-16. This execution is
-bounded to T001–T007.
+**Status**: Approved for implementation by the project owner on 2026-09-16. Tasks T001–T012 are
+complete; the next execution begins with T013.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -66,14 +66,14 @@ invocations; repeat 100 documented business rejections and prove the breaker rem
 
 ### Tests for User Story 1
 
-- [ ] T008 [US1] Write deterministic tests for success, the three ignored business failures, recorded ambiguous/unavailable failures, open-state fail-fast behavior, zero downstream invocations while open, and the 100-attempt latency target in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapterTests.java`; record the expected pre-implementation failure in `specs/050-order-inventory-resilience/validation.md`.
-- [ ] T009 [P] [US1] Write a regular-checkout integration test proving an open circuit creates no false hold, Order, Payment, or completed checkpoint while leaving the request recoverable in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/integration/RegularPurchaseInventoryResilienceIntegrationTests.java`.
+- [x] T008 [US1] Write deterministic tests for success, the three ignored business failures, recorded ambiguous/unavailable failures, open-state fail-fast behavior, zero downstream invocations while open, and the 100-attempt latency target in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapterTests.java`; record the expected pre-implementation failure in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T009 [P] [US1] Write a regular-checkout integration test proving an open circuit creates no false hold, Order, Payment, or completed checkpoint while leaving the request recoverable in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/integration/RegularPurchaseInventoryResilienceIntegrationTests.java`.
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement the explicit `CreateRegularStockHoldPort` decorator, infrastructure-versus-business exception predicate, open-state mapping to `INVENTORY_SERVICE_UNAVAILABLE`, original command/trace pass-through, and no retry/fallback in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapter.java`.
-- [ ] T011 [US1] Wire the resilient decorator as the unambiguous primary `CreateRegularStockHoldPort` while retaining `InventoryRegularHoldClientAdapter` as the Feign translator in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfiguration.java` and `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/InventoryRegularHoldClientAdapter.java`.
-- [ ] T012 [US1] Run the User Story 1 unit and integration tests and record breaker counts, delegate invocation counts, p95/maximum fail-fast latency, durable checkpoint outcome, command, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T010 [US1] Implement the explicit `CreateRegularStockHoldPort` decorator, infrastructure-versus-business exception predicate, open-state mapping to `INVENTORY_SERVICE_UNAVAILABLE`, original command/trace pass-through, and no retry/fallback in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapter.java`.
+- [x] T011 [US1] Wire the resilient decorator as the unambiguous primary `CreateRegularStockHoldPort` while retaining `InventoryRegularHoldClientAdapter` as the Feign translator in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfiguration.java` and `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/InventoryRegularHoldClientAdapter.java`.
+- [x] T012 [US1] Run the User Story 1 unit and integration tests and record breaker counts, delegate invocation counts, p95/maximum fail-fast latency, durable checkpoint outcome, command, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
 
 **Checkpoint**: US1 is independently demonstrable: outage amplification is contained, business
 rejections remain truthful, and no fabricated business effect occurs.

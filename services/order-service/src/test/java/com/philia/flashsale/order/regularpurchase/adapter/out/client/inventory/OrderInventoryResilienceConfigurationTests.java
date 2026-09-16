@@ -1,7 +1,9 @@
 package com.philia.flashsale.order.regularpurchase.adapter.out.client.inventory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
+import com.philia.flashsale.order.regularpurchase.application.port.out.CreateRegularStockHoldPort;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
@@ -14,7 +16,9 @@ class OrderInventoryResilienceConfigurationTests {
     private static final String PREFIX = "order.regular-purchase.inventory-resilience.";
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withUserConfiguration(OrderInventoryResilienceConfiguration.class);
+            .withUserConfiguration(OrderInventoryResilienceConfiguration.class)
+            .withBean(InventoryRegularHoldClientAdapter.class,
+                    () -> mock(InventoryRegularHoldClientAdapter.class));
 
     @Test
     void bindsTheApprovedConservativeDefaultsAndBuildsManagedInstances() {
@@ -50,6 +54,9 @@ class OrderInventoryResilienceConfigurationTests {
             assertThat(bulkhead.getName()).isEqualTo(OrderInventoryResilienceConfiguration.BULKHEAD_NAME);
             assertThat(bulkhead.getBulkheadConfig().getMaxConcurrentCalls()).isEqualTo(16);
             assertThat(bulkhead.getBulkheadConfig().getMaxWaitDuration()).isZero();
+
+            CreateRegularStockHoldPort selectedPort = context.getBean(CreateRegularStockHoldPort.class);
+            assertThat(selectedPort).isInstanceOf(ResilientInventoryRegularHoldClientAdapter.class);
         });
     }
 
