@@ -1,8 +1,8 @@
 # Frontend Integration Guide
 
 Tài liệu này mô tả contract HTTP hiện có của hệ thống Flash Sale để frontend tích hợp mà không
-phải suy đoán từ code Java. Phạm vi gồm **47 endpoint**: 38 endpoint dành cho shopper/admin, một
-Stripe webhook, một JWKS endpoint và bảy endpoint nội bộ. Cart Service có bốn endpoint shopper;
+phải suy đoán từ code Java. Phạm vi gồm **50 endpoint**: 38 endpoint dành cho shopper/admin, một
+Stripe webhook, một JWKS endpoint và mười endpoint nội bộ. Cart Service có bốn endpoint shopper;
 Notification Service chưa có HTTP API.
 
 > Source of truth cuối cùng vẫn là controller/DTO của service và OpenAPI sinh tại runtime. Tài liệu
@@ -1576,6 +1576,143 @@ Required trust: subject `cart-service`, audience `flash-sale-internal-api`, scop
 `400`. The endpoint is not routed by Gateway and carries no Cart owner, quantity, stock, campaign,
 order, or payment data.
 
+### API-048 — Product purchase quote nội bộ cho Order
+
+Order dùng quyết định này thay vì tin giá hiển thị từ Cart/frontend.
+
+```http
+POST /internal/v1/catalog/variants/purchase-quotes
+Authorization: Bearer <orderServiceToken>
+Content-Type: application/json
+
+{
+  "variantIds": [
+    "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+    "06a5de75-f305-49d1-b11e-5ef372bf20d3"
+  ]
+}
+```
+
+Response `200 OK`:
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Purchase quotes retrieved",
+  "data": {
+    "quotes": [
+      {
+        "variantId": "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+        "found": true,
+        "sellable": true,
+        "unavailableReason": null,
+        "productId": "0e9e1ff4-17b9-43f0-971b-88dfdae04aa3",
+        "sku": "FSS-BLK-M",
+        "productName": "Flash Sale Shirt",
+        "variantName": "Black / M",
+        "unitPrice": 299000.0000,
+        "currency": "VND",
+        "catalogVersion": 7
+      }
+    ]
+  },
+  "timestamp": "2026-09-08T03:00:00Z"
+}
+```
+
+Input có tối đa 20 UUID duy nhất. `found=false` để các trường thương mại là `null`; frontend không
+được gọi hoặc dùng API này để bỏ qua Order.
+
+### API-049 — Cart checkout snapshot nội bộ cho Order
+
+```http
+POST /internal/v1/cart-checkout-snapshots
+Authorization: Bearer <orderServiceToken>
+Content-Type: application/json
+
+{
+  "shopperId": "8090d071-cce3-4384-9009-394ae9a6bb75"
+}
+```
+
+Response `200 OK`:
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Cart checkout snapshot retrieved",
+  "data": {
+    "cartId": "b5bfd90f-55b6-45f5-84e0-0f9ecb51fe21",
+    "ownerId": "8090d071-cce3-4384-9009-394ae9a6bb75",
+    "cartVersion": 12,
+    "capturedAt": "2026-09-08T03:00:00Z",
+    "items": [
+      {
+        "variantId": "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+        "quantity": 1,
+        "itemVersion": 10
+      }
+    ]
+  },
+  "timestamp": "2026-09-08T03:00:00Z"
+}
+```
+
+Snapshot là ảnh chụp tại một thời điểm, không phải lock. Order so sánh nó với request công khai;
+Cart rỗng trả `409 CART_EMPTY`, không có Cart trả `404 CART_NOT_FOUND`.
+
+### API-050 — Inventory regular stock hold nội bộ cho Order
+
+```http
+POST /internal/v1/regular-stock-holds
+Authorization: Bearer <orderServiceToken>
+Content-Type: application/json
+
+{
+  "holdId": "da29aa23-c4ae-4d62-9fd0-298c1ef952c4",
+  "purchaseRequestId": "58d204d2-20b1-47b0-a58f-7a9b1d035588",
+  "orderId": "cb52a787-d452-4e57-817b-ee3e5e972af9",
+  "shopperId": "8090d071-cce3-4384-9009-394ae9a6bb75",
+  "requestedAt": "2026-09-08T03:00:00Z",
+  "items": [
+    {
+      "variantId": "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+      "quantity": 1
+    }
+  ]
+}
+```
+
+Response `201 Created` hoặc `200 OK` khi replay tương đương:
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Regular stock held",
+  "data": {
+    "holdId": "da29aa23-c4ae-4d62-9fd0-298c1ef952c4",
+    "purchaseRequestId": "58d204d2-20b1-47b0-a58f-7a9b1d035588",
+    "orderId": "cb52a787-d452-4e57-817b-ee3e5e972af9",
+    "status": "HELD",
+    "expiresAt": "2026-09-08T03:05:00Z",
+    "items": [
+      {
+        "variantId": "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+        "quantity": 1
+      }
+    ]
+  },
+  "timestamp": "2026-09-08T03:00:00Z"
+}
+```
+
+Inventory giữ toàn bộ danh sách hoặc không giữ dòng nào. `409 INSUFFICIENT_STOCK` không để lại hold
+một phần; cùng `purchaseRequestId` nhưng payload khác trả `409 HOLD_IDENTITY_CONFLICT`. Order phải
+retry/resume cùng identity khi timeout, frontend không tự tạo hold.
+
 ### API-026 — Campaign snapshot nội bộ
 
 ```http
@@ -1824,7 +1961,7 @@ service port trong frontend.
 
 ## 18. Tài liệu và kiểm tra liên quan
 
-- Danh mục 47 endpoint: [`README.md`](README.md) hoặc [endpoint-registry.md](endpoint-registry.md)
+- Danh mục 50 endpoint: [`README.md`](README.md) hoặc [endpoint-registry.md](endpoint-registry.md)
 - Contract inventory: [`../../specs/047-api-documentation/contracts/http-inventory.md`](../../specs/047-api-documentation/contracts/http-inventory.md)
 - Flash-sale end-to-end flow: [`../architecture/flash-sale-end-to-end-flow.md`](../architecture/flash-sale-end-to-end-flow.md)
 - Kiểm tra catalog/OpenAPI wiring:

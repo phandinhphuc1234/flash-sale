@@ -97,3 +97,44 @@ specs/046-seckill-capacity-gate/contracts/capacity-runner.md
 - Local run uses a disposable fixture and records a result under the ignored results directory.
 - Cloud run is explicit, starts with a low cap, and must be preceded by a healthy Argo/Phase 25 check.
 - Evidence records command, parameters, stage summaries, stop reason, and cleanup result without tokens.
+
+## Addendum — implementation of FR-011–FR-014 (2026-09-15)
+
+Keep the existing reservation benchmark unchanged. Add an independent test group:
+
+- `load-tests/flash-sale-to-order-stress/flash-sale-to-order-stress.js`: bounded k6 arrival stage;
+  one fresh shopper per iteration; a baseline Order-list check, reservation POST, optional same-key
+  replay, owner Order-list polling and detail correlation, followed by a short duplicate recheck.
+- `load-tests/flash-sale-to-order-stress/contracts.mjs`: pure response validation and sanitized
+  metric/report logic, shared with Node built-in tests; no npm or production dependency.
+- `infra/scripts/load/run-flash-sale-to-order-stress.ps1`: PowerShell 7 validation-only entrypoint,
+  optional low-rate warm-up and increasing bounded stages, credential-file checks, child environment
+  isolation, deadline/cleanup, stop decisions and final ignored report. Remote load requires HTTPS
+  and explicit opt-in. No direct-service mode.
+- `load-tests/flash-sale-to-order-stress/tests/`: Node unit tests and an isolated fake-Gateway/k6
+  integration harness. The harness generates only fake credentials and never targets application
+  ports. This verifies tooling, not the Kafka/Order business pipeline.
+
+Order list has no purchaseRequestId filter and omits correlation fields. Require a fresh owner with
+zero baseline Orders, request `page=0&size=2`, reject more than one Order or another page, then GET
+the single Order detail to correlate identifiers. This bounds observer traffic without pretending
+the API has a nonexistent search filter. Observe PENDING_PAYMENT, and fail on other states for this
+creation-only fixture. Never alter Payment flags to manufacture that state.
+
+JWT expiry must cover the computed ladder budget plus 60 seconds (not the larger configurable
+ceiling: current shopper tokens last 900 seconds). Reservation `expiresAt` must be later than the
+computed run deadline; otherwise stop as an invalid fixture. This prevents recycled expired holds
+from being misreported as oversell. Shorten a ladder rather than extending business TTL in tooling.
+
+Read/poll requests have separate counters. The configured arrival rate is iterations/s, not total
+HTTP RPS. First-POST in-window counts and observed Orders/s use explicit windows. Visibility latency
+includes polling and network delay; post-stage observation tail is not Kafka drain time. Replayed
+POSTs get their own latency metric. Unknown admission outcome, no visibility, bad identity, dropped
+iterations or missing summary stop further stages. Latency breaches use the existing two-consecutive
+stage policy; no failing stage counts as safe. A sold-out probe requires a positive allocation below
+its planned arrivals and at least one winner and one sold-out response.
+
+Validation: Node contract/summary tests; PowerShell parser and dry-run/no-network checks; real k6
+against an ephemeral fake Gateway for success and negative cases; `git diff --check`. No Java,
+schema, contract or Kubernetes changes, so Maven/Kubernetes gates are not applicable. Live Compose
+and optional cloud capacity runs remain a separate operator checkpoint, not a claim of this patch.

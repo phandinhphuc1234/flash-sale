@@ -119,3 +119,38 @@ Gateway readiness returned HTTP 200, and the relevant Flash Sale, Order, and Pay
 was zero. Therefore this topology has `firstBreachRate=300 RPS` and no cloud last-good rate from
 this single-stage run. A lower cloud stage must be measured before claiming a safe cloud ceiling;
 500/750/1,000 RPS are prohibited until the memory/resource decision and a lower-stage ladder pass.
+
+## 2026-09-15 — Flash Sale to Order tooling (T019–T023)
+
+Scope: new `flash-sale-to-order-stress` runner/profile, pure contract/report functions, synthetic
+Gateway integration tests and Vietnamese operator documentation. No production Java, HTTP/Kafka
+contract, schema, infrastructure or runtime flag was changed. Worktree contains pre-existing
+documentation work; it was preserved. No commit, PR or hosted CI for this test addition yet.
+
+Environment: Windows; Node v24.15.0; PowerShell 7.6.5; k6 v1.7.1.
+
+| Command / gate | Result | Evidence scope |
+|---|---|---|
+| `node --test load-tests/flash-sale-to-order-stress/tests/contracts.test.mjs load-tests/flash-sale-to-order-stress/tests/runner.test.mjs` | Exit 0; **22 tests passed**, 0 failed/skipped; ~73 s | 10 pure contract/report tests + 12 runner tests, including real k6 against synthetic Gateway |
+| PowerShell AST `Parser.ParseFile` on `infra/scripts/load/run-flash-sale-to-order-stress.ps1` | `POWERSHELL_PARSER=PASS`, exit 0 | Final runner parses on PowerShell 7 |
+| Runner without `-Run`, dummy fixture UUIDs, `-ExpectedAllocation 100` | Exit 0; `VALIDATION_ONLY=PASS`; 72 fresh shoppers / 283 s maximum computed budget | No HTTP request, k6 child or credential read; also asserted by synthetic server request counters |
+| `git check-ignore` for new `shopper-tokens.json` and `results/report.json` | Exit 0; both ignored | Credentials and generated evidence remain outside Git |
+| `git diff --check -- .gitignore specs/046-seckill-capacity-gate` | Exit 0 | Tracked diff formatting; Git emitted only expected LF/CRLF normalization notices |
+
+Test-first checkpoint: contract tests initially failed with the expected missing `contracts.mjs`,
+then passed after implementation. A test-harness repository-root resolution error was corrected
+before the final run. Positive mock cases: NewOrders, Replay, SoldOut and a successful two-stage
+ladder. Negative mock cases: wrong correlation, duplicate Orders, missing Order, pending acceptance,
+insufficient remaining reservation TTL, and a failing first stage that prevents the second stage.
+Other checks cover exact nested pagination shape, quantity/source/state, incomplete/dropped work,
+replay counts, allocation, missing latency and sanitized report fields.
+
+The synthetic harness used ephemeral loopback ports, fake unsigned JWTs and in-memory Orders. Its
+mock token files were removed; sanitized mock reports remain Git-ignored. No actual Gateway,
+Docker service, Redis, PostgreSQL, Kafka, Stripe, AWS or EKS was contacted by these tests.
+
+**Live benchmark: NOT RUN.** No new capacity/RPS, Kafka-lag, outbox-drain or DB-commit-latency claim.
+Next operator checkpoint: prepare a fresh exclusive local campaign/variant and shopper tokens;
+run a tiny NewOrders rehearsal, then the 1 → 5 arrivals/s ladder while observing service health.
+Live load requires explicit `-Run`; cloud stays deferred. Maven/Kubernetes validation is not
+applicable to this test/tool-only patch.

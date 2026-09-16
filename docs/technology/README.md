@@ -1,43 +1,40 @@
 # Technology Documentation
 
-This folder explains why each technology exists in the Flash Sale Engine architecture.
+This section explains which engineering problem each technology solves. Runtime truth still comes
+from source/configuration, and business behavior comes from approved feature artifacts.
+
+## Current stack by problem
+
+| Problem | Technology/approach |
+|---|---|
+| Independently packaged services | Java 21, Maven reactor, Spring Boot 3.5 |
+| Public edge | Spring Cloud Gateway WebFlux |
+| Synchronous internal decisions | Spring Cloud OpenFeign + OAuth2 client credentials |
+| Durable relational ownership | PostgreSQL, Spring Data JPA, Liquibase |
+| Seckill contention | Redis Lua and Redis Stream handoff |
+| Durable asynchronous workflows | Kafka, Avro SpecificRecord, Schema Registry, outbox/inbox |
+| Authentication | Spring Security, RS256 JWT/JWKS, refresh rotation |
+| Payment provider | Stripe Checkout and signed webhooks |
+| Deployment | Docker, Kustomize, Terraform, EKS, Argo CD, GitHub Actions OIDC |
+| Application observability | Actuator/Micrometer, Prometheus, Grafana |
 
 Start here:
 
-- [Technology problem map](technology-problem-map.md)
+- [`technology-problem-map.md`](technology-problem-map.md)
 - [Service communication protocols](../architecture/service-communication-protocols.md)
 - [Liquibase migration rules](liquibase-migration-rules.md)
-- [Gateway rate-limiting design guide](../ratelimit/README.md)
+- [Gateway rate-limiting design](../ratelimit/README.md)
 - [Architecture diagrams](../architecture/diagrams/README.md)
 
-## Status Labels
+## Status language
 
-`Current` means the repository already contains build dependencies, configuration, or source scaffold for the technology.
+- **Implemented** — production source/config exists.
+- **Configured** — desired state exists but needs environment-specific verification.
+- **Candidate/deferred** — design discussion only; no runtime promise.
 
-`Planned` means the Constitution, architecture docs, or service scaffold expects the technology, but no production implementation exists yet.
+OpenTelemetry collectors, Loki, Tempo, gRPC, Alertmanager/Slack, HA monitoring, infrastructure
+exporters, and Notification delivery remain deferred. Kubernetes/Argo/Prometheus/Grafana desired
+state exists, but the EKS cluster is currently absent after cost-control cleanup.
 
-`Deferred` means the idea is visible in architecture discussion or reference diagrams, but it is not approved as a repository baseline yet.
-
-## Current Baseline
-
-The current repository baseline is intentionally small:
-
-- Java 21
-- Maven multi-module monorepo
-- Spring Boot 3.5.x service shells
-- Spring Cloud Gateway WebFlux in `api-gateway`
-- Spring Web in non-gateway services
-- Spring Boot Actuator
-- Micrometer Prometheus registry dependency
-- Service-local Dockerfiles
-- Docker Compose local platform orchestration under `infra/docker/`
-- Clean/Hexagonal package scaffold
-- Spec Kit-style feature artifacts
-
-Kafka, Redis, and PostgreSQL are available as local Docker platform containers, but service code
-adapters and business persistence are still planned. Kubernetes manifests, OpenTelemetry tracing,
-Loki, Tempo, Grafana dashboards, and gRPC are not implemented by the current service code. They
-require future approved features before production use.
-
-For local container runtime and the future Kubernetes path, see
-[Container Compose and Kubernetes strategy](../deployment/container-compose-k8s-strategy.md).
+See the [deployment strategy](../deployment/container-compose-k8s-strategy.md) for local/cloud
+ownership and the [current implementation](../current-system-implementation.md) for status.

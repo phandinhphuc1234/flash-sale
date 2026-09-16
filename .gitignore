@@ -30,6 +30,10 @@ load-tests/flashsale-service/results/
 load-tests/flashsale-service/adaptive-*.json
 load-tests/order-service/*.json
 load-tests/order-service/results/
+load-tests/flash-sale-to-order-stress/results/
+load-tests/flash-sale-to-order-stress/shopper-tokens.json
+load-tests/full-stack-smoke/results/
+load-tests/flash-sale-reservation-burst/results/
 
 # IDEs and editors
 .idea/

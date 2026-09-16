@@ -32,8 +32,8 @@ $catalogPath = Join-Path $repoRoot "docs\api\README.md"
 $catalogLines = Get-Content -LiteralPath $catalogPath
 $endpointRows = @($catalogLines | Where-Object { $_ -match '^\| API-\d{3} \|' })
 
-if ($endpointRows.Count -ne 47) {
-    Fail "expected 47 endpoint rows, found $($endpointRows.Count)"
+if ($endpointRows.Count -ne 50) {
+    Fail "expected 50 endpoint rows, found $($endpointRows.Count)"
 }
 
 $endpoints = @($endpointRows | ForEach-Object {
@@ -50,10 +50,10 @@ $endpoints = @($endpointRows | ForEach-Object {
     }
 })
 
-$expectedIds = 1..47 | ForEach-Object { 'API-{0:D3}' -f $_ }
+$expectedIds = 1..50 | ForEach-Object { 'API-{0:D3}' -f $_ }
 $idDifferences = @(Compare-Object -ReferenceObject $expectedIds -DifferenceObject $endpoints.Id)
 if ($idDifferences.Count -ne 0) {
-    Fail "endpoint IDs must be the complete API-001 through API-047 sequence"
+    Fail "endpoint IDs must be the complete API-001 through API-050 sequence"
 }
 
 $duplicateKeys = @($endpoints |
@@ -65,7 +65,7 @@ if ($duplicateKeys.Count -gt 0) {
 
 $expectedBoundaries = @{
     'Gateway-public' = 39
-    'Internal'       = 7
+    'Internal'       = 10
     'Identity trust' = 1
 }
 foreach ($entry in $expectedBoundaries.GetEnumerator()) {
@@ -77,13 +77,13 @@ foreach ($entry in $expectedBoundaries.GetEnumerator()) {
 
 $expectedOwners = [ordered]@{
     'Authentication' = 7
-    'Product'        = 12
+    'Product'        = 13
     'Campaign'       = 8
-    'Inventory'      = 6
+    'Inventory'      = 7
     'Flash Sale'     = 2
     'Order'          = 4
     'Payment'        = 4
-    'Cart'           = 4
+    'Cart'           = 5
     'Notification'   = 0
 }
 foreach ($entry in $expectedOwners.GetEnumerator()) {
@@ -181,4 +181,4 @@ $securityTest = Read-RepositoryFile "services\api-gateway\src\test\java\com\phil
 Assert-Contains $securityTest 'documentationAccess(false)' "Gateway default-deny test"
 Assert-Contains $securityTest 'documentationAccess(true)' "Gateway opt-in test"
 
-Write-Host "API_DOCUMENTATION=PASS (47 supported endpoints; 8 service documents; defaults disabled)"
+Write-Host "API_DOCUMENTATION=PASS (50 supported endpoints; 8 service documents; defaults disabled)"

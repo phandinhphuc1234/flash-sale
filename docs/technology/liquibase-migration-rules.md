@@ -1,6 +1,7 @@
 # Liquibase Migration Rules
 
-Liquibase is the migration standard for service-owned PostgreSQL schemas in this repository. This file defines the rules before any service adds its first real migration.
+Liquibase is the migration standard for service-owned PostgreSQL schemas in this repository. This
+file defines the rules for existing and future migrations.
 
 ## Ownership
 
@@ -47,21 +48,10 @@ The master changelog is the index. Future changesets go under `changes/` and are
 
 ## Current Baseline
 
-Service shells without an approved business schema keep an empty master changelog:
-
-```yaml
-databaseChangeLog: []
-```
-
-That is intentional. No service gets a first table, seed data, Outbox table, or rollback script until
-an approved schema feature needs it. `product-service` now has the first real service-owned changeset:
-
-```text
-changes/001-create-product-catalog-schema.sql
-```
-
-Normal Product replicas still keep Liquibase disabled; local Compose and future Kubernetes run the
-same changelog through a one-off migration process.
+Authentication, Product, Cart, Campaign, Flash Sale, Inventory, Order, and Payment own approved
+business changelogs. Notification remains a scaffold with no business schema. Normal application
+replicas keep Liquibase disabled; local Compose and Kubernetes migration Jobs run the same
+service-owned changelog through a one-off non-web process.
 
 ## Future Changeset Rules
 
@@ -78,7 +68,7 @@ same changelog through a one-off migration process.
 
 ## Hibernate Rule
 
-When a future service adds JPA, Hibernate must validate the schema instead of changing it:
+When a service uses JPA, Hibernate must validate the schema instead of changing it:
 
 ```yaml
 spring:

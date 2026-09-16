@@ -50,3 +50,14 @@
 `T001–T005` → `T006–T010` → `T011–T012` → `T013–T015` → `T016–T018`.
 
 Cloud execution is optional and must occur only after local evidence and explicit operator choice.
+
+## Phase 8: Named Flash Sale to Order test tooling (user-approved 2026-09-15)
+
+- [x] T019 Record FR-011–FR-014 scope and design in `spec.md`, `plan.md` and `contracts/capacity-runner.md`.
+- [x] T020 Add response/metric regression tests in `load-tests/flash-sale-to-order-stress/tests/contracts.test.mjs` before implementing `contracts.mjs`.
+- [x] T021 Implement `load-tests/flash-sale-to-order-stress/flash-sale-to-order-stress.js` and `infra/scripts/load/run-flash-sale-to-order-stress.ps1` for the three isolated scenarios and bounded stages.
+- [x] T022 Verify tooling with `load-tests/flash-sale-to-order-stress/tests/runner.test.mjs`, Node tests, k6 mock execution and PowerShell parser/dry-run gates; record evidence in `validation.md`.
+- [x] T023 Write Vietnamese operator instructions and truthful metric definitions in `load-tests/flash-sale-to-order-stress/README.md`; link from `quickstart.md` and `load-tests/README.md`.
+
+Dependency: T019 → T020 → T021 → T022–T023. Live benchmark is an explicit later checkpoint;
+completing these tooling tasks does not assert application throughput or a passing live pipeline.

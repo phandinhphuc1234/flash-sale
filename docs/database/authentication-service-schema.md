@@ -131,7 +131,7 @@ SPRING_LIQUIBASE_ENABLED=false
 ```
 
 Run Liquibase once as a service-owned migration process before starting replicas. The local
-procedure is documented in `infra/docker/README.md`; future Kubernetes deployment should use an
+procedure is documented in `infra/docker/README.md`; Kubernetes deployment uses an
 authentication-specific migration Job before rolling out the Deployment.
 
 Never edit an applied changeset. Add a new numbered changeset for every future schema change and

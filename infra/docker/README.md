@@ -31,8 +31,8 @@ Use:
 - `compose.dev.yml` when you want direct host ports for non-gateway services during debugging.
 - Compose profiles for optional application services.
 
-Do not add `compose.prod.yml` for this repository. Production/staging deployment should be modeled
-by future Kubernetes resources under `infra/k8s/`.
+Do not add `compose.prod.yml` for this repository. The cloud environment is modeled by the existing
+Kustomize resources under `infra/k8s/`.
 
 The baseline also provides a local Confluent Schema Registry at `http://localhost:8081`. It stores
 schemas in Kafka's compacted `_schemas` topic and is intentionally not required by application
@@ -212,7 +212,7 @@ jdbc:postgresql://postgres:5432/product_db
 ```
 
 Normal Product replicas keep `SPRING_LIQUIBASE_ENABLED=false`. Apply Product migrations explicitly
-with a one-off non-web Product process; this mirrors the future Kubernetes migration Job model.
+with a one-off non-web Product process; this mirrors the Kubernetes migration Job model.
 
 Start PostgreSQL:
 
@@ -353,8 +353,7 @@ docker compose --env-file infra/docker/.env -f infra/docker/compose.yml -f infra
 ## Current limitations
 
 - Application containers set `SPRING_LIQUIBASE_ENABLED=false` because schema changes run as explicit
-  one-off processes. `authentication-service`, `product-service`, and `inventory-service` have
-  service-owned migrations; the remaining service shells still have empty changelogs until approved
-  schema features.
+  one-off processes. Every stateful implemented business service owns its Liquibase changelog; the
+  Notification scaffold has no business schema.
 - PostgreSQL bootstrap creates logical local databases only; service-owned business migrations
   remain under `services/<service>/src/main/resources/db/changelog/`.

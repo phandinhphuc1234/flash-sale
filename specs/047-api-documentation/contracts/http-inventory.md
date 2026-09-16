@@ -3,6 +3,10 @@
 This feature documents existing supported behavior; it does not authorize a method, path, body,
 status, header, or security change. One endpoint is one unique `HTTP method + normalized path` pair.
 
+The inventory is maintained as a living documentation contract. It was synchronized after Feature
+049 to include the already-approved Product quote, Cart snapshot, and Inventory regular-hold
+internal endpoints; this synchronization does not create those APIs.
+
 ## Counting rules
 
 - Included: supported business HTTP endpoints, approved internal service contracts, Stripe webhook,
@@ -65,6 +69,9 @@ status, header, or security change. One endpoint is one unique `HTTP method + no
 | API-045 | Product | Internal | POST | `/internal/v1/catalog/variants/display-details` | Cart service subject/scope | Batch-read current Product display details for Cart |
 | API-046 | Order | Gateway-public | POST | `/api/v1/orders/cart-checkouts` | Authenticated shopper, idempotency key | Validate and accept one immutable Cart snapshot as one regular Order |
 | API-047 | Order | Gateway-public | POST | `/api/v1/orders/buy-now` | Authenticated shopper, idempotency key | Accept one sellable normal variant without changing Cart |
+| API-048 | Product | Internal | POST | `/internal/v1/catalog/variants/purchase-quotes` | Order service subject/scope | Batch-read authoritative normal purchase price and sellability decisions |
+| API-049 | Cart | Internal | POST | `/internal/v1/cart-checkout-snapshots` | Order service subject/scope | Read an owned immutable Cart version/item snapshot for checkout validation |
+| API-050 | Inventory | Internal | POST | `/internal/v1/regular-stock-holds` | Order service subject/scope | Atomically create or replay an all-or-nothing regular stock hold |
 
 ## Totals by owner
 
@@ -72,17 +79,17 @@ status, header, or security change. One endpoint is one unique `HTTP method + no
 |---|---:|---:|---:|---:|
 | API Gateway | 0 | 0 | 0 | 0 (routing/edge owner only) |
 | Authentication | 5 | 1 | 1 | 7 |
-| Product | 10 | 2 | 0 | 12 |
+| Product | 10 | 3 | 0 | 13 |
 | Campaign | 7 | 1 | 0 | 8 |
-| Inventory | 3 | 3 | 0 | 6 |
+| Inventory | 3 | 4 | 0 | 7 |
 | Flash Sale | 2 | 0 | 0 | 2 |
-| Order | 2 | 0 | 0 | 2 |
+| Order | 4 | 0 | 0 | 4 |
 | Payment | 4 | 0 | 0 | 4 |
-| Cart | 4 | 0 | 0 | 4 |
+| Cart | 4 | 1 | 0 | 5 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **39** | **7** | **1** | **47** |
+| **Total** | **39** | **10** | **1** | **50** |
 
-## Documentation endpoints (excluded from the 45)
+## Documentation endpoints (excluded from the 50)
 
 When explicitly enabled, each documented service owns:
 

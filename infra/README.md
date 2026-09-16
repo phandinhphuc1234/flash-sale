@@ -1,52 +1,58 @@
 # Shared Infrastructure
 
-`infra/` is the root ownership boundary for repository-wide platform and environment assets. The
-repository now includes a local Docker Compose baseline under `infra/docker/`. Kubernetes, Helm,
-and monitoring server infrastructure remain planned future work.
-
-## Directory responsibilities
-
-| Directory | Owns | Does not own |
-|-----------|------|--------------|
-| `docker/` | Shared local backing-service orchestration and bootstrap assets, including Kafka and Schema Registry | Service runtime configuration or business-schema migrations |
-| `k8s/` | First-party Kubernetes bases and environment overlays | Application code or a second service-discovery registry |
-| `helm/` | Approved charts and third-party values | Resources already independently owned by Kustomize |
-| `monitoring/` | Prometheus scrape infrastructure, Grafana resources, and alert rules | Service-side Actuator dependencies or endpoint configuration |
-
-Service-owned source, dependencies, `application*.yml`, tests, and database migrations remain under
-`services/<service>/`. A service-specific image build recipe may stay with its service when needed
-for independent image builds.
-
-Infrastructure can provision isolated databases and shared platform components, but it must not
-centralize business schemas or enable cross-service database access. The local PostgreSQL bootstrap
-under `infra/docker/postgres/init/` creates logical developer databases only; business migrations
-remain service-owned.
-
-See [ADR 0001](../docs/adr/0001-root-infrastructure-ownership.md) for the governing decision.
+`infra/` owns repository-wide platform and environment assets. Application source, runtime business
+configuration, tests, and database changelogs remain with each service.
 
 ## Supported environments
 
-The project intentionally has only two deployment environments:
+The project intentionally models two environments:
 
-- `local`: Docker Compose under `infra/docker/`.
-- `cloud`: AWS EKS/Kustomize under `infra/k8s/overlays/cloud/`, reconciled by Argo CD in the later
-  GitOps phases.
+- **local** — Docker Compose for development, integration tests, and direct debugging;
+- **cloud** — AWS EKS desired state reconciled from Git by Argo CD.
 
-`dev-pilot` is historical Product-pilot evidence, not a third environment. See
-[ENVIRONMENTS.md](ENVIRONMENTS.md) and validate the contract with
-`infra/scripts/gitops/phase13-environment-contract.ps1`.
+There is no separate production environment. `dev-pilot` is historical Product pilot evidence, not
+a third environment. The EKS cluster is currently absent after cost-control cleanup.
 
-## Prometheus boundary
+## Directory ownership
 
-Each Spring Boot 3.x service exposes `/actuator/prometheus` through Actuator auto-configuration, a
-runtime `micrometer-registry-prometheus` dependency, and declarative YAML. That service-side setup
-stays with the service. Future Prometheus deployment and scrape configuration belongs in
-`monitoring/`.
+| Directory | Owns | Guide |
+|---|---|---|
+| `docker/` | Local PostgreSQL, Redis, Kafka, Schema Registry, optional tools, and app orchestration | [Docker](docker/README.md) |
+| `terraform/` | AWS VPC, EKS, ECR, EBS CSI, optional ACM certificate | [Terraform](terraform/README.md) |
+| `k8s/` | Kustomize bases/overlays, explicit migration Jobs, Argo applications | [Kubernetes](k8s/README.md) |
+| `monitoring/` | Prometheus rules/scrape config and Grafana seckill dashboard | [Monitoring](monitoring/README.md) |
+| `scripts/gitops/` | Guarded manual validation/apply/recovery helpers | [GitOps scripts](scripts/gitops/README.md) |
+| `helm/` | Reserved approved chart ownership without duplicating Kustomize | [Helm](helm/README.md) |
 
-## Validation for future changes
+## Ownership constraints
 
-- Record new production dependencies and infrastructure choices in the active feature plan.
-- Document exact files and validation commands in `tasks.md`.
-- Validate Docker Compose changes with `docker compose ... config`.
-- Run `kubectl apply --dry-run=client -k <overlay>` for each changed Kubernetes overlay.
-- Add an ADR for an architectural boundary or ownership exception.
+- Service-specific Dockerfiles stay under `services/<service>/Dockerfile`.
+- Shared orchestration can create logical databases, but business migrations stay service-owned.
+- Platform resources must not grant one service access to another service's schema.
+- Kubernetes Service/DNS is discovery; Eureka must not be introduced.
+- Secrets originate from ignored operator inputs or a secret manager, never committed YAML.
+- Public exposure is limited to the reviewed TLS Gateway edge; backing services remain private.
+
+## Delivery model
+
+```text
+Terraform creates AWS foundation
+Kustomize describes cluster desired state
+GitHub Actions publishes immutable ECR images and proposes tag changes
+Argo CD reconciles reviewed develop state
+```
+
+Database migration and Kafka/schema provisioning are explicit gates before application promotion.
+An Argo `Synced/Healthy` state proves reconciliation health, not end-to-end business correctness;
+run the matching smoke/recovery tests afterward.
+
+## Validation
+
+```powershell
+docker compose --env-file infra/docker/.env.example -f infra/docker/compose.yml config
+kubectl apply --dry-run=client -k infra/k8s/overlays/cloud
+pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase23-terraform-gate.ps1 -AutoDetectPublicIp
+```
+
+The Terraform helper is read-only. Live `apply`, migration, Secret, Kafka, and Argo operations require
+their explicit reviewed flags and prerequisites.

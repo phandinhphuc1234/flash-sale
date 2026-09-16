@@ -2,6 +2,9 @@
 
 This directory is the Git-owned desired state for the internal Phase 25 monitoring stack.
 
+> The EKS cluster is currently absent after cost-control cleanup. The manifests and historical Phase 25
+> evidence remain available, but no live Prometheus/Grafana instance is implied.
+
 ```text
 9 Spring Boot Services --/actuator/prometheus--> Prometheus --> Grafana
                                                       |
