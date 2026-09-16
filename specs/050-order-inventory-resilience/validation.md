@@ -106,7 +106,7 @@ authorization headers, business identifiers, and raw request bodies must not be 
   `kafka-avro-contracts` compilation passed and no unrelated failure was observed.
 - Exit status: `1` (expected red phase)
 - Completed: 2026-09-16
-- CI/PR: branch `codex/order-inventory-resilience-us1`; review PR pending.
+- CI/PR: [PR #135](https://github.com/phandinhphuc1234/flash-sale/pull/135).
 
 ## T010–T012 — User Story 1 outage containment
 
@@ -143,4 +143,4 @@ authorization headers, business identifiers, and raw request bodies must not be 
   `PRODUCT_VALIDATED`, retained the same request/hold/Order identities, created no hold, Order,
   Payment intent, or completed acceptance, made zero Inventory calls, and remained recoverable.
 - Completed: 2026-09-16
-- CI/PR: branch `codex/order-inventory-resilience-us1`; review PR pending.
+- CI/PR: [PR #135](https://github.com/phandinhphuc1234/flash-sale/pull/135).
