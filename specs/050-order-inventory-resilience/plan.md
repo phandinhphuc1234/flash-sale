@@ -4,7 +4,7 @@
 
 **Input**: Approved feature specification from `specs/050-order-inventory-resilience/spec.md`
 
-**Status**: Draft for owner review. This plan creates no production code and does not authorize implementation until it is approved and `tasks.md` is generated.
+**Status**: Approved for task generation — project owner approved this plan on 2026-09-16. Production implementation remains gated by the approved dependency-ordered `tasks.md`.
 
 ## Summary
 
@@ -163,7 +163,7 @@ specs/050-order-inventory-resilience/
     └── requirements.md
 ```
 
-`tasks.md` is intentionally absent until this plan is approved and `/speckit-tasks` is run.
+`tasks.md` was generated after plan approval and owns dependency-ordered implementation execution.
 
 ### Source Code (planned)
 

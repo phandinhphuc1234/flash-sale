@@ -22,8 +22,8 @@ Review, in order:
 4. [contracts/order-inventory-resilience-policy.md](contracts/order-inventory-resilience-policy.md)
    — unchanged HTTP boundary plus failure/admission semantics.
 
-After the project owner approves the plan, run the Spec Kit task-generation workflow. Do not change
-production code before that approval and an approved `tasks.md`.
+The project owner approved the plan on 2026-09-16 and the Spec Kit task-generation workflow produced
+`tasks.md`. Production work must follow one unchecked task or one coherent task group from that file.
 
 ## 3. Planned implementation checks
 
