@@ -79,10 +79,16 @@ not remove every healthy Order pod merely because Inventory is unavailable.
 ## Decision 6 — Conservative initial tuning
 
 **Decision**: Start with the defaults documented in `plan.md`, expose every threshold through
-validated configuration, and tune only from controlled evidence.
+validated configuration, keep permit wait fixed at zero, and tune concurrency only from controlled
+evidence.
 
 **Why**: A tiny window opens on noise; an oversized window reacts too slowly. A zero-wait bulkhead
 prevents a second local queue, while a small probe count limits pressure during recovery.
+
+The initial concurrency limit is 16 per Order replica. The available 100 RPS Flash Sale result and
+the 32-thread Inventory correctness fixture bracket a useful starting range, but neither is a direct
+regular-purchase dependency benchmark. Sixteen therefore provides headroom over the observed local
+healthy-path concurrency without adopting the test-only 32-thread ceiling as a production default.
 
 ## Dependency compatibility evidence
 

@@ -200,7 +200,8 @@ remains healthy, and metrics/logs distinguish saturation from remote failure.
   failures, open-state rejections, concurrency rejections, and recovery transitions using bounded,
   sanitized signals.
 - **FR-015**: All isolation and concurrency thresholds MUST be externally configurable, validated
-  at startup, and documented with conservative defaults.
+  at startup, and documented with conservative defaults. Zero-wait bulkhead admission is a fixed
+  fail-fast invariant rather than a tunable threshold.
 - **FR-016**: Existing public HTTP, internal HTTP payloads, error codes, Kafka contracts, database
   schemas, Payment behavior, and Flash Sale behavior MUST remain backward compatible.
 
@@ -284,3 +285,5 @@ remains healthy, and metrics/logs distinguish saturation from remote failure.
 - 2026-09-16 — Minimal Order-to-Inventory resilience direction selected after repository review.
 - 2026-09-16 — Project owner requested commit/merge of prior work and authorized Spec Kit planning.
 - 2026-09-16 — Project owner approved `plan.md` and authorized dependency-ordered task generation.
+- 2026-09-16 — Project owner fixed bulkhead admission wait at `0ms` and approved a configurable
+  `16`-call initial concurrency limit after reviewing the available load/concurrency evidence.

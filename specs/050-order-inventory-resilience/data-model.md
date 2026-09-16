@@ -19,8 +19,7 @@ The following is configuration/state, not domain data.
 | `waitDurationInOpenState` | duration | 10s | positive |
 | `permittedCallsInHalfOpenState` | integer | 2 | at least 1 |
 | `automaticTransition` | boolean | false | fixed default, externally configurable |
-| `maxConcurrentCalls` | integer | 8 | at least 1 |
-| `maxWaitDuration` | duration | 0ms | non-negative; first release defaults to zero |
+| `maxConcurrentCalls` | integer | 16 | at least 1; tune only from direct dependency evidence |
 
 Suggested environment mappings:
 
@@ -31,7 +30,9 @@ Suggested environment mappings:
 - `ORDER_INVENTORY_RESILIENCE_HALF_OPEN_CALLS`
 - `ORDER_INVENTORY_RESILIENCE_AUTOMATIC_TRANSITION`
 - `ORDER_INVENTORY_RESILIENCE_MAX_CONCURRENT_CALLS`
-- `ORDER_INVENTORY_RESILIENCE_MAX_WAIT`
+
+Bulkhead permit wait is not part of the configurable policy model. It is fixed at `0ms` so excess
+calls are rejected immediately as required by FR-007.
 
 ### Circuit state
 

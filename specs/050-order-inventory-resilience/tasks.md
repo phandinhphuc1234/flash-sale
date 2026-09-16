@@ -15,6 +15,9 @@ is added.
 **Organization**: Tasks are grouped by user story. Work proceeds one task or one coherent task group
 at a time, and every completed task records its validation evidence in `validation.md`.
 
+**Status**: Approved for implementation by the project owner on 2026-09-16. This execution is
+bounded to T001–T007.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel because it touches a different file and has no dependency on another
@@ -26,8 +29,8 @@ at a time, and every completed task records its validation evidence in `validati
 
 **Purpose**: Introduce only the approved service-local dependency and create the evidence ledger.
 
-- [ ] T001 Add the managed `io.github.resilience4j:resilience4j-spring-boot3` dependency only to `services/order-service/pom.xml`, run the Order-scoped Maven dependency tree, and stop for a plan update if the effective version is incompatible with the current Spring Boot/Spring Cloud baseline.
-- [ ] T002 [P] Create the Feature 050 validation ledger with command, scope, result, exit status, and CI/PR placeholders in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T001 Add the managed `io.github.resilience4j:resilience4j-spring-boot3` dependency only to `services/order-service/pom.xml`, run the Order-scoped Maven dependency tree, and stop for a plan update if the effective version is incompatible with the current Spring Boot/Spring Cloud baseline.
+- [x] T002 [P] Create the Feature 050 validation ledger with command, scope, result, exit status, and CI/PR placeholders in `specs/050-order-inventory-resilience/validation.md`.
 
 **Checkpoint**: The dependency is bounded to Order Service and its effective version is known before
 any resilience behavior is implemented.
@@ -41,11 +44,11 @@ by all three user stories.
 
 **⚠️ CRITICAL**: No user-story implementation begins until this phase passes.
 
-- [ ] T003 [P] Write configuration-binding and invalid-value tests for all approved defaults and invariants in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfigurationTests.java`, and record the expected pre-implementation failure in `specs/050-order-inventory-resilience/validation.md`.
-- [ ] T004 Implement immutable startup-validated policy binding for sliding window, minimum calls, failure threshold, open wait, half-open probes, automatic transition, max concurrent calls, and zero-wait admission in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceProperties.java`.
-- [ ] T005 [P] Add the approved environment-overridable defaults without changing the existing 300 ms connect timeout, 800 ms read timeout, or Feign retry policy in `services/order-service/src/main/resources/application.yml`.
-- [ ] T006 Construct named managed `CircuitBreaker` and semaphore `Bulkhead` instances, keep breaker health contribution disabled, and expose only infrastructure-layer beans in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfiguration.java`.
-- [ ] T007 Run `OrderInventoryResilienceConfigurationTests` with the Maven wrapper and record the command, effective properties, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T003 [P] Write configuration-binding and invalid-value tests for all approved defaults and invariants, including fixed zero-wait admission, in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfigurationTests.java`, and record the expected pre-implementation failure in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T004 Implement immutable startup-validated policy binding for sliding window, minimum calls, failure threshold, open wait, half-open probes, automatic transition, max concurrent calls, and zero-wait admission in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceProperties.java`.
+- [x] T005 [P] Add the approved environment-overridable threshold defaults, keep zero-wait admission fixed in code, and do not change the existing 300 ms connect timeout, 800 ms read timeout, or Feign retry policy in `services/order-service/src/main/resources/application.yml`.
+- [x] T006 Construct named managed `CircuitBreaker` and semaphore `Bulkhead` instances, keep breaker health contribution disabled, and expose only infrastructure-layer beans in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfiguration.java`.
+- [x] T007 Run `OrderInventoryResilienceConfigurationTests` with the Maven wrapper and record the command, effective properties, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
 
 **Checkpoint**: Invalid policy fails startup, valid defaults construct managed instances, readiness is
 not coupled to Inventory, and no application/domain class imports Resilience4j.

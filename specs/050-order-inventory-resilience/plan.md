@@ -120,13 +120,22 @@ Initial defaults, subject to deterministic test evidence:
 | Open-state wait | 10 seconds | Short bounded recovery interval for the internal service |
 | Half-open permitted calls | 2 | Bounded recovery probes |
 | Automatic open-to-half-open transition | false | Avoids a dedicated transition thread; the next call probes |
-| Bulkhead max concurrent calls | 8 | Bounded caller pressure; validate against pool/load evidence |
-| Bulkhead max wait | 0 | Fail fast instead of creating another queue |
+| Bulkhead max concurrent calls | 16 | One-pod/one-CPU conservative start: above the measured healthy-path concurrency estimate, below the 32-thread test-only fixture |
+| Bulkhead max wait | 0 (fixed) | Fail fast instead of creating another queue; not environment-overridable |
 | Health indicator | false | Inventory failure must not make Order unready |
 
-All values bind under `order.regular-purchase.inventory-resilience`, are validated at startup, and
-are overridable through environment variables. Invalid values fail startup rather than silently
-disabling protection.
+Threshold values bind under `order.regular-purchase.inventory-resilience`, are validated at startup,
+and are overridable through environment variables. Zero-wait admission is fixed in the managed
+Bulkhead configuration because allowing a positive wait would contradict FR-007. Invalid values
+fail startup rather than silently disabling protection.
+
+The `16`-call default is an evidence-bounded starting point, not a capacity claim. Feature 046
+measured the local Flash Sale path at 100 RPS with p95 `54.563 ms` and no errors/drops, which implies
+roughly 5.5 in-flight requests at that measured end-to-end latency but does not isolate this regular
+Inventory call. Feature 049 also passed 100 concurrent duplicate Inventory holds with a 32-thread,
+32-connection test fixture, but recorded correctness rather than latency. With one Order pod limited
+to one CPU and an 800 ms Inventory read timeout, 16 leaves healthy-path headroom while limiting the
+first-wave pressure during a slowdown. Tune it only after a dedicated Order-to-Inventory measurement.
 
 ### D4 — Metrics and logs stay bounded
 
