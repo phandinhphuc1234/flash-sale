@@ -190,4 +190,4 @@ authorization headers, business identifiers, and raw request bodies must not be 
 - Combined result: PASS — 17 Feature 050 foundation, outage-containment, durable-checkpoint, and
   recovery tests executed with 0 failures, 0 errors, and 0 skipped; exit status `0`.
 - Completed: 2026-09-16
-- CI/PR: branch `codex/order-inventory-resilience-recovery`; review PR pending.
+- CI/PR: [PR #136](https://github.com/phandinhphuc1234/flash-sale/pull/136).
