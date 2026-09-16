@@ -26,6 +26,7 @@ param(
   [ValidateRange(5, 60)]
   [int]$CampaignDurationMinutes = 5,
   [switch]$FixtureOnly,
+  [switch]$LocalOnly,
   [switch]$AllowPaymentEnabled,
   [switch]$RunStripeCloudSmoke,
   [string]$StripeGatewayBaseUri = "https://api.flashsale123.tech"
@@ -415,6 +416,17 @@ function Assert-LocalPortAvailable {
 }
 
 function Start-GatewayPortForward {
+  if ($LocalOnly) {
+    $baseUri = "http://127.0.0.1:18080"
+    do {
+      try {
+        $probe = Invoke-WebRequest -Uri "$baseUri/actuator/health/readiness" -TimeoutSec 5 -SkipHttpErrorCheck
+        if ($probe.StatusCode -eq 200) { return $baseUri }
+      } catch { }
+      Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $RunDeadline)
+    throw "Local Gateway readiness did not become HTTP 200 before timeout."
+  }
   Assert-LocalPortAvailable $LocalPort
   $base = Join-Path ([IO.Path]::GetTempPath()) ("phase22-gateway-{0}" -f ([guid]::NewGuid().ToString("N")))
   $script:PortForwardOut = "$base.out.log"
@@ -458,6 +470,10 @@ function Stop-GatewayPortForward {
 }
 
 function Assert-Preflight {
+  if ($LocalOnly) {
+    Write-Output "Phase 22 local preflight: EKS/Argo checks skipped; Gateway=127.0.0.1:18080"
+    return
+  }
   $context = Get-NativeText -Command "kubectl" -Arguments @("config", "current-context") -Description "kubectl context"
   if ($context -notmatch "(^|[:/])cluster/$([regex]::Escape($ExpectedClusterName))$") {
     throw "kubectl context does not identify '$ExpectedClusterName'."

@@ -68,3 +68,11 @@ pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase26-seckill-capacity.ps
 
 The runner does not replace the existing `run-ladder.ps1`; use that profile for burst/concurrency
 comparison when desired.
+
+## 5. New: Flash Sale → Kafka → Order benchmark
+
+Use [`flash-sale-to-order-stress/README.md`](../../load-tests/flash-sale-to-order-stress/README.md)
+for the independent Order-observing runner, three scenarios, credential/fixture preparation,
+offline tooling tests, bounded execution and metric limitations. Its results are separate from
+this historical reservation-only benchmark. Do not reuse old shopper identities or claim live
+Order throughput from the tooling's synthetic Gateway tests.

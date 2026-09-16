@@ -7,8 +7,9 @@ and Saga ordering. It reconciles the Saga and end-to-end architecture guides; it
 candidate contracts by itself.
 
 Approved contract scope now includes the two Campaign lifecycle records plus the Purchase, Payment,
-and Order records owned by Features 019, 020, 021, and 044. Feature 044 adds five approved main
-topics, three consumer DLTs, and the reservation-confirmation/late-review message boundaries.
+Order, regular Inventory hold, and Cart reconciliation records owned through Feature 049. Feature
+044 added five main topics and the flash-sale Purchase Saga; Feature 049 added three main topics and
+extended compatible Order lifecycle records for normal checkout.
 Product, Campaign end/cancellation, and Inventory candidate families remain unapproved. A
 candidate still requires its owning feature to approve Avro schema, producer, consumers, key,
 authorization, retention, retry/DLT, rollout, and recovery before implementation or provisioning.
@@ -23,10 +24,10 @@ The corrected full-system target is:
 
 | Item | Count |
 |---|---:|
-| Main business topics | 11 |
-| Event types | 23 |
-| Command types | 7 |
-| Total business message types | 30 |
+| Main business topics | 14 |
+| Event types | 26 |
+| Command types | 10 |
+| Total business message types | 36 |
 
 The count excludes Kafka internal topics, Schema Registry's `_schemas`, retry topics, and DLTs.
 Those are operational artifacts rather than business message types.
@@ -55,6 +56,9 @@ and Inventory reconciliation topics are not part of this feature's acceptance.
 | 9 | `flashsale.order.events.v1` | Approved Features 020/044 | Order -> future notification, analytics, audit, and optional projections | `OrderCreated.v1`, `OrderConfirmed.v1`, `OrderCancelled.v1`, `OrderExpired.v1`, `OrderPaymentReviewRequired.v1` | `orderId` |
 | 10 | `flashsale.inventory.commands.v1` | Candidate | Campaign -> Inventory | `ReconcileCampaignStock.v1`, `ReleaseCampaignAllocation.v1` | `campaignId` |
 | 11 | `flashsale.inventory.events.v1` | Candidate | Inventory -> Campaign | `CampaignStockReconciled.v1`, `CampaignStockReconciliationFailed.v1`, `CampaignAllocationReleased.v1` | `campaignId` |
+| 12 | `flashsale.inventory.regular-hold.commands.v1` | Approved Feature 049 | Order -> Inventory | `ConfirmRegularStockHold.v1`, `ReleaseRegularStockHold.v1` | `orderId` |
+| 13 | `flashsale.inventory.regular-hold.events.v1` | Approved Feature 049 | Inventory -> Order | `RegularStockHoldConfirmed.v1`, `RegularStockHoldReleased.v1`, `RegularStockHoldExpired.v1` | `orderId` |
+| 14 | `flashsale.cart.checkout.commands.v1` | Approved Feature 049 | Order -> Cart | `ReconcilePurchasedCartSnapshot.v1` | `orderId` |
 
 `PurchaseAccepted.v1` is keyed by `purchaseRequestId` because the Order does not exist yet. After
 Order creation, Order-owned commands and results use `orderId` and retain `purchaseRequestId` plus
@@ -71,9 +75,11 @@ the Saga/correlation ID as metadata. This identity transition must be explicit i
 | Payment | 2 | 1 | 3 |
 | Order | 5 | 0 | 5 |
 | Inventory | 3 | 2 | 5 |
-| **Total** | **23** | **7** | **30** |
+| Regular Inventory hold | 3 | 2 | 5 |
+| Cart reconciliation | 0 | 1 | 1 |
+| **Total** | **26** | **10** | **36** |
 
-### Feature 044 operational DLT ownership
+### Implemented consumer DLT ownership
 
 | DLT | Producer | Poison source records |
 |---|---|---|
@@ -81,11 +87,15 @@ the Saga/correlation ID as metadata. This identity transition must be explicit i
 | `flashsale.flash-sale.purchase-command.dlt.v1` | Flash Sale consumer recovery | `ConfirmPurchaseReservationV1`, `ReleasePurchaseReservationV1` |
 | `flashsale.order.purchase-reservation-result.dlt.v1` | Order consumer recovery | `PurchaseReservationConfirmedV1`, `PurchaseReservationReleasedV1` |
 | `flashsale.order.purchase-accepted.dlt.v1` | Order consumer recovery | `PurchaseAcceptedV1`, `PurchaseReservationConfirmedV1`, `PurchaseReservationReleasedV1` |
+| `flashsale.inventory.regular-hold-command.dlt.v1` | Inventory consumer recovery | `ConfirmRegularStockHoldV1`, `ReleaseRegularStockHoldV1` |
+| `flashsale.order.regular-hold-result.dlt.v1` | Order consumer recovery | `RegularStockHoldConfirmedV1`, `RegularStockHoldReleasedV1`, `RegularStockHoldExpiredV1` |
+| `flashsale.cart.checkout-reconciliation.dlt.v1` | Cart consumer recovery | `ReconcilePurchasedCartSnapshotV1` |
 
-DLTs are operational evidence, not business failure facts. With `TopicRecordNameStrategy`, the eight
-new main record subjects plus nine DLT topic/record bindings produce 17 Registry subjects. The
-cross-boundary bindings are required only because the source topic is shared; they do not introduce
-new business events.
+DLTs are operational evidence, not business failure facts. Feature 044's eight new main record
+subjects plus nine DLT topic/record bindings produced 17 Registry subjects with
+`TopicRecordNameStrategy`. Feature 049 adds its own regular-hold and Cart bindings through the same
+controlled compatibility process. Cross-boundary bindings are required when a source topic carries
+multiple record types; they do not introduce new business events.
 
 ## 4. Correct purchase Saga
 
@@ -124,6 +134,35 @@ higher-version verified success after unpaid terminal Order
 `PaymentFailed` represents an approved failed payment-attempt outcome. A transient timeout or
 ambiguous provider response is retried/reconciled by Payment and must not be mislabeled as a final
 business failure.
+
+### Regular Buy Now / Cart checkout extension
+
+Normal purchase intake obtains Cart/Product decisions and creates the initial Inventory hold over
+internal HTTP because the shopper needs an immediate all-or-nothing answer. Kafka then owns the
+post-payment finalization:
+
+```text
+Order -> PaymentRequested
+Payment -> PaymentSucceeded / PaymentFailed
+
+PaymentSucceeded
+  -> Order sends ConfirmRegularStockHold
+  -> Inventory commits confirmation + outbox
+  -> RegularStockHoldConfirmed
+  -> Order becomes CONFIRMED and emits OrderConfirmedV2
+  -> for Cart only: ReconcilePurchasedCartSnapshot
+  -> Cart removes only unchanged purchased lines
+
+terminal PaymentFailed or deadline
+  -> Order sends ReleaseRegularStockHold
+  -> Inventory commits release + outbox
+  -> RegularStockHoldReleased (or expiry worker emits RegularStockHoldExpired)
+  -> Order becomes CANCELLED or EXPIRED
+```
+
+The HTTP hold create and Kafka terminal commands share the same `purchaseRequestId`, `orderId`, and
+hold identity. A timeout is resumed with those identities; it is not treated as proof that no hold
+exists.
 
 ## 5. Correct Campaign preparation and activation
 
@@ -221,9 +260,16 @@ Implemented and locally verified in Feature 044
   -> Order confirmed/cancelled/expired/review-required facts
   -> three consumer-specific DLTs
 
-The aggregate local gate (`FEATURE_044_LOCAL_GATE=PASS`) is the release boundary for this catalog.
-Cloud provisioning and image promotion are separate sequential gates; they do not make candidate
-Campaign or Inventory topics implicitly approved.
+Implemented and locally verified in Feature 049
+  -> regular Inventory hold confirm/release commands and confirmed/released/expired facts
+  -> versioned Order lifecycle records carrying purchase-channel/hold context
+  -> Cart snapshot reconciliation command and idempotent consumer
+  -> three additional consumer-specific DLT boundaries
+
+The Feature 044 and Feature 049 validation ledgers are the release evidence for their respective
+contracts. Cloud provisioning and image promotion are separate sequential gates; they do not make
+candidate Campaign or Inventory topics implicitly approved. Feature 049 cloud gates remain pending
+while the EKS cluster is absent.
 
 Still candidate
   -> Product lifecycle messages

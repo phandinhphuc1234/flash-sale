@@ -14,8 +14,8 @@ The Feature 017 baseline and approved Avro amendment govern Campaign:
 - no Campaign cancellation or ended event in that MVP.
 
 The approved Feature 017 amendment selects Avro SpecificRecords through Confluent Schema Registry
-for the two lifecycle events. The protocol module is implemented; live publisher/Registry smoke
-evidence remains tracked by later runtime tasks.
+for the two lifecycle events. The protocol module, outbox publisher, consumer, and recovery path are
+implemented; dated local/cloud evidence remains in the owning feature validation ledgers.
 
 Feature 044 now governs the implemented Order-owned Purchase Saga: its contracts, deadline margin,
 terminal mappings, replay rules, late-success correction, and local aggregate gate are approved in
@@ -109,7 +109,7 @@ Campaign scheduler
 The scheduler is only a driving adapter. The application/domain rules decide whether activation is
 allowed. Duplicate activation delivery must not recreate the projection or reset quota.
 
-## 5. Purchase acceptance — proposed future feature
+## 5. Purchase acceptance — implemented Flash Sale boundary
 
 ### 5.1 Hot-path reservation
 
@@ -131,7 +131,7 @@ it is not the durable business source of truth.
 
 ### 5.2 Durable acceptance boundary
 
-PostgreSQL remains authoritative. Flash Sale therefore needs a service-owned durable acceptance
+PostgreSQL remains authoritative. Flash Sale therefore uses a service-owned durable acceptance
 record and PostgreSQL outbox:
 
 ```text
@@ -145,7 +145,7 @@ Redis Lua + Stream entry
   -> PostgreSQL outbox relay publishes PurchaseAccepted to Kafka
 ```
 
-The request should return `202 Accepted` only after the durable acceptance record exists. If the
+The request returns `202 Accepted` only after the durable acceptance record exists. If the
 process crashes after Lua but before PostgreSQL commit, the Stream relay invokes the same idempotent
 persistence use case. If PostgreSQL committed but Stream acknowledgement was lost, redelivery is
 harmless.

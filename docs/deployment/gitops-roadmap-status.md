@@ -1,42 +1,50 @@
 # GitOps Roadmap Status
 
-This document is the canonical roadmap for the project's local-plus-cloud deployment model.
-The repository has no separate staging or production environment; `flash-sale-dev` on AWS EKS is
-the only cloud release-verification environment. No phase below authorizes production infrastructure
-or public exposure by itself.
+This ledger separates repository capability, historical cloud evidence, and current live state. The
+project has local and one AWS cloud development environment only; there is no separate production
+environment.
+
+> **Current state (2026-09-08):** the EKS environment was intentionally destroyed for cost
+> control. `Synced/Healthy`, NLB, Stripe, monitoring, and capacity results below are historical unless
+> a newer `validation.md` explicitly records a recreated cluster.
 
 ## Canonical roadmap
 
-| Roadmap phase | Goal | Current status | Evidence / boundary |
-|---:|---|---|---|
-| 19 | Move the complete cloud overlay to Argo CD | **Complete** | `flash-sale-cloud` owns `infra/k8s/overlays/cloud` and is `Synced/Healthy`. |
-| 20 | Provision Kafka topics and Avro schemas on EKS | **Complete** | Seven approved topics and nine Schema Registry subjects; Payment remains disabled. |
-| 21 | CI/CD for all eight services | **Partial** | Selective Maven CI covers affected services; hosted ECR/PR promotion is currently proven for Product Service. Full eight-service image promotion is still required. |
-| 22 | Internal end-to-end smoke | **Complete** | Live authenticated smoke passed on 2026-08-23: Product → Inventory → Campaign → Flash Sale reservation/replay → Order identity convergence. Evidence is recorded in `specs/040-gitops-internal-e2e/validation.md`; Payment remains disabled by design. |
-| 23 | Public Gateway on AWS | **Complete (rolled back by design)** | A bounded NLB smoke passed, then the public edge was reverted; the cloud overlay is private `ClusterIP` again. Evidence: `specs/042-gitops-public-gateway/validation.md`. |
-| 24 | Stripe cloud enablement | **In planning — transport decision required** | Payment and Stripe runtime flags remain disabled until the owner approves a domain-backed HTTPS Gateway edge (ADR 0027). |
-| 25 | Observability | **Pending** | Services expose Actuator/Prometheus endpoints; cloud Prometheus, Grafana, dashboards, and alerts are not yet deployed. |
-| 26 | Final validation and cleanup | **Pending** | Final cloud E2E, load, full rollback, runbooks, and pilot cleanup remain. |
+| Phase | Goal | Repository/current status |
+|---:|---|---|
+| 19 | Full cloud overlay owned by Argo CD | Desired state implemented; historical `flash-sale-cloud` reconciliation passed; no current cluster |
+| 20 | Kafka topics and Avro subjects | Provisioning guard implemented for the original set; Feature 049 adds regular-hold/Cart contracts that require the next live provision rehearsal |
+| 21 | CI/CD for deployed services | Nine-service selective verify/build/ECR/promotion-PR workflow implemented; Notification excluded as scaffold |
+| 22 | Internal end-to-end smoke | Historical Flash Sale flow and local Feature 049 normal checkout passed; current cloud rerun pending |
+| 23 | Public AWS Gateway | HTTPS NLB/ACM/DNS smoke passed historically; no current AWS load balancer |
+| 24 | Stripe cloud enablement | Signed webhook, replay, Kafka Payment event, Order confirmation, and reservation finalization passed historically in Stripe test mode; current rerun pending |
+| 25 | Seckill observability | Prometheus/Grafana desired state and dashboard implemented and historically deployed; no current monitoring pods |
+| 26 | Final validation and cleanup | Controlled capacity evidence and infrastructure cleanup exist; Feature 049 live migration/E2E/rollback evidence remains pending |
 
-## Technical gates already added
+## Two different “phase” number sets
 
-The following repository phases are safety gates and must not be confused with the canonical roadmap
-numbers above:
+Some helper scripts were named before the final product roadmap stabilized. Treat their number as a
+script identity, not automatic proof that the same canonical roadmap phase is complete.
 
-| Technical gate | Purpose | Relationship to roadmap |
-|---|---|---|
-| Repository Phase 21 | Verify Argo health, eight ECR/Pod digests, Payment flags, and internal Gateway smoke | Supports roadmap 21/22; does not implement full CI/CD or full E2E. |
-| Repository Phase 22 | Verify cloud ownership, ConfigMap/Secret boundaries, private Services, Kafka safety, and Payment flags | Precondition for later cloud exposure; not canonical roadmap 22. |
-| Repository Phase 23 | Run Terraform format/validate/plan safely with no apply | Precondition for infrastructure changes; not canonical roadmap 23 public Gateway. |
+| Technical helper | Purpose |
+|---|---|
+| `phase21-cloud-release-verify.ps1` | Read-only Argo, image digest, Payment flag, and Gateway verification |
+| `phase22-cloud-guard.ps1` | Read-only desired-state, Secret/ConfigMap reference, private-service, and Kafka guard |
+| `phase23-terraform-gate.ps1` | Terraform format/validate/plan; never apply/destroy/import/state mutation |
 
-## Required order from here
+## Recreate and release order
 
-After the Phase 22 PR is merged:
+When cloud work resumes:
 
-1. Merge and reconcile the canonical roadmap **23** public Gateway change, then run its bounded smoke.
-2. Enable canonical roadmap **24** only with approved Stripe test secrets and explicit Payment flags.
-3. Deploy canonical roadmap **25** monitoring and alerting.
-4. Execute canonical roadmap **26** final validation, rollback evidence, documentation, and cleanup.
+1. Recreate/reconcile Terraform and confirm EKS nodes/add-ons.
+2. Provision Secrets/config without printing values.
+3. Run the base migrations and the Feature 044/049 migration Jobs; verify expand/contract and old
+   image compatibility first.
+4. Provision the complete current Kafka topic/Schema Registry subject inventory idempotently.
+5. Let the delivery workflow publish current images and review the promotion PR.
+6. Reconcile Argo and verify running image digests.
+7. Run normal checkout and Flash Sale/Stripe E2E, then controlled rollback rehearsal.
+8. Recreate monitoring only if needed; destroy idle resources again when the exercise ends.
 
-Do not skip canonical roadmap 22 to expose the Gateway publicly. Do not enable Stripe merely because
-the cloud infrastructure is healthy.
+Never infer business success from Terraform apply or Argo health alone. Record each command, commit,
+environment, and result in the governing feature's `validation.md`.

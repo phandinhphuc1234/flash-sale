@@ -2,7 +2,7 @@
 
 ## Canonical roadmap numbering
 
-The full roadmap is documented in [`docs/deployment/gitops-roadmap-status.md`](../../docs/deployment/gitops-roadmap-status.md).
+The full roadmap is documented in [`docs/deployment/gitops-roadmap-status.md`](../../../docs/deployment/gitops-roadmap-status.md).
 Its phases 19–26 are the product roadmap. Repository safety gates named Phase 21–23 verify release
 artifacts, cloud configuration, and Terraform respectively; they are supporting gates and do not
 replace canonical roadmap 22 (internal E2E), 23 (public Gateway), or 24 (Stripe cloud enablement).
@@ -12,11 +12,11 @@ Run them from any directory. They resolve the repository root from their own loc
 
 ## Canonical roadmap and hosted delivery
 
-The canonical roadmap is documented in [`docs/deployment/gitops-roadmap-status.md`](../../docs/deployment/gitops-roadmap-status.md).
+The canonical roadmap is documented in [`docs/deployment/gitops-roadmap-status.md`](../../../docs/deployment/gitops-roadmap-status.md).
 The hosted **Nine-Service GitOps Delivery** workflow is the implementation of canonical roadmap
-21. It owns cloud image promotion for these eight deployed services:
+21. It owns cloud image promotion for these nine deployed services:
 
-`api-gateway`, `authentication-service`, `product-service`, `campaign-service`,
+`api-gateway`, `authentication-service`, `product-service`, `cart-service`, `campaign-service`,
 `flash-sale-service`, `inventory-service`, `order-service`, and `payment-service`.
 
 It detects affected services, verifies each Maven reactor, publishes immutable ECR images through
@@ -36,9 +36,9 @@ rollback/rehearsal.
   editing requires -UpdateOverlay. The helper never commits or pushes Git changes.
 - Phase 15 validates local ignored inputs by default; Secret creation requires -Apply and never prints
   values. Stripe remains deferred unless explicitly enabled in a later phase.
-- Phase 16 validates the platform, ConfigMaps, Secrets, and seven migration Jobs by default; migration
+- Phase 16 validates the platform, ConfigMaps, Secrets, and eight migration Jobs by default; migration
   Job creation requires -Apply. Existing Jobs require -ForceRerun, preserving failure evidence.
-- Phase 17 validates the cloud application prerequisites and eight Deployments by default; application
+- Phase 17 validates the cloud application prerequisites and nine Deployments by default; application
   rollout requires -Apply. A failed rollout preserves Pods for inspection.
 - Phase 18 validates the internal API Gateway by default; -Run creates only a temporary local
   port-forward and checks readiness, public catalog routing, and protected admin routing. It rejects
@@ -46,7 +46,7 @@ rollback/rehearsal.
   443, and verifies the listener belongs to its kubectl child process.
 - Phase 19 validates the full-cloud Argo CD ownership handoff by default. -Apply is accepted only
   after the reviewed Phase 19 desired state exists on origin/develop. It suspends the Product pilot,
-  waits for the full-cloud owner to become Synced/Healthy, verifies eight Deployments and the Product
+  waits for the full-cloud owner to become Synced/Healthy, verifies nine Deployments and the Product
   image, and then removes only the finalizer-free historical Application object.
 - Phase 20 validates the exact cloud Kafka contract inventory by default. -Apply is accepted only
   after the reviewed Phase 20 implementation exists on origin/develop. It disables implicit topic
@@ -152,7 +152,7 @@ From the repository root:
     pwsh -NoLogo -NoProfile -File .\infra\scripts\gitops\phase23-public-gateway.ps1 -Run
 
     # Canonical roadmap 21 is hosted. Push a service change to develop, or use:
-    # GitHub Actions -> Eight-Service GitOps Delivery -> Run workflow -> all/one service.
+    # GitHub Actions -> Nine-Service GitOps Delivery -> Run workflow -> all/one service.
 
 Phase 8 pilot creates one PostgreSQL StatefulSet with an 8 GiB gp2 PVC, creates runtime Secrets
 from an interactive password prompt, and applies only the product-service base. It is intentionally
@@ -162,8 +162,8 @@ Phase 11 adds the hosted `Product Pilot Delivery` workflow. It verifies Product 
 existing GitHub OIDC role to push an immutable ECR image, and opens a pull request that changes only
 the Product pilot image tag. Argo CD reconciles after that pull request is reviewed and merged.
 
-Phase 17 rolls out the eight cloud application Deployments after the platform, service Secrets,
-ConfigMaps, and seven migration Jobs are complete. Payment acceptance and Stripe remain disabled.
+Phase 17 rolls out the nine cloud application Deployments after the platform, service Secrets,
+ConfigMaps, and eight migration Jobs are complete. Payment acceptance and Stripe remain disabled.
 Its health endpoints are still probeable without a bearer token, while Payment business paths remain
 protected until a later enablement phase.
 

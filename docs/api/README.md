@@ -1,7 +1,7 @@
 # Flash Sale HTTP API catalog
 
 This is the reader-facing catalog for the HTTP surface currently supported by the monorepo.
-There are **47 unique endpoints**, counted by `HTTP method + normalized path`.
+There are **50 unique endpoints**, counted by `HTTP method + normalized path`.
 
 Frontend developers should use the Vietnamese
 [`frontend-integration-guide.md`](frontend-integration-guide.md), which adds complete request/response
@@ -31,15 +31,15 @@ coding prompt.
 |---|---:|---:|---:|---:|
 | API Gateway | 0 | 0 | 0 | 0 (routing only) |
 | Authentication | 5 | 1 | 1 | 7 |
-| Product | 10 | 2 | 0 | 12 |
+| Product | 10 | 3 | 0 | 13 |
 | Campaign | 7 | 1 | 0 | 8 |
-| Inventory | 3 | 3 | 0 | 6 |
+| Inventory | 3 | 4 | 0 | 7 |
 | Flash Sale | 2 | 0 | 0 | 2 |
-| Order | 2 | 0 | 0 | 2 |
+| Order | 4 | 0 | 0 | 4 |
 | Payment | 4 | 0 | 0 | 4 |
-| Cart | 4 | 0 | 0 | 4 |
+| Cart | 4 | 1 | 0 | 5 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **39** | **7** | **1** | **47** |
+| **Total** | **39** | **10** | **1** | **50** |
 
 ## Endpoint inventory
 
@@ -92,6 +92,9 @@ coding prompt.
 | API-045 | Product | Internal | POST | `/internal/v1/catalog/variants/display-details` | Cart service subject/scope | Batch-read current Product display details for Cart |
 | API-046 | Order | Gateway-public | POST | `/api/v1/orders/cart-checkouts` | Authenticated shopper, idempotency key | Validate and accept one immutable Cart snapshot as one regular Order |
 | API-047 | Order | Gateway-public | POST | `/api/v1/orders/buy-now` | Authenticated shopper, idempotency key | Accept one sellable normal variant without changing Cart |
+| API-048 | Product | Internal | POST | `/internal/v1/catalog/variants/purchase-quotes` | Order service subject/scope | Batch-read authoritative normal purchase price and sellability decisions |
+| API-049 | Cart | Internal | POST | `/internal/v1/cart-checkout-snapshots` | Order service subject/scope | Read an owned immutable Cart version/item snapshot for checkout validation |
+| API-050 | Inventory | Internal | POST | `/internal/v1/regular-stock-holds` | Order service subject/scope | Atomically create or replay an all-or-nothing regular stock hold |
 
 ### Cart contract notes
 
@@ -120,6 +123,12 @@ checkout before an Order/Payment is created. After successful Payment, Cart clea
 and removes only entries whose variant, quantity, and item revision still match the submitted
 snapshot. API-047 accepts one normal variant and never mutates Cart. Continue either regular route
 with API-039 then API-037; API-040 is called by Stripe, never by the browser.
+
+API-048 through API-050 are the internal decision chain behind API-046/API-047. Order obtains the
+current Product quote, obtains the server-owned Cart snapshot for Cart checkout, and asks Inventory
+to create an atomic regular hold. Their complete request/response and error rules are in the
+[Feature 049 internal contract](../../specs/049-regular-purchase-checkout/contracts/internal-checkout-http.md).
+They are not browser APIs and remain absent from Gateway routing.
 
 ## Read the APIs in Swagger UI
 

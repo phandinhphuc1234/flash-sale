@@ -1,6 +1,6 @@
 # Container Compose and Kubernetes Strategy
 
-This document defines how Flash Sale should use Docker, Docker Compose, and future Kubernetes
+This document defines how Flash Sale uses Docker, Docker Compose, and Kubernetes
 resources without mixing their responsibilities.
 
 ## Short answer
@@ -8,8 +8,8 @@ resources without mixing their responsibilities.
 - Each service has its own `Dockerfile`.
 - Shared local orchestration lives in `infra/docker/compose.yml`.
 - Local debug-only overrides live in `infra/docker/compose.dev.yml`.
-- Do not add `compose.prod.yml`; production/staging should be Kubernetes.
-- Future Kubernetes resources should live in `infra/k8s/base` and `infra/k8s/overlays/<env>`.
+- Do not add `compose.prod.yml`; the single cloud development environment uses Kubernetes.
+- Kubernetes resources live in `infra/k8s/base` and `infra/k8s/overlays/<env>`.
 
 ## Why no `compose.prod.yml`?
 
@@ -25,7 +25,7 @@ as the number of Compose files grows. For this repo, the clean split is:
 |---|---|---|
 | Local baseline | `infra/docker/compose.yml` | One shared developer topology |
 | Local debug ports | `infra/docker/compose.dev.yml` | Optional and clearly non-production |
-| Production/staging/dev cluster | `infra/k8s/overlays/<env>` | Kubernetes is the source of truth |
+| Cloud development cluster | `infra/k8s/overlays/cloud` | Kubernetes/Argo Git state is the source of truth |
 
 ## Image ownership
 
@@ -73,7 +73,7 @@ http://payment-service:8080
 http://product-service:8080
 ```
 
-This mirrors future Kubernetes Service names and avoids the common beginner trap of using
+This mirrors Kubernetes Service names and avoids the common beginner trap of using
 `localhost` for container-to-container calls.
 
 ## Compose profiles and overrides
@@ -119,7 +119,7 @@ infra/docker/.env
 
 Classify variables like this:
 
-| Variable type | Local source | Future Kubernetes source |
+| Variable type | Local source | Kubernetes source |
 |---|---|---|
 | Non-secret config such as host names, ports, profiles | `.env.example` / `.env` | ConfigMap |
 | Secrets such as passwords, JWT signing keys, API tokens | ignored `.env` only | Secret or external secret provider |
@@ -158,11 +158,11 @@ SPRING_LIQUIBASE_ENABLED=false
 ```
 
 because migrations are explicit deployment operations rather than work performed by every replica.
-`product-service` is the first service with JDBC/PostgreSQL runtime and an approved business
-changeset. Local development applies it through a one-off Product container; other services retain
-empty changelogs until their own approved schema features.
+Every implemented stateful business service owns an approved changelog. Local development applies
+each migration through a one-off non-web container; Notification remains a scaffold without a
+business schema.
 
-For Kubernetes production, prefer this shape:
+The Kubernetes cloud environment uses this shape:
 
 ```text
 Kubernetes Job:       runs Liquibase for one service schema
@@ -171,9 +171,9 @@ Kubernetes Deployment: runs service replicas with app-time migration disabled
 
 This avoids multiple app replicas racing at startup and keeps migration execution observable.
 
-The future Product migration Job must use the same Product image and changelog as the Deployment,
-receive Product database credentials from a Secret, set `SPRING_LIQUIBASE_ENABLED=true`, run as a non-web
-process, and complete successfully before Product replicas are rolled out.
+Each migration Job uses the same service image and changelog as its Deployment,
+receives that service's database credentials from a Secret, enables Liquibase, runs as a non-web
+process, and must complete successfully before the matching replicas are rolled out.
 
 ## Health and probes
 
@@ -187,7 +187,7 @@ Every service already exposes:
 /actuator/prometheus
 ```
 
-Future Kubernetes probes should map to:
+Kubernetes probes map to:
 
 | Kubernetes probe | Spring Boot endpoint |
 |---|---|
@@ -197,9 +197,9 @@ Future Kubernetes probes should map to:
 Kubernetes uses liveness probes to decide when to restart containers and readiness probes to decide
 whether a pod should receive traffic.
 
-## Future Kubernetes structure
+## Kubernetes structure
 
-When Kubernetes is implemented, use Kustomize-style bases and overlays:
+The implemented Kustomize structure is:
 
 ```text
 infra/k8s/
@@ -212,9 +212,10 @@ infra/k8s/
 │   ├── order-service/
 │   └── ...
 └── overlays/
+    ├── cloud/
+    ├── cloud-migrations/
     ├── dev/
-    ├── staging/
-    └── prod/
+    └── dev-pilot/       # historical pilot, not a third environment
 ```
 
 Each service should generally map to:

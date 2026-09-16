@@ -150,3 +150,28 @@ JSON and working tree for absence of tokens, passwords, and untracked result fil
 ## Approval and History
 
 - 2026-08-28 — User approved implementation of an adaptive near-capacity seckill test.
+
+## Addendum — Flash Sale to Order benchmark (2026-09-15)
+
+The user approved writing a clearly named hot-flow test after discussing reservation admission
+versus asynchronous Order creation. This is a test-tool-only extension; the historical capacity
+results above do not constitute evidence for this new profile. Live execution is not authorized by
+the request to write the test.
+
+- **FR-011**: Provide a discoverable `flash-sale-to-order-stress` test through Gateway. Observe an
+  accepted reservation until its owner can read one matching Order, correlating purchaseRequestId,
+  reservationId, campaignId, variantId and quantity. Stop at Order creation, not Stripe payment.
+- **FR-012**: Separate new-order throughput, sold-out contention and same-key replay scenarios.
+  Replays and sold-out responses must never inflate the number of new Orders.
+- **FR-013**: Report admission latency separately from client-observed request-to-Order visibility
+  latency, offered iterations, actual admission requests and observer read traffic. Missing Orders,
+  invalid fixtures, unresolved acceptance, dropped work and identity mismatches fail closed.
+- **FR-014**: Require fresh disposable shopper identities, known fresh allocation and bounded
+  observation. Do not create identities, change TTL/quota/flags, bypass Gateway, query databases or
+  call Stripe. Preserve operator-owned credentials; store only ignored sanitized evidence.
+
+The new profile starts conservatively at 1 then 5 arrivals/s, uses short stages and configurable
+latency guards. These are benchmark settings, not service SLAs or changed business rules. It checks
+uniqueness during the bounded observation window only, not indefinite exactly-once delivery. Kafka
+lag, database commits and CPU/RAM are not inferred from HTTP metrics. A live benchmark and any CV
+performance claim require separately captured environment-specific evidence.

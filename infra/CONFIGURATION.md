@@ -1,6 +1,6 @@
 # Runtime configuration inventory
 
-Phase 15 is the cloud configuration boundary for the eight deployed Spring Boot services. The
+Phase 15 is the cloud configuration boundary for the nine deployed Spring Boot services. The
 ignored `infra/docker/.env` remains the operator's local input; no value from it belongs in Git.
 
 ## Inputs that must be entered manually now
@@ -14,6 +14,8 @@ ignored `infra/docker/.env` remains the operator's local input; no value from it
 | `AUTH_THROTTLE_HMAC_SECRET` | `authentication-secrets` | Authentication failure-throttle hashing |
 | `CAMPAIGN_CLIENT_SECRET` | `authentication-secrets`, `campaign-secrets` | OAuth client credentials |
 | `FLASHSALE_CLIENT_SECRET` | `authentication-secrets`, `flashsale-secrets` | OAuth client credentials |
+| `CART_CLIENT_SECRET` | `authentication-secrets`, `cart-secrets` | Cart OAuth client credentials for Product |
+| `ORDER_CLIENT_SECRET` | `authentication-secrets`, `order-secrets` | Order OAuth client credentials for Cart/Product/Inventory |
 | `AUTH_JWT_KEY_DIR/jwt-public.pem` | `auth-jwt` | Authentication public signing key |
 | `AUTH_JWT_KEY_DIR/jwt-private.pem` | `auth-jwt` | Authentication private signing key |
 
@@ -21,13 +23,13 @@ ignored `infra/docker/.env` remains the operator's local input; no value from it
 script because each service has its own database URL. This does not give a service access to another
 service's database.
 
-## Deferred inputs
+## Stripe opt-in inputs
 
-Stripe is deliberately disabled in Phase 15. `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and
-`STRIPE_WEBHOOK_SECRET` are required only when the later Payment enablement phase is explicitly run
-with `phase15-secrets.ps1 -EnableStripe` (or its replacement enablement script). Do not add them to
-the cloud Secret yet. Public HTTPS origins, secure cookies, migrations, and external secret-manager
-integration are also later phases.
+`phase15-secrets.ps1` keeps Stripe credentials out of its default/base validation. The current cloud
+Payment ConfigMap expects Stripe test-mode runtime, so a recreated cluster must explicitly supply
+`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET` with
+`phase15-secrets.ps1 -EnableStripe -Apply` before Payment rollout. Keep live-mode keys out of this
+development environment. External secret-manager integration remains deferred.
 
 ## Secret boundaries
 
@@ -35,13 +37,14 @@ integration are also later phases.
 |---|---|---|
 | `platform-secrets` | PostgreSQL, Redis | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `REDIS_PASSWORD` |
 | `gateway-secrets` | API Gateway | `SPRING_DATA_REDIS_PASSWORD`, `RATE_LIMIT_KEY_HMAC_SECRET` |
-| `authentication-secrets` | Authentication | datasource/Redis passwords, throttle HMAC, Campaign/Flash Sale OAuth secrets |
+| `authentication-secrets` | Authentication | datasource/Redis passwords, throttle HMAC, Campaign/Flash Sale/Cart/Order OAuth secrets |
 | `product-secrets` | Product | datasource username/password |
 | `campaign-secrets` | Campaign | datasource username/password, Campaign OAuth secret |
 | `flashsale-secrets` | Flash Sale | datasource username/password, Redis password, Flash Sale OAuth secret |
 | `inventory-secrets` | Inventory | datasource username/password |
-| `order-secrets` | Order | datasource username/password |
-| `payment-secrets` | Payment | datasource username/password; Stripe keys only when enabled later |
+| `cart-secrets` | Cart | datasource username/password, Cart OAuth secret |
+| `order-secrets` | Order | datasource username/password, Order OAuth secret |
+| `payment-secrets` | Payment | datasource username/password; Stripe test keys when explicitly enabled |
 | `auth-jwt` | Authentication | `jwt-public.pem`, `jwt-private.pem` mounted as files |
 
 The legacy `flash-sale-secrets` Secret may still exist for the pilot overlay, but no Deployment in
@@ -52,8 +55,10 @@ the canonical cloud overlay consumes it.
 Every cloud application Pod receives `flash-sale-runtime-config`, its service ConfigMap under
 `infra/k8s/overlays/cloud/config/`, and its own Secret. ConfigMaps contain only internal DNS names,
 datasource URLs, Kafka/Schema Registry endpoints, JWT metadata, topics, and safe feature flags.
-Liquibase and Payment/Stripe processing remain disabled in this phase. Kafka and Schema Registry are
-internal plaintext services under ADR 0019; no credentials are currently required.
+Liquibase remains disabled in long-running Deployments. The current cloud desired state enables the
+reviewed Payment/Stripe test flow, which is why the Stripe Secret opt-in is a recreate prerequisite.
+Kafka and Schema Registry are internal plaintext services under ADR 0019; no credentials are
+currently required.
 
 ## Local-only and optional values
 
@@ -62,8 +67,8 @@ developer debug settings are local/operator inputs. Optional timeout, retry, bat
 and topic overrides have application defaults and are not missing secrets. They should be added to a
 Cloud ConfigMap only when a later approved task changes the default intentionally.
 
-Cart and Notification are not part of the approved cloud eight-service topology, so Phase 15 does
-not create their ConfigMaps or Secrets.
+Cart is part of the nine-service cloud topology and owns its ConfigMap/Secret. Notification remains
+a scaffold and is not provisioned as an active cloud workload.
 
 ## Safe workflow
 
