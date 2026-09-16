@@ -106,6 +106,9 @@ management:
             - orderReadiness
       validate-group-membership: false
   health:
+    # Dependency isolation is diagnostic state; it must never make Order unready.
+    circuitbreakers:
+      enabled: false
     livenessstate:
       enabled: true
     readinessstate:
@@ -162,6 +165,16 @@ order:
   query:
     enabled: ${ORDER_QUERY_ENABLED:true}
   regular-purchase:
+    inventory-resilience:
+      # Circuit state is process-local. Durable retry/replay remains owned by regular-purchase recovery.
+      sliding-window-size: ${ORDER_INVENTORY_RESILIENCE_SLIDING_WINDOW_SIZE:20}
+      minimum-number-of-calls: ${ORDER_INVENTORY_RESILIENCE_MINIMUM_CALLS:10}
+      failure-rate-threshold: ${ORDER_INVENTORY_RESILIENCE_FAILURE_RATE_THRESHOLD:50}
+      wait-duration-in-open-state: ${ORDER_INVENTORY_RESILIENCE_OPEN_WAIT:10s}
+      permitted-calls-in-half-open-state: ${ORDER_INVENTORY_RESILIENCE_HALF_OPEN_CALLS:2}
+      automatic-transition: ${ORDER_INVENTORY_RESILIENCE_AUTOMATIC_TRANSITION:false}
+      # Initial per-replica limit. Tune only after measuring the regular Order-to-Inventory call.
+      max-concurrent-calls: ${ORDER_INVENTORY_RESILIENCE_MAX_CONCURRENT_CALLS:16}
     runtime:
       # Setup is intentionally inert; later reviewed phases enable consumers before producers/intake.
       intake-enabled: ${ORDER_REGULAR_PURCHASE_INTAKE_ENABLED:false}
