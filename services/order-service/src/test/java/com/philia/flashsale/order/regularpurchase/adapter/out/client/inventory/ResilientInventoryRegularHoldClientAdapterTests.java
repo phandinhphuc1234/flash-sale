@@ -16,13 +16,23 @@ import com.philia.flashsale.order.regularpurchase.application.model.RegularStock
 import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHoldCommand;
 import com.philia.flashsale.order.regularpurchase.application.port.out.CreateRegularStockHoldPort;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.circuitbreaker.internal.CircuitBreakerStateMachine;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class ResilientInventoryRegularHoldClientAdapterTests {
@@ -119,6 +129,109 @@ class ResilientInventoryRegularHoldClientAdapterTests {
         assertThat(breaker.getMetrics().getNumberOfNotPermittedCalls()).isEqualTo(100);
     }
 
+    @Test
+    void successfulRecoveryUsesOnlyTheConfiguredHalfOpenProbesAndClosesWithoutRestart() throws Exception {
+        MutableClock clock = new MutableClock(NOW);
+        CircuitBreaker breaker = recoveryCircuitBreaker(clock, 2);
+        RegularStockHoldCommand command = command();
+        AtomicInteger delegateCalls = new AtomicInteger();
+        CountDownLatch probesEntered = new CountDownLatch(2);
+        CountDownLatch releaseProbes = new CountDownLatch(1);
+        CreateRegularStockHoldPort delegate = (receivedCommand, receivedTrace) -> {
+            assertThat(receivedCommand).isSameAs(command);
+            assertThat(receivedTrace).isEqualTo(TRACE_ID);
+            int invocation = delegateCalls.incrementAndGet();
+            if (invocation <= 2) {
+                throw failure(RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
+            }
+            probesEntered.countDown();
+            await(releaseProbes);
+            return hold();
+        };
+        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+
+        open(adapter, command, breaker);
+        clock.advance(Duration.ofMillis(10_001));
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<RegularStockHold> firstProbe = executor.submit(() -> adapter.create(command, TRACE_ID));
+            Future<RegularStockHold> secondProbe = executor.submit(() -> adapter.create(command, TRACE_ID));
+            assertThat(probesEntered.await(2, TimeUnit.SECONDS)).isTrue();
+            assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.HALF_OPEN);
+
+            assertUnavailable(() -> adapter.create(command, TRACE_ID));
+            assertThat(delegateCalls).hasValue(4);
+
+            releaseProbes.countDown();
+            assertThat(firstProbe.get(2, TimeUnit.SECONDS)).isEqualTo(hold());
+            assertThat(secondProbe.get(2, TimeUnit.SECONDS)).isEqualTo(hold());
+        } finally {
+            releaseProbes.countDown();
+            executor.shutdownNow();
+        }
+
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+        assertThat(delegateCalls).hasValue(4);
+        System.out.println(
+                "FEATURE_050_RECOVERY result=CLOSED configuredProbes=2 admittedProbes=2 rejectedProbes=1");
+    }
+
+    @Test
+    void failedHalfOpenProbesReopenTheCircuit() {
+        MutableClock clock = new MutableClock(NOW);
+        CircuitBreaker breaker = recoveryCircuitBreaker(clock, 2);
+        RegularStockHoldCommand command = command();
+        AtomicInteger delegateCalls = new AtomicInteger();
+        CreateRegularStockHoldPort delegate = (receivedCommand, receivedTrace) -> {
+            delegateCalls.incrementAndGet();
+            throw failure(RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
+        };
+        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+
+        open(adapter, command, breaker);
+        clock.advance(Duration.ofMillis(10_001));
+        assertUnavailable(() -> adapter.create(command, TRACE_ID));
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.HALF_OPEN);
+        assertUnavailable(() -> adapter.create(command, TRACE_ID));
+
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+        assertThat(delegateCalls).hasValue(4);
+    }
+
+    @Test
+    void businessRejectionDoesNotPoisonHalfOpenRecovery() {
+        MutableClock clock = new MutableClock(NOW);
+        CircuitBreaker breaker = recoveryCircuitBreaker(clock, 2);
+        RegularStockHoldCommand command = command();
+        AtomicInteger delegateCalls = new AtomicInteger();
+        RegularPurchaseDownstreamException businessRejection = failure(
+                RegularPurchaseDownstreamException.Failure.INVENTORY_INSUFFICIENT_STOCK);
+        CreateRegularStockHoldPort delegate = (receivedCommand, receivedTrace) -> {
+            int invocation = delegateCalls.incrementAndGet();
+            if (invocation <= 2) {
+                throw failure(RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
+            }
+            if (invocation == 3) {
+                throw businessRejection;
+            }
+            return hold();
+        };
+        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+
+        open(adapter, command, breaker);
+        clock.advance(Duration.ofMillis(10_001));
+        assertThatThrownBy(() -> adapter.create(command, TRACE_ID)).isSameAs(businessRejection);
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.HALF_OPEN);
+
+        assertThat(adapter.create(command, TRACE_ID)).isEqualTo(hold());
+        assertThat(adapter.create(command, TRACE_ID)).isEqualTo(hold());
+
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+        assertThat(delegateCalls).hasValue(5);
+    }
+
     private void assertIgnored(RegularPurchaseDownstreamException.Failure failure) {
         CreateRegularStockHoldPort delegate = mock(CreateRegularStockHoldPort.class);
         CircuitBreaker breaker = circuitBreaker(2);
@@ -161,6 +274,46 @@ class ResilientInventoryRegularHoldClientAdapterTests {
         return configuration.orderInventoryRegularHoldCircuitBreaker(registry);
     }
 
+    private CircuitBreaker recoveryCircuitBreaker(MutableClock clock, int permittedHalfOpenCalls) {
+        CircuitBreakerConfig config = CircuitBreakerConfig.custom()
+                .slidingWindowType(CircuitBreakerConfig.SlidingWindowType.COUNT_BASED)
+                .slidingWindowSize(2)
+                .minimumNumberOfCalls(2)
+                .failureRateThreshold(50.0f)
+                .waitDurationInOpenState(Duration.ofSeconds(10))
+                .permittedNumberOfCallsInHalfOpenState(permittedHalfOpenCalls)
+                .automaticTransitionFromOpenToHalfOpenEnabled(false)
+                .ignoreException(ResilientInventoryRegularHoldClientAdapter::isBusinessFailure)
+                .recordException(throwable -> true)
+                .build();
+        return new CircuitBreakerStateMachine("orderInventoryRegularHoldRecovery", config, clock);
+    }
+
+    private void open(ResilientInventoryRegularHoldClientAdapter adapter, RegularStockHoldCommand command,
+            CircuitBreaker breaker) {
+        assertUnavailable(() -> adapter.create(command, TRACE_ID));
+        assertUnavailable(() -> adapter.create(command, TRACE_ID));
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+    }
+
+    private void assertUnavailable(Runnable action) {
+        assertThatThrownBy(action::run)
+                .isInstanceOf(RegularPurchaseDownstreamException.class)
+                .extracting(exception -> ((RegularPurchaseDownstreamException) exception).failure())
+                .isEqualTo(RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
+    }
+
+    private void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(2, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("timed out waiting for the recovery probe fixture");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("recovery probe fixture was interrupted", exception);
+        }
+    }
+
     private RegularPurchaseDownstreamException failure(RegularPurchaseDownstreamException.Failure failure) {
         return new RegularPurchaseDownstreamException(failure);
     }
@@ -173,5 +326,32 @@ class ResilientInventoryRegularHoldClientAdapterTests {
     private RegularStockHold hold() {
         return new RegularStockHold(HOLD_ID, REQUEST_ID, ORDER_ID, "HELD", NOW.plusSeconds(300),
                 List.of(new RegularStockHold.RegularStockHoldItem(VARIANT_ID, 1)));
+    }
+
+    private static final class MutableClock extends Clock {
+        private final AtomicReference<Instant> current;
+
+        private MutableClock(Instant initial) {
+            this.current = new AtomicReference<>(initial);
+        }
+
+        private void advance(Duration duration) {
+            current.updateAndGet(instant -> instant.plus(duration));
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneId.of("UTC");
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return current.get();
+        }
     }
 }

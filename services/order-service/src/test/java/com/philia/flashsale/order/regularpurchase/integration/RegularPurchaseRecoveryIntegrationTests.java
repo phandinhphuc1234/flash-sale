@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,23 +13,29 @@ import com.philia.flashsale.order.order.application.port.out.CurrentTimePort;
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderIdentityPort;
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderNumberPort;
 import com.philia.flashsale.order.order.domain.valueobject.Money;
+import com.philia.flashsale.order.regularpurchase.adapter.out.client.inventory.ResilientInventoryRegularHoldClientAdapter;
 import com.philia.flashsale.order.regularpurchase.application.command.BuyNowCheckoutCommand;
 import com.philia.flashsale.order.regularpurchase.application.exception.RegularPurchaseDownstreamException;
 import com.philia.flashsale.order.regularpurchase.application.model.ProductPurchaseQuote;
 import com.philia.flashsale.order.regularpurchase.application.model.RegularPurchaseAcceptance;
 import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHold;
+import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHoldCommand;
 import com.philia.flashsale.order.regularpurchase.application.port.out.CreateRegularStockHoldPort;
 import com.philia.flashsale.order.regularpurchase.application.port.out.LoadProductPurchaseQuotesPort;
 import com.philia.flashsale.order.regularpurchase.application.port.out.PersistRegularPurchasePort;
 import com.philia.flashsale.order.regularpurchase.application.usecase.RegularPurchaseCheckoutService;
 import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRequest;
 import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRequestState;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -114,6 +121,69 @@ class RegularPurchaseRecoveryIntegrationTests {
         service.checkout(command());
         assertThat(persistence.current.get().state()).isEqualTo(RegularPurchaseRequestState.ACCEPTED);
         verify(holds).create(any(), any());
+    }
+
+    @Test
+    void circuitOpenAndAmbiguousRecoveryReuseEveryOriginalBusinessIdentity() {
+        CreateRegularStockHoldPort rawInventory = org.mockito.Mockito.mock(CreateRegularStockHoldPort.class);
+        CircuitBreaker breaker = CircuitBreaker.of("orderInventoryRecoveryIdentity",
+                CircuitBreakerConfig.custom()
+                        .slidingWindowSize(2)
+                        .minimumNumberOfCalls(2)
+                        .failureRateThreshold(50.0f)
+                        .waitDurationInOpenState(Duration.ofMinutes(1))
+                        .permittedNumberOfCallsInHalfOpenState(1)
+                        .automaticTransitionFromOpenToHalfOpenEnabled(false)
+                        .build());
+        CreateRegularStockHoldPort protectedInventory =
+                new ResilientInventoryRegularHoldClientAdapter(rawInventory, breaker);
+        RegularPurchaseCheckoutService protectedService = new RegularPurchaseCheckoutService(
+                persistence, quotes, protectedInventory, identities, orderNumbers, clock);
+        AtomicInteger invocation = new AtomicInteger();
+        when(quotes.loadQuotes(any(), any())).thenReturn(List.of(quote(VARIANT_ID)));
+        when(rawInventory.create(any(), any())).thenAnswer(call -> {
+            if (invocation.incrementAndGet() <= 2) {
+                throw new RegularPurchaseDownstreamException(
+                        RegularPurchaseDownstreamException.Failure.INVENTORY_HOLD_AMBIGUOUS);
+            }
+            return hold();
+        });
+
+        assertThatThrownBy(() -> protectedService.checkout(command()))
+                .isInstanceOf(RegularPurchaseDownstreamException.class);
+        String originalFingerprint = persistence.current.get().requestFingerprint();
+        assertThatThrownBy(() -> protectedService.checkout(command()))
+                .isInstanceOf(RegularPurchaseDownstreamException.class);
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+
+        assertThatThrownBy(() -> protectedService.checkout(command()))
+                .isInstanceOf(RegularPurchaseDownstreamException.class)
+                .extracting(exception -> ((RegularPurchaseDownstreamException) exception).failure())
+                .isEqualTo(RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
+        verify(rawInventory, times(2)).create(any(), any());
+
+        breaker.transitionToHalfOpenState();
+        protectedService.checkout(command());
+
+        ArgumentCaptor<RegularStockHoldCommand> captured = ArgumentCaptor.forClass(RegularStockHoldCommand.class);
+        verify(rawInventory, times(3)).create(captured.capture(), any());
+        List<RegularStockHoldCommand> commands = captured.getAllValues();
+        RegularStockHoldCommand original = commands.getFirst();
+        assertThat(commands).allSatisfy(replayed -> {
+            assertThat(replayed.holdId()).isEqualTo(original.holdId());
+            assertThat(replayed.purchaseRequestId()).isEqualTo(original.purchaseRequestId());
+            assertThat(replayed.orderId()).isEqualTo(original.orderId());
+            assertThat(replayed.shopperId()).isEqualTo(original.shopperId());
+            assertThat(replayed.items()).isEqualTo(original.items());
+        });
+        assertThat(original.shopperId()).isEqualTo(command().shopperId());
+        assertThat(original.items()).containsExactly(
+                new RegularStockHoldCommand.RegularStockHoldLine(VARIANT_ID, 1));
+        assertThat(persistence.current.get().requestFingerprint()).isEqualTo(originalFingerprint);
+        assertThat(persistence.current.get().state()).isEqualTo(RegularPurchaseRequestState.ACCEPTED);
+        assertThat(breaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+        System.out.println(
+                "FEATURE_050_IDENTITY_RECOVERY commands=3 replacements=0 finalState=ACCEPTED breaker=CLOSED");
     }
 
     private BuyNowCheckoutCommand command() {

@@ -144,3 +144,50 @@ authorization headers, business identifiers, and raw request bodies must not be 
   Payment intent, or completed acceptance, made zero Inventory calls, and remained recoverable.
 - Completed: 2026-09-16
 - CI/PR: [PR #135](https://github.com/phandinhphuc1234/flash-sale/pull/135).
+
+## T013–T016 — User Story 2 bounded recovery and identity reuse
+
+### Recovery behavior
+
+- A mutable test clock advances beyond the configured cooling boundary without sleeping or adding
+  an automatic transition thread. The circuit remains `OPEN` until the next caller requests a
+  permit, then changes to `HALF_OPEN`.
+- Exactly two configured half-open probes are admitted concurrently; a third probe is rejected
+  without reaching Inventory. Two successful probes close the circuit, while two failed probes
+  reopen it.
+- An Inventory business rejection during half-open is ignored by breaker accounting. It remains a
+  truthful business result and does not prevent the following two successful probes from closing
+  the circuit.
+- The existing T006/T010 managed Circuit Breaker and explicit port decorator already provide the
+  approved state machine, same-command forwarding, no automatic transition, and no retry owner.
+  T015 therefore required no additional production behavior or dependency.
+
+### Durable identity evidence
+
+- Two ambiguous Inventory outcomes open the circuit; a request while open makes zero additional
+  delegate calls; one explicitly admitted recovery probe succeeds and closes it.
+- The three delegate invocations use equal `holdId`, `purchaseRequestId`, `orderId`, `shopperId`,
+  item IDs, quantities, and trace-preserving command content. The durable request fingerprint is
+  unchanged, no replacement identity is generated, and the final request state is `ACCEPTED`.
+
+### Focused verification
+
+- Command: `.\mvnw.cmd -pl services/order-service -am test
+  "-Dtest=ResilientInventoryRegularHoldClientAdapterTests,RegularPurchaseRecoveryIntegrationTests"
+  "-Dsurefire.failIfNoSpecifiedTests=false"`
+- Scope: deterministic open/cooling/half-open/closed/reopened transitions, bounded probe admission,
+  business-failure exclusion, ambiguous recovery, and exact durable identity reuse.
+- Result: PASS — 12 tests executed, 0 failures, 0 errors, 0 skipped; all four reactor modules
+  succeeded.
+- Exit status: `0`
+- Probe counts: configured `2`, admitted `2`, rejected `1`; successful recovery ended `CLOSED`;
+  failed recovery ended `OPEN`.
+- Identity counts: `3` Inventory delegate calls across two ambiguous attempts and one recovery
+  probe; `0` replacement identities; final durable state `ACCEPTED`.
+- Combined command: `.\mvnw.cmd -pl services/order-service -am test
+  "-Dtest=OrderInventoryResilienceConfigurationTests,ResilientInventoryRegularHoldClientAdapterTests,RegularPurchaseInventoryResilienceIntegrationTests,RegularPurchaseRecoveryIntegrationTests"
+  "-Dsurefire.failIfNoSpecifiedTests=false"`
+- Combined result: PASS — 17 Feature 050 foundation, outage-containment, durable-checkpoint, and
+  recovery tests executed with 0 failures, 0 errors, and 0 skipped; exit status `0`.
+- Completed: 2026-09-16
+- CI/PR: [PR #136](https://github.com/phandinhphuc1234/flash-sale/pull/136).

@@ -15,8 +15,8 @@ is added.
 **Organization**: Tasks are grouped by user story. Work proceeds one task or one coherent task group
 at a time, and every completed task records its validation evidence in `validation.md`.
 
-**Status**: Approved for implementation by the project owner on 2026-09-16. Tasks T001–T012 are
-complete; the next execution begins with T013.
+**Status**: Approved for implementation by the project owner on 2026-09-16. Tasks T001–T016 are
+complete; the next execution begins with T017.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -91,13 +91,13 @@ Order, shopper, item, quantity, and canonical payload identities; a failed probe
 
 ### Tests for User Story 2
 
-- [ ] T013 [US2] Add deterministic half-open tests for bounded probes, failed-probe reopen, successful-probe close, and business-rejection exclusion in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapterTests.java`.
-- [ ] T014 [P] [US2] Extend durable recovery integration coverage to assert exact `holdId`, `purchaseRequestId`, `orderId`, `shopperId`, item IDs, quantities, and canonical fingerprint reuse after circuit-open and ambiguous outcomes in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/integration/RegularPurchaseRecoveryIntegrationTests.java`.
+- [x] T013 [US2] Add deterministic half-open tests for bounded probes, failed-probe reopen, successful-probe close, and business-rejection exclusion in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapterTests.java`.
+- [x] T014 [P] [US2] Extend durable recovery integration coverage to assert exact `holdId`, `purchaseRequestId`, `orderId`, `shopperId`, item IDs, quantities, and canonical fingerprint reuse after circuit-open and ambiguous outcomes in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/integration/RegularPurchaseRecoveryIntegrationTests.java`.
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Complete bounded open-to-half-open-to-closed/reopened behavior without adding an automatic transition thread, replacement identity, or retry owner in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapter.java` and `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfiguration.java`.
-- [ ] T016 [US2] Run the User Story 2 state-transition and durable-recovery tests and record probe counts, state transitions, identity equality, duplicate-effect assertions, command, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T015 [US2] Complete bounded open-to-half-open-to-closed/reopened behavior without adding an automatic transition thread, replacement identity, or retry owner in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapter.java` and `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfiguration.java`.
+- [x] T016 [US2] Run the User Story 2 state-transition and durable-recovery tests and record probe counts, state transitions, identity equality, duplicate-effect assertions, command, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
 
 **Checkpoint**: US2 is independently demonstrable: a transient outage recovers without restart and
 without duplicate or replacement business effects.
