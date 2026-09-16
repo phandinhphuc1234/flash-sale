@@ -6,11 +6,13 @@ import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import com.philia.flashsale.order.regularpurchase.application.port.out.CreateRegularStockHoldPort;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /** Spring composition for the process-local Order-to-Inventory protection policy. */
 @Configuration(proxyBeanMethods = false)
@@ -30,6 +32,8 @@ class OrderInventoryResilienceConfiguration {
                 .waitDurationInOpenState(properties.waitDurationInOpenState())
                 .permittedNumberOfCallsInHalfOpenState(properties.permittedCallsInHalfOpenState())
                 .automaticTransitionFromOpenToHalfOpenEnabled(properties.automaticTransition())
+                .ignoreException(ResilientInventoryRegularHoldClientAdapter::isBusinessFailure)
+                .recordException(throwable -> true)
                 .build();
         return CircuitBreakerRegistry.of(config);
     }
@@ -53,5 +57,13 @@ class OrderInventoryResilienceConfiguration {
     Bulkhead orderInventoryRegularHoldBulkhead(
             @Qualifier("orderInventoryBulkheadRegistry") BulkheadRegistry registry) {
         return registry.bulkhead(BULKHEAD_NAME);
+    }
+
+    @Bean
+    @Primary
+    CreateRegularStockHoldPort resilientInventoryRegularHoldClientAdapter(
+            InventoryRegularHoldClientAdapter delegate,
+            @Qualifier("orderInventoryRegularHoldCircuitBreaker") CircuitBreaker circuitBreaker) {
+        return new ResilientInventoryRegularHoldClientAdapter(delegate, circuitBreaker);
     }
 }

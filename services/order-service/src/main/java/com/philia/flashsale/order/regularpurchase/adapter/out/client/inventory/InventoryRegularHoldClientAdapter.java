@@ -13,7 +13,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/** Inventory hold adapter preserves command identity and exposes a timeout as an explicit ambiguity. */
+/**
+ * Raw Feign translator for Inventory regular holds.
+ *
+ * <p>Application use cases receive the primary resilient decorator rather than this component
+ * directly. This adapter remains responsible only for HTTP mapping, response verification, and
+ * sanitizing remote failures.</p>
+ */
 @Component
 public final class InventoryRegularHoldClientAdapter implements CreateRegularStockHoldPort {
 
