@@ -1,7 +1,8 @@
 # Quickstart: Order to Inventory Resilience
 
-This is a planning artifact. The commands below describe the expected implementation validation;
-they do not mean production code exists yet.
+This is the operator quickstart for the implemented Feature 050 slice. It validates the Order-to-
+Inventory resilience boundary locally without cloud credentials or production data. A passing local
+gate does not imply that a cloud rollout has been performed.
 
 ## 1. Confirm feature context
 
@@ -25,17 +26,22 @@ Review, in order:
 The project owner approved the plan on 2026-09-16 and the Spec Kit task-generation workflow produced
 `tasks.md`. Production work must follow one unchecked task or one coherent task group from that file.
 
-## 3. Planned implementation checks
+## 3. Implemented validation checks
 
 ```powershell
 .\mvnw.cmd -pl services/order-service -am dependency:tree `
-  -Dincludes=io.github.resilience4j
+  "-Dincludes=io.github.resilience4j"
+
+pwsh -NoLogo -NoProfile -File .\infra\docker\smoke\feature-050-order-inventory-resilience.ps1 `
+  -Scenario All -TimeoutSeconds 900
 
 .\mvnw.cmd -pl services/order-service -am verify
 ```
 
-The implementation tasks must add focused commands for the named resilience configuration,
-fault-state, concurrency, and Feature 049 recovery tests.
+The dependency check resolves Resilience4j `2.2.0` through the service-local Spring Boot 3
+starter. The Feature 050 runner is the fast repeatable gate and prints one marker per scenario;
+the module verify is the slower regression gate because Testcontainers creates isolated PostgreSQL
+instances for the Order integration contexts. As captured in `validation.md`, both gates pass.
 
 ## 4. Required fault drill
 
@@ -50,8 +56,11 @@ The deterministic fixture must demonstrate all of these without external cloud i
 7. Recovery reuses the original business identities and creates no duplicate durable effect.
 8. Order readiness remains healthy while dependency-isolation telemetry reports the outage.
 
-## 5. Rollback rehearsal
+## 5. Rollback rehearsal and cloud boundary
 
 Restore the previous Order image/configuration and rerun the Feature 049 regression suite. Because
 this feature changes no data or wire contract, rollback must require no migration, topic/schema
-change, or Inventory deployment.
+change, or Inventory deployment. The local rehearsal is represented by the runner's identity and
+boundary checks; no cloud image rollback was executed in this validation because the EKS environment
+is not part of this feature gate. Treat cloud rollback as deferred operational work, not as a
+passed local test.

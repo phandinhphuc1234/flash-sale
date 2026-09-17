@@ -234,3 +234,70 @@ authorization headers, business identifiers, and raw request bodies must not be 
 - Exit status: `0`
 - Completed: 2026-09-17
 - CI/PR: pending push.
+
+## T023–T026 — Repeatable runner, dependency audit, and Order regression gate
+
+### Repeatable Feature 050 runner
+
+- Command: `pwsh -NoLogo -NoProfile -File .\infra\docker\smoke\feature-050-order-inventory-resilience.ps1 -Scenario Static`
+- Result: PASS — `FEATURE_050_STATIC=PASS`; the static gate found the approved decorator composition,
+  fail-fast bulkhead, breaker/full rejection mapping, bounded logging, and no secret/external-state
+  access.
+- Command: `pwsh -NoLogo -NoProfile -File .\infra\docker\smoke\feature-050-order-inventory-resilience.ps1 -Scenario All -TimeoutSeconds 900`
+- Result: PASS — `FEATURE_050_STATIC=PASS`, `FEATURE_050_FAULT=PASS`,
+  `FEATURE_050_RECOVERY=PASS`, `FEATURE_050_BULKHEAD=PASS`,
+  `FEATURE_050_OBSERVABILITY=PASS`, `FEATURE_050_ALL=PASS`.
+- Exit status: `0`; the runner completed without reading secrets or changing Docker, Kubernetes,
+  database, Kafka, Redis, or cloud state.
+
+### Dependency and boundary audit
+
+- Command: `.\mvnw.cmd -pl services/order-service -am dependency:tree "-Dincludes=io.github.resilience4j"`
+- Result: PASS — the effective managed dependency is Resilience4j `2.2.0`, brought in by the
+  service-local `resilience4j-spring-boot3` dependency and its expected modules.
+- Audit result: PASS — no global OpenFeign circuit-breaker switch, automatic retry, fallback,
+  TimeLimiter, RateLimiter, manual `PrometheusMeterRegistry`, migration, Kafka schema/topic,
+  Redis, or HTTP contract change was introduced. No `pom.xml` or contract file changed in the
+  resilience implementation. Existing `300/800 ms` Inventory timeouts and `Retryer.NEVER_RETRY`
+  remain unchanged.
+- Exit status: `0`.
+
+### Full Order module verification
+
+- Command: `.\mvnw.cmd -pl services/order-service -am verify`
+- Reactor scope: `flash-sale-engine`, `common-web`, `kafka-avro-contracts`, `order-service`.
+- Result: PASS — `Tests run: 228, Failures: 0, Errors: 0, Skipped: 8`; every reactor module
+  succeeded and the packaged Order artifact was produced.
+- Exit status: `0`; elapsed time approximately `11m42s` because Testcontainers created isolated
+  PostgreSQL instances for integration contexts. Kafka connection warnings were expected for tests
+  that intentionally run without a broker and did not fail the build.
+- Completed: 2026-09-17
+
+### Flash Sale and Order regression verification
+
+- Command: `.\mvnw.cmd -pl services/flashsale-service,services/order-service -am verify`
+- Reactor scope: `flash-sale-engine`, `common-web`, `kafka-avro-contracts`, `flashsale-service`,
+  `order-service`.
+- Result: PASS — Flash Sale `129` tests, `0` failures, `0` errors, `1` skipped; Order `228`
+  tests, `0` failures, `0` errors, `8` skipped. All five reactor modules succeeded and both
+  packaged service artifacts were produced.
+- Exit status: `0`; elapsed time approximately `14m26s`. Testcontainers created isolated
+  PostgreSQL/Redis instances for the integration suites. Kafka connection warnings were expected
+  for tests without a broker and did not fail the build.
+- Completed: 2026-09-17
+
+## T028 — Quickstart reconciliation and rollback boundary
+
+- Context commands:
+  `Get-Content .specify\\feature.json` returned `specs/050-order-inventory-resilience`; branch
+  was `codex/order-inventory-resilience-final-gates`; `git diff --check` passed.
+- Re-run results: the dependency-tree command, Feature 050 `Static` and `All` runner commands,
+  Order module verify, and Flash Sale + Order verify all passed with the evidence above. The
+  dependency-tree command is intentionally quoted in PowerShell so `-Dincludes=...` is passed as
+  one Maven argument.
+- Rollback rehearsal: local boundary/static and identity-preservation checks passed; no database,
+  Kafka, Redis, HTTP contract, or external cloud state was changed. A real EKS image rollback was
+  not executed because this feature gate has no active cloud environment; cloud rollback remains
+  explicitly deferred and must be validated operationally before a production rollout.
+- Result: PASS for all available local gates; cloud-only rollback evidence is DEFERRED, not inferred.
+- Completed: 2026-09-17
