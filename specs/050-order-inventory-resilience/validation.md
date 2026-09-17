@@ -191,3 +191,46 @@ authorization headers, business identifiers, and raw request bodies must not be 
   recovery tests executed with 0 failures, 0 errors, and 0 skipped; exit status `0`.
 - Completed: 2026-09-16
 - CI/PR: [PR #136](https://github.com/phandinhphuc1234/flash-sale/pull/136).
+
+## T017–T022 — User Story 3 Bulkhead and bounded observability
+
+### Protection and telemetry behavior
+
+- The explicit decorator now composes a semaphore Bulkhead outside the named Circuit Breaker. The
+  Bulkhead admits at most the configured per-pod calls and uses fixed zero-wait admission. A full
+  Bulkhead maps to the existing recoverable `INVENTORY_SERVICE_UNAVAILABLE` outcome without
+  invoking the Inventory delegate; an open Circuit Breaker remains the same safe outcome.
+- Resilience4j tagged Micrometer binders expose the named Circuit Breaker and Bulkhead metrics
+  through the existing registry. The tests allow only fixed `name`, `kind`, and `state` dimensions
+  and verify the standard calls/not-permitted/state and bulkhead available/max metric names.
+- `OrderInventoryResilienceEventLogger` subscribes to the Circuit Breaker state-transition publisher
+  for race-free `CLOSED`, `OPEN`, and `HALF_OPEN` transitions. Rejections use only the fixed
+  `open_circuit` and `bulkhead_full` outcomes. Trace values are normalized; shopper/order/hold/
+  purchase IDs, tokens, request bodies, and URLs are not logged or labelled.
+- Order readiness continues to check PostgreSQL and Order's own indicator. An `OPEN` Inventory
+  breaker with a healthy PostgreSQL signal leaves readiness `UP`, while Inventory remains isolated.
+
+### Focused verification
+
+- Command: `.\mvnw.cmd -pl services/order-service -am test
+  "-Dtest=OrderInventoryResilienceConfigurationTests,ResilientInventoryRegularHoldClientAdapterTests,RegularPurchaseInventoryResilienceIntegrationTests,RegularPurchaseRecoveryIntegrationTests,InventoryRegularHoldBulkheadTests,OrderInventoryResilienceObservabilityTests"
+  "-Dsurefire.failIfNoSpecifiedTests=false"`
+- Scope: managed configuration, existing outage/recovery/identity regression tests, two-permit
+  latch-controlled concurrency, 100 zero-wait saturation rejections, Resilience4j metric binding,
+  sanitized transition/rejection logs, and readiness independence.
+- Result: PASS — 21 tests executed, 0 failures, 0 errors, 0 skipped; all four reactor modules
+  (`flash-sale-engine`, `common-web`, `kafka-avro-contracts`, `order-service`) succeeded.
+- Bulkhead evidence: configured/admitted maximum `2`, observed maximum `2`, `100/100` excess
+  attempts rejected without delegate entry, p95 rejection `11 ms`, maximum `45 ms`, delegate
+  calls remained `2`, and the bulkhead available gauge reached `0` while both calls were held.
+- Observability evidence: exported names included
+  `resilience4j.circuitbreaker.calls`, `resilience4j.circuitbreaker.not.permitted.calls`,
+  `resilience4j.circuitbreaker.state`, `resilience4j.bulkhead.available.concurrent.calls`, and
+  `resilience4j.bulkhead.max.allowed.concurrent.calls`; no unbounded identifier or secret appeared
+  in metric tags or captured logs. Logs distinguished `stateFrom=CLOSED stateTo=OPEN`,
+  `outcome=open_circuit`, and `outcome=bulkhead_full`.
+- Readiness evidence: Inventory breaker `OPEN`, Order readiness `UP` with PostgreSQL available,
+  consumer diagnostics non-gating.
+- Exit status: `0`
+- Completed: 2026-09-17
+- CI/PR: pending push.

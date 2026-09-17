@@ -6,6 +6,8 @@ import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.micrometer.tagged.TaggedBulkheadMetrics;
+import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics;
 import com.philia.flashsale.order.regularpurchase.application.port.out.CreateRegularStockHoldPort;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -60,10 +62,30 @@ class OrderInventoryResilienceConfiguration {
     }
 
     @Bean
+    TaggedCircuitBreakerMetrics orderInventoryCircuitBreakerMetrics(
+            @Qualifier("orderInventoryCircuitBreakerRegistry") CircuitBreakerRegistry registry) {
+        return TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(registry);
+    }
+
+    @Bean
+    TaggedBulkheadMetrics orderInventoryBulkheadMetrics(
+            @Qualifier("orderInventoryBulkheadRegistry") BulkheadRegistry registry) {
+        return TaggedBulkheadMetrics.ofBulkheadRegistry(registry);
+    }
+
+    @Bean
+    OrderInventoryResilienceEventLogger orderInventoryResilienceEventLogger(
+            @Qualifier("orderInventoryRegularHoldCircuitBreaker") CircuitBreaker circuitBreaker) {
+        return new OrderInventoryResilienceEventLogger(circuitBreaker);
+    }
+
+    @Bean
     @Primary
     CreateRegularStockHoldPort resilientInventoryRegularHoldClientAdapter(
             InventoryRegularHoldClientAdapter delegate,
-            @Qualifier("orderInventoryRegularHoldCircuitBreaker") CircuitBreaker circuitBreaker) {
-        return new ResilientInventoryRegularHoldClientAdapter(delegate, circuitBreaker);
+            @Qualifier("orderInventoryRegularHoldCircuitBreaker") CircuitBreaker circuitBreaker,
+            @Qualifier("orderInventoryRegularHoldBulkhead") Bulkhead bulkhead,
+            OrderInventoryResilienceEventLogger eventLogger) {
+        return new ResilientInventoryRegularHoldClientAdapter(delegate, circuitBreaker, bulkhead, eventLogger);
     }
 }

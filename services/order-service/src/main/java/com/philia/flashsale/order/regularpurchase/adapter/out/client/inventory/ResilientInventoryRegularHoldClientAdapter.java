@@ -4,6 +4,8 @@ import com.philia.flashsale.order.regularpurchase.application.exception.RegularP
 import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHold;
 import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHoldCommand;
 import com.philia.flashsale.order.regularpurchase.application.port.out.CreateRegularStockHoldPort;
+import io.github.resilience4j.bulkhead.Bulkhead;
+import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import java.util.Objects;
@@ -21,24 +23,38 @@ public final class ResilientInventoryRegularHoldClientAdapter implements CreateR
 
     private final CreateRegularStockHoldPort delegate;
     private final CircuitBreaker circuitBreaker;
+    private final Bulkhead bulkhead;
+    private final OrderInventoryResilienceEventLogger eventLogger;
 
     public ResilientInventoryRegularHoldClientAdapter(CreateRegularStockHoldPort delegate,
-            CircuitBreaker circuitBreaker) {
+            CircuitBreaker circuitBreaker, Bulkhead bulkhead,
+            OrderInventoryResilienceEventLogger eventLogger) {
         this.delegate = Objects.requireNonNull(delegate, "delegate is required");
         this.circuitBreaker = Objects.requireNonNull(circuitBreaker, "circuitBreaker is required");
+        this.bulkhead = Objects.requireNonNull(bulkhead, "bulkhead is required");
+        this.eventLogger = Objects.requireNonNull(eventLogger, "eventLogger is required");
     }
 
     @Override
     public RegularStockHold create(RegularStockHoldCommand command, String traceId) {
         Objects.requireNonNull(command, "command is required");
-        Supplier<RegularStockHold> guardedCall = CircuitBreaker.decorateSupplier(
+        Supplier<RegularStockHold> circuitGuardedCall = CircuitBreaker.decorateSupplier(
                 circuitBreaker, () -> delegate.create(command, traceId));
+        Supplier<RegularStockHold> guardedCall = Bulkhead.decorateSupplier(bulkhead, circuitGuardedCall);
         try {
-            return guardedCall.get();
+            return eventLogger.withTrace(traceId, guardedCall);
         } catch (CallNotPermittedException exception) {
-            throw new RegularPurchaseDownstreamException(
-                    RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
+            eventLogger.rejection(OrderInventoryResilienceEventLogger.Rejection.OPEN_CIRCUIT, traceId);
+            throw unavailable();
+        } catch (BulkheadFullException exception) {
+            eventLogger.rejection(OrderInventoryResilienceEventLogger.Rejection.BULKHEAD_FULL, traceId);
+            throw unavailable();
         }
+    }
+
+    private RegularPurchaseDownstreamException unavailable() {
+        return new RegularPurchaseDownstreamException(
+                RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
     }
 
     static boolean isBusinessFailure(Throwable throwable) {

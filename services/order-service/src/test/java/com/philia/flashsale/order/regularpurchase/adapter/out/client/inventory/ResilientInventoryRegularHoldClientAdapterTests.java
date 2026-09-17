@@ -15,6 +15,8 @@ import com.philia.flashsale.order.regularpurchase.application.exception.RegularP
 import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHold;
 import com.philia.flashsale.order.regularpurchase.application.model.RegularStockHoldCommand;
 import com.philia.flashsale.order.regularpurchase.application.port.out.CreateRegularStockHoldPort;
+import io.github.resilience4j.bulkhead.Bulkhead;
+import io.github.resilience4j.bulkhead.BulkheadConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -53,7 +55,7 @@ class ResilientInventoryRegularHoldClientAdapterTests {
         RegularStockHold expected = hold();
         when(delegate.create(command, TRACE_ID)).thenReturn(expected);
 
-        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+        var adapter = adapter(delegate, breaker);
 
         assertThat(adapter.create(command, TRACE_ID)).isSameAs(expected);
         verify(delegate).create(same(command), eq(TRACE_ID));
@@ -79,7 +81,7 @@ class ResilientInventoryRegularHoldClientAdapterTests {
         CircuitBreaker breaker = circuitBreaker(2);
         RegularStockHoldCommand command = command();
         when(delegate.create(command, TRACE_ID)).thenThrow(new IllegalStateException("synthetic outbound failure"));
-        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+        var adapter = adapter(delegate, breaker);
 
         assertThatThrownBy(() -> adapter.create(command, TRACE_ID)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> adapter.create(command, TRACE_ID)).isInstanceOf(IllegalStateException.class);
@@ -96,7 +98,7 @@ class ResilientInventoryRegularHoldClientAdapterTests {
         RegularPurchaseDownstreamException unavailable = failure(
                 RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
         when(delegate.create(command(), TRACE_ID)).thenThrow(unavailable);
-        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+        var adapter = adapter(delegate, breaker);
 
         assertThatThrownBy(() -> adapter.create(command(), TRACE_ID)).isSameAs(unavailable);
         assertThatThrownBy(() -> adapter.create(command(), TRACE_ID)).isSameAs(unavailable);
@@ -148,7 +150,7 @@ class ResilientInventoryRegularHoldClientAdapterTests {
             await(releaseProbes);
             return hold();
         };
-        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+        var adapter = adapter(delegate, breaker);
 
         open(adapter, command, breaker);
         clock.advance(Duration.ofMillis(10_001));
@@ -188,7 +190,7 @@ class ResilientInventoryRegularHoldClientAdapterTests {
             delegateCalls.incrementAndGet();
             throw failure(RegularPurchaseDownstreamException.Failure.INVENTORY_SERVICE_UNAVAILABLE);
         };
-        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+        var adapter = adapter(delegate, breaker);
 
         open(adapter, command, breaker);
         clock.advance(Duration.ofMillis(10_001));
@@ -218,7 +220,7 @@ class ResilientInventoryRegularHoldClientAdapterTests {
             }
             return hold();
         };
-        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+        var adapter = adapter(delegate, breaker);
 
         open(adapter, command, breaker);
         clock.advance(Duration.ofMillis(10_001));
@@ -238,7 +240,7 @@ class ResilientInventoryRegularHoldClientAdapterTests {
         RegularStockHoldCommand command = command();
         RegularPurchaseDownstreamException rejection = failure(failure);
         when(delegate.create(command, TRACE_ID)).thenThrow(rejection);
-        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+        var adapter = adapter(delegate, breaker);
 
         for (int attempt = 0; attempt < 100; attempt++) {
             assertThatThrownBy(() -> adapter.create(command, TRACE_ID)).isSameAs(rejection);
@@ -256,7 +258,7 @@ class ResilientInventoryRegularHoldClientAdapterTests {
         RegularStockHoldCommand command = command();
         RegularPurchaseDownstreamException outage = failure(failure);
         when(delegate.create(command, TRACE_ID)).thenThrow(outage);
-        var adapter = new ResilientInventoryRegularHoldClientAdapter(delegate, breaker);
+        var adapter = adapter(delegate, breaker);
 
         assertThatThrownBy(() -> adapter.create(command, TRACE_ID)).isSameAs(outage);
         assertThatThrownBy(() -> adapter.create(command, TRACE_ID)).isSameAs(outage);
@@ -272,6 +274,16 @@ class ResilientInventoryRegularHoldClientAdapterTests {
         OrderInventoryResilienceConfiguration configuration = new OrderInventoryResilienceConfiguration();
         CircuitBreakerRegistry registry = configuration.orderInventoryCircuitBreakerRegistry(properties);
         return configuration.orderInventoryRegularHoldCircuitBreaker(registry);
+    }
+
+    private ResilientInventoryRegularHoldClientAdapter adapter(
+            CreateRegularStockHoldPort delegate, CircuitBreaker circuitBreaker) {
+        Bulkhead bulkhead = Bulkhead.of("orderInventoryRegularHoldTest", BulkheadConfig.custom()
+                .maxConcurrentCalls(16)
+                .maxWaitDuration(Duration.ZERO)
+                .build());
+        return new ResilientInventoryRegularHoldClientAdapter(delegate, circuitBreaker, bulkhead,
+                new OrderInventoryResilienceEventLogger(circuitBreaker));
     }
 
     private CircuitBreaker recoveryCircuitBreaker(MutableClock clock, int permittedHalfOpenCalls) {
