@@ -12,6 +12,7 @@ import com.philia.flashsale.order.order.application.port.out.GenerateOrderIdenti
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderNumberPort;
 import com.philia.flashsale.order.order.domain.valueobject.Money;
 import com.philia.flashsale.order.regularpurchase.adapter.out.client.inventory.ResilientInventoryRegularHoldClientAdapter;
+import com.philia.flashsale.order.regularpurchase.adapter.out.client.inventory.OrderInventoryResilienceEventLogger;
 import com.philia.flashsale.order.regularpurchase.application.command.BuyNowCheckoutCommand;
 import com.philia.flashsale.order.regularpurchase.application.exception.RegularPurchaseDownstreamException;
 import com.philia.flashsale.order.regularpurchase.application.model.ProductPurchaseQuote;
@@ -24,6 +25,8 @@ import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRe
 import com.philia.flashsale.order.regularpurchase.domain.model.RegularPurchaseRequestState;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.bulkhead.Bulkhead;
+import io.github.resilience4j.bulkhead.BulkheadConfig;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -60,7 +63,11 @@ class RegularPurchaseInventoryResilienceIntegrationTests {
                         .waitDurationInOpenState(Duration.ofMinutes(1))
                         .build());
         circuitBreaker.transitionToOpenState();
-        var protectedInventory = new ResilientInventoryRegularHoldClientAdapter(inventory, circuitBreaker);
+        var protectedInventory = new ResilientInventoryRegularHoldClientAdapter(inventory, circuitBreaker,
+                Bulkhead.of("orderInventoryIntegration",
+                        BulkheadConfig.custom().maxConcurrentCalls(16)
+                                .maxWaitDuration(Duration.ZERO).build()),
+                new OrderInventoryResilienceEventLogger(circuitBreaker));
         service = new RegularPurchaseCheckoutService(
                 persistence, quotes, protectedInventory, identities, orderNumbers, clock);
         when(clock.now()).thenReturn(NOW);

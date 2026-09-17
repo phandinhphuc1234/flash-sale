@@ -115,15 +115,15 @@ Order remains ready, and metrics/logs expose only bounded sanitized state/outcom
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Write a latch-controlled concurrency test for max admitted calls, zero-wait excess rejection, and no duplicate delegate execution in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/InventoryRegularHoldBulkheadTests.java`.
-- [ ] T018 [P] [US3] Write observability/readiness tests for breaker states, bulkhead saturation, fixed metric dimensions, sanitized transition logs, and Inventory-independent readiness in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/integration/OrderInventoryResilienceObservabilityTests.java`.
+- [x] T017 [P] [US3] Write a latch-controlled concurrency test for max admitted calls, zero-wait excess rejection, and no duplicate delegate execution in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/InventoryRegularHoldBulkheadTests.java`.
+- [x] T018 [P] [US3] Write observability/readiness tests for breaker states, bulkhead saturation, fixed metric dimensions, sanitized transition logs, and Inventory-independent readiness in `services/order-service/src/test/java/com/philia/flashsale/order/regularpurchase/integration/OrderInventoryResilienceObservabilityTests.java`.
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Compose the zero-wait semaphore bulkhead outside the circuit breaker and map `BulkheadFullException` to the existing recoverable `INVENTORY_SERVICE_UNAVAILABLE` outcome in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapter.java`.
-- [ ] T020 [US3] Add bounded circuit transition and rejection logging with only fixed state/outcome values plus normalized trace ID in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceEventLogger.java` and register it in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfiguration.java`.
-- [ ] T021 [P] [US3] Document the protection flow, environment variables, metric-state interpretation, readiness independence, tuning rules, and prohibited high-cardinality labels in `services/order-service/README.md`.
-- [ ] T022 [US3] Run the User Story 3 concurrency and observability tests and record maximum observed concurrency, rejection latency, readiness result, exported bounded metric names, redaction assertions, command, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T019 [US3] Compose the zero-wait semaphore bulkhead outside the circuit breaker and map `BulkheadFullException` to the existing recoverable `INVENTORY_SERVICE_UNAVAILABLE` outcome in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/ResilientInventoryRegularHoldClientAdapter.java`.
+- [x] T020 [US3] Add bounded circuit transition and rejection logging with only fixed state/outcome values plus normalized trace ID in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceEventLogger.java` and register it in `services/order-service/src/main/java/com/philia/flashsale/order/regularpurchase/adapter/out/client/inventory/OrderInventoryResilienceConfiguration.java`.
+- [x] T021 [P] [US3] Document the protection flow, environment variables, metric-state interpretation, readiness independence, tuning rules, and prohibited high-cardinality labels in `services/order-service/README.md`.
+- [x] T022 [US3] Run the User Story 3 concurrency and observability tests and record maximum observed concurrency, rejection latency, readiness result, exported bounded metric names, redaction assertions, command, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
 
 **Checkpoint**: US3 is independently demonstrable: one slow dependency cannot occupy unbounded
 Order callers, and operators can diagnose the protection state without sensitive identifiers.
