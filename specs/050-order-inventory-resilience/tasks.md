@@ -134,12 +134,12 @@ Order callers, and operators can diagnose the protection state without sensitive
 
 **Purpose**: Package repeatable validation, prove compatibility, and close the evidence ledger.
 
-- [ ] T023 Create a repeatable PowerShell runner for the focused configuration, outage, recovery, concurrency, observability, and identity-preservation checks in `infra/docker/smoke/feature-050-order-inventory-resilience.ps1`.
-- [ ] T024 Run `infra/docker/smoke/feature-050-order-inventory-resilience.ps1`, require every Feature 050 marker to pass, and record measured evidence plus exit status in `specs/050-order-inventory-resilience/validation.md`.
-- [ ] T025 Run the managed Resilience4j dependency tree check and audit that no global OpenFeign circuit-breaker switch, retry, fallback, TimeLimiter, RateLimiter, manual `PrometheusMeterRegistry`, database migration, Kafka schema/topic, Redis, or public/internal HTTP contract change was introduced; record the audit in `specs/050-order-inventory-resilience/validation.md`.
-- [ ] T026 Run `.\mvnw.cmd -pl services/order-service -am verify` and record the exact command, reactor scope, test totals, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
-- [ ] T027 Run `.\mvnw.cmd -pl services/flash-sale-service,services/order-service -am verify` to cover the required Flash Sale and Order regressions, then record the exact command, reactor scope, test totals, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
-- [ ] T028 Re-run every command in `specs/050-order-inventory-resilience/quickstart.md`, reconcile completed checkboxes with captured evidence, and document rollback rehearsal results and any deferred cloud-only verification in `specs/050-order-inventory-resilience/validation.md` and `specs/050-order-inventory-resilience/tasks.md`.
+- [x] T023 Create a repeatable PowerShell runner for the focused configuration, outage, recovery, concurrency, observability, and identity-preservation checks in `infra/docker/smoke/feature-050-order-inventory-resilience.ps1`.
+- [x] T024 Run `infra/docker/smoke/feature-050-order-inventory-resilience.ps1`, require every Feature 050 marker to pass, and record measured evidence plus exit status in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T025 Run the managed Resilience4j dependency tree check and audit that no global OpenFeign circuit-breaker switch, retry, fallback, TimeLimiter, RateLimiter, manual `PrometheusMeterRegistry`, database migration, Kafka schema/topic, Redis, or public/internal HTTP contract change was introduced; record the audit in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T026 Run `.\mvnw.cmd -pl services/order-service -am verify` and record the exact command, reactor scope, test totals, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T027 Run `.\mvnw.cmd -pl services/flashsale-service,services/order-service -am verify` to cover the required Flash Sale and Order regressions, then record the exact command, reactor scope, test totals, result, and exit status in `specs/050-order-inventory-resilience/validation.md`.
+- [x] T028 Re-run every command in `specs/050-order-inventory-resilience/quickstart.md`, reconcile completed checkboxes with captured evidence, and document rollback rehearsal results and any deferred cloud-only verification in `specs/050-order-inventory-resilience/validation.md` and `specs/050-order-inventory-resilience/tasks.md`.
 
 **Checkpoint**: Feature 050 may be reported complete only when all required local gates pass and no
 checked task lacks evidence. Cloud-only work, if unavailable, remains explicitly uncompleted rather
