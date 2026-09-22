@@ -8,6 +8,7 @@ import com.philia.flashsale.common.web.ApiResponse;
 import com.philia.flashsale.product.catalogadmin.application.port.in.BrowseAdminCatalogUseCase;
 import com.philia.flashsale.product.catalogadmin.application.port.in.CreateProductDraftUseCase;
 import com.philia.flashsale.product.catalogadmin.application.port.in.ViewAdminProductUseCase;
+import com.philia.flashsale.product.catalogadmin.application.port.in.LookupAdminVariantDisplaysUseCase;
 import com.philia.flashsale.product.catalogadmin.application.port.in.MaintainProductCompositionUseCase;
 import com.philia.flashsale.product.catalogadmin.application.port.in.PublishProductUseCase;
 import com.philia.flashsale.product.catalogadmin.application.port.in.DeactivateProductUseCase;
@@ -18,6 +19,7 @@ import com.philia.flashsale.product.catalogadmin.application.result.ProductLifec
 import com.philia.flashsale.product.catalogadmin.domain.AdminCommandName;
 import com.philia.flashsale.product.catalogadmin.application.query.BrowseAdminCatalogQuery;
 import com.philia.flashsale.product.catalogadmin.application.query.ViewAdminProductQuery;
+import com.philia.flashsale.product.catalogadmin.application.query.LookupAdminVariantDisplaysQuery;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminCatalogPageResult;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductDetailResult;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductSummaryResult;
@@ -38,14 +40,20 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/v1/admin/catalog")
+@Tag(name = "Admin catalog", description = "Authenticated product catalog administration")
+@SecurityRequirement(name = "bearerAuth")
 class ProductAdminController {
 
     private final CreateProductDraftUseCase createProductDraftUseCase;
     private final BrowseAdminCatalogUseCase browseAdminCatalogUseCase;
     private final ViewAdminProductUseCase viewAdminProductUseCase;
+    private final LookupAdminVariantDisplaysUseCase lookupAdminVariantDisplaysUseCase;
     private final MaintainProductCompositionUseCase maintainProductCompositionUseCase;
     private final PublishProductUseCase publishProductUseCase;
     private final DeactivateProductUseCase deactivateProductUseCase;
@@ -56,6 +64,7 @@ class ProductAdminController {
             CreateProductDraftUseCase createProductDraftUseCase,
             BrowseAdminCatalogUseCase browseAdminCatalogUseCase,
             ViewAdminProductUseCase viewAdminProductUseCase,
+            LookupAdminVariantDisplaysUseCase lookupAdminVariantDisplaysUseCase,
             MaintainProductCompositionUseCase maintainProductCompositionUseCase,
             PublishProductUseCase publishProductUseCase,
             DeactivateProductUseCase deactivateProductUseCase,
@@ -64,6 +73,7 @@ class ProductAdminController {
         this.createProductDraftUseCase = createProductDraftUseCase;
         this.browseAdminCatalogUseCase = browseAdminCatalogUseCase;
         this.viewAdminProductUseCase = viewAdminProductUseCase;
+        this.lookupAdminVariantDisplaysUseCase = lookupAdminVariantDisplaysUseCase;
         this.maintainProductCompositionUseCase = maintainProductCompositionUseCase;
         this.publishProductUseCase = publishProductUseCase;
         this.deactivateProductUseCase = deactivateProductUseCase;
@@ -71,8 +81,21 @@ class ProductAdminController {
         this.mapper = mapper;
     }
 
+    @PostMapping("/variants/display-details")
+    @Operation(summary = "Resolve variant display details in one batch",
+            description = "Returns product and variant labels for up to 100 IDs, preserving missing rows.")
+    ApiResponse<AdminVariantDisplayBatchResponse> displayVariantDetails(
+            @RequestHeader("X-Trace-Id") String traceId,
+            @Valid @RequestBody AdminVariantDisplayBatchRequest request) {
+        requiredTraceId(traceId);
+        var result = lookupAdminVariantDisplaysUseCase.lookup(
+                new LookupAdminVariantDisplaysQuery(request.variantIds()));
+        return ApiResponse.success(mapper.toDisplayBatchResponse(result));
+    }
+
     // Convert the admin HTTP request into an application command; business rules stay inside the use case/domain.
     @PostMapping("/products")
+    @Operation(summary = "Create a product draft", description = "Creates a draft using an idempotency key and trace ID.")
     ResponseEntity<ApiResponse<CreateProductDraftResponse>> createProductDraft(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader("X-Trace-Id") String traceId,
@@ -89,6 +112,7 @@ class ProductAdminController {
 
     // Admin browsing can include draft/inactive products, so it is intentionally separate from the public catalog API.
     @GetMapping("/products")
+    @Operation(summary = "Browse products for administration", description = "Includes draft and inactive products and supports status, text, and pagination filters.")
     ApiResponse<PageResponse<AdminProductSummaryResponse>> browseProducts(
             @RequestHeader("X-Trace-Id") String traceId,
             @RequestParam(required = false) String status,
@@ -105,6 +129,7 @@ class ProductAdminController {
 
     // Admin detail uses the product id because code/slug may still be edited while the product is a draft.
     @GetMapping("/products/{productId}")
+    @Operation(summary = "View an administrative product detail", description = "Looks up a product by stable product ID, including non-public lifecycle states.")
     ApiResponse<AdminProductDetailResponse> viewProduct(
             @PathVariable UUID productId,
             @RequestHeader("X-Trace-Id") String traceId) {
@@ -114,6 +139,7 @@ class ProductAdminController {
 
     // Composition is one application command so variants, categories and media move together atomically.
     @PutMapping("/products/{productId}/composition")
+    @Operation(summary = "Replace product composition", description = "Atomically replaces product variants, categories, and media using the If-Match version.")
     ResponseEntity<ApiResponse<ProductMutationResponse>> maintainComposition(
             @PathVariable UUID productId,
             @RequestHeader("If-Match") long expectedVersion,
@@ -126,6 +152,7 @@ class ProductAdminController {
 
     // Lifecycle commands share the same idempotency and optimistic-version contract.
     @PostMapping("/products/{productId}/publish")
+    @Operation(summary = "Publish a product", description = "Publishes a draft using optimistic version and idempotency headers.")
     ResponseEntity<ApiResponse<ProductLifecycleResponse>> publish(
             @PathVariable UUID productId,
             @RequestHeader("If-Match") long expectedVersion,
@@ -137,6 +164,7 @@ class ProductAdminController {
     }
 
     @PostMapping("/products/{productId}/deactivate")
+    @Operation(summary = "Deactivate a product", description = "Removes a product from public sale using optimistic version and idempotency headers.")
     ResponseEntity<ApiResponse<ProductLifecycleResponse>> deactivate(
             @PathVariable UUID productId,
             @RequestHeader("If-Match") long expectedVersion,
@@ -148,6 +176,7 @@ class ProductAdminController {
     }
 
     @PostMapping("/products/{productId}/archive")
+    @Operation(summary = "Archive a product", description = "Archives a product using optimistic version and idempotency headers.")
     ResponseEntity<ApiResponse<ProductLifecycleResponse>> archive(
             @PathVariable UUID productId,
             @RequestHeader("If-Match") long expectedVersion,

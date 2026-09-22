@@ -19,6 +19,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Objects;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -38,6 +41,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(path = "/api/v1/orders", produces = MediaType.APPLICATION_JSON_VALUE)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@Tag(name = "Regular purchase", description = "Idempotent Buy Now and cart checkout APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class RegularPurchaseController {
 
     private final ObjectProvider<CheckoutBuyNowUseCase> checkout;
@@ -58,6 +63,7 @@ public class RegularPurchaseController {
     }
 
     @PostMapping(path = "/cart-checkouts", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Checkout my cart", description = "Creates or replays one order for the submitted cart snapshot using the Idempotency-Key header.")
     public ResponseEntity<ApiResponse<RegularPurchaseCheckoutResponse>> checkoutCart(
             @Valid @RequestBody CartCheckoutRequest body,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -85,6 +91,7 @@ public class RegularPurchaseController {
     }
 
     @PostMapping(path = "/buy-now", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Buy one product variant now", description = "Creates or replays an order for one variant using the Idempotency-Key header.")
     public ResponseEntity<ApiResponse<RegularPurchaseCheckoutResponse>> buyNow(
             @Valid @RequestBody BuyNowCheckoutRequest body,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,

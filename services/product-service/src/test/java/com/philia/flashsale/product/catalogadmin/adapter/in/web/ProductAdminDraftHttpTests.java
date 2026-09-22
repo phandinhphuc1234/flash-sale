@@ -81,7 +81,46 @@ class ProductAdminDraftHttpTests {
                     product_variants,
                     products,
                     categories
-                """);
+        """);
+    }
+
+    @Test
+    void displayBatchReturnsProductLabelsAndPreservesUnknownRows() throws Exception {
+        UUID productId = uuid(901);
+        UUID variantId = uuid(902);
+        UUID missingVariantId = uuid(903);
+        Instant now = Instant.parse("2026-09-22T00:00:00Z");
+        insertProduct(productId, "BATCH-PRODUCT-001", "batch-product-001", "Batch Product", "ACTIVE", now);
+        jdbc.update(
+                """
+                INSERT INTO product_variants (
+                    id, product_id, sku, name, base_price, currency, status, sort_order
+                ) VALUES (?, ?, ?, ?, ?, 'VND', 'ACTIVE', 0)
+                """,
+                variantId,
+                productId,
+                "BATCH-SKU-001",
+                "Default",
+                BigDecimal.valueOf(1999));
+
+        mockMvc.perform(post("/api/v1/admin/catalog/variants/display-details")
+                        .with(catalogAdmin())
+                        .header("X-Trace-Id", "trace-display-batch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "variantIds": ["%s", "%s", "%s"]
+                                }
+                                """.formatted(variantId, variantId, missingVariantId)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Trace-Id", "trace-display-batch"))
+                .andExpect(jsonPath("$.data.variants", hasSize(2)))
+                .andExpect(jsonPath("$.data.variants[0].variantId").value(variantId.toString()))
+                .andExpect(jsonPath("$.data.variants[0].found").value(true))
+                .andExpect(jsonPath("$.data.variants[0].productName").value("Batch Product"))
+                .andExpect(jsonPath("$.data.variants[0].sku").value("BATCH-SKU-001"))
+                .andExpect(jsonPath("$.data.variants[1].variantId").value(missingVariantId.toString()))
+                .andExpect(jsonPath("$.data.variants[1].found").value(false));
     }
 
     @Test

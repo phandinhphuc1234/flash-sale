@@ -4,6 +4,7 @@ package com.philia.flashsale.authentication.websupport.error;
 public enum AuthenticationErrorCode {
     AUTH_VALIDATION_FAILED("Validation failed"),
     AUTH_ACCOUNT_ALREADY_EXISTS("Account already exists"),
+    AUTH_ACCOUNT_NOT_FOUND("Account was not found"),
     AUTH_INVALID_CREDENTIALS("Invalid credentials"),
     AUTH_TOO_MANY_ATTEMPTS("Too many attempts"),
     AUTH_CROSS_SITE_REQUEST_REJECTED("Cross-site request rejected"),

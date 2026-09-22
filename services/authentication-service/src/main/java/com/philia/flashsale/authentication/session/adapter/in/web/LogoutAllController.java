@@ -12,11 +12,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @ConditionalOnProperty(prefix = "flashsale.authentication.http", name = "enabled", havingValue = "true", matchIfMissing = true)
 /** HTTP adapter that derives logout-all ownership only from a verified JWT subject. */
+@Tag(name = "Authentication")
+@SecurityRequirement(name = "bearerAuth")
 public class LogoutAllController {
     private final LogoutSessionUseCase useCase;
     private final RefreshCookieWriter cookieWriter;
@@ -26,6 +32,11 @@ public class LogoutAllController {
     }
 
     @PostMapping("/logout-all")
+    @Operation(summary = "Logout all sessions", description = "Revokes every session owned by the verified JWT subject and clears the refresh cookie.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "All owned sessions logged out"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing, invalid, or expired access token")
+    })
     public ResponseEntity<Void> logoutAll(@AuthenticationPrincipal Jwt jwt, HttpServletResponse response) {
         useCase.logoutAll(new LogoutAllSessionsCommand(UUID.fromString(jwt.getSubject())));
         cookieWriter.clear(response);

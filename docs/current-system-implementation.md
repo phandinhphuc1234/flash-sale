@@ -48,9 +48,9 @@ Stripe: Checkout API and signed webhook callback
 
 ## Implemented HTTP surface
 
-The canonical inventory contains 50 unique method/path pairs:
+The canonical inventory contains 53 unique method/path pairs:
 
-- 39 Gateway-public endpoints (38 shopper/admin plus the Stripe webhook);
+- 42 Gateway-public endpoints (41 shopper/admin plus the Stripe webhook);
 - 10 internal service endpoints;
 - one JWKS identity-trust endpoint.
 

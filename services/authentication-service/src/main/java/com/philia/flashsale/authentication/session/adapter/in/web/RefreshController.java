@@ -13,11 +13,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @ConditionalOnProperty(prefix = "flashsale.authentication.http", name = "enabled", havingValue = "true", matchIfMissing = true)
 /** HTTP adapter for cookie-based refresh rotation and replacement-cookie writing. */
+@Tag(name = "Authentication")
 public class RefreshController {
     private final RefreshSessionUseCase useCase;
     private final RefreshCookieWriter cookieWriter;
@@ -27,6 +31,12 @@ public class RefreshController {
     }
 
     @PostMapping("/refresh")
+    @Operation(summary = "Refresh an access token", description = "Rotates the HttpOnly refresh cookie and returns a new access token.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Access token refreshed"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Refresh credential is invalid or reused"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "Authentication dependency unavailable")
+    })
     public ResponseEntity<ApiResponse<TokenResponse>> refresh(HttpServletRequest request,
                                                                                HttpServletResponse response) {
         String raw = cookie(request, "refresh_token");

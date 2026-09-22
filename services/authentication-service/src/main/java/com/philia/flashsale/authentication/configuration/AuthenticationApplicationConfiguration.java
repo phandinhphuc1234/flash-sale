@@ -9,6 +9,14 @@ import com.philia.flashsale.authentication.account.application.registration.Enco
 import com.philia.flashsale.authentication.account.application.bootstrap.AdminBootstrapAccountPort;
 import com.philia.flashsale.authentication.account.application.bootstrap.BootstrapAdminAccountService;
 import com.philia.flashsale.authentication.account.application.bootstrap.BootstrapAdminAccountUseCase;
+import com.philia.flashsale.authentication.account.application.profile.LoadAccountProfilePort;
+import com.philia.flashsale.authentication.account.application.profile.LoadAccountProfileService;
+import com.philia.flashsale.authentication.account.application.profile.LoadAccountProfileUseCase;
+import com.philia.flashsale.authentication.account.application.profile.UpdateAccountProfilePort;
+import com.philia.flashsale.authentication.account.application.profile.UpdateAccountProfileService;
+import com.philia.flashsale.authentication.account.application.profile.UpdateAccountProfileUseCase;
+import com.philia.flashsale.authentication.account.application.profile.UpdateAccountDetailsService;
+import com.philia.flashsale.authentication.account.application.profile.UpdateAccountDetailsUseCase;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -54,6 +62,26 @@ public class AuthenticationApplicationConfiguration {
                                                                EncodePasswordPort passwordPort,
                                                                Clock authenticationClock) {
         return new BootstrapAdminAccountService(accountPort, passwordPort, authenticationClock);
+    }
+
+    @Bean
+    @ConditionalOnBean(LoadAccountProfilePort.class)
+    LoadAccountProfileUseCase loadAccountProfileUseCase(LoadAccountProfilePort accountPort) {
+        return new LoadAccountProfileService(accountPort);
+    }
+
+    @Bean
+    @ConditionalOnBean(UpdateAccountProfilePort.class)
+    UpdateAccountProfileUseCase updateAccountProfileUseCase(UpdateAccountProfilePort accountPort,
+                                                            Clock authenticationClock) {
+        return new UpdateAccountProfileService(accountPort, authenticationClock);
+    }
+
+    @Bean
+    @ConditionalOnBean(UpdateAccountProfilePort.class)
+    UpdateAccountDetailsUseCase updateAccountDetailsUseCase(UpdateAccountProfilePort accountPort,
+                                                            Clock authenticationClock) {
+        return new UpdateAccountDetailsService(accountPort, authenticationClock);
     }
 
     @Bean

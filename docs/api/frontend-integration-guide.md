@@ -1,7 +1,7 @@
 # Frontend Integration Guide
 
 Tài liệu này mô tả contract HTTP hiện có của hệ thống Flash Sale để frontend tích hợp mà không
-phải suy đoán từ code Java. Phạm vi gồm **50 endpoint**: 38 endpoint dành cho shopper/admin, một
+phải suy đoán từ code Java. Phạm vi gồm **53 endpoint**: 41 endpoint dành cho shopper/admin, một
 Stripe webhook, một JWKS endpoint và mười endpoint nội bộ. Cart Service có bốn endpoint shopper;
 Notification Service chưa có HTTP API.
 
@@ -286,6 +286,93 @@ Cookie: refresh_token=<cookie nếu có>
 
 Request body: không có. Response: `204 No Content`.
 
+### API-051 — Account summary hiện tại
+
+Frontend gọi endpoint này sau login hoặc refresh để hiển thị account menu. Endpoint chỉ đọc dữ liệu
+do Authentication sở hữu và không thay đổi JWT/cookie.
+
+```http
+GET /api/v1/auth/me
+Authorization: Bearer <accessToken>
+X-Trace-Id: <optional-trace-id>
+```
+
+Response `200 OK`, `Cache-Control: no-store`:
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Operation completed successfully",
+  "data": {
+    "id": "4f6c4d9e-6bd2-4a63-8f1b-2d6d1e44c58a",
+    "username": "phuc",
+    "login": "phuc",
+    "email": "phuc@example.com",
+    "displayName": "Phuc",
+    "fullName": "Phuc Nguyen",
+    "phone": "+84901234567",
+    "address": "Thu Duc, Ho Chi Minh City",
+    "status": "ACTIVE",
+    "authorities": ["ROLE_USER"]
+  },
+  "timestamp": "2026-09-18T00:00:00Z"
+}
+```
+
+`username` là tên hiển thị tùy chọn. Với tài khoản cũ chưa có username, trường này là `null` và
+`displayName`/`login` dùng email làm fallback; frontend không được dùng `id` để hiển thị tên người dùng.
+
+Không render hoặc lưu `accessToken`, refresh credential, password hash, session ID, IP hay user-agent.
+Nếu `/me` tạm thời lỗi sau login, frontend dùng login từ token làm fallback và không coi login thất bại.
+
+### API-052 — Cập nhật username hiện tại
+
+`email` chỉ đọc trong API này; đổi email cần một flow xác minh riêng.
+
+```http
+PATCH /api/v1/auth/me
+Authorization: Bearer <accessToken>
+X-Trace-Id: <optional-trace-id>
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{ "username": "phuc.dev" }
+```
+
+Response `200 OK` có cùng shape API-051 và phản ánh username mới. `username` bắt buộc, tối đa
+100 ký tự; gửi `email`, `role`, `status`, password hoặc ID là không hợp lệ.
+
+Lỗi chính: `AUTH_VALIDATION_FAILED` (`400`), `AUTH_ACCOUNT_NOT_FOUND` (`404`),
+`AUTH_ACCOUNT_ALREADY_EXISTS` (`409`). Response dùng `Cache-Control: no-store` và echo `X-Trace-Id`.
+
+### API-053 — Cập nhật profile người dùng
+
+```http
+PATCH /api/v1/auth/me/profile
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+Request có thể chứa một hoặc nhiều trường sau:
+
+```json
+{
+  "username": "phuc.dev",
+  "fullName": "Phuc Nguyen",
+  "phone": "+84901234567",
+  "address": "Thu Duc, Ho Chi Minh City"
+}
+```
+
+`fullName` tối đa 150 ký tự, `phone` tối đa 32 ký tự, `address` tối đa 500 ký tự. Gửi chuỗi rỗng
+cho `fullName`, `phone` hoặc `address` để xóa giá trị. Email, role, status, ID và credential không
+được phép gửi. API trả `200 OK`, profile mới trong envelope chuẩn, `Cache-Control: no-store` và
+echo `X-Trace-Id`; username trùng trả `409 AUTH_ACCOUNT_ALREADY_EXISTS`.
+
 ## 4. Public catalog
 
 ### API-008 — Danh sách category
@@ -316,13 +403,31 @@ Response `200 OK`:
 }
 ```
 
-### API-009 — Danh sách product
+### API-009 — Tìm kiếm và phân trang product
+
+```http
+GET /api/v1/catalog/products?q=headphones&categorySlug=electronics&minPrice=100000&maxPrice=500000&sort=PRICE_ASC&page=0&size=20
+```
+
+Tất cả query parameter đều tùy chọn; request cũ chỉ có `page` và `size` vẫn hợp lệ.
+
+- `q`: tìm không phân biệt hoa thường trên tên, code, slug, mô tả ngắn, SKU và tên variant; tối đa 100 ký tự Unicode.
+- `categorySlug`: lọc theo category và các category con; category không tồn tại hoặc không active trả `CATEGORY_NOT_FOUND`.
+- `minPrice`/`maxPrice`: khoảng giá VND không âm; `minPrice` không được lớn hơn `maxPrice`.
+- `sort`: `NEWEST` (mặc định), `PRICE_ASC`, `PRICE_DESC`, hoặc `RELEVANCE` khi có `q`.
+- `page`: bắt đầu từ 0; `size`: từ 1 đến 50, mặc định 20.
+
+Ví dụ chỉ tìm kiếm:
+
+```http
+GET /api/v1/catalog/products?q=headphones&sort=RELEVANCE&page=0&size=20
+```
+
+Ví dụ chỉ lọc category:
 
 ```http
 GET /api/v1/catalog/products?categorySlug=electronics&page=0&size=20
 ```
-
-`categorySlug` là tùy chọn; `page` bắt đầu từ 0.
 
 Response `200 OK`:
 
@@ -1828,7 +1933,88 @@ Request là raw Stripe event. Frontend không thể tự tạo signature hợp l
 - `503`: chưa lưu được durable provider receipt.
 - `500`: lỗi xử lý không mong đợi.
 
-## 13. Màn hình frontend và API tương ứng
+## 13. Admin inventory collection và Product display batch
+
+Trang quản trị Inventory không nên bắt người vận hành nhập Variant UUID cho từng dòng. Frontend
+đọc một trang tồn kho, sau đó gửi tối đa 100 `variantIds` trong một batch Product để ghép nhãn.
+Hai service vẫn giữ ranh giới sở hữu: Inventory trả số lượng, Product trả tên/SKU/trạng thái.
+
+### API-054 — Danh sách Inventory admin
+
+```http
+GET /api/v1/admin/inventory?page=0&size=20
+Authorization: Bearer <admin-token>
+X-Trace-Id: <trace-id>
+```
+
+`page` bắt đầu từ 0; `size` hợp lệ từ 1 đến 100 và mặc định là 20. Kết quả được sắp xếp ổn
+định theo `updatedAt DESC, variantId ASC`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "data": [{
+      "variantId": "00000000-0000-0000-0000-000000000001",
+      "skuSnapshot": "SKU-001",
+      "onHandQuantity": 100,
+      "campaignAllocatedQuantity": 20,
+      "availableQuantity": 80,
+      "updatedAt": "2026-09-22T10:30:00Z"
+    }],
+    "page": { "number": 0, "size": 20, "totalElements": 1, "totalPages": 1, "hasNext": false }
+  }
+}
+```
+
+### API-055 — Product display batch cho Inventory
+
+```http
+POST /api/v1/admin/catalog/variants/display-details
+Authorization: Bearer <admin-token>
+X-Trace-Id: <trace-id>
+Content-Type: application/json
+
+{ "variantIds": ["00000000-0000-0000-0000-000000000001"] }
+```
+
+Một request nhận tối đa 100 UUID và tự loại trùng. Variant không tồn tại được trả về với
+`found=false`; Product/variant đã archive vẫn được trả về để Inventory không mất dòng tồn kho.
+
+```json
+{
+  "success": true,
+  "data": { "variants": [{
+    "variantId": "00000000-0000-0000-0000-000000000001",
+    "found": true,
+    "productId": "00000000-0000-0000-0000-000000000010",
+    "productName": "Demo product",
+    "variantName": "Standard",
+    "sku": "SKU-001",
+    "basePrice": "100000",
+    "currency": "VND",
+    "productStatus": "ACTIVE",
+    "variantStatus": "ACTIVE"
+  }]}
+}
+```
+
+Nếu Product batch tạm thời lỗi, frontend vẫn hiển thị số lượng từ API-054 và dùng `skuSnapshot`
+làm fallback; không gọi Product một lần cho từng dòng.
+
+### Ranh giới scale của màn hình Inventory
+
+Hai request trên là API composition ở phía frontend qua Gateway; Inventory Service không gọi đồng bộ
+sang Product Service. Vì vậy Product metadata là phần enrich có thể lỗi độc lập, còn số lượng tồn kho
+từ API-054 vẫn là dữ liệu vận hành chính. Luồng reservation flash-sale không đi qua màn hình này và
+không gọi Product để trừ kho.
+
+Nếu lưu lượng quản trị tăng đủ lớn, tiến hóa theo thứ tự: cache metadata Product ở boundary, sau đó
+mới cân nhắc projection bất đồng bộ từ Product events. Projection phải có event contract phiên bản,
+consumer idempotent, replay và quy tắc eventual consistency được phê duyệt trước; không copy
+`productName` vào Inventory như source of truth.
+
+## 14. Màn hình frontend và API tương ứng
 
 | Màn hình | API chính |
 |---|---|
@@ -1844,7 +2030,7 @@ Request là raw Stripe event. Frontend không thể tự tạo signature hợp l
 | Checkout Flash Sale | API-039, API-037 |
 | Payment result | API-038, API-035, API-033 |
 | Admin product | API-011 đến API-017 |
-| Admin inventory | API-027 đến API-029 |
+| Admin inventory | API-027 đến API-029, API-054, API-055 |
 | Admin campaign | API-019 đến API-025 |
 
 ## 14. Polling và timeout khuyến nghị
@@ -1961,7 +2147,7 @@ service port trong frontend.
 
 ## 18. Tài liệu và kiểm tra liên quan
 
-- Danh mục 50 endpoint: [`README.md`](README.md) hoặc [endpoint-registry.md](endpoint-registry.md)
+- Danh mục 55 endpoint: [`README.md`](README.md) hoặc [endpoint-registry.md](endpoint-registry.md)
 - Contract inventory: [`../../specs/047-api-documentation/contracts/http-inventory.md`](../../specs/047-api-documentation/contracts/http-inventory.md)
 - Flash-sale end-to-end flow: [`../architecture/flash-sale-end-to-end-flow.md`](../architecture/flash-sale-end-to-end-flow.md)
 - Kiểm tra catalog/OpenAPI wiring:

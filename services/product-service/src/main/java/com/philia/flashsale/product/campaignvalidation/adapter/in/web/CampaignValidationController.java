@@ -4,6 +4,9 @@ import com.philia.flashsale.product.campaignvalidation.application.port.in.Valid
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 // layer through the ValidateCampaignVariantUseCase interface.
 @RestController
 @RequestMapping(path = "/internal/v1/catalog/variants", produces = MediaType.APPLICATION_JSON_VALUE)
+@Tag(name = "Internal product", description = "Private service-to-service product decisions")
+@SecurityRequirement(name = "bearerAuth")
 public class CampaignValidationController {
     private final ValidateCampaignVariantUseCase validation;
 
@@ -23,6 +28,7 @@ public class CampaignValidationController {
     }
 
     @PostMapping(path = "/campaign-validation", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Validate a campaign variant", description = "Internal Campaign service endpoint that verifies a variant is eligible for an active campaign.")
     public CampaignValidationResponse validate(@Valid @RequestBody CampaignValidationRequest request) {
         return CampaignValidationResponse.from(validation.validate(request.variantId()));
     }

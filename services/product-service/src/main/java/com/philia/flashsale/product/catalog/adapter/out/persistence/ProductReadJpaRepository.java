@@ -16,6 +16,18 @@ interface ProductReadJpaRepository extends JpaRepository<ProductJpaEntity, UUID>
 
     @Query(
             value = """
+                    WITH RECURSIVE category_tree AS (
+                        SELECT c.id
+                        FROM categories c
+                        WHERE :categorySlug IS NOT NULL
+                          AND c.slug = :categorySlug
+                          AND c.status = 'ACTIVE'
+                        UNION ALL
+                        SELECT child.id
+                        FROM categories child
+                        JOIN category_tree parent ON parent.id = child.parent_id
+                        WHERE child.status = 'ACTIVE'
+                    )
                     SELECT p.id AS id,
                            p.code AS code,
                            p.slug AS slug,
@@ -30,11 +42,80 @@ interface ProductReadJpaRepository extends JpaRepository<ProductJpaEntity, UUID>
                           SELECT 1
                           FROM product_variants v
                           WHERE v.product_id = p.id
-                            AND v.status = 'ACTIVE'
+                          AND v.status = 'ACTIVE'
                       )
-                    ORDER BY p.published_at DESC, p.id DESC
+                      AND (:query IS NULL OR (
+                          LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                          OR LOWER(p.code) LIKE LOWER(CONCAT('%', :query, '%'))
+                          OR LOWER(COALESCE(p.slug, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                          OR LOWER(COALESCE(p.short_description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                          OR EXISTS (
+                              SELECT 1
+                              FROM product_variants search_variant
+                              WHERE search_variant.product_id = p.id
+                                AND search_variant.status = 'ACTIVE'
+                                AND (
+                                    LOWER(search_variant.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                                    OR LOWER(search_variant.sku) LIKE LOWER(CONCAT('%', :query, '%'))
+                                )
+                          )
+                      ))
+                      AND (:categorySlug IS NULL OR EXISTS (
+                          SELECT 1
+                          FROM product_categories pc
+                          JOIN category_tree ct ON ct.id = pc.category_id
+                          WHERE pc.product_id = p.id
+                      ))
+                      AND (:minPrice IS NULL OR EXISTS (
+                          SELECT 1
+                          FROM product_variants price_variant
+                          WHERE price_variant.product_id = p.id
+                            AND price_variant.status = 'ACTIVE'
+                            AND price_variant.base_price >= :minPrice
+                      ))
+                      AND (:maxPrice IS NULL OR EXISTS (
+                          SELECT 1
+                          FROM product_variants price_variant
+                          WHERE price_variant.product_id = p.id
+                            AND price_variant.status = 'ACTIVE'
+                            AND price_variant.base_price <= :maxPrice
+                      ))
+                    ORDER BY
+                        CASE WHEN :sort = 'RELEVANCE' AND :query IS NOT NULL THEN
+                            CASE
+                                WHEN LOWER(p.name) = LOWER(:query) THEN 0
+                                WHEN LOWER(p.name) LIKE LOWER(CONCAT(:query, '%')) THEN 1
+                                ELSE 2
+                            END
+                        ELSE 0 END ASC,
+                        CASE WHEN :sort = 'PRICE_ASC' THEN (
+                            SELECT MIN(price_variant.base_price)
+                            FROM product_variants price_variant
+                            WHERE price_variant.product_id = p.id
+                              AND price_variant.status = 'ACTIVE'
+                        ) END ASC,
+                        CASE WHEN :sort = 'PRICE_DESC' THEN (
+                            SELECT MIN(price_variant.base_price)
+                            FROM product_variants price_variant
+                            WHERE price_variant.product_id = p.id
+                              AND price_variant.status = 'ACTIVE'
+                        ) END DESC,
+                        CASE WHEN :sort IN ('NEWEST', 'RELEVANCE') THEN p.published_at END DESC,
+                        p.id ASC
                     """,
             countQuery = """
+                    WITH RECURSIVE category_tree AS (
+                        SELECT c.id
+                        FROM categories c
+                        WHERE :categorySlug IS NOT NULL
+                          AND c.slug = :categorySlug
+                          AND c.status = 'ACTIVE'
+                        UNION ALL
+                        SELECT child.id
+                        FROM categories child
+                        JOIN category_tree parent ON parent.id = child.parent_id
+                        WHERE child.status = 'ACTIVE'
+                    )
                     SELECT count(*)
                     FROM products p
                     WHERE p.status = 'ACTIVE'
@@ -44,58 +125,52 @@ interface ProductReadJpaRepository extends JpaRepository<ProductJpaEntity, UUID>
                           SELECT 1
                           FROM product_variants v
                           WHERE v.product_id = p.id
-                            AND v.status = 'ACTIVE'
+                          AND v.status = 'ACTIVE'
                       )
+                      AND (:query IS NULL OR (
+                          LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                          OR LOWER(p.code) LIKE LOWER(CONCAT('%', :query, '%'))
+                          OR LOWER(COALESCE(p.slug, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                          OR LOWER(COALESCE(p.short_description, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+                          OR EXISTS (
+                              SELECT 1
+                              FROM product_variants search_variant
+                              WHERE search_variant.product_id = p.id
+                                AND search_variant.status = 'ACTIVE'
+                                AND (
+                                    LOWER(search_variant.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                                    OR LOWER(search_variant.sku) LIKE LOWER(CONCAT('%', :query, '%'))
+                                )
+                          )
+                      ))
+                      AND (:categorySlug IS NULL OR EXISTS (
+                          SELECT 1
+                          FROM product_categories pc
+                          JOIN category_tree ct ON ct.id = pc.category_id
+                          WHERE pc.product_id = p.id
+                      ))
+                      AND (:minPrice IS NULL OR EXISTS (
+                          SELECT 1
+                          FROM product_variants price_variant
+                          WHERE price_variant.product_id = p.id
+                            AND price_variant.status = 'ACTIVE'
+                            AND price_variant.base_price >= :minPrice
+                      ))
+                      AND (:maxPrice IS NULL OR EXISTS (
+                          SELECT 1
+                          FROM product_variants price_variant
+                          WHERE price_variant.product_id = p.id
+                            AND price_variant.status = 'ACTIVE'
+                            AND price_variant.base_price <= :maxPrice
+                      ))
                     """,
             nativeQuery = true)
-    Page<ProductRow> findVisibleProducts(Pageable pageable);
-
-    @Query(
-            value = """
-                    SELECT p.id AS id,
-                           p.code AS code,
-                           p.slug AS slug,
-                           p.name AS name,
-                           p.short_description AS shortDescription,
-                           p.description AS description
-                    FROM products p
-                    JOIN product_categories pc
-                      ON pc.product_id = p.id
-                    JOIN categories c
-                      ON c.id = pc.category_id
-                    WHERE c.slug = :categorySlug
-                      AND p.status = 'ACTIVE'
-                      AND p.published_at IS NOT NULL
-                      AND p.published_at <= CURRENT_TIMESTAMP
-                      AND EXISTS (
-                          SELECT 1
-                          FROM product_variants v
-                          WHERE v.product_id = p.id
-                            AND v.status = 'ACTIVE'
-                      )
-                    ORDER BY p.published_at DESC, p.id DESC
-                    """,
-            countQuery = """
-                    SELECT count(*)
-                    FROM products p
-                    JOIN product_categories pc
-                      ON pc.product_id = p.id
-                    JOIN categories c
-                      ON c.id = pc.category_id
-                    WHERE c.slug = :categorySlug
-                      AND p.status = 'ACTIVE'
-                      AND p.published_at IS NOT NULL
-                      AND p.published_at <= CURRENT_TIMESTAMP
-                      AND EXISTS (
-                          SELECT 1
-                          FROM product_variants v
-                          WHERE v.product_id = p.id
-                            AND v.status = 'ACTIVE'
-                      )
-                    """,
-            nativeQuery = true)
-    Page<ProductRow> findVisibleProductsByCategorySlug(
+    Page<ProductRow> findVisibleProducts(
+            @Param("query") String query,
             @Param("categorySlug") String categorySlug,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
+            @Param("sort") String sort,
             Pageable pageable);
 
     @Query(

@@ -15,6 +15,9 @@ import com.philia.flashsale.inventory.stock.adapter.in.web.mapper.InventoryWebMa
 import com.philia.flashsale.inventory.stock.application.exception.StockApplicationException;
 import com.philia.flashsale.inventory.stock.application.port.in.AdjustStockUseCase;
 import com.philia.flashsale.inventory.stock.application.port.in.GetInventoryUseCase;
+import com.philia.flashsale.inventory.stock.application.port.in.ListInventoryUseCase;
+import com.philia.flashsale.inventory.stock.application.result.InventoryListItemResult;
+import com.philia.flashsale.inventory.stock.application.result.InventoryPageResult;
 import com.philia.flashsale.inventory.stock.application.result.InventoryResult;
 import com.philia.flashsale.inventory.websupport.error.InventoryExceptionHandler;
 import java.util.UUID;
@@ -30,12 +33,13 @@ class InventoryHttpContractTests {
     private static final String TRACE_ID = "inventory-contract-trace";
     private final GetInventoryUseCase getInventory = mock(GetInventoryUseCase.class);
     private final AdjustStockUseCase adjustStock = mock(AdjustStockUseCase.class);
+    private final ListInventoryUseCase listInventory = mock(ListInventoryUseCase.class);
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         InventoryAdminController controller = new InventoryAdminController(
-                getInventory, adjustStock, new InventoryWebMapper());
+                getInventory, adjustStock, listInventory, new InventoryWebMapper());
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
@@ -44,6 +48,26 @@ class InventoryHttpContractTests {
                 .setMessageConverters(new MappingJackson2HttpMessageConverter())
                 .addFilters(new InventoryTraceIdFilter())
                 .build();
+    }
+
+    @Test
+    void inventoryCollectionUsesSharedPageEnvelopeAndTraceHeader() throws Exception {
+        UUID variantId = UUID.randomUUID();
+        when(listInventory.list(any())).thenReturn(new InventoryPageResult(
+                java.util.List.of(new InventoryListItemResult(
+                        variantId, "SKU-1", 10, 2, 8, java.time.Instant.parse("2026-09-22T00:00:00Z"))),
+                0, 20, 1));
+
+        mockMvc.perform(get("/api/v1/admin/inventory")
+                        .header("X-Trace-Id", TRACE_ID)
+                        .queryParam("page", "0")
+                        .queryParam("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Trace-Id", TRACE_ID))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.data[0].variantId").value(variantId.toString()))
+                .andExpect(jsonPath("$.data.page.number").value(0))
+                .andExpect(jsonPath("$.data.page.totalElements").value(1));
     }
 
     @Test

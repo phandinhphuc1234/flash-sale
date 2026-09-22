@@ -11,8 +11,11 @@ public final class Account {
     private final UUID id;
     private final String email;
     private final String emailNormalized;
-    private final String username;
-    private final String usernameNormalized;
+    private String username;
+    private String usernameNormalized;
+    private String fullName;
+    private String phone;
+    private String address;
     private final String passwordHash;
     private final AccountRole role;
     private AccountStatus status;
@@ -22,13 +25,16 @@ public final class Account {
     private Instant updatedAt;
 
     private Account(UUID id, String email, String emailNormalized, String username, String usernameNormalized,
-                    String passwordHash, AccountRole role, AccountStatus status, Instant lockedUntil,
+                    String fullName, String phone, String address, String passwordHash, AccountRole role, AccountStatus status, Instant lockedUntil,
                     Instant lastLoginAt, Instant createdAt, Instant updatedAt) {
         this.id = Objects.requireNonNull(id);
         this.email = requireText(email, "email");
         this.emailNormalized = requireText(emailNormalized, "emailNormalized");
         this.username = username;
         this.usernameNormalized = usernameNormalized;
+        this.fullName = normalizeOptionalText(fullName);
+        this.phone = normalizeOptionalText(phone);
+        this.address = normalizeOptionalText(address);
         this.passwordHash = requireText(passwordHash, "passwordHash");
         this.role = Objects.requireNonNull(role);
         this.status = Objects.requireNonNull(status);
@@ -42,7 +48,7 @@ public final class Account {
         String normalizedEmail = normalizeRequired(email, "email");
         String normalizedUsername = normalizeOptional(username);
         return new Account(UUID.randomUUID(), email.trim(), normalizedEmail, trimToNull(username), normalizedUsername,
-                encodedPassword, AccountRole.ROLE_USER, AccountStatus.ACTIVE, null, null, now, now);
+                null, null, null, encodedPassword, AccountRole.ROLE_USER, AccountStatus.ACTIVE, null, null, now, now);
     }
 
     /**
@@ -53,15 +59,23 @@ public final class Account {
         String normalizedEmail = normalizeRequired(email, "email");
         String normalizedUsername = normalizeRequired(username, "username");
         return new Account(UUID.randomUUID(), email.trim(), normalizedEmail, username.trim(), normalizedUsername,
-                encodedPassword, AccountRole.ROLE_ADMIN, AccountStatus.ACTIVE, null, null, now, now);
+                null, null, null, encodedPassword, AccountRole.ROLE_ADMIN, AccountStatus.ACTIVE, null, null, now, now);
     }
 
     public static Account restore(UUID id, String email, String emailNormalized, String username,
                                   String usernameNormalized, String passwordHash, AccountRole role,
                                   AccountStatus status, Instant lockedUntil, Instant lastLoginAt,
                                   Instant createdAt, Instant updatedAt) {
-        return new Account(id, email, emailNormalized, username, usernameNormalized, passwordHash, role, status,
-                lockedUntil, lastLoginAt, createdAt, updatedAt);
+        return restore(id, email, emailNormalized, username, usernameNormalized, null, null, null, passwordHash,
+                role, status, lockedUntil, lastLoginAt, createdAt, updatedAt);
+    }
+
+    public static Account restore(UUID id, String email, String emailNormalized, String username,
+                                  String usernameNormalized, String fullName, String phone, String address,
+                                  String passwordHash, AccountRole role, AccountStatus status,
+                                  Instant lockedUntil, Instant lastLoginAt, Instant createdAt, Instant updatedAt) {
+        return new Account(id, email, emailNormalized, username, usernameNormalized, fullName, phone, address,
+                passwordHash, role, status, lockedUntil, lastLoginAt, createdAt, updatedAt);
     }
 
     public boolean canAuthenticate(Instant now) {
@@ -76,11 +90,32 @@ public final class Account {
         updatedAt = now;
     }
 
+    public void updateUsername(String username, Instant now) {
+        String normalized = normalizeRequired(username, "username");
+        this.username = username.trim();
+        this.usernameNormalized = normalized;
+        this.updatedAt = Objects.requireNonNull(now);
+    }
+
+    public void updateProfileFields(boolean usernameProvided, String username,
+                                    boolean fullNameProvided, String fullName,
+                                    boolean phoneProvided, String phone,
+                                    boolean addressProvided, String address, Instant now) {
+        if (usernameProvided) updateUsername(username, now);
+        if (fullNameProvided) this.fullName = normalizeOptionalText(fullName);
+        if (phoneProvided) this.phone = normalizeOptionalText(phone);
+        if (addressProvided) this.address = normalizeOptionalText(address);
+        this.updatedAt = Objects.requireNonNull(now);
+    }
+
     public UUID id() { return id; }
     public String email() { return email; }
     public String emailNormalized() { return emailNormalized; }
     public String username() { return username; }
     public String usernameNormalized() { return usernameNormalized; }
+    public String fullName() { return fullName; }
+    public String phone() { return phone; }
+    public String address() { return address; }
     public String passwordHash() { return passwordHash; }
     public AccountRole role() { return role; }
     public AccountStatus status() { return status; }
@@ -106,6 +141,10 @@ public final class Account {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String normalizeOptionalText(String value) {
+        return trimToNull(value);
     }
 
     private static String requireText(String value, String field) {

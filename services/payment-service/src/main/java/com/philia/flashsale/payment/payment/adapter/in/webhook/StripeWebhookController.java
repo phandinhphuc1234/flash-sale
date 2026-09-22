@@ -11,12 +11,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /** Raw-byte Stripe protocol endpoint; acknowledgement is emitted only after receipt commit. */
 @RestController
 @RequestMapping("${payment.webhook-path:/webhooks/v1/payments/stripe}")
 @ConditionalOnProperty(name = {"payment.acceptance.enabled", "payment.checkout.enabled",
         "payment.stripe.enabled"}, havingValue = "true")
+@Tag(name = "Stripe webhooks", description = "Provider-to-service webhook ingress; not a shopper API")
 public final class StripeWebhookController {
     private final StripeWebhookVerifier verifier;
     private final AcceptProviderEventUseCase acceptProviderEvent;
@@ -28,6 +31,7 @@ public final class StripeWebhookController {
     }
 
     @PostMapping
+    @Operation(summary = "Receive a Stripe event", description = "Verifies the signature over the original raw request body and acknowledges only after provider receipt persistence.")
     public ResponseEntity<Void> receive(@RequestBody byte[] rawBody,
             @RequestHeader(value = "Stripe-Signature", required = false) String signature) {
         // Do not access request.getReader(): the byte[] body is the exact signed representation.

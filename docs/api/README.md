@@ -1,7 +1,7 @@
 # Flash Sale HTTP API catalog
 
 This is the reader-facing catalog for the HTTP surface currently supported by the monorepo.
-There are **50 unique endpoints**, counted by `HTTP method + normalized path`.
+There are **55 unique endpoints**, counted by `HTTP method + normalized path`.
 
 Frontend developers should use the Vietnamese
 [`frontend-integration-guide.md`](frontend-integration-guide.md), which adds complete request/response
@@ -30,16 +30,16 @@ coding prompt.
 | Owner | Gateway-public | Internal | Identity trust | Total |
 |---|---:|---:|---:|---:|
 | API Gateway | 0 | 0 | 0 | 0 (routing only) |
-| Authentication | 5 | 1 | 1 | 7 |
-| Product | 10 | 3 | 0 | 13 |
+| Authentication | 8 | 1 | 1 | 10 |
+| Product | 11 | 3 | 0 | 14 |
 | Campaign | 7 | 1 | 0 | 8 |
-| Inventory | 3 | 4 | 0 | 7 |
+| Inventory | 4 | 4 | 0 | 8 |
 | Flash Sale | 2 | 0 | 0 | 2 |
 | Order | 4 | 0 | 0 | 4 |
 | Payment | 4 | 0 | 0 | 4 |
 | Cart | 4 | 1 | 0 | 5 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **39** | **10** | **1** | **50** |
+| **Total** | **44** | **10** | **1** | **55** |
 
 ## Endpoint inventory
 
@@ -53,7 +53,7 @@ coding prompt.
 | API-006 | Authentication | Identity trust | GET | `/.well-known/jwks.json` | Public key material only | Publish RSA public keys for JWT verification |
 | API-007 | Authentication | Internal | POST | `/oauth2/token` | Client ID/secret and approved scope | Issue service client-credentials token |
 | API-008 | Product | Gateway-public | GET | `/api/v1/catalog/categories` | Anonymous | Browse visible categories |
-| API-009 | Product | Gateway-public | GET | `/api/v1/catalog/products` | Anonymous | Browse visible products with pagination/filtering |
+| API-009 | Product | Gateway-public | GET | `/api/v1/catalog/products` | Anonymous | Search and browse visible products with category, price, sort, and pagination filters |
 | API-010 | Product | Gateway-public | GET | `/api/v1/catalog/products/{slug}` | Anonymous | Read visible product detail by slug |
 | API-011 | Product | Gateway-public | POST | `/api/v1/admin/catalog/products` | `CATALOG_ADMIN` | Create a catalog product draft |
 | API-012 | Product | Gateway-public | GET | `/api/v1/admin/catalog/products` | `CATALOG_ADMIN` | List administrative product views |
@@ -95,6 +95,11 @@ coding prompt.
 | API-048 | Product | Internal | POST | `/internal/v1/catalog/variants/purchase-quotes` | Order service subject/scope | Batch-read authoritative normal purchase price and sellability decisions |
 | API-049 | Cart | Internal | POST | `/internal/v1/cart-checkout-snapshots` | Order service subject/scope | Read an owned immutable Cart version/item snapshot for checkout validation |
 | API-050 | Inventory | Internal | POST | `/internal/v1/regular-stock-holds` | Order service subject/scope | Atomically create or replay an all-or-nothing regular stock hold |
+| API-051 | Authentication | Gateway-public | GET | `/api/v1/auth/me` | Authenticated user | Read the safe Authentication-owned account summary |
+| API-052 | Authentication | Gateway-public | PATCH | `/api/v1/auth/me` | Authenticated user | Update the authenticated user's username; email remains read-only |
+| API-053 | Authentication | Gateway-public | PATCH | `/api/v1/auth/me/profile` | Authenticated user | Update visible username and contact profile fields; email remains read-only |
+| API-054 | Inventory | Gateway-public | GET | `/api/v1/admin/inventory` | `INVENTORY_ADMIN` | List initialized inventory rows with bounded pagination |
+| API-055 | Product | Gateway-public | POST | `/api/v1/admin/catalog/variants/display-details` | `CATALOG_ADMIN` | Batch-resolve product and variant display metadata for inventory rows |
 
 ### Cart contract notes
 

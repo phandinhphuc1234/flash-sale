@@ -32,8 +32,8 @@ $catalogPath = Join-Path $repoRoot "docs\api\README.md"
 $catalogLines = Get-Content -LiteralPath $catalogPath
 $endpointRows = @($catalogLines | Where-Object { $_ -match '^\| API-\d{3} \|' })
 
-if ($endpointRows.Count -ne 50) {
-    Fail "expected 50 endpoint rows, found $($endpointRows.Count)"
+if ($endpointRows.Count -ne 55) {
+    Fail "expected 55 endpoint rows, found $($endpointRows.Count)"
 }
 
 $endpoints = @($endpointRows | ForEach-Object {
@@ -50,10 +50,10 @@ $endpoints = @($endpointRows | ForEach-Object {
     }
 })
 
-$expectedIds = 1..50 | ForEach-Object { 'API-{0:D3}' -f $_ }
+$expectedIds = 1..55 | ForEach-Object { 'API-{0:D3}' -f $_ }
 $idDifferences = @(Compare-Object -ReferenceObject $expectedIds -DifferenceObject $endpoints.Id)
 if ($idDifferences.Count -ne 0) {
-    Fail "endpoint IDs must be the complete API-001 through API-050 sequence"
+    Fail "endpoint IDs must be the complete API-001 through API-055 sequence"
 }
 
 $duplicateKeys = @($endpoints |
@@ -64,7 +64,7 @@ if ($duplicateKeys.Count -gt 0) {
 }
 
 $expectedBoundaries = @{
-    'Gateway-public' = 39
+    'Gateway-public' = 44
     'Internal'       = 10
     'Identity trust' = 1
 }
@@ -76,10 +76,10 @@ foreach ($entry in $expectedBoundaries.GetEnumerator()) {
 }
 
 $expectedOwners = [ordered]@{
-    'Authentication' = 7
-    'Product'        = 13
+    'Authentication' = 10
+    'Product'        = 14
     'Campaign'       = 8
-    'Inventory'      = 7
+    'Inventory'      = 8
     'Flash Sale'     = 2
     'Order'          = 4
     'Payment'        = 4
@@ -130,6 +130,29 @@ $applicationServices = @(
     'payment-service',
     'cart-service'
 )
+
+# Every MVC endpoint needs an explicit operation summary in its service-local OpenAPI document.
+# Springdoc metadata may live on the controller method or on its inbound API interface, so compare
+# counts across all inbound Java sources rather than requiring both annotations in one file.
+foreach ($service in $applicationServices) {
+    $javaRoot = Join-Path $repoRoot "services\$service\src\main\java"
+    $inboundSources = @(Get-ChildItem -LiteralPath $javaRoot -Recurse -Filter '*.java' -File |
+            Where-Object { $_.FullName -notmatch '\\adapter\\out\\' })
+    $routeCount = 0
+    $operationCount = 0
+    foreach ($source in $inboundSources) {
+        $sourceText = Get-Content -LiteralPath $source.FullName -Raw
+        $routeCount += ([regex]::Matches($sourceText, '@(Get|Post|Put|Patch|Delete)Mapping\b')).Count
+        $operationCount += ([regex]::Matches($sourceText, '@Operation\b')).Count
+    }
+    if ($routeCount -ne $operationCount) {
+        Fail "$service has $routeCount REST method mappings but $operationCount Swagger operations"
+    }
+}
+
+$authenticationOpenApi = Read-RepositoryFile "services\authentication-service\src\main\java\com\philia\flashsale\authentication\configuration\AuthenticationOpenApiConfiguration.java"
+Assert-Contains $authenticationOpenApi '.path("/oauth2/token"' "Authentication framework token endpoint documentation"
+
 foreach ($service in $applicationServices) {
     $application = Read-RepositoryFile "services\$service\src\main\resources\application.yml"
     Assert-Contains $application 'API_DOCS_ENABLED:false' "$service safe documentation default"
@@ -181,4 +204,4 @@ $securityTest = Read-RepositoryFile "services\api-gateway\src\test\java\com\phil
 Assert-Contains $securityTest 'documentationAccess(false)' "Gateway default-deny test"
 Assert-Contains $securityTest 'documentationAccess(true)' "Gateway opt-in test"
 
-Write-Host "API_DOCUMENTATION=PASS (50 supported endpoints; 8 service documents; defaults disabled)"
+Write-Host "API_DOCUMENTATION=PASS (55 supported endpoints; 8 service documents; defaults disabled)"

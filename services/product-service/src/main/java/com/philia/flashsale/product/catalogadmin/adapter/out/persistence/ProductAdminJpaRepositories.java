@@ -71,6 +71,8 @@ interface ProductAdminVariantJpaRepository
 
     List<AdminProductVariantJpaEntity> findByProductIdOrderBySortOrderAscIdAsc(UUID productId);
 
+    List<AdminProductVariantJpaEntity> findAllByIdIn(Collection<UUID> ids);
+
     void deleteByProductId(UUID productId);
 }
 

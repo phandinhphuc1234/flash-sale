@@ -10,11 +10,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @ConditionalOnProperty(prefix = "flashsale.authentication.http", name = "enabled", havingValue = "true", matchIfMissing = true)
 /** HTTP adapter for idempotent current-session logout and cookie clearing. */
+@Tag(name = "Authentication")
 public class LogoutController {
     private final LogoutSessionUseCase useCase;
     private final RefreshCookieWriter cookieWriter;
@@ -24,6 +28,10 @@ public class LogoutController {
     }
 
     @PostMapping("/logout")
+    @Operation(summary = "Logout the current session", description = "Revokes the current refresh-token chain and clears the refresh cookie.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "Current session logged out")
+    })
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         useCase.logoutCurrent(new LogoutCurrentSessionCommand(cookie(request, "refresh_token")));
         cookieWriter.clear(response);

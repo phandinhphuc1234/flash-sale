@@ -59,6 +59,10 @@ public class GatewaySecurityConfiguration {
                         .pathMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout").permitAll()
                         .pathMatchers("/api/v1/auth/logout-all").authenticated()
+                        // Account summary/profile endpoints are shopper-owned and must reach
+                        // Authentication with the caller's JWT instead of falling through to
+                        // the deny-by-default matcher.
+                        .pathMatchers("/api/v1/auth/me", "/api/v1/auth/me/**").authenticated()
                         .pathMatchers("/api/v1/admin/catalog/**").hasAuthority("CATALOG_ADMIN")
                         .pathMatchers("/api/v1/admin/inventory/**").hasAuthority("INVENTORY_ADMIN")
                         .pathMatchers("/api/v1/admin/campaigns/**").hasAuthority("SCOPE_CAMPAIGN_ADMIN")

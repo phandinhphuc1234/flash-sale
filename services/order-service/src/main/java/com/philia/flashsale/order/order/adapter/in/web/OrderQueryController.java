@@ -16,6 +16,9 @@ import com.philia.flashsale.order.order.application.exception.InvalidOrderQueryE
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Set;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.http.HttpHeaders;
@@ -32,6 +35,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/orders")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnBean(GetOwnedOrderUseCase.class)
+@Tag(name = "Orders", description = "Authenticated shopper order history and details")
+@SecurityRequirement(name = "bearerAuth")
 public class OrderQueryController {
     private static final Set<String> LIST_PARAMETERS = Set.of("page", "size");
     private final GetOwnedOrderUseCase getOwnedOrder;
@@ -48,6 +53,7 @@ public class OrderQueryController {
     }
 
     @GetMapping("/{orderId}")
+    @Operation(summary = "Get my order", description = "Order ownership is derived from the authenticated JWT subject.")
     public ResponseEntity<ApiResponse<OrderDetailsResponse>> get(
             @PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt,
             HttpServletRequest request) {
@@ -58,6 +64,7 @@ public class OrderQueryController {
     }
 
     @GetMapping
+    @Operation(summary = "List my orders", description = "Returns a paginated order history; page defaults to 0 and size defaults to 20.")
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> list(
             @AuthenticationPrincipal Jwt jwt, HttpServletRequest request) {
         rejectUnsupportedParameters(request, LIST_PARAMETERS);

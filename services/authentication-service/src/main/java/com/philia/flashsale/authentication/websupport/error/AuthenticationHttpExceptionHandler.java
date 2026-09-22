@@ -33,6 +33,7 @@ public class AuthenticationHttpExceptionHandler {
         AuthenticationErrorCode code = parseCode(exception.code());
         HttpStatus status = switch (code) {
             case AUTH_ACCOUNT_ALREADY_EXISTS -> HttpStatus.CONFLICT;
+            case AUTH_ACCOUNT_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case AUTH_INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
             case AUTH_TOO_MANY_ATTEMPTS -> HttpStatus.TOO_MANY_REQUESTS;
             default -> HttpStatus.BAD_REQUEST;
