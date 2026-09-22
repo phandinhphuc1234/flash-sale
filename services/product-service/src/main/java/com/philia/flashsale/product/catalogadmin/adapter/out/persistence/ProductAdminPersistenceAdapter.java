@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import com.philia.flashsale.product.catalogadmin.application.port.out.AdminIdempotencyPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.CheckCatalogUniquenessPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.LoadAdminProductPort;
+import com.philia.flashsale.product.catalogadmin.application.port.out.LoadAdminVariantDisplaysPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.LoadExistingCategoriesPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.RecordCatalogAdminAuditPort;
 import com.philia.flashsale.product.catalogadmin.application.port.out.SaveAdminProductPort;
@@ -35,6 +36,7 @@ import com.philia.flashsale.product.catalogadmin.application.result.AdminProduct
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductMediaResult;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductSummaryResult;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductVariantResult;
+import com.philia.flashsale.product.catalogadmin.application.result.AdminVariantDisplayResult;
 import com.philia.flashsale.product.catalogadmin.application.result.CreateDraftIdempotencyDecision;
 import com.philia.flashsale.product.catalogadmin.application.result.CreateProductDraftResult;
 import com.philia.flashsale.product.catalogadmin.domain.AdminCommandName;
@@ -56,6 +58,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Repository
 public class ProductAdminPersistenceAdapter implements
         LoadAdminProductPort,
+        LoadAdminVariantDisplaysPort,
         SaveAdminProductPort,
         CheckCatalogUniquenessPort,
         LoadExistingCategoriesPort,
@@ -144,6 +147,31 @@ public class ProductAdminPersistenceAdapter implements
                         mediaRepository.findByProductIdOrderBySortOrderAscIdAsc(productId).stream()
                                 .map(ProductAdminPersistenceAdapter::toMedia)
                                 .toList()));
+    }
+
+    @Override
+    public java.util.List<AdminVariantDisplayResult> load(java.util.List<UUID> variantIds) {
+        var variants = variantRepository.findAllByIdIn(variantIds);
+        var productIds = variants.stream()
+                .map(AdminProductVariantJpaEntity::productId)
+                .collect(Collectors.toSet());
+        var products = productRepository.findAllById(productIds).stream()
+                .collect(Collectors.toMap(AdminProductJpaEntity::id, product -> product));
+        var byId = variants.stream()
+                .collect(Collectors.toMap(AdminProductVariantJpaEntity::id, variant -> variant));
+        return variantIds.stream().map(variantId -> {
+            var variant = byId.get(variantId);
+            if (variant == null) {
+                return AdminVariantDisplayResult.missing(variantId);
+            }
+            var product = products.get(variant.productId());
+            if (product == null) {
+                return AdminVariantDisplayResult.missing(variantId);
+            }
+            return new AdminVariantDisplayResult(
+                    variant.id(), true, product.id(), product.name(), variant.name(), variant.sku(),
+                    variant.basePrice(), variant.currency(), product.status(), variant.status());
+        }).toList();
     }
 
     @Override

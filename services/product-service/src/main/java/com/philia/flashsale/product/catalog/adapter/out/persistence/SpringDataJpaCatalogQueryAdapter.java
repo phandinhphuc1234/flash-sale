@@ -15,6 +15,7 @@ import com.philia.flashsale.product.catalog.application.result.VariantDisplayRes
 import com.philia.flashsale.product.catalog.application.service.CategoryNotFoundException;
 import com.philia.flashsale.product.catalog.application.service.ProductNotFoundException;
 import com.philia.flashsale.product.catalog.domain.CatalogPage;
+import com.philia.flashsale.product.catalog.domain.CatalogProductQuery;
 import com.philia.flashsale.product.catalog.domain.CatalogPageRequest;
 import com.philia.flashsale.product.catalog.domain.CategorySummary;
 import com.philia.flashsale.product.catalog.domain.PageMetadata;
@@ -63,16 +64,21 @@ class SpringDataJpaCatalogQueryAdapter implements LoadCatalogPort {
     @Override
     // Fetch product rows first, then batch-load variants to avoid an N+1 query pattern on catalog pages.
     public CatalogPage<ProductSummary> loadVisibleProducts(
-            String categorySlug,
+            CatalogProductQuery query,
             CatalogPageRequest pageRequest) {
-        if (categorySlug != null && !categoryRepository.existsBySlug(categorySlug)) {
-            throw new CategoryNotFoundException(categorySlug);
+        if (query.categorySlug() != null
+                && !categoryRepository.existsBySlugAndStatus(query.categorySlug(), ACTIVE)) {
+            throw new CategoryNotFoundException(query.categorySlug());
         }
 
         PageRequest pageable = PageRequest.of(pageRequest.page(), pageRequest.size());
-        Page<ProductReadJpaRepository.ProductRow> page = categorySlug == null
-                ? productRepository.findVisibleProducts(pageable)
-                : productRepository.findVisibleProductsByCategorySlug(categorySlug, pageable);
+        Page<ProductReadJpaRepository.ProductRow> page = productRepository.findVisibleProducts(
+                query.text(),
+                query.categorySlug(),
+                query.minPrice(),
+                query.maxPrice(),
+                query.sort().name(),
+                pageable);
 
         List<UUID> productIds = page.getContent().stream()
                 .map(ProductReadJpaRepository.ProductRow::getId)

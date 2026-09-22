@@ -30,7 +30,7 @@ internal endpoints; this synchronization does not create those APIs.
 | API-006 | Authentication | Identity trust | GET | `/.well-known/jwks.json` | Public key material only | Publish RSA public keys for JWT verification |
 | API-007 | Authentication | Internal | POST | `/oauth2/token` | Client ID/secret and approved scope | Issue service client-credentials token |
 | API-008 | Product | Gateway-public | GET | `/api/v1/catalog/categories` | Anonymous | Browse visible categories |
-| API-009 | Product | Gateway-public | GET | `/api/v1/catalog/products` | Anonymous | Browse visible products with pagination/filtering |
+| API-009 | Product | Gateway-public | GET | `/api/v1/catalog/products` | Anonymous | Search and browse visible products with category, price, sort, and pagination filters |
 | API-010 | Product | Gateway-public | GET | `/api/v1/catalog/products/{slug}` | Anonymous | Read visible product detail by slug |
 | API-011 | Product | Gateway-public | POST | `/api/v1/admin/catalog/products` | `CATALOG_ADMIN` | Create a catalog product draft |
 | API-012 | Product | Gateway-public | GET | `/api/v1/admin/catalog/products` | `CATALOG_ADMIN` | List administrative product views |
@@ -72,13 +72,33 @@ internal endpoints; this synchronization does not create those APIs.
 | API-048 | Product | Internal | POST | `/internal/v1/catalog/variants/purchase-quotes` | Order service subject/scope | Batch-read authoritative normal purchase price and sellability decisions |
 | API-049 | Cart | Internal | POST | `/internal/v1/cart-checkout-snapshots` | Order service subject/scope | Read an owned immutable Cart version/item snapshot for checkout validation |
 | API-050 | Inventory | Internal | POST | `/internal/v1/regular-stock-holds` | Order service subject/scope | Atomically create or replay an all-or-nothing regular stock hold |
+| API-051 | Authentication | Gateway-public | GET | `/api/v1/auth/me` | Authenticated user | Read the safe Authentication-owned account summary |
+| API-052 | Authentication | Gateway-public | PATCH | `/api/v1/auth/me` | Authenticated user | Update the authenticated user's username; email remains read-only |
+| API-053 | Authentication | Gateway-public | PATCH | `/api/v1/auth/me/profile` | Authenticated user | Update visible username and contact profile fields; email remains read-only |
+| API-054 | Inventory | Gateway-public | GET | `/api/v1/admin/inventory` | `INVENTORY_ADMIN` | List initialized inventory rows with bounded pagination |
+| API-055 | Product | Gateway-public | POST | `/api/v1/admin/catalog/variants/display-details` | `CATALOG_ADMIN` | Batch-resolve product and variant display metadata for inventory rows |
+
+### API-009 query contract
+
+The public product list accepts the following optional query parameters:
+
+- `q`: case-insensitive search across product name/code/slug/short description and active variant name/SKU; maximum 100 Unicode code points.
+- `categorySlug`: active category and all active descendants.
+- `minPrice` and `maxPrice`: non-negative VND bounds; `minPrice` cannot exceed `maxPrice`.
+- `sort`: `NEWEST` (default), `PRICE_ASC`, `PRICE_DESC`, or `RELEVANCE` when `q` is present.
+- `page`: zero-based page number, default `0`.
+- `size`: page size from `1` to `50`, default `20`.
+
+Invalid values return the standard `INVALID_CATALOG_REQUEST` error envelope. An unknown or
+inactive category returns `CATEGORY_NOT_FOUND`. Existing requests that only send `page` and
+`size` remain compatible.
 
 ## Totals by owner
 
 | Owner | Gateway-public | Internal | Identity trust | Total |
 |---|---:|---:|---:|---:|
 | API Gateway | 0 | 0 | 0 | 0 (routing/edge owner only) |
-| Authentication | 5 | 1 | 1 | 7 |
+| Authentication | 8 | 1 | 1 | 10 |
 | Product | 10 | 3 | 0 | 13 |
 | Campaign | 7 | 1 | 0 | 8 |
 | Inventory | 3 | 4 | 0 | 7 |
@@ -87,9 +107,9 @@ internal endpoints; this synchronization does not create those APIs.
 | Payment | 4 | 0 | 0 | 4 |
 | Cart | 4 | 1 | 0 | 5 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **39** | **10** | **1** | **50** |
+| **Total** | **42** | **10** | **1** | **53** |
 
-## Documentation endpoints (excluded from the 50)
+## Documentation endpoints (excluded from the 51)
 
 When explicitly enabled, each documented service owns:
 

@@ -9,6 +9,9 @@ import com.philia.flashsale.payment.websupport.context.PaymentTraceIdResolver;
 import com.philia.flashsale.payment.websupport.error.PaymentAuthenticationException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/payments")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnProperty(name = "payment.acceptance.enabled", havingValue = "true")
+@Tag(name = "Payments", description = "Shopper-owned payment status APIs")
+@SecurityRequirement(name = "bearerAuth")
 public final class PaymentQueryController {
     private final GetOwnedPaymentUseCase getOwnedPayment;
     private final PaymentQueryWebMapper mapper;
@@ -38,6 +43,7 @@ public final class PaymentQueryController {
     }
 
     @GetMapping("/{paymentId}")
+    @Operation(summary = "Get my payment", description = "Returns payment status only when the payment belongs to the authenticated shopper.")
     public ResponseEntity<ApiResponse<PaymentDetailsResponse>> get(
             @PathVariable UUID paymentId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest request) {
         var result = getOwnedPayment.get(new GetOwnedPaymentQuery(paymentId, ownerId(jwt)));
@@ -46,6 +52,7 @@ public final class PaymentQueryController {
     }
 
     @GetMapping("/by-order/{orderId}")
+    @Operation(summary = "Get payment by my order", description = "Looks up the payment for an order owned by the authenticated shopper.")
     public ResponseEntity<ApiResponse<PaymentDetailsResponse>> getByOrder(
             @PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest request) {
         var result = getOwnedPayment.getByOrder(new GetOwnedPaymentByOrderQuery(orderId, ownerId(jwt)));

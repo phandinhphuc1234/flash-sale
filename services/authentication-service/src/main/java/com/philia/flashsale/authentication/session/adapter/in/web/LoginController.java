@@ -12,11 +12,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @ConditionalOnProperty(prefix = "flashsale.authentication.http", name = "enabled", havingValue = "true", matchIfMissing = true)
 /** HTTP adapter for login; captures bounded metadata and writes the refresh cookie. */
+@Tag(name = "Authentication")
 public class LoginController {
     private final AuthenticateAccountUseCase useCase;
     private final RefreshCookieWriter cookieWriter;
@@ -26,6 +30,13 @@ public class LoginController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Login and issue an access token", description = "Authenticates a shopper and sets the HttpOnly refresh cookie.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Access token issued"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Invalid credentials"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "Login rate limit exceeded"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "Authentication dependency unavailable")
+    })
     public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request,
                                                                             HttpServletRequest httpRequest,
                                                                             HttpServletResponse httpResponse) {

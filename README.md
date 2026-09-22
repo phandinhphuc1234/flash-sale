@@ -211,7 +211,7 @@ environment, result, and date.
 
 ## HTTP API and Swagger
 
-The current catalog contains **50 supported method/path endpoints**: 39 Gateway-public, 10 internal,
+The current catalog contains **53 supported method/path endpoints**: 42 Gateway-public, 10 internal,
 and one JWKS identity-trust endpoint. Start with:
 
 - [HTTP API catalog](docs/api/README.md)

@@ -74,6 +74,10 @@ class AdminProductVariantJpaEntity {
         return id;
     }
 
+    UUID productId() {
+        return productId;
+    }
+
     String sku() {
         return sku;
     }

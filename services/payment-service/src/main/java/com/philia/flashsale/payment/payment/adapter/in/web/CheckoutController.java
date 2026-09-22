@@ -8,6 +8,9 @@ import com.philia.flashsale.payment.payment.application.port.in.StartCheckoutUse
 import com.philia.flashsale.payment.websupport.context.PaymentTraceIdResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
@@ -28,6 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnProperty(name = {"payment.checkout.enabled", "payment.acceptance.enabled",
         "payment.stripe.enabled"}, havingValue = "true")
+@Tag(name = "Payments", description = "Shopper-owned payment and Stripe Checkout APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class CheckoutController {
     private final StartCheckoutUseCase startCheckout;
     private final CheckoutWebMapper mapper;
@@ -41,6 +46,7 @@ public class CheckoutController {
     }
 
     @PostMapping("/{paymentId}/checkout-sessions")
+    @Operation(summary = "Start or resume Stripe Checkout", description = "Creates or replays the hosted Checkout Session for an owned pending payment; no request body is accepted.")
     public ResponseEntity<ApiResponse<CheckoutSessionResponse>> start(
             @PathVariable UUID paymentId,
             @RequestHeader("Idempotency-Key") String idempotencyKey,

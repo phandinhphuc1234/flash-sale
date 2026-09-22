@@ -26,6 +26,12 @@ public class AccountJpaEntity {
     private String username;
     @Column(name = "username_normalized", unique = true, length = 100)
     private String usernameNormalized;
+    @Column(name = "full_name", length = 150)
+    private String fullName;
+    @Column(length = 32)
+    private String phone;
+    @Column(length = 500)
+    private String address;
     @Column(name = "password_hash", nullable = false, length = 512)
     private String passwordHash;
     @Enumerated(EnumType.STRING)
@@ -47,8 +53,17 @@ public class AccountJpaEntity {
                             String usernameNormalized, String passwordHash, AccountRole role,
                             AccountStatus status, Instant lockedUntil, Instant lastLoginAt,
                             Instant createdAt, Instant updatedAt) {
+        this(id, email, emailNormalized, username, usernameNormalized, null, null, null, passwordHash, role,
+                status, lockedUntil, lastLoginAt, createdAt, updatedAt);
+    }
+
+    public AccountJpaEntity(UUID id, String email, String emailNormalized, String username,
+                            String usernameNormalized, String fullName, String phone, String address,
+                            String passwordHash, AccountRole role, AccountStatus status,
+                            Instant lockedUntil, Instant lastLoginAt, Instant createdAt, Instant updatedAt) {
         this.id = id; this.email = email; this.emailNormalized = emailNormalized; this.username = username;
-        this.usernameNormalized = usernameNormalized; this.passwordHash = passwordHash; this.role = role;
+        this.usernameNormalized = usernameNormalized; this.fullName = fullName; this.phone = phone; this.address = address;
+        this.passwordHash = passwordHash; this.role = role;
         this.status = status; this.lockedUntil = lockedUntil; this.lastLoginAt = lastLoginAt;
         this.createdAt = createdAt; this.updatedAt = updatedAt;
     }
@@ -58,6 +73,9 @@ public class AccountJpaEntity {
     public String emailNormalized() { return emailNormalized; }
     public String username() { return username; }
     public String usernameNormalized() { return usernameNormalized; }
+    public String fullName() { return fullName; }
+    public String phone() { return phone; }
+    public String address() { return address; }
     public String passwordHash() { return passwordHash; }
     public AccountRole role() { return role; }
     public AccountStatus status() { return status; }

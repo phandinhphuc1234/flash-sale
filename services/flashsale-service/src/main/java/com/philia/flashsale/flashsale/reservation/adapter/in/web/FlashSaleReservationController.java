@@ -18,6 +18,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -37,6 +40,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/v1/flash-sales")
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@Tag(name = "Flash Sale reservations", description = "Shopper reservation and reservation status APIs")
+@SecurityRequirement(name = "bearerAuth")
 public class FlashSaleReservationController {
     private final SubmitReservationUseCase submitReservation;
     private final GetOwnedReservationUseCase getOwnedReservation;
@@ -50,6 +55,7 @@ public class FlashSaleReservationController {
     }
 
     @GetMapping("/reservations/{reservationId}")
+    @Operation(summary = "Read my reservation", description = "Returns the reservation only when it belongs to the authenticated shopper.")
     public ResponseEntity<ApiResponse<ReservationResponse>> getOwnedReservation(
             @PathVariable UUID reservationId,
             @AuthenticationPrincipal Jwt jwt,
@@ -66,6 +72,7 @@ public class FlashSaleReservationController {
     }
 
     @PostMapping("/{campaignId}/reservations")
+    @Operation(summary = "Reserve campaign quota", description = "Submits an idempotent flash-sale reservation; acceptance is asynchronous and returns HTTP 202.")
     public ResponseEntity<ApiResponse<ReservationAcceptedResponse>> submit(
             @PathVariable UUID campaignId,
             @RequestHeader("Idempotency-Key") String idempotencyKey,

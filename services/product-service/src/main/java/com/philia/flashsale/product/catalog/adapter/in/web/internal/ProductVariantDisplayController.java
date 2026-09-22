@@ -4,6 +4,9 @@ import com.philia.flashsale.common.web.ApiResponse;
 import com.philia.flashsale.product.catalog.application.port.in.LookupVariantDisplaysUseCase;
 import jakarta.validation.Valid;
 import java.util.Objects;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 /** Product-owned internal endpoint for Cart's single batch display lookup. */
 @RestController
 @RequestMapping(path = "/internal/v1/catalog/variants", produces = MediaType.APPLICATION_JSON_VALUE)
+@Tag(name = "Internal product", description = "Private service-to-service product decisions")
+@SecurityRequirement(name = "bearerAuth")
 public class ProductVariantDisplayController {
 
     private final LookupVariantDisplaysUseCase lookupVariantDisplays;
@@ -22,6 +27,7 @@ public class ProductVariantDisplayController {
     }
 
     @PostMapping(path = "/display-details", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Read variant display details", description = "Internal Cart service batch lookup for product and variant names, images, prices, and availability.")
     public ApiResponse<VariantDisplayBatchResponse> displayDetails(
             @Valid @RequestBody VariantDisplayBatchRequest request) {
         return ApiResponse.success(VariantDisplayBatchResponse.from(

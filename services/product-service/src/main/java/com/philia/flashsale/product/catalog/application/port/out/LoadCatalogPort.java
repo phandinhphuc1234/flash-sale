@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.philia.flashsale.product.catalog.domain.CatalogPage;
+import com.philia.flashsale.product.catalog.domain.CatalogProductQuery;
 import com.philia.flashsale.product.catalog.domain.CatalogPageRequest;
 import com.philia.flashsale.product.catalog.domain.CategorySummary;
 import com.philia.flashsale.product.catalog.domain.ProductDetail;
@@ -14,7 +15,7 @@ public interface LoadCatalogPort {
 
     List<CategorySummary> loadCategories(UUID parentId);
 
-    CatalogPage<ProductSummary> loadVisibleProducts(String categorySlug, CatalogPageRequest pageRequest);
+    CatalogPage<ProductSummary> loadVisibleProducts(CatalogProductQuery query, CatalogPageRequest pageRequest);
 
     ProductDetail loadVisibleProduct(String slug);
 

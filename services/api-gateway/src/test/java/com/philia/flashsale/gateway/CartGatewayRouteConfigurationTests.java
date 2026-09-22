@@ -74,6 +74,17 @@ class CartGatewayRouteConfigurationTests {
     }
 
     @Test
+    void accountProfileWriteRequiresAuthenticationInsteadOfDenyByDefault() {
+        webTestClient.patch().uri("/api/v1/auth/me/profile")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"fullName\":\"Phuc Nguyen\"}")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+                .expectBody().jsonPath("$.errorCode").isEqualTo("UNAUTHENTICATED");
+    }
+
+    @Test
     void protectedApiCorsPreflightsDoNotRequireAuthentication() {
         expectAllowedPreflight("/api/v1/cart", HttpMethod.GET);
         expectAllowedPreflight("/api/v1/orders", HttpMethod.GET);

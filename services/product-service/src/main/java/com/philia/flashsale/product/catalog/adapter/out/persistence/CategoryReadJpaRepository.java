@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 interface CategoryReadJpaRepository extends JpaRepository<CategoryJpaEntity, UUID> {
 
-    boolean existsBySlug(String slug);
+    boolean existsBySlugAndStatus(String slug, String status);
 
     List<CategoryJpaEntity> findByParentIdIsNullAndStatusOrderBySortOrderAscIdAsc(String status);
 

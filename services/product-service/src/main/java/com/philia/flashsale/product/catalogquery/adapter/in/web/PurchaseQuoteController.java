@@ -4,6 +4,9 @@ import com.philia.flashsale.common.web.ApiResponse;
 import com.philia.flashsale.product.catalogquery.application.port.in.LookupPurchaseQuotesUseCase;
 import jakarta.validation.Valid;
 import java.util.Objects;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 /** Order-only Product decision endpoint; it reads current catalog state and never reserves it. */
 @RestController
 @RequestMapping(path = "/internal/v1/catalog/variants", produces = MediaType.APPLICATION_JSON_VALUE)
+@Tag(name = "Internal product", description = "Private service-to-service product decisions")
+@SecurityRequirement(name = "bearerAuth")
 public class PurchaseQuoteController {
 
     private final LookupPurchaseQuotesUseCase lookupPurchaseQuotes;
@@ -22,6 +27,7 @@ public class PurchaseQuoteController {
     }
 
     @PostMapping(path = "/purchase-quotes", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Look up purchase quotes", description = "Internal Order service endpoint that returns current purchasability and price for a batch of variants; it does not reserve stock.")
     public ApiResponse<PurchaseQuoteBatchResponse> purchaseQuotes(
             @Valid @RequestBody PurchaseQuoteBatchRequest request) {
         return ApiResponse.success(

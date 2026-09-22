@@ -15,6 +15,7 @@ import com.philia.flashsale.product.catalogadmin.application.result.AdminProduct
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductMediaResult;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductSummaryResult;
 import com.philia.flashsale.product.catalogadmin.application.result.AdminProductVariantResult;
+import com.philia.flashsale.product.catalogadmin.application.result.AdminVariantDisplayResult;
 import com.philia.flashsale.product.catalogadmin.application.result.CreateProductDraftResult;
 import com.philia.flashsale.product.catalogadmin.application.result.MaintainProductCompositionResult;
 import com.philia.flashsale.product.catalogadmin.application.result.ProductLifecycleResult;
@@ -87,6 +88,21 @@ public interface ProductAdminWebMapper {
     AdminProductCategoryResponse toResponse(AdminProductCategoryResult category);
 
     AdminProductMediaResponse toResponse(AdminProductMediaResult media);
+
+    default AdminVariantDisplayResponse toDisplayResponse(AdminVariantDisplayResult result) {
+        return new AdminVariantDisplayResponse(
+                result.variantId(), result.found(), result.productId(), result.productName(),
+                result.variantName(), result.sku(), toPlainString(result.basePrice()), result.currency(),
+                result.productStatus() == null ? null : result.productStatus().name(),
+                result.variantStatus() == null ? null : result.variantStatus().name());
+    }
+
+    default AdminVariantDisplayBatchResponse toDisplayBatchResponse(
+            List<AdminVariantDisplayResult> results) {
+        return new AdminVariantDisplayBatchResponse(results.stream()
+                .map(this::toDisplayResponse)
+                .toList());
+    }
 
     PageMeta toResponse(AdminPageMetadata page);
 

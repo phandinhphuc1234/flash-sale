@@ -223,6 +223,78 @@ class ProductCatalogQueryTests {
                 .andExpect(jsonPath("$.errorCode").value("INVALID_CATALOG_REQUEST"));
     }
 
+    @Test
+    void browseProductsSupportsSearchDescendantCategoryPriceSortAndPagination() throws Exception {
+        UUID electronics = insertCategory(null, "CAT-ELECTRONICS", "electronics", "Electronics", "ACTIVE", 0);
+        UUID audio = insertCategory(electronics, "CAT-AUDIO", "audio", "Audio", "ACTIVE", 0);
+
+        UUID premium = insertProduct(
+                "PROD-PREMIUM-HEADPHONES",
+                "premium-headphones",
+                "Premium Headphones",
+                "ACTIVE",
+                "CURRENT_TIMESTAMP - INTERVAL '2 hours'");
+        insertVariant(premium, "SKU-PREMIUM-HEADPHONES", "Premium", "300000.0000", "ACTIVE", 0);
+        insertProductCategory(premium, audio, true, 0);
+
+        UUID budget = insertProduct(
+                "PROD-BUDGET-HEADPHONES",
+                "budget-headphones",
+                "Budget Headphones",
+                "ACTIVE",
+                "CURRENT_TIMESTAMP - INTERVAL '1 hour'");
+        insertVariant(budget, "SKU-BUDGET-HEADPHONES", "Budget", "100000.0000", "ACTIVE", 0);
+        insertProductCategory(budget, electronics, true, 0);
+
+        UUID camera = insertProduct(
+                "PROD-CAMERA",
+                "camera",
+                "Camera",
+                "ACTIVE",
+                "CURRENT_TIMESTAMP - INTERVAL '30 minutes'");
+        insertVariant(camera, "SKU-CAMERA", "Camera", "200000.0000", "ACTIVE", 0);
+        insertProductCategory(camera, electronics, true, 1);
+
+        mockMvc.perform(get("/api/v1/catalog/products")
+                        .param("q", " headphones ")
+                        .param("categorySlug", "electronics")
+                        .param("sort", "PRICE_ASC")
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.data", hasSize(1)))
+                .andExpect(jsonPath("$.data.data[0].slug").value("budget-headphones"))
+                .andExpect(jsonPath("$.data.page.totalElements").value(2))
+                .andExpect(jsonPath("$.data.page.hasNext").value(true));
+
+        mockMvc.perform(get("/api/v1/catalog/products")
+                        .param("minPrice", "250000")
+                        .param("maxPrice", "350000")
+                        .param("sort", "PRICE_DESC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.data", hasSize(1)))
+                .andExpect(jsonPath("$.data.data[0].slug").value("premium-headphones"));
+    }
+
+    @Test
+    void browseProductsRejectsInvalidSearchAndSortRequests() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/products")
+                        .param("q", "x".repeat(101)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_CATALOG_REQUEST"));
+
+        mockMvc.perform(get("/api/v1/catalog/products")
+                        .param("sort", "RELEVANCE"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_CATALOG_REQUEST"));
+
+        mockMvc.perform(get("/api/v1/catalog/products")
+                        .param("minPrice", "300000")
+                        .param("maxPrice", "100000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_CATALOG_REQUEST"));
+    }
+
     private UUID insertCategory(
             UUID parentId,
             String code,
