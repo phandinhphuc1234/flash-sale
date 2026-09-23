@@ -70,6 +70,20 @@ class RegularPurchaseRequestDomainTests {
     }
 
     @Test
+    void productNamesAreCapturedWithoutChangingTheShopperFingerprint() {
+        RegularPurchaseRequest request = RegularPurchaseRequest.receiveBuyNow(UUID.randomUUID(), UUID.randomUUID(),
+                "buy-names", UUID.randomUUID(), UUID.randomUUID(), buyNowLine(), RECEIVED_AT);
+        String fingerprint = request.requestFingerprint();
+        RegularPurchaseLine named = request.lines().getFirst().withNames("  Console  ", " White / 1 TB ");
+
+        RegularPurchaseRequest validated = request.productValidated(List.of(named), RECEIVED_AT.plusSeconds(1));
+
+        assertThat(validated.requestFingerprint()).isEqualTo(fingerprint);
+        assertThat(validated.lines().getFirst().productName()).isEqualTo("Console");
+        assertThat(validated.lines().getFirst().variantName()).isEqualTo("White / 1 TB");
+    }
+
+    @Test
     void preventsBusinessRejectionAfterAStockHoldAndRejectsAmbiguousCartInput() {
         RegularPurchaseRequest request = cartRequest(List.of(cartLine(
                 "00000000-0000-0000-0000-000000000010", 1, "10.0000", 3L)), 3L)

@@ -48,6 +48,8 @@ class RegularPurchaseMigrationIntegrationTests {
         assertThat(columnExists("orders", "stock_participant_type")).isTrue();
         assertThat(columnExists("orders", "stock_reference_id")).isTrue();
         assertThat(columnExists("purchase_sagas", "stock_reference_id")).isTrue();
+        assertThat(columnExists("order_lines", "product_name_snapshot")).isTrue();
+        assertThat(columnExists("order_lines", "variant_name_snapshot")).isTrue();
         assertThat(jdbc.queryForObject(
                 "select count(*) from databasechangelog where id = '003-add-regular-purchase-checkout'",
                 Integer.class)).isEqualTo(1);
@@ -56,6 +58,9 @@ class RegularPurchaseMigrationIntegrationTests {
                 Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject(
                 "select count(*) from databasechangelog where id = '005-allow-regular-order-event-versions'",
+                Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "select count(*) from databasechangelog where id = '007-add-order-line-name-snapshots'",
                 Integer.class)).isEqualTo(1);
     }
 

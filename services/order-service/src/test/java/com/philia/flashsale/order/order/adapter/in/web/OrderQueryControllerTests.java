@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import com.philia.flashsale.common.web.PageResponse;
 import com.philia.flashsale.order.order.adapter.in.web.response.OrderDetailsResponse;
+import com.philia.flashsale.order.order.adapter.in.web.response.OrderItemResponse;
 import com.philia.flashsale.order.order.adapter.in.web.response.OrderSummaryResponse;
 import com.philia.flashsale.order.order.application.port.in.GetOwnedOrderUseCase;
 import com.philia.flashsale.order.order.application.port.in.ListOwnedOrdersUseCase;
@@ -71,7 +72,9 @@ class OrderQueryControllerTests {
                 result.reservationId(), result.campaignId(), result.purchaseSource(),
                 result.stockParticipantType(), result.stockReferenceId(), result.status(), result.currency(),
                 result.subtotalAmount(), result.totalAmount(), result.acceptedAt(), result.reservationExpiresAt(),
-                result.stockHoldExpiresAt(), List.of(), result.createdAt(), result.updatedAt());
+                result.stockHoldExpiresAt(), List.of(new OrderItemResponse(UUID.randomUUID(), "Console",
+                        "White / 1 TB", 1, BigDecimal.TEN, BigDecimal.TEN)),
+                result.createdAt(), result.updatedAt());
         when(getOwnedOrder.get(any())).thenReturn(result);
         when(mapper.toDetailsResponse(result)).thenReturn(response);
 
@@ -82,6 +85,9 @@ class OrderQueryControllerTests {
                 .andExpect(header().string("X-Trace-Id", TRACE))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(ORDER.toString()))
+                .andExpect(jsonPath("$.data.items[0].productName").value("Console"))
+                .andExpect(jsonPath("$.data.items[0].variantName").value("White / 1 TB"))
+                .andExpect(jsonPath("$.data.items[0].unitPrice").value(10))
                 .andExpect(jsonPath("$.data.userId").doesNotExist());
 
         for (OrderStatus terminalStatus : List.of(

@@ -114,13 +114,24 @@ public final class RegularPurchaseRequest {
 
     /** Records that the exact request lines have passed Product-owned quote validation. */
     public RegularPurchaseRequest productValidated(Instant transitionedAt) {
+        return productValidated(lines, transitionedAt);
+    }
+
+    /** Records the verified quote metadata at the same durable Product-validation checkpoint. */
+    public RegularPurchaseRequest productValidated(List<RegularPurchaseLine> validatedLines,
+            Instant transitionedAt) {
         if (source == PurchaseSource.BUY_NOW) {
             requireState(RegularPurchaseRequestState.RECEIVED, "Product validation");
         } else {
             requireState(RegularPurchaseRequestState.SNAPSHOT_VALIDATED, "Product validation");
         }
-        return copy(cartId, cartVersion, RegularPurchaseRequestState.PRODUCT_VALIDATED, null, null, null,
-                transitionedAt);
+        List<RegularPurchaseLine> canonicalValidatedLines = canonicalLines(validatedLines);
+        if (!requestFingerprint.equals(fingerprint(source, submittedCartVersion, canonicalValidatedLines))) {
+            throw new InvalidRegularPurchaseRequestException(
+                    "validated Product metadata must not change the shopper request fingerprint");
+        }
+        return copyWithLines(canonicalValidatedLines, cartId, cartVersion,
+                RegularPurchaseRequestState.PRODUCT_VALIDATED, null, null, null, transitionedAt);
     }
 
     /**
@@ -186,9 +197,16 @@ public final class RegularPurchaseRequest {
 
     private RegularPurchaseRequest copy(UUID nextCartId, Long nextCartVersion, RegularPurchaseRequestState nextState,
             Instant nextHoldExpiresAt, UUID nextOrderId, String nextRejectionCode, Instant transitionedAt) {
+        return copyWithLines(lines, nextCartId, nextCartVersion, nextState, nextHoldExpiresAt, nextOrderId,
+                nextRejectionCode, transitionedAt);
+    }
+
+    private RegularPurchaseRequest copyWithLines(List<RegularPurchaseLine> nextLines, UUID nextCartId,
+            Long nextCartVersion, RegularPurchaseRequestState nextState, Instant nextHoldExpiresAt,
+            UUID nextOrderId, String nextRejectionCode, Instant transitionedAt) {
         requireTransitionTime(transitionedAt);
         return new RegularPurchaseRequest(id, shopperId, idempotencyKey, requestFingerprint, source, proposedOrderId,
-                proposedHoldId, lines, submittedCartVersion, nextCartId, nextCartVersion, nextState,
+                proposedHoldId, nextLines, submittedCartVersion, nextCartId, nextCartVersion, nextState,
                 nextHoldExpiresAt, nextOrderId, nextRejectionCode, createdAt, transitionedAt);
     }
 

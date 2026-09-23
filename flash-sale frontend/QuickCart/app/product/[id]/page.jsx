@@ -128,7 +128,6 @@ export default function ProductPage() {
               ? <img src={primaryImage.url} alt={primaryImage.altText || product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
               : <div className="flex flex-col items-center gap-2 text-gray-400"><span className="text-5xl">◇</span><span>No product image</span></div>}
           </div>
-          <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-orange-700 shadow-sm backdrop-blur">Flash-sale ready</span>
         </section>
 
         <section className="flex flex-col justify-center">
@@ -168,10 +167,10 @@ export default function ProductPage() {
             </button>
           </div>
 
-          <label className="mt-5 block text-xs font-medium text-gray-600">Flash-sale campaign ID
-            <input value={campaignId} onChange={(event) => setCampaignId(event.target.value)} placeholder="Set default campaign or enter an ID" className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none transition focus:border-orange-400" />
+          <label className="mt-5 block text-xs font-medium text-gray-600">Flash Sale campaign (manual/demo)
+            <input value={campaignId} onChange={(event) => setCampaignId(event.target.value)} placeholder="Enter an active campaign ID" className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none transition focus:border-orange-400" />
           </label>
-          <p className="mt-3 text-xs leading-5 text-gray-500">Buy now follows the regular Order → Payment flow. Reserve now is only for an active Flash Sale campaign.</p>
+          <p className="mt-3 text-xs leading-5 text-gray-500">Buy now follows the regular Order → Payment flow. Reserve now is only for an active Flash Sale campaign. Campaign discovery is not available yet, so this field is for an ID supplied by the seller or demo setup.</p>
         </section>
       </div>
     </main>

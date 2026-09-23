@@ -59,16 +59,19 @@ class OwnedOrderQueryPersistenceIntegrationTests extends PostgreSqlIntegrationTe
         insertOrder(orderId, OWNER, "FS-010", CREATED);
         jdbc.update("""
                 insert into order_lines
-                    (id, order_id, variant_id, quantity, unit_price, line_amount, created_at)
-                values (?, ?, ?, ?, ?, ?, ?)
+                    (id, order_id, variant_id, quantity, unit_price, line_amount,
+                     product_name_snapshot, variant_name_snapshot, created_at)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, lineId, orderId, variantId, 2L, new BigDecimal("10.0000"),
-                new BigDecimal("20.0000"), java.sql.Timestamp.from(CREATED));
+                new BigDecimal("20.0000"), "Console", "White / 1 TB", java.sql.Timestamp.from(CREATED));
 
         OrderDetailsResult details = loadOwnedOrder.load(new GetOwnedOrderQuery(orderId, OWNER)).orElseThrow();
 
         assertThat(details.id()).isEqualTo(orderId);
         assertThat(details.items()).singleElement().satisfies(item -> {
             assertThat(item.variantId()).isEqualTo(variantId);
+            assertThat(item.productName()).isEqualTo("Console");
+            assertThat(item.variantName()).isEqualTo("White / 1 TB");
             assertThat(item.quantity()).isEqualTo(2L);
             assertThat(item.lineAmount()).isEqualByComparingTo("20.0000");
         });
@@ -85,6 +88,27 @@ class OwnedOrderQueryPersistenceIntegrationTests extends PostgreSqlIntegrationTe
 
         assertThat(page.totalElements()).isEqualTo(2);
         assertThat(page.orders()).extracting(order -> order.id()).containsExactly(uuid(2), uuid(1));
+    }
+
+    @Test
+    void legacyLineWithoutCapturedNamesRemainsReadable() {
+        UUID orderId = uuid(40);
+        UUID variantId = uuid(41);
+        insertOrder(orderId, OWNER, "FS-040", CREATED);
+        jdbc.update("""
+                insert into order_lines
+                    (id, order_id, variant_id, quantity, unit_price, line_amount, created_at)
+                values (?, ?, ?, ?, ?, ?, ?)
+                """, uuid(42), orderId, variantId, 2L, new BigDecimal("10.0000"),
+                new BigDecimal("20.0000"), java.sql.Timestamp.from(CREATED));
+
+        OrderDetailsResult details = loadOwnedOrder.load(new GetOwnedOrderQuery(orderId, OWNER)).orElseThrow();
+
+        assertThat(details.items()).singleElement().satisfies(item -> {
+            assertThat(item.variantId()).isEqualTo(variantId);
+            assertThat(item.productName()).isNull();
+            assertThat(item.variantName()).isNull();
+        });
     }
 
     private void insertOrder(UUID id, UUID owner, String orderNumber, Instant createdAt) {

@@ -63,7 +63,7 @@ class OrderSchemaMigrationIntegrationTests {
                 "databasechangelog", "databasechangeloglock");
         assertThat(jdbc.queryForObject("SELECT locked FROM databasechangeloglock WHERE id = 1", Boolean.class))
                 .isFalse();
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(7);
     }
 
     @Test
@@ -76,6 +76,8 @@ class OrderSchemaMigrationIntegrationTests {
         assertThat(columnType("orders", "accepted_at")).isEqualTo("timestamp with time zone");
         assertThat(columnType("orders", "reservation_expires_at")).isEqualTo("timestamp with time zone");
         assertThat(columnType("order_outbox_events", "payload")).isEqualTo("jsonb");
+        assertThat(columnType("order_lines", "product_name_snapshot")).isEqualTo("character varying");
+        assertThat(columnType("order_lines", "variant_name_snapshot")).isEqualTo("character varying");
 
         assertThat(indexes()).contains(
                 "idx_orders_owner_created",
@@ -229,7 +231,7 @@ class OrderSchemaMigrationIntegrationTests {
     @Order(99)
     void regularCheckoutExpansionRetainsOperationalHistory() {
         assertThat(publicTables()).contains("regular_purchase_requests", "purchase_sagas", "orders");
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM databasechangelog", Integer.class)).isEqualTo(7);
     }
 
     private static void insertOrder(

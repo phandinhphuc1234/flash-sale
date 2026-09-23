@@ -84,6 +84,8 @@ class RegularPurchaseRecoveryIntegrationTests {
 
         assertThat(service.checkout(command()).replayed()).isFalse();
         assertThat(persistence.current.get().state()).isEqualTo(RegularPurchaseRequestState.ACCEPTED);
+        assertThat(persistence.current.get().lines().getFirst().productName()).isEqualTo("Recovery Product");
+        assertThat(persistence.current.get().lines().getFirst().variantName()).isEqualTo("Recovery Variant");
         verify(holds).create(any(), any());
     }
 
@@ -102,6 +104,8 @@ class RegularPurchaseRecoveryIntegrationTests {
         assertThatThrownBy(() -> service.checkout(command()))
                 .isInstanceOf(RegularPurchaseDownstreamException.class);
         assertThat(persistence.current.get().state()).isEqualTo(RegularPurchaseRequestState.PRODUCT_VALIDATED);
+        assertThat(persistence.current.get().lines().getFirst().productName()).isEqualTo("Recovery Product");
+        assertThat(persistence.current.get().lines().getFirst().variantName()).isEqualTo("Recovery Variant");
 
         service.checkout(command());
         ArgumentCaptor<com.philia.flashsale.order.regularpurchase.application.model.RegularStockHoldCommand> captured =

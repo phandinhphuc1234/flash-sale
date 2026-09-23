@@ -29,6 +29,10 @@ public class OrderLineJpaEntity {
     private BigDecimal unitPrice;
     @Column(name = "line_amount", nullable = false, precision = 19, scale = 4)
     private BigDecimal lineAmount;
+    @Column(name = "product_name_snapshot", length = 255)
+    private String productName;
+    @Column(name = "variant_name_snapshot", length = 255)
+    private String variantName;
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -43,6 +47,8 @@ public class OrderLineJpaEntity {
         entity.quantity = line.quantity();
         entity.unitPrice = line.unitPrice().amount();
         entity.lineAmount = line.lineAmount().amount();
+        entity.productName = line.productName();
+        entity.variantName = line.variantName();
         entity.createdAt = createdAt;
         return entity;
     }
@@ -53,5 +59,7 @@ public class OrderLineJpaEntity {
     public long getQuantity() { return quantity; }
     public BigDecimal getUnitPrice() { return unitPrice; }
     public BigDecimal getLineAmount() { return lineAmount; }
+    public String getProductName() { return productName; }
+    public String getVariantName() { return variantName; }
     public Instant getCreatedAt() { return createdAt; }
 }

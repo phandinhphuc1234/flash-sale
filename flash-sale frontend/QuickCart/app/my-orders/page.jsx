@@ -7,6 +7,7 @@ import Loading from "@/components/Loading";
 import ApiNotice from "@/components/ApiNotice";
 import { formatVnd } from "@/lib/api";
 import { useAppContext } from "@/context/AppContext";
+import { getOrderSourceLabel, getStatusCopy } from "@/lib/purchasePresentation.mjs";
 
 export default function MyOrders() {
   const { request, router, userData, authReady } = useAppContext();
@@ -49,8 +50,8 @@ export default function MyOrders() {
       <ApiNotice error={error} className="mt-5" />
       {loading ? <Loading /> : <div className="mt-6 divide-y rounded-2xl border bg-white shadow-sm">
         {orders.length ? orders.map((order) => <button key={order.id} onClick={() => router.push(`/orders/${order.id}`)} className="flex w-full items-center justify-between gap-4 p-5 text-left transition hover:bg-orange-50/40">
-          <div className="min-w-0"><p className="font-medium">{order.orderNumber}</p><p className="mt-1 text-sm text-gray-500">{order.purchaseSource === "CART" ? "Cart checkout" : order.purchaseSource === "BUY_NOW" ? "Buy now" : "Flash Sale"} · {new Date(order.createdAt).toLocaleString()}</p></div>
-          <div className="shrink-0 text-right"><p>{formatVnd(order.totalAmount)}</p><p className="mt-1 text-sm text-orange-600">{order.status}</p></div>
+          <div className="min-w-0"><p className="font-medium">{order.orderNumber}</p><p className="mt-1 text-sm text-gray-500">{getOrderSourceLabel(order.purchaseSource)} · {new Date(order.createdAt).toLocaleString()}</p></div>
+          <div className="shrink-0 text-right"><p>{formatVnd(order.totalAmount)}</p><p className="mt-1 text-sm text-orange-600">{getStatusCopy("order", order.status).label}</p></div>
         </button>) : <p className="p-8 text-center text-gray-500">You have no orders yet.</p>}
       </div>}
     </main>

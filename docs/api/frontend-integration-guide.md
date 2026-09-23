@@ -1402,6 +1402,8 @@ Response:
     "items": [
       {
         "variantId": "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+        "productName": "Flash Sale Shirt",
+        "variantName": "Black / M",
         "quantity": 1,
         "unitPrice": 179000,
         "lineAmount": 179000
@@ -1415,6 +1417,11 @@ Response:
 ```
 
 Status order: `PENDING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `EXPIRED`.
+
+`productName` và `variantName` là snapshot nullable được lưu tại thời điểm Order được tạo; chúng
+không phải giá trị được tra cứu lại từ Catalog khi đọc Order. Order cũ hoặc trường hợp Product
+lookup tạm thời thất bại có thể trả hai field này là `null`. Frontend nên hiển thị nhãn trung tính
+như `Item from this order` và giữ `variantId` làm mã phụ, không tự đoán tên hiện tại từ Catalog.
 
 ## 10. Payment và Stripe Checkout
 

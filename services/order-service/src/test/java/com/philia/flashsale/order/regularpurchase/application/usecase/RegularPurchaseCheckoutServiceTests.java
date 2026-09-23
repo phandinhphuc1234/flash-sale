@@ -89,6 +89,9 @@ class RegularPurchaseCheckoutServiceTests {
         assertThat(result.paymentDeadline()).isEqualTo(now.plusSeconds(270));
         assertThat(acceptance.getValue().order().stockReferenceId())
                 .isEqualTo(acceptance.getValue().intake().proposedHoldId());
+        assertThat(acceptance.getValue().order().line().productName()).isEqualTo("Product");
+        assertThat(acceptance.getValue().order().line().variantName()).isEqualTo("Variant");
+        assertThat(acceptance.getValue().intake().lines().getFirst().productName()).isEqualTo("Product");
         verify(persistence, org.mockito.Mockito.times(2)).update(any());
         // PRODUCT_VALIDATED then HOLD_ACQUIRED are durable checkpoints.
     }

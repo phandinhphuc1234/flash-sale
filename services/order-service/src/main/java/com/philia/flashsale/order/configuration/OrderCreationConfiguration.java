@@ -9,6 +9,7 @@ import com.philia.flashsale.order.order.application.port.in.CreateOrderFromAccep
 import com.philia.flashsale.order.order.application.port.out.CurrentTimePort;
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderIdentityPort;
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderNumberPort;
+import com.philia.flashsale.order.order.application.port.out.LookupOrderLineNamesPort;
 import com.philia.flashsale.order.order.application.usecase.AcceptedPurchaseFingerprintService;
 import com.philia.flashsale.order.order.application.usecase.CreateOrderFromAcceptedPurchaseService;
 import com.philia.flashsale.order.observability.OrderObservability;
@@ -65,9 +66,10 @@ public class OrderCreationConfiguration {
             @Qualifier("generateOrderIdentityPort") GenerateOrderIdentityPort identities,
             @Qualifier("generateOrderNumberPort") GenerateOrderNumberPort orderNumbers,
             @Qualifier("currentTimePort") CurrentTimePort clock,
-            AcceptedPurchaseFingerprintService fingerprints) {
+            AcceptedPurchaseFingerprintService fingerprints,
+            LookupOrderLineNamesPort lineNames) {
         return new CreateOrderFromAcceptedPurchaseService(
-                persistence, identities, orderNumbers, clock, fingerprints);
+                persistence, identities, orderNumbers, clock, fingerprints, lineNames);
     }
 
     @Bean
