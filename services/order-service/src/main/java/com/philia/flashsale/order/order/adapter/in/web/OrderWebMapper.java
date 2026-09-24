@@ -31,8 +31,8 @@ public class OrderWebMapper {
     }
 
     private OrderItemResponse toItem(OrderItemResult result) {
-        return new OrderItemResponse(result.variantId(), result.quantity(), result.unitPrice(),
-                result.lineAmount());
+        return new OrderItemResponse(result.variantId(), result.productName(), result.variantName(),
+                result.quantity(), result.unitPrice(), result.lineAmount());
     }
 
     private OrderSummaryResponse toSummary(OrderSummaryResult result) {

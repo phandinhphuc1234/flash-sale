@@ -2,13 +2,17 @@ package com.philia.flashsale.order.order.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import com.philia.flashsale.order.order.adapter.out.persistence.jpa.OrderCreationJpaAdapter;
 import com.philia.flashsale.order.order.application.command.CreateOrderFromAcceptedPurchaseCommand;
 import com.philia.flashsale.order.order.application.exception.RetryableOrderPersistenceException;
 import com.philia.flashsale.order.order.application.model.OrderCreationCandidate;
+import com.philia.flashsale.order.order.application.model.OrderLineNames;
 import com.philia.flashsale.order.order.application.port.in.CreateOrderFromAcceptedPurchaseUseCase;
 import com.philia.flashsale.order.order.application.result.OrderCreationResult;
+import com.philia.flashsale.order.order.application.port.out.LookupOrderLineNamesPort;
 import com.philia.flashsale.order.order.domain.model.Order;
 import com.philia.flashsale.order.order.domain.model.OrderLine;
 import com.philia.flashsale.order.order.domain.valueobject.Money;
@@ -19,11 +23,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.boot.test.mock.mockito.MockBean;
 
 /** Verifies atomic Order, Purchase Saga, inbox, and dual-outbox creation against PostgreSQL. */
 @SpringBootTest(properties = {
@@ -46,6 +53,15 @@ class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationT
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @MockBean
+    private LookupOrderLineNamesPort lineNames;
+
+    @BeforeEach
+    void namesAvailable() {
+        when(lineNames.lookup(any(), any())).thenReturn(
+                Optional.of(new OrderLineNames("Console", "White / 1 TB")));
+    }
 
     @Test
     void newAcceptedPurchaseCommitsOrderLineInboxAndOutboxTogether() {
@@ -72,7 +88,8 @@ class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationT
         assertThat(paymentOutbox.get("event_type")).isEqualTo("PaymentRequested");
         assertThat(paymentOutbox.get("payload").toString()).contains("paymentDeadline");
         Map<String, Object> snapshot = jdbc.queryForMap("""
-                SELECT o.status, o.currency, o.subtotal_amount, l.quantity, l.unit_price, l.line_amount
+                SELECT o.status, o.currency, o.subtotal_amount, l.quantity, l.unit_price, l.line_amount,
+                       l.product_name_snapshot, l.variant_name_snapshot
                 FROM orders o JOIN order_lines l ON l.order_id = o.id
                 WHERE o.id = ?
                 """, result.orderId());
@@ -81,6 +98,8 @@ class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationT
         assertThat(((BigDecimal) snapshot.get("subtotal_amount"))).isEqualByComparingTo("20.0000");
         assertThat(snapshot.get("quantity")).isEqualTo(2L);
         assertThat(((BigDecimal) snapshot.get("line_amount"))).isEqualByComparingTo("20.0000");
+        assertThat(snapshot.get("product_name_snapshot")).isEqualTo("Console");
+        assertThat(snapshot.get("variant_name_snapshot")).isEqualTo("White / 1 TB");
     }
 
     @Test
@@ -88,6 +107,9 @@ class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationT
         UUID eventId = UUID.randomUUID();
         CreateOrderFromAcceptedPurchaseCommand first = command(eventId);
         OrderCreationResult created = useCase.create(first);
+
+        when(lineNames.lookup(any(), any())).thenReturn(
+                Optional.of(new OrderLineNames("Renamed Console", "Renamed Variant")));
 
         OrderCreationResult sameEvent = useCase.create(first);
         CreateOrderFromAcceptedPurchaseCommand differentEvent = copyWithEvent(first, UUID.randomUUID());
@@ -100,6 +122,9 @@ class AcceptedPurchasePersistenceIntegrationTests extends PostgreSqlIntegrationT
         assertThat(count("order_consumer_inbox", "purchase_request_id", first.purchaseRequestId())).isEqualTo(1);
         assertThat(count("order_outbox_events", "aggregate_id", created.orderId())).isEqualTo(2);
         assertThat(count("purchase_sagas", "order_id", created.orderId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT product_name_snapshot FROM order_lines WHERE order_id = ?", String.class,
+                created.orderId())).isEqualTo("Console");
     }
 
     @Test

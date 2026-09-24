@@ -6,6 +6,8 @@ import java.util.UUID;
 /** Public line snapshot; the internal line identity is intentionally omitted. */
 public record OrderItemResponse(
         UUID variantId,
+        String productName,
+        String variantName,
         long quantity,
         BigDecimal unitPrice,
         BigDecimal lineAmount) {

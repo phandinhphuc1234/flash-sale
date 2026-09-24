@@ -30,11 +30,13 @@ public class RegularPurchasePersistenceMapper {
             for (JsonNode line : snapshot.withArray("lines")) {
                 Long cartItemVersion = line.hasNonNull("cartItemVersion")
                         ? line.get("cartItemVersion").longValue() : null;
+                String productName = line.hasNonNull("productName") ? line.get("productName").textValue() : null;
+                String variantName = line.hasNonNull("variantName") ? line.get("variantName").textValue() : null;
                 lines.add(new RegularPurchaseLine(
                         java.util.UUID.fromString(line.required("variantId").textValue()),
                         line.required("quantity").longValue(),
                         Money.of(new BigDecimal(line.required("expectedUnitPrice").textValue())),
-                        line.required("currency").textValue(), cartItemVersion));
+                        line.required("currency").textValue(), cartItemVersion, productName, variantName));
             }
             return RegularPurchaseRequest.restore(entity.getId(), entity.getShopperId(), entity.getIdempotencyKey(),
                     entity.getRequestFingerprint(), entity.getSource(), entity.getProposedOrderId(),
@@ -74,6 +76,10 @@ public class RegularPurchasePersistenceMapper {
             } else {
                 json.put("cartItemVersion", line.cartItemVersion());
             }
+            if (line.productName() == null) json.putNull("productName");
+            else json.put("productName", line.productName());
+            if (line.variantName() == null) json.putNull("variantName");
+            else json.put("variantName", line.variantName());
         }
         return write(root);
     }

@@ -176,8 +176,8 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
                 || intake.state() == RegularPurchaseRequestState.SNAPSHOT_VALIDATED) {
             List<ProductPurchaseQuote> quotes = productQuotes.loadQuotes(
                     intake.lines().stream().map(RegularPurchaseLine::variantId).toList(), traceId);
-            validateQuotes(intake, quotes);
-            intake = persistence.update(intake.productValidated(clock.now()));
+            List<RegularPurchaseLine> validatedLines = validateQuotes(intake, quotes);
+            intake = persistence.update(intake.productValidated(validatedLines, clock.now()));
         }
         if (intake.state() == RegularPurchaseRequestState.PRODUCT_VALIDATED) {
             try {
@@ -199,7 +199,8 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
         Order order = Order.regular(intake.proposedOrderId(), orderNumbers.generate(acceptedAt,
                 intake.proposedOrderId()), intake.id(), intake.source(), intake.proposedHoldId(),
                 intake.shopperId(), intake.currency(), intake.lines().stream().map(line -> OrderLine.create(
-                        identities.generate(), line.variantId(), line.quantity(), line.expectedUnitPrice())).toList(),
+                        identities.generate(), line.variantId(), line.quantity(), line.expectedUnitPrice(),
+                        line.productName(), line.variantName())).toList(),
                 intake.cartId(), intake.cartVersion(), acceptedAt, intake.holdExpiresAt());
         PurchaseSaga saga = PurchaseSaga.startRegular(order.id(), intake.id(), intake.proposedHoldId(),
                 intake.holdExpiresAt(), acceptedAt);
@@ -221,7 +222,8 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
                         && Objects.equals(line.cartItemVersion(), item.itemVersion())));
     }
 
-    private void validateQuotes(RegularPurchaseRequest intake, List<ProductPurchaseQuote> quotes) {
+    private List<RegularPurchaseLine> validateQuotes(RegularPurchaseRequest intake,
+            List<ProductPurchaseQuote> quotes) {
         if (quotes == null || quotes.size() != intake.lines().size()) {
             throw new RegularPurchaseDownstreamException(
                     RegularPurchaseDownstreamException.Failure.PRODUCT_SERVICE_UNAVAILABLE);
@@ -246,6 +248,12 @@ public final class RegularPurchaseCheckoutService implements CheckoutBuyNowUseCa
                         RegularPurchaseBusinessException.Reason.PRICE_CHANGED, quotes);
             }
         }
+        return intake.lines().stream().map(line -> {
+            ProductPurchaseQuote quote = quotes.stream()
+                    .filter(item -> line.variantId().equals(item.variantId()))
+                    .findFirst().orElseThrow();
+            return line.withNames(quote.productName(), quote.variantName());
+        }).toList();
     }
 
     private void reject(RegularPurchaseRequest intake, String code) {

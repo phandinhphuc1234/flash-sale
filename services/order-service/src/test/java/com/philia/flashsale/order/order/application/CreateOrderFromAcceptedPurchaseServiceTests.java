@@ -6,16 +6,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.philia.flashsale.order.order.application.command.CreateOrderFromAcceptedPurchaseCommand;
 import com.philia.flashsale.order.order.application.exception.RetryableOrderPersistenceException;
 import com.philia.flashsale.order.order.application.model.OrderCreationCandidate;
+import com.philia.flashsale.order.order.application.model.OrderLineNames;
 import com.philia.flashsale.order.order.application.port.out.CurrentTimePort;
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderIdentityPort;
 import com.philia.flashsale.order.order.application.port.out.GenerateOrderNumberPort;
 import com.philia.flashsale.order.order.application.port.out.PersistOrderCreationPort;
+import com.philia.flashsale.order.order.application.port.out.LookupOrderLineNamesPort;
 import com.philia.flashsale.order.order.application.result.OrderCreationResult;
 import com.philia.flashsale.order.order.application.usecase.AcceptedPurchaseFingerprintService;
 import com.philia.flashsale.order.order.application.usecase.CreateOrderFromAcceptedPurchaseService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,7 @@ class CreateOrderFromAcceptedPurchaseServiceTests {
     private static final Instant NOW = Instant.parse("2030-01-01T10:00:00Z");
     private FakePersistence persistence;
     private CreateOrderFromAcceptedPurchaseService service;
+    private LookupOrderLineNamesPort lineNames;
 
     @BeforeEach
     void setUp() {
@@ -34,8 +38,9 @@ class CreateOrderFromAcceptedPurchaseServiceTests {
                 ("identity-" + sequence.incrementAndGet()).getBytes());
         GenerateOrderNumberPort numbers = (createdAt, orderId) -> "FS-20300101-" + orderId;
         CurrentTimePort clock = () -> NOW;
+        lineNames = (variantId, traceId) -> Optional.of(new OrderLineNames("Console", "White / 1 TB"));
         service = new CreateOrderFromAcceptedPurchaseService(persistence, identities, numbers, clock,
-                new AcceptedPurchaseFingerprintService());
+                new AcceptedPurchaseFingerprintService(), lineNames);
     }
 
     @Test
@@ -47,6 +52,25 @@ class CreateOrderFromAcceptedPurchaseServiceTests {
         assertThat(result.outboxEventId()).isEqualTo(persistence.candidate.outboxEventId());
         assertThat(persistence.candidate.causationId()).isEqualTo(persistence.candidate.eventId());
         assertThat(persistence.candidate.order().line().quantity()).isEqualTo(2);
+        assertThat(persistence.candidate.order().line().productName()).isEqualTo("Console");
+        assertThat(persistence.candidate.order().line().variantName()).isEqualTo("White / 1 TB");
+    }
+
+    @Test
+    void missingDisplayNamesDoNotBlockOrderAndSagaCreation() {
+        AtomicInteger sequence = new AtomicInteger();
+        GenerateOrderIdentityPort identities = () -> UUID.nameUUIDFromBytes(
+                ("unnamed-" + sequence.incrementAndGet()).getBytes());
+        CreateOrderFromAcceptedPurchaseService unnamed = new CreateOrderFromAcceptedPurchaseService(
+                persistence, identities, (createdAt, orderId) -> "FS-UNNAMED-" + orderId, () -> NOW,
+                new AcceptedPurchaseFingerprintService(), (variantId, traceId) -> Optional.empty());
+
+        OrderCreationResult result = unnamed.create(command(UUID.randomUUID()));
+
+        assertThat(result.outcome()).isEqualTo(OrderCreationResult.Outcome.CREATED);
+        assertThat(persistence.candidate.order().line().productName()).isNull();
+        assertThat(persistence.candidate.order().line().variantName()).isNull();
+        assertThat(persistence.candidate.purchaseSaga()).isNotNull();
     }
 
     @Test

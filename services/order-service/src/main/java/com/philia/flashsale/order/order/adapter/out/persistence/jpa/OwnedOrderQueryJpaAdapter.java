@@ -70,7 +70,7 @@ public class OwnedOrderQueryJpaAdapter implements LoadOwnedOrderPort, ListOwnedO
     }
 
     private OrderItemResult toItem(OrderLineJpaEntity line) {
-        return new OrderItemResult(line.getVariantId(), line.getQuantity(), line.getUnitPrice(),
-                line.getLineAmount());
+        return new OrderItemResult(line.getVariantId(), line.getProductName(), line.getVariantName(),
+                line.getQuantity(), line.getUnitPrice(), line.getLineAmount());
     }
 }

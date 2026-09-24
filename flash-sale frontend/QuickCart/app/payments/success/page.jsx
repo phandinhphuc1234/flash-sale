@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import ApiNotice from "@/components/ApiNotice";
 import { useAppContext } from "@/context/AppContext";
 import { waitFor } from "@/lib/api";
+import { getStatusCopy } from "@/lib/purchasePresentation.mjs";
 
 const PAYMENT_DELAYS = [500, 1000, 1500, 2000, 3000, 5000, 5000, 5000];
 
@@ -54,8 +55,10 @@ export default function PaymentSuccessPage() {
           }
 
           if (cancelled) return;
-          const reservationStatus = reservation ? ` · Reservation: ${reservation.status}` : "";
-          setStatus(`Payment: ${payment.data.status} · Order: ${order.data.status}${reservationStatus}`);
+          const paymentCopy = getStatusCopy("payment", payment.data.status);
+          const orderCopy = getStatusCopy("order", order.data.status);
+          const reservationStatus = reservation ? ` · Reservation: ${getStatusCopy("reservation", reservation.status).label}` : "";
+          setStatus(`Payment: ${paymentCopy.label} · Order: ${orderCopy.label}${reservationStatus}`);
 
           const paymentDone = payment.data.status === "SUCCEEDED";
           const orderDone = order.data.status === "CONFIRMED";
