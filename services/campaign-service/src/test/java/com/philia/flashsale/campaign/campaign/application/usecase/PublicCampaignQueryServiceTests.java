@@ -53,8 +53,9 @@ class PublicCampaignQueryServiceTests {
     void draftDetailIsHiddenAsNotFound() {
         var draft = snapshot(CampaignStatus.DRAFT, NOW.plusSeconds(60), NOW.plusSeconds(120));
         var service = new PublicCampaignQueryService(new StubPort(List.of(), Optional.of(draft)));
+        var query = new GetPublicCampaignQuery(CAMPAIGN_ID, NOW);
 
-        assertThatThrownBy(() -> service.get(new GetPublicCampaignQuery(CAMPAIGN_ID, NOW)))
+        assertThatThrownBy(() -> service.get(query))
                 .isInstanceOf(CampaignNotFoundException.class);
     }
 

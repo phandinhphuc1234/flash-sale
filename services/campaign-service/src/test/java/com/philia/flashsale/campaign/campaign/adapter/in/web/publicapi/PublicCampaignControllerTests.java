@@ -1,5 +1,7 @@
 package com.philia.flashsale.campaign.campaign.adapter.in.web.publicapi;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,8 +20,6 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -30,15 +30,15 @@ class PublicCampaignControllerTests {
 
     @BeforeEach
     void setUp() {
-        browse = Mockito.mock(BrowsePublicCampaignsUseCase.class);
-        GetPublicCampaignUseCase detail = Mockito.mock(GetPublicCampaignUseCase.class);
+        browse = mock(BrowsePublicCampaignsUseCase.class);
+        GetPublicCampaignUseCase detail = mock(GetPublicCampaignUseCase.class);
         CampaignClockPort clock = () -> Instant.parse("2026-10-09T10:30:00Z");
         mvc = MockMvcBuilders.standaloneSetup(new PublicCampaignController(browse, detail, clock)).build();
     }
 
     @Test
     void returnsSharedPaginatedEnvelopeWithoutExactStock() throws Exception {
-        when(browse.browse(ArgumentMatchers.any(BrowsePublicCampaignsQuery.class)))
+        when(browse.browse(any(BrowsePublicCampaignsQuery.class)))
                 .thenReturn(new PublicCampaignPage<>(List.of(result()), 0, 12, 1));
 
         mvc.perform(get("/api/v1/campaigns").param("phase", "LIVE"))

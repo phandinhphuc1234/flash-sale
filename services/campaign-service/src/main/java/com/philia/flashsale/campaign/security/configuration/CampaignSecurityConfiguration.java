@@ -80,7 +80,6 @@ public class CampaignSecurityConfiguration {
     SecurityFilterChain campaignPublicReadSecurityChain(HttpSecurity http) throws Exception {
         return http
                 .securityMatcher("/api/v1/campaigns/**")
-                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/api/v1/campaigns", "/api/v1/campaigns/**")
                         .permitAll()
