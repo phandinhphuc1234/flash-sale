@@ -1,7 +1,7 @@
 # Flash Sale HTTP API catalog
 
 This is the reader-facing catalog for the HTTP surface currently supported by the monorepo.
-There are **55 unique endpoints**, counted by `HTTP method + normalized path`.
+There are **57 unique endpoints**, counted by `HTTP method + normalized path`.
 
 Frontend developers should use the Vietnamese
 [`frontend-integration-guide.md`](frontend-integration-guide.md), which adds complete request/response
@@ -32,14 +32,14 @@ coding prompt.
 | API Gateway | 0 | 0 | 0 | 0 (routing only) |
 | Authentication | 8 | 1 | 1 | 10 |
 | Product | 11 | 3 | 0 | 14 |
-| Campaign | 7 | 1 | 0 | 8 |
+| Campaign | 9 | 1 | 0 | 10 |
 | Inventory | 4 | 4 | 0 | 8 |
 | Flash Sale | 2 | 0 | 0 | 2 |
 | Order | 4 | 0 | 0 | 4 |
 | Payment | 4 | 0 | 0 | 4 |
 | Cart | 4 | 1 | 0 | 5 |
 | Notification | 0 | 0 | 0 | 0 |
-| **Total** | **44** | **10** | **1** | **55** |
+| **Total** | **46** | **10** | **1** | **57** |
 
 ## Endpoint inventory
 
@@ -100,6 +100,17 @@ coding prompt.
 | API-053 | Authentication | Gateway-public | PATCH | `/api/v1/auth/me/profile` | Authenticated user | Update visible username and contact profile fields; email remains read-only |
 | API-054 | Inventory | Gateway-public | GET | `/api/v1/admin/inventory` | `INVENTORY_ADMIN` | List initialized inventory rows with bounded pagination |
 | API-055 | Product | Gateway-public | POST | `/api/v1/admin/catalog/variants/display-details` | `CATALOG_ADMIN` | Batch-resolve product and variant display metadata for inventory rows |
+| API-056 | Campaign | Gateway-public | GET | `/api/v1/campaigns` | Anonymous | Browse bounded live/upcoming Flash Sale offers |
+| API-057 | Campaign | Gateway-public | GET | `/api/v1/campaigns/{campaignId}` | Anonymous | Read shopper-safe Campaign detail, including ended state |
+
+### Public Campaign contract notes
+
+API-056 is zero-based and bounded (`page=0`, `size=12`, maximum `50`) with optional
+`phase=ALL|LIVE|UPCOMING`. Ordering is `startAt ASC, id ASC`. API-057 permits scheduled, active,
+and ended detail but hides draft Campaigns as `404`. Both endpoints use Campaign-owned scheduling
+snapshots, never expose exact remaining quantity, and do not call Product or Inventory at read time.
+The shopper reserves through API-034; a public Campaign response is discovery data and is not proof
+of stock or reservation success.
 
 ### Cart contract notes
 

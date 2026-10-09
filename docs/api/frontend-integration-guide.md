@@ -1,8 +1,8 @@
 # Frontend Integration Guide
 
 Tài liệu này mô tả contract HTTP hiện có của hệ thống Flash Sale để frontend tích hợp mà không
-phải suy đoán từ code Java. Phạm vi gồm **53 endpoint**: 41 endpoint dành cho shopper/admin, một
-Stripe webhook, một JWKS endpoint và mười endpoint nội bộ. Cart Service có bốn endpoint shopper;
+phải suy đoán từ code Java. Phạm vi gồm **57 endpoint**: 46 endpoint qua Gateway, một
+identity-trust endpoint và mười endpoint nội bộ. Cart Service có bốn endpoint shopper;
 Notification Service chưa có HTTP API.
 
 > Source of truth cuối cùng vẫn là controller/DTO của service và OpenAPI sinh tại runtime. Tài liệu
@@ -1047,7 +1047,51 @@ Response:
 Lỗi chính: `INVENTORY_NOT_FOUND` (`404`), `INVENTORY_INSUFFICIENT_STOCK`,
 `INVENTORY_OPERATION_REJECTED` (`409`), `VALIDATION_ERROR` (`400`).
 
-## 7. Campaign Admin
+## 7. Public Campaign discovery
+
+Hai endpoint này anonymous nhưng frontend vẫn chỉ gọi qua Gateway.
+
+```http
+GET /api/v1/campaigns?phase=ALL&page=0&size=12
+GET /api/v1/campaigns/{campaignId}
+```
+
+- `phase`: `ALL`, `LIVE`, hoặc `UPCOMING`.
+- `page` bắt đầu từ `0`; `size` từ `1` đến `50`; mặc định `12`.
+- Thứ tự cố định: `startAt ASC`, sau đó `id ASC`.
+- List không trả Campaign draft/ended; detail có thể trả `ENDED` để URL cũ giải thích đúng trạng thái.
+- Không có exact remaining stock. Frontend không được suy quantity từ dữ liệu public này.
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Operation completed successfully",
+  "data": {
+    "id": "c266db71-091a-4306-8a5d-e088662a21a5",
+    "name": "Mid September Sale",
+    "phase": "LIVE",
+    "startAt": "2026-09-22T00:00:00Z",
+    "endAt": "2026-09-22T01:00:00Z",
+    "reservable": true,
+    "productId": "0e9e1ff4-17b9-43f0-971b-88dfdae04aa3",
+    "variantId": "711ffdce-0dfa-4b66-ad25-4e247037f3ec",
+    "variantSku": "PHONE-001-BLACK",
+    "basePrice": "299000.0000",
+    "campaignPrice": "179000.0000",
+    "currency": "VND",
+    "purchaseLimitPerUser": 1,
+    "presentationAvailable": true
+  },
+  "timestamp": "2026-10-09T00:00:00Z"
+}
+```
+
+`reservable=true` chỉ giúp bật CTA. Khi shopper nhấn Reserve, frontend vẫn phải gọi API-034 với
+JWT và `Idempotency-Key`, rồi tin kết quả reservation authoritative thay vì response discovery.
+Nếu `presentationAvailable=false`, UI hiển thị trạng thái trung tính và không đoán tên/giá/stock.
+
+## 7.1 Campaign Admin
 
 Tất cả endpoint cần authority/scope Campaign Admin. Campaign dùng ETag dạng **có dấu nháy**:
 `If-Match: "0"`.
@@ -2124,15 +2168,12 @@ key mới.
 
 ## 16. Các khoảng trống backend frontend phải biết
 
-1. **Chưa có public Campaign discovery API.** Frontend hiện không thể tự lấy danh sách campaign
-   active, campaign price và countdown chỉ từ public HTTP API. Tạm thời phải dùng campaign ID được
-   cấu hình/seed; giải pháp đúng về lâu dài là đặc tả và triển khai public campaign read projection.
-2. **Chưa có Order lookup theo `purchaseRequestId` hoặc `reservationId`.** Frontend phải poll danh
+1. **Chưa có Order lookup theo `purchaseRequestId` hoặc `reservationId`.** Frontend phải poll danh
    sách order rồi đọc detail để match. Nên bổ sung endpoint/query contract nếu UX cần nhanh và rõ.
-3. **Chưa có HTTP API tạo/quản lý category.** Product composition cần UUID category đã tồn tại.
-4. Notification Service chưa có HTTP endpoint; Cart MVP đã có API-041 đến API-044.
-5. Swagger/OpenAPI là công cụ local; public cloud edge cố ý không bật documentation.
-6. Khi deploy frontend cloud, phải cập nhật CORS trusted origin từ `http://localhost:3000` sang
+2. **Chưa có HTTP API tạo/quản lý category.** Product composition cần UUID category đã tồn tại.
+3. Notification Service chưa có HTTP endpoint; Cart MVP đã có API-041 đến API-044.
+4. Swagger/OpenAPI là công cụ local; public cloud edge cố ý không bật documentation.
+5. Khi deploy frontend cloud, phải cập nhật CORS trusted origin từ `http://localhost:3000` sang
    origin cloud tương ứng trước khi browser gọi API.
 
 Không nên “chữa tạm” các khoảng trống này bằng cách gọi internal API, query database hoặc hardcode

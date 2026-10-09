@@ -63,6 +63,14 @@ class CampaignAdminSecurityTests {
     }
 
     @Test
+    void publicCampaignDiscoveryAllowsAnonymousReads() throws Exception {
+        mockMvc.perform(get("/api/v1/campaigns")
+                        .header("X-Trace-Id", TRACE_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
     void missingTokenReturns401() throws Exception {
         mockMvc.perform(get("/api/v1/admin/campaigns/{campaignId}", "00000000-0000-0000-0000-000000000001")
                         .header("X-Trace-Id", TRACE_ID))

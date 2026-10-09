@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
@@ -76,6 +77,19 @@ public class CampaignSecurityConfiguration {
 
     @Bean
     @Order(2)
+    SecurityFilterChain campaignPublicReadSecurityChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher("/api/v1/campaigns/**")
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers(HttpMethod.GET, "/api/v1/campaigns", "/api/v1/campaigns/**")
+                        .permitAll()
+                        .anyRequest().denyAll())
+                .build();
+    }
+
+    @Bean
+    @Order(3)
     SecurityFilterChain campaignPublicAdminSecurityChain(
             HttpSecurity http,
             @Qualifier("campaignPublicJwtDecoder") JwtDecoder publicJwtDecoder,
@@ -100,7 +114,7 @@ public class CampaignSecurityConfiguration {
     }
 
     @Bean
-    @Order(3)
+    @Order(4)
     SecurityFilterChain campaignDenyByDefaultSecurityChain(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(authorize -> authorize

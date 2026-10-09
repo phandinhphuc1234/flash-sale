@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAppContext } from "@/context/AppContext";
 import ApiNotice from "@/components/ApiNotice";
+import { safeReturnPath } from "@/lib/publicCampaigns.mjs";
 
 export default function AuthForm({ mode }) {
   const { login, register, router } = useAppContext();
@@ -17,7 +18,11 @@ export default function AuthForm({ mode }) {
     event.preventDefault(); setError(null); setPending(true);
     try {
       if (isRegister) { await register({ email: form.email, username: form.username || undefined, password: form.password }); router.push("/login?registered=1"); }
-      else { await login({ login: form.login, password: form.password, deviceName: form.deviceName }); router.push("/"); }
+      else {
+        await login({ login: form.login, password: form.password, deviceName: form.deviceName });
+        const returnTo = safeReturnPath(new URLSearchParams(window.location.search).get("returnTo"));
+        router.push(returnTo);
+      }
     } catch (caught) { setError(caught); } finally { setPending(false); }
   };
   return <main className="min-h-screen bg-gray-50 px-6 py-16"><form onSubmit={submit} className="mx-auto max-w-md space-y-5 rounded-lg border bg-white p-7 shadow-sm">

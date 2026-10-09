@@ -16,11 +16,9 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [variantId, setVariantId] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [campaignId, setCampaignId] = useState(process.env.NEXT_PUBLIC_DEFAULT_CAMPAIGN_ID || "");
   const [error, setError] = useState(null);
   const [adding, setAdding] = useState(false);
   const [buying, setBuying] = useState(false);
-  const [reserving, setReserving] = useState(false);
   const buyNowKeyRef = useRef(null);
 
   const loadProduct = useCallback(async () => {
@@ -57,30 +55,6 @@ export default function ProductPage() {
       setError(caught);
     } finally {
       setAdding(false);
-    }
-  };
-
-  const reserve = async () => {
-    if (!userData) return router.push("/login");
-    if (!campaignId.trim()) {
-      setError(new Error("Campaign ID is required. The backend does not yet provide public campaign discovery."));
-      return;
-    }
-    setError(null);
-    setReserving(true);
-    try {
-      const response = await request(`/api/v1/flash-sales/${campaignId.trim()}/reservations`, {
-        method: "POST",
-        headers: { "Idempotency-Key": crypto.randomUUID() },
-        body: JSON.stringify({ variantId, quantity }),
-      });
-      const reservation = response.data;
-      sessionStorage.setItem("flash-sale-purchase", JSON.stringify(reservation));
-      router.push(`/reservations/${reservation.reservationId}`);
-    } catch (caught) {
-      setError(caught);
-    } finally {
-      setReserving(false);
     }
   };
 
@@ -155,22 +129,20 @@ export default function ProductPage() {
           </div>
 
           <ApiNotice error={error} className="mt-4" />
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button disabled={adding || !variantId || !authReady} onClick={addSelectedVariant} className="rounded-xl border border-orange-500 bg-white py-3.5 font-medium text-orange-600 transition hover:-translate-y-0.5 hover:bg-orange-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50">
               {adding ? "Adding…" : userData ? "Add to cart" : "Login to add"}
             </button>
             <button disabled={buying || !variantId || !authReady} onClick={buyNow} className="rounded-xl bg-gray-900 py-3.5 font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50">
               {buying ? "Creating order…" : userData ? "Buy now" : "Login to buy"}
             </button>
-            <button disabled={reserving || !variantId} onClick={reserve} className="rounded-xl bg-orange-600 py-3.5 font-medium text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50">
-              {reserving ? "Reserving…" : "Reserve now"}
-            </button>
           </div>
-
-          <label className="mt-5 block text-xs font-medium text-gray-600">Flash Sale campaign (manual/demo)
-            <input value={campaignId} onChange={(event) => setCampaignId(event.target.value)} placeholder="Enter an active campaign ID" className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none transition focus:border-orange-400" />
-          </label>
-          <p className="mt-3 text-xs leading-5 text-gray-500">Buy now follows the regular Order → Payment flow. Reserve now is only for an active Flash Sale campaign. Campaign discovery is not available yet, so this field is for an ID supplied by the seller or demo setup.</p>
+          <p className="mt-4 text-sm text-gray-500">
+            Looking for limited-time pricing? Browse verified offers on the Flash Sale page.
+          </p>
+          <button type="button" onClick={() => router.push("/flash-sale")} className="mt-3 w-fit rounded-lg text-sm font-medium text-orange-600 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2">
+            Explore Flash Sale offers →
+          </button>
         </section>
       </div>
     </main>
