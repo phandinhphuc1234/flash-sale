@@ -12,12 +12,15 @@ Evidence is appended as tasks complete. A checked task is not a substitute for c
 | 2026-10-09 | `npm run build` | QuickCart production build and route generation | PASS; 25 routes generated, including Flash Sale, Help, Contact, Privacy, and global error/not-found boundaries. |
 | 2026-10-09 | `rg` placeholder audit for `href="#"`, unsupported Newsletter/Wishlist/address-save UI | Supported storefront source | PASS; no supported placeholder controls remained. |
 | 2026-10-09 | Production server HTTP smoke on temporary port `3100` | `/`, `/flash-sale`, `/flash-sale/{id}`, `/help`, `/contact`, `/privacy`, unknown route | PASS; supported routes returned HTTP 200 and the unknown route returned HTTP 404. Temporary server was stopped after the review. |
-| 2026-10-09 | Static responsive/accessibility review | P0 storefront pages and shared components | PASS for semantic headings, labeled form controls, keyboard-native links/buttons, disabled lifecycle actions, responsive grids, and sanitized error states. Browser-level live Campaign/reservation E2E was not claimed because the existing Docker backend images have not been rebuilt from this working tree. |
+| 2026-10-09 | Static responsive/accessibility review | P0 storefront pages and shared components | PASS for semantic headings, labeled form controls, keyboard-native links/buttons, disabled lifecycle actions, responsive grids, and sanitized error states. |
 | 2026-10-09 | API and frontend guide review | `docs/api/README.md`, `docs/api/frontend-integration-guide.md` | PASS; API-056/API-057, lifecycle semantics, pagination, snapshot ownership, authentication handoff, and reservation boundary documented. |
+| 2026-10-09 | Docker Compose rebuild and live Gateway smoke | Rebuilt/recreated `campaign-service` and `api-gateway`; `GET /api/v1/campaigns?phase=ALL&page=0&size=12`; anonymous admin mutation boundary | PASS; Gateway health returned HTTP 200, the public Campaign list returned HTTP 200 with the documented pagination envelope, and the anonymous admin request returned HTTP 401. The local database contained zero public Campaign rows, so no live detail/reservation journey was claimed. |
+| 2026-10-09 | Restarted QuickCart production server and HTTP route smoke | `/`, `/flash-sale`, `/help`, `/contact`, `/privacy` on port `3000` | PASS; every supported route returned HTTP 200 from the current P0 build. |
 
-## Remaining runtime boundary
+## Remaining data boundary
 
-The source, contracts, module tests, frontend tests, production build, and route-level smoke are
-verified. A live data journey through the Docker stack still requires rebuilding the Campaign Service
-and API Gateway images from the reviewed commit. Until that happens, the currently running containers
-cannot prove the new public Campaign endpoints or a browser reservation against live Campaign data.
+The source, contracts, module tests, frontend tests, production build, route-level smoke, rebuilt
+Campaign Service/API Gateway images, public Campaign endpoint, and anonymous security boundary are
+verified. The local database currently has no public Campaign rows, so a live Campaign-detail and
+reservation journey still requires an eligible scheduled or active Campaign fixture. No result in this
+document claims that data-dependent journey has run.
