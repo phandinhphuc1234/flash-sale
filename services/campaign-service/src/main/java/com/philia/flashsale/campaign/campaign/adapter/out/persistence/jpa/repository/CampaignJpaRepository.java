@@ -6,6 +6,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -18,6 +20,26 @@ public interface CampaignJpaRepository extends JpaRepository<CampaignJpaEntity, 
 
     @EntityGraph(attributePaths = "item")
     Optional<CampaignJpaEntity> findDetailedById(UUID id);
+
+    @EntityGraph(attributePaths = "item")
+    Page<CampaignJpaEntity> findByStatusInAndEndAtAfter(
+            Collection<CampaignStatus> statuses,
+            Instant now,
+            Pageable pageable);
+
+    @EntityGraph(attributePaths = "item")
+    Page<CampaignJpaEntity> findByStatusInAndStartAtLessThanEqualAndEndAtAfter(
+            Collection<CampaignStatus> statuses,
+            Instant startAt,
+            Instant endAt,
+            Pageable pageable);
+
+    @EntityGraph(attributePaths = "item")
+    Page<CampaignJpaEntity> findByStatusInAndStartAtAfterAndEndAtAfter(
+            Collection<CampaignStatus> statuses,
+            Instant startAt,
+            Instant endAt,
+            Pageable pageable);
 
     @Query(value = "SELECT id FROM campaigns WHERE id = :id FOR UPDATE", nativeQuery = true)
     Optional<UUID> lockRootById(@Param("id") UUID id);

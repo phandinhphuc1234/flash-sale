@@ -56,6 +56,7 @@ public class GatewaySecurityConfiguration {
                                 "/v3/api-docs.yaml", "/openapi/**")
                         .access((authentication, context) -> documentationAccess(apiDocsEnabled))
                         .pathMatchers("/api/v1/catalog/**").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/campaigns", "/api/v1/campaigns/**").permitAll()
                         .pathMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh",
                                 "/api/v1/auth/logout").permitAll()
                         .pathMatchers("/api/v1/auth/logout-all").authenticated()

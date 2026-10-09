@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 const Footer = () => {
   return (
@@ -17,16 +18,16 @@ const Footer = () => {
             <h2 className="font-medium text-gray-900 mb-5">Company</h2>
             <ul className="text-sm space-y-2">
               <li>
-                <a className="hover:underline transition" href="#">Home</a>
+                <Link className="transition hover:text-orange-600 hover:underline" href="/">Home</Link>
               </li>
               <li>
-                <a className="hover:underline transition" href="#">About us</a>
+                <Link className="transition hover:text-orange-600 hover:underline" href="/help">Help</Link>
               </li>
               <li>
-                <a className="hover:underline transition" href="#">Contact us</a>
+                <Link className="transition hover:text-orange-600 hover:underline" href="/contact">Contact us</Link>
               </li>
               <li>
-                <a className="hover:underline transition" href="#">Privacy policy</a>
+                <Link className="transition hover:text-orange-600 hover:underline" href="/privacy">Privacy policy</Link>
               </li>
             </ul>
           </div>

@@ -89,6 +89,11 @@ spring:
               uri: ${CAMPAIGN_SERVICE_URL:http://campaign-service:8080}
               predicates:
                 - Path=/api/v1/admin/campaigns/**
+            - id: campaign-public
+              uri: ${CAMPAIGN_SERVICE_URL:http://campaign-service:8080}
+              predicates:
+                - Path=/api/v1/campaigns,/api/v1/campaigns/**
+                - Method=GET
             - id: order-public
               uri: ${ORDER_SERVICE_URL:http://order-service:8080}
               predicates:
