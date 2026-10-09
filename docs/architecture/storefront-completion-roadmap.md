@@ -1,7 +1,7 @@
 # Storefront Completion Roadmap (P0-P2)
 
-**Status**: Proposed program roadmap  
-**Date**: 2026-10-09  
+**Status**: Proposed program roadmap
+**Date**: 2026-10-09
 **Decision**: The backlog is consolidated into exactly three umbrella specifications—one per
 priority—rather than one specification per page or capability.
 

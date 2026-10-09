@@ -1,7 +1,7 @@
 # Specification Quality Checklist: P2 Commerce Operations
 
-**Purpose**: Validate specification completeness and quality before planning  
-**Created**: 2026-10-09  
+**Purpose**: Validate specification completeness and quality before planning
+**Created**: 2026-10-09
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
